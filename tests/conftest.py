@@ -84,3 +84,42 @@ def nwp_ukv_zarr_path(ds_nwp_ukv):
         filename = tmpdir + "/ukv_nwp.zarr"
         ds.to_zarr(filename)
         yield filename
+
+
+@pytest.fixture(scope="session")
+def ds_uk_gsp():
+    times = pd.date_range("2022-09-01 00:00", "2022-09-02 00:00", freq="30min")
+    gsp_ids = np.arange(0, 318)
+    capacity = np.ones((len(times), len(gsp_ids)))
+    generation = np.random.uniform(0, 200, size=(len(times), len(gsp_ids)))
+
+    coords = (
+        ("datetime_gmt", times),
+        ("gsp_id", gsp_ids),
+    )
+
+
+    da_cap = xr.DataArray(
+        capacity,
+        coords=coords,
+    )
+
+    da_gen = xr.DataArray(
+        generation,
+        coords=coords,
+    )
+
+    return xr.Dataset({
+        "capacity_mwp": da_cap, 
+        "installedcapacity_mwp": da_cap, 
+        "generation_mw":da_gen
+    })
+
+@pytest.fixture(scope="session")
+def uk_gsp_zarr_path(ds_uk_gsp):
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filename = tmpdir + "/uk_gsp.zarr"
+        ds_uk_gsp.to_zarr(filename)
+        yield filename
+
