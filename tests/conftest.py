@@ -7,6 +7,7 @@ import xarray as xr
 import tempfile
 
 
+
 @pytest.fixture(scope="session")
 def sat_zarr_path():
 
@@ -39,3 +40,47 @@ def sat_zarr_path():
         ds.to_zarr(zarr_path)
 
         yield zarr_path
+
+
+@pytest.fixture(scope="session")
+def ds_nwp_ukv():
+    init_times = pd.date_range(start="2022-09-01 00:00", freq="180min", periods=24 * 7)
+    steps = pd.timedelta_range("0h", "10h", freq="1h")
+
+
+    # This is much faster:
+    x = np.linspace(-239_000, 857_000, 100)
+    y = np.linspace(-183_000, 1225_000, 100)[::-1]  # UKV data must run top to bottom
+    variables = ["si10", "dswrf", "t", "prate"]
+
+    coords = (
+        ("init_time", init_times),
+        ("variable", variables),
+        ("step", steps),
+        ("x", x),
+        ("y", y),
+    )
+
+    nwp_array_shape = (len(init_times), len(variables), len(steps), len(x), len(y))
+
+    nwp_data = xr.DataArray(
+        np.random.uniform(0, 200, size=nwp_array_shape),
+        coords=coords,
+    )
+    return nwp_data.to_dataset(name="UKV")
+
+
+@pytest.fixture(scope="session")
+def nwp_ukv_zarr_path(ds_nwp_ukv):
+    ds = ds_nwp_ukv.chunk(
+        {
+            "init_time": 1, 
+            "step": -1, 
+            "variable": -1,
+            "x": 100, 
+            "y": 100}
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filename = tmpdir + "/ukv_nwp.zarr"
+        ds.to_zarr(filename)
+        yield filename

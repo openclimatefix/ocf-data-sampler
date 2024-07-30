@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pandas as pd
 import xarray as xr
-from ocf_blosc2 import Blosc2  # noqa: F401
 
 
 _log = logging.getLogger(__name__)
