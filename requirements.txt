@@ -1,0 +1,6 @@
+numpy
+pandas
+xarray
+zarr
+dask
+ocf_blosc2
