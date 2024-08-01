@@ -4,3 +4,5 @@ xarray
 zarr
 dask
 ocf_blosc2
+ocf_datapipes==3.3.39
+pvlib
