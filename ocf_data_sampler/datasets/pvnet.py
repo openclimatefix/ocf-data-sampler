@@ -100,7 +100,7 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     datasets = {}
 
     # We always assume GSP will be included
-    gsp_config = config.input_data.gsps
+    gsp_config = config.input_data.gsp
 
     da_gsp = open_gsp(zarr_path=gsp_config.gsp_zarr_path)
     da_gsp = add_t0_idx_and_sample_period_duration(da_gsp, gsp_config)
@@ -429,12 +429,12 @@ def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> N
 
 def compute(xarray_dict: dict) -> dict:
     """Eagerly load a nested dictionary of xarray DataArrays"""
-    for k, v in d.items():
+    for k, v in xarray_dict.items():
         if isinstance(v, dict):
-            d[k] = compute(v)
+            xarray_dict[k] = compute(v)
         else:
-            d[k] = v.compute(scheduler="single-threaded")
-    return d
+            xarray_dict[k] = v.compute(scheduler="single-threaded")
+    return xarray_dict
 
 
 def get_locations(gs_gsp: xr.DataArray) -> list[Location]:

@@ -86,8 +86,10 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
         _log.info(f"Opening satellite data: {zarr_path}")
         ds = _get_single_sat_data(zarr_path)
 
-
-    ds = ds.rename({"variable": "channel"})
+    if "variable" in ds.coords:
+        ds = ds.rename({"variable": "channel"})
+    if "channels" in ds.coords:
+        ds = ds.rename({"channels": "channel"})
 
     # Rename coords to be more explicit about exactly what some coordinates hold:
     # Note that `rename` renames *both* the coordinates and dimensions, and keeps
