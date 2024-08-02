@@ -12,7 +12,7 @@ setup(
     name="ocf_data_sampler",
     version="0.0.1",
     license="MIT",
-    description="Super cool OCF Repo",
+    description="Sample from weather data for renewable energy prediction",
     author="James Fulton, Peter Dudfield, and the Open Climate Fix team",
     author_email="info@openclimatefix.org",
     company="Open Climate Fix Ltd",
