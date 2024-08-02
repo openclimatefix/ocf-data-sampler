@@ -7,7 +7,7 @@ input_data:
   default_forecast_minutes: 120
 
   gsp:
-    gsp_zarr_path: tests/test_data/gsp/test.zarr
+    gsp_zarr_path: set_in_temp_file
     history_minutes: 60
     forecast_minutes: 120
     time_resolution_minutes: 30
@@ -17,7 +17,7 @@ input_data:
   nwp:
     ukv:
       nwp_provider: ukv
-      nwp_zarr_path: tests/test_data/nwp_data/test.zarr
+      nwp_zarr_path: set_in_temp_file
       history_minutes: 30
       forecast_minutes: 15
       time_resolution_minutes: 60
@@ -30,7 +30,7 @@ input_data:
       max_staleness_minutes: null
 
   satellite:
-    satellite_zarr_path: tests/test_data/sat_data_15.zarr
+    satellite_zarr_path: set_in_temp_file
     history_minutes: 30
     forecast_minutes: 0
     live_delay_minutes: 0
