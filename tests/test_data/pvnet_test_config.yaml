@@ -1,0 +1,43 @@
+general:
+  description: Test config for PVNet
+  name: pvnet_test
+
+input_data:
+  default_history_minutes: 60
+  default_forecast_minutes: 120
+
+  gsp:
+    gsp_zarr_path: set_in_temp_file
+    history_minutes: 60
+    forecast_minutes: 120
+    time_resolution_minutes: 30
+    dropout_timedeltas_minutes: null
+    dropout_fraction: 0
+
+  nwp:
+    ukv:
+      nwp_provider: ukv
+      nwp_zarr_path: set_in_temp_file
+      history_minutes: 30
+      forecast_minutes: 15
+      time_resolution_minutes: 60
+      nwp_channels:
+        - t # 2-metre temperature
+      nwp_image_size_pixels_height: 2
+      nwp_image_size_pixels_width: 2
+      dropout_timedeltas_minutes: [-180]
+      dropout_fraction: 1.0
+      max_staleness_minutes: null
+
+  satellite:
+    satellite_zarr_path: set_in_temp_file
+    history_minutes: 30
+    forecast_minutes: 0
+    live_delay_minutes: 0
+    time_resolution_minutes: 15
+    satellite_channels:
+      - IR_016
+    satellite_image_size_pixels_height: 2
+    satellite_image_size_pixels_width: 2
+    dropout_timedeltas_minutes: null
+    dropout_fraction: 0
