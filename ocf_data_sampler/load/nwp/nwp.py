@@ -2,8 +2,8 @@ from pathlib import Path
 
 import xarray as xr
 
-from ocf_dataset_alpha.load.nwp.providers.ukv import open_ukv
-from ocf_dataset_alpha.load.nwp.providers.ecmwf import open_ifs
+from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
+from ocf_data_sampler.load.nwp.providers.ecmwf import open_ifs
 
 
 def open_nwp(zarr_path: Path | str | list[Path] | list[str], provider: str = "ukv"):

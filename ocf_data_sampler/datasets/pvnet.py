@@ -8,22 +8,22 @@ import xarray as xr
 from torch.utils.data import Dataset
 
 
-from ocf_dataset_alpha.load.gsp import open_gsp
-from ocf_dataset_alpha.load.nwp import open_nwp
-from ocf_dataset_alpha.load.satellite import open_sat_data
-from ocf_dataset_alpha.select.find_contiguous_t0_time_periods import (
+from ocf_data_sampler.load.gsp import open_gsp
+from ocf_data_sampler.load.nwp import open_nwp
+from ocf_data_sampler.load.satellite import open_sat_data
+from ocf_data_sampler.select.find_contiguous_t0_time_periods import (
     find_contiguous_t0_time_periods, find_contiguous_t0_periods_nwp, 
     intersection_of_multiple_dataframes_of_periods,
 )
 
-from ocf_dataset_alpha.select.fill_time_periods import fill_time_periods
+from ocf_data_sampler.select.fill_time_periods import fill_time_periods
 
-from ocf_dataset_alpha.select.select_time_slice import select_time_slice, select_time_slice_nwp
-from ocf_dataset_alpha.select.dropout import draw_dropout_time, apply_dropout_time
+from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
+from ocf_data_sampler.select.dropout import draw_dropout_time, apply_dropout_time
 
-from ocf_dataset_alpha.select.select_spatial_slice import select_spatial_slice_pixels
+from ocf_data_sampler.select.select_spatial_slice import select_spatial_slice_pixels
 
-from ocf_dataset_alpha.numpy_batch import (
+from ocf_data_sampler.numpy_batch import (
     convert_gsp_to_numpy_batch,
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,

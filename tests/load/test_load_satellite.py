@@ -1,4 +1,4 @@
-from ocf_dataset_alpha.load.satellite import open_sat_data
+from ocf_data_sampler.load.satellite import open_sat_data
 import xarray as xr
 import numpy as np
 

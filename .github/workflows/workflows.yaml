@@ -11,7 +11,7 @@ jobs:
       # 0 means don't use pytest-xdist
       pytest_numcpus: "4"
       # pytest-cov looks at this folder
-      pytest_cov_dir: "ocf_dataset_alpha"
+      pytest_cov_dir: "ocf_data_sampler"
       # extra things to install
       #sudo_apt_install: "libgeos++-dev libproj-dev proj-data proj-bin"
       #      brew_install: "proj geos librttopo"
