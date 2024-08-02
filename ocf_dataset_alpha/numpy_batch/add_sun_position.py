@@ -1,7 +1,6 @@
 
 import pvlib
 import numpy as np
-import warnings
 from ocf_datapipes.batch import BatchKey
 from ocf_datapipes.utils.consts import (
     AZIMUTH_MEAN,
