@@ -9,6 +9,10 @@ import tempfile
 
 
 @pytest.fixture(scope="session")
+def config_filename():
+    return f"{os.path.dirname(os.path.abspath(__file__))}/test_data/pvnet_test_config.yaml"
+
+@pytest.fixture(scope="session")
 def sat_zarr_path():
 
     # Load dataset which only contains coordinates, but no data
