@@ -16,7 +16,8 @@ def _sel_fillnan(ds, start_dt, end_dt, sample_period_duration: timedelta):
     return ds.reindex(time_utc=requested_times)
 
 
-def _sel_default(ds, start_dt, end_dt):
+def _sel_default(ds, start_dt, end_dt, time_period_duration: timedelta):
+    # Note 'time_period_duration' is not used but need as its is needed so it's the same as _sel_fillnan
     return ds.sel(time_utc=slice(start_dt, end_dt))
 
 
@@ -62,7 +63,7 @@ def select_time_slice(
     start_dt = start_dt.ceil(sample_period_duration)
     end_dt = end_dt.ceil(sample_period_duration)
 
-    return _sel(ds, start_dt, end_dt)
+    return _sel(ds, start_dt, end_dt, sample_period_duration)
 
 
 def select_time_slice_nwp(
