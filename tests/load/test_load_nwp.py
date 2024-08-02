@@ -1,7 +1,7 @@
 import pandas as pd
 from xarray import DataArray
 
-from ocf_dataset_alpha.load.nwp import open_nwp
+from ocf_data_sampler.load.nwp import open_nwp
 
 
 def test_load_ukv(nwp_ukv_zarr_path):

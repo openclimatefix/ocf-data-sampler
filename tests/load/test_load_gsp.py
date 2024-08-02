@@ -1,4 +1,4 @@
-from ocf_dataset_alpha.load.gsp import open_gsp
+from ocf_data_sampler.load.gsp import open_gsp
 import xarray as xr
 
 

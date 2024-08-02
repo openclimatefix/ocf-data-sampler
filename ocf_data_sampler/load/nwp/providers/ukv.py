@@ -5,7 +5,7 @@ import xarray as xr
 from pathlib import Path
 
 
-from ocf_dataset_alpha.load.nwp.providers.utils import (
+from ocf_data_sampler.load.nwp.providers.utils import (
     open_zarr_paths, check_time_unique_increasing
 )
 
