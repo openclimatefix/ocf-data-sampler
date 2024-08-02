@@ -6,6 +6,24 @@ from datetime import timedelta
 from typing import Optional
 
 
+def _sel_fillnan(ds, start_dt, end_dt, sample_period_duration: timedelta):
+    requested_times = pd.date_range(
+        start_dt,
+        end_dt,
+        freq=sample_period_duration,
+    )
+    # Missing time indexes are returned with all NaN values
+    return ds.reindex(time_utc=requested_times)
+
+
+def _sel_default(ds, start_dt, end_dt):
+    return ds.sel(time_utc=slice(start_dt, end_dt))
+
+
+# TODO either implement this or remove it, which would tidy up the code
+def _sel_fillinterp(ds, start_dt, end_dt):
+    return NotImplemented
+
 
 def select_time_slice(
     ds: xr.Dataset | xr.DataArray,
@@ -30,29 +48,12 @@ def select_time_slice(
         interval_start = np.timedelta64(interval_start)
         interval_end = np.timedelta64(interval_end)
 
-    def _sel_fillnan(ds, start_dt, end_dt):
-        requested_times = pd.date_range(
-            start_dt,
-            end_dt,
-            freq=sample_period_duration,
-        )
-        # Missing time indexes are returned with all NaN values
-        return ds.reindex(time_utc=requested_times)  
-
-    def _sel_default(ds, start_dt, end_dt):
-        return ds.sel(time_utc=slice(start_dt, end_dt))
-
-    def _sel_fillinterp(ds, start_dt, end_dt):
-        return NotImplemented
-
-
     if fill_selection and max_steps_gap == 0:
         _sel = _sel_fillnan
     elif fill_selection and max_steps_gap > 0:
         _sel = _sel_fillinterp
     else:
         _sel = _sel_default
-
 
     t0_datetime_utc = pd.Timestamp(t0)
     start_dt = t0_datetime_utc + interval_start
