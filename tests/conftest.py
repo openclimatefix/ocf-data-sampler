@@ -32,8 +32,17 @@ def sat_zarr_path():
     # Transpose to variables, time, y, x (just in case)
     ds = ds.transpose("variable", "time", "y_geostationary", "x_geostationary")
 
+    # add 100,000 to x_geostationary, this to make sure the fix index is within the satellite image
+    ds["x_geostationary"] = ds["x_geostationary"] - 200_000
+
     # Add some NaNs
     ds["data"].values[:, :, 0, 0] = np.nan
+
+    # make sure channel values are strings
+    ds["variable"] = ds["variable"].astype(str)
+
+    # add data attrs area
+    ds["data"].attrs["area"] = 'msg_seviri_rss_3km:\n  description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution\n  projection:\n    proj: geos\n    lon_0: 9.5\n    h: 35785831\n    x_0: 0\n    y_0: 0\n    a: 6378169\n    rf: 295.488065897014\n    no_defs: null\n    type: crs\n  shape:\n    height: 298\n    width: 615\n  area_extent:\n    lower_left_xy: [28503.830075263977, 5090183.970808983]\n    upper_right_xy: [-1816744.1169023514, 4196063.827395439]\n    units: m\n'
 
     # Specifiy chunking
     ds = ds.chunk({"time": 10, "variable": -1, "y_geostationary": -1, "x_geostationary": -1})
@@ -48,9 +57,8 @@ def sat_zarr_path():
 
 @pytest.fixture(scope="session")
 def ds_nwp_ukv():
-    init_times = pd.date_range(start="2022-09-01 00:00", freq="180min", periods=24 * 7)
+    init_times = pd.date_range(start="2023-01-01 00:00", freq="180min", periods=24 * 7)
     steps = pd.timedelta_range("0h", "10h", freq="1h")
-
 
     # This is much faster:
     x = np.linspace(-239_000, 857_000, 100)
@@ -92,7 +100,7 @@ def nwp_ukv_zarr_path(ds_nwp_ukv):
 
 @pytest.fixture(scope="session")
 def ds_uk_gsp():
-    times = pd.date_range("2022-09-01 00:00", "2022-09-02 00:00", freq="30min")
+    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
     gsp_ids = np.arange(0, 318)
     capacity = np.ones((len(times), len(gsp_ids)))
     generation = np.random.uniform(0, 200, size=(len(times), len(gsp_ids)))
@@ -101,7 +109,6 @@ def ds_uk_gsp():
         ("datetime_gmt", times),
         ("gsp_id", gsp_ids),
     )
-
 
     da_cap = xr.DataArray(
         capacity,
