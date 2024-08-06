@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 
 from datetime import timedelta
-from typing import Optional
 
 
 def _sel_fillnan(ds, start_dt, end_dt, sample_period_duration: timedelta):
@@ -16,8 +15,8 @@ def _sel_fillnan(ds, start_dt, end_dt, sample_period_duration: timedelta):
     return ds.reindex(time_utc=requested_times)
 
 
-def _sel_default(ds, start_dt, end_dt, time_period_duration: timedelta):
-    # Note 'time_period_duration' is not used but need as its is needed so it's the same as _sel_fillnan
+def _sel_default(ds, start_dt, end_dt, sample_period_duration: timedelta):
+    # Note 'sample_period_duration' is not used but need as its is needed so it's the same as _sel_fillnan
     return ds.sel(time_utc=slice(start_dt, end_dt))
 
 
@@ -30,11 +29,11 @@ def select_time_slice(
     ds: xr.Dataset | xr.DataArray,
     t0,
     sample_period_duration: timedelta,
-    history_duration: Optional[timedelta] = None,
-    forecast_duration: Optional[timedelta] = None,
-    interval_start: Optional[timedelta] = None,
-    interval_end: Optional[timedelta] = None,
-    fill_selection: Optional[bool] = False,
+    history_duration: timedelta | None = None,
+    forecast_duration: timedelta | None = None,
+    interval_start: timedelta | None = None,
+    interval_end: timedelta | None = None,
+    fill_selection: bool = False,
     max_steps_gap: int = 0,
 ):
     used_duration = history_duration is not None and forecast_duration is not None
@@ -72,9 +71,9 @@ def select_time_slice_nwp(
     sample_period_duration: timedelta,
     history_duration: timedelta,
     forecast_duration: timedelta,
-    dropout_timedeltas: Optional[list[timedelta]] = None,
-    dropout_frac: Optional[float] = 0,
-    accum_channels: Optional[list[str]] = [],
+    dropout_timedeltas: list[timedelta] | None = None,
+    dropout_frac: float | None = 0,
+    accum_channels: list[str] = [],
     channel_dim_name: str = "channel",
 ):
 
