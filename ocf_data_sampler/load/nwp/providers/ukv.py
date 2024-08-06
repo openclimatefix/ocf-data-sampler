@@ -4,10 +4,8 @@ import xarray as xr
 
 from pathlib import Path
 
-
-from ocf_data_sampler.load.nwp.providers.utils import (
-    open_zarr_paths, check_time_unique_increasing
-)
+from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
+from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
 
 
 def open_ukv(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
@@ -23,19 +21,25 @@ def open_ukv(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
     # Open the data
     ds = open_zarr_paths(zarr_path)
 
-    ds = ds.transpose("init_time", "step", "variable", "y", "x")
+    # Rename
     ds = ds.rename(
         {
             "init_time": "init_time_utc",
             "variable": "channel",
-            "y": "y_osgb",
             "x": "x_osgb",
+            "y": "y_osgb",
         }
     )
 
-    # Sanity checks.
-    assert ds.y_osgb[0] > ds.y_osgb[1], "UKV must run from top-to-bottom."
-    check_time_unique_increasing(ds)
+    # Check the timestmps are unique and increasing
+    check_time_unique_increasing(ds.init_time_utc)
+
+    # Make sure the spatial coords are in increasing order
+    ds = make_spatial_coords_increasing(ds, x_coord="x_osgb", y_coord="y_osgb")
+
+    ds = ds.transpose("init_time_utc", "step", "channel", "x_osgb", "y_osgb")
+
+    # TODO: should we control the dtype of the DataArray?
     return ds.UKV
 
 

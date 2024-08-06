@@ -1,14 +1,11 @@
 """Satellite loader"""
 
-import logging
 import subprocess
 from pathlib import Path
 
 import pandas as pd
 import xarray as xr
-
-
-_log = logging.getLogger(__name__)
+from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
 
 
 def _get_single_sat_data(zarr_path: Path | str) -> xr.DataArray:
@@ -73,9 +70,8 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
         ```
     """
 
+    # Open the data
     if isinstance(zarr_path, (list, tuple)):
-        message_files_list = "\n - " + "\n - ".join([str(s) for s in zarr_path])
-        _log.info(f"Opening satellite data: {message_files_list}")
         ds = xr.combine_nested(
             [_get_single_sat_data(path) for path in zarr_path],
             concat_dim="time",
@@ -83,34 +79,23 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
             join="override",
         )
     else:
-        _log.info(f"Opening satellite data: {zarr_path}")
         ds = _get_single_sat_data(zarr_path)
 
+    # Rename
+    ds = ds.rename(
+        {
+            "variable": "channel",
+            "time": "time_utc",
+        }
+    )
 
-    ds = ds.rename({"variable": "channel"})
+    # Check the timestmps are unique and increasing
+    check_time_unique_increasing(ds.time_utc)
 
-    # Rename coords to be more explicit about exactly what some coordinates hold:
-    # Note that `rename` renames *both* the coordinates and dimensions, and keeps
-    # the connection between the dims and coordinates, so we don't have to manually
-    # use `data_array.set_index()`.
-    ds = ds.rename({"time": "time_utc"})
+    # Make sure the spatial coords are in increasing order
+    ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
 
-    # Flip coordinates to top-left first
-    if ds.y_geostationary[0] < ds.y_geostationary[-1]:
-        ds = ds.isel(y_geostationary=slice(None, None, -1))
-    if ds.x_geostationary[0] > ds.x_geostationary[-1]:
-        ds = ds.isel(x_geostationary=slice(None, None, -1))
+    ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
 
-    # Ensure the y and x coords are in the right order (top-left first):
-    assert ds.y_geostationary[0] > ds.y_geostationary[-1]
-    assert ds.x_geostationary[0] < ds.x_geostationary[-1]
-
-    ds = ds.transpose("time_utc", "channel", "y_geostationary", "x_geostationary")
-
-    # Sanity checks!
-    datetime_index = pd.DatetimeIndex(ds.time_utc)
-    assert datetime_index.is_unique
-    assert datetime_index.is_monotonic_increasing
-
-    # Return DataArray
-    return ds["data"]
+    # TODO: should we control the dtype of the DataArray?
+    return ds.data

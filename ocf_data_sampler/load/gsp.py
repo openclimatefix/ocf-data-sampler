@@ -1,20 +1,17 @@
 from pathlib import Path
 import pkg_resources
 
+import pandas as pd
 import xarray as xr
 
-import pandas as pd
 
-
-def open_gsp(zarr_path: str | Path):
+def open_gsp(zarr_path: str | Path) -> xr.DataArray:
 
     # Load GSP generation xr.Dataset
     ds = xr.open_zarr(zarr_path)
 
     # Rename to standard time name
-    ds = ds.rename({
-        "datetime_gmt": "time_utc",
-    })
+    ds = ds.rename({"datetime_gmt": "time_utc"})
 
     # Load UK GSP locations
     df_gsp_loc = pd.read_csv(
@@ -31,7 +28,6 @@ def open_gsp(zarr_path: str | Path):
 
     )
 
-    # Return dataarray
-    return ds["generation_mw"]
+    return ds.generation_mw
 
 

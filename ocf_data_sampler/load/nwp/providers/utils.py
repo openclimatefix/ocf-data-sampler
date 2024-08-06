@@ -1,6 +1,5 @@
 from pathlib import Path
 import xarray as xr
-import pandas as pd
 
 
 def open_zarr_paths(
@@ -33,10 +32,3 @@ def open_zarr_paths(
             chunks="auto",
         )
     return ds
-
-
-def check_time_unique_increasing(ds: xr.Dataset) -> None:
-    """Check that the time dimension is unique and increasing"""
-    time = pd.DatetimeIndex(ds.init_time_utc)
-    assert time.is_unique
-    assert time.is_monotonic_increasing

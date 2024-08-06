@@ -50,7 +50,7 @@ def ds_nwp_ukv():
 
     # This is much faster:
     x = np.linspace(-239_000, 857_000, 100)
-    y = np.linspace(-183_000, 1225_000, 100)[::-1]  # UKV data must run top to bottom
+    y = np.linspace(-183_000, 1225_000, 200)
     variables = ["si10", "dswrf", "t", "prate"]
 
     coords = (
