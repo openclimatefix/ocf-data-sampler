@@ -62,7 +62,8 @@ def convert_coords_to_match_xarray(
 
     return x, y
 
-
+# TODO: This function and _get_idx_of_pixel_closest_to_poi_geostationary() should not be separate
+# We should combine them, and consider making a Coord class to help with this
 def _get_idx_of_pixel_closest_to_poi(
     da: xr.DataArray,
     location: Location,
@@ -131,9 +132,8 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
         da[x_dim].values, center_geostationary.x, assume_ascending=True
     )
 
-    # y_geostationary is in descending order:
     y_index_at_center = searchsorted(
-        da[y_dim].values, center_geostationary.y, assume_ascending=False
+        da[y_dim].values, center_geostationary.y, assume_ascending=True
     )
 
     return Location(x=x_index_at_center, y=y_index_at_center, coordinate_system="idx")
@@ -142,36 +142,41 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
 # ---------------------------- sub-functions for slicing ----------------------------
 
 
-def _slice_patial_spatial_pixel_window_from_xarray(
+def _select_partial_spatial_slice_pixels(
     da,
     left_idx,
     right_idx,
-    top_idx,
     bottom_idx,
+    top_idx,
     left_pad_pixels,
     right_pad_pixels,
-    top_pad_pixels,
     bottom_pad_pixels,
+    top_pad_pixels,
     x_dim,
     y_dim,
 ):
     """Return spatial window of given pixel size when window partially overlaps input data"""
 
+    # We should never be padding on both sides of a window. This would mean our desired window is 
+    # larger than the size of the input data
+    assert left_pad_pixels==0 or right_pad_pixels==0
+    assert bottom_pad_pixels==0 or top_pad_pixels==0
+
     dx = np.median(np.diff(da[x_dim].values))
     dy = np.median(np.diff(da[y_dim].values))
 
+    # Pad the left of the window
     if left_pad_pixels > 0:
-        assert right_pad_pixels == 0
         x_sel = np.concatenate(
             [
-                da[x_dim].values[0] - np.arange(left_pad_pixels, 0, -1) * dx,
+                da[x_dim].values[0] + np.arange(-left_pad_pixels, 0) * dx,
                 da[x_dim].values[0:right_idx],
             ]
         )
         da = da.isel({x_dim: slice(0, right_idx)}).reindex({x_dim: x_sel})
 
+    # Pad the right of the window
     elif right_pad_pixels > 0:
-        assert left_pad_pixels == 0
         x_sel = np.concatenate(
             [
                 da[x_dim].values[left_idx:],
@@ -180,31 +185,33 @@ def _slice_patial_spatial_pixel_window_from_xarray(
         )
         da = da.isel({x_dim: slice(left_idx, None)}).reindex({x_dim: x_sel})
 
+    # No left-right padding required
     else:
         da = da.isel({x_dim: slice(left_idx, right_idx)})
 
-    if top_pad_pixels > 0:
-        assert bottom_pad_pixels == 0
+    # Pad the bottom of the window
+    if bottom_pad_pixels > 0:
         y_sel = np.concatenate(
             [
-                da[y_dim].values[0] - np.arange(top_pad_pixels, 0, -1) * dy,
-                da[y_dim].values[0:bottom_idx],
+                da[y_dim].values[0] + np.arange(-bottom_pad_pixels, 0) * dy,
+                da[y_dim].values[0:top_idx],
             ]
         )
-        da = da.isel({y_dim: slice(0, bottom_idx)}).reindex({y_dim: y_sel})
+        da = da.isel({y_dim: slice(0, top_idx)}).reindex({y_dim: y_sel})
 
-    elif bottom_pad_pixels > 0:
-        assert top_pad_pixels == 0
+    # Pad the top of the window
+    elif top_pad_pixels > 0:
         y_sel = np.concatenate(
             [
-                da[y_dim].values[top_idx:],
-                da[y_dim].values[-1] + np.arange(1, bottom_pad_pixels + 1) * dy,
+                da[y_dim].values[bottom_idx:],
+                da[y_dim].values[-1] + np.arange(1, top_pad_pixels + 1) * dy,
             ]
         )
-        da = da.isel({y_dim: slice(top_idx, None)}).reindex({x_dim: y_sel})
+        da = da.isel({y_dim: slice(left_idx, None)}).reindex({y_dim: y_sel})
 
+    # No bottom-top padding required
     else:
-        da = da.isel({y_dim: slice(top_idx, bottom_idx)})
+        da = da.isel({y_dim: slice(bottom_idx, top_idx)})
 
     return da
 
@@ -240,48 +247,47 @@ def _select_spatial_slice_pixels(
 
     left_idx = int(center_idx.x - half_width)
     right_idx = int(center_idx.x + half_width)
-    top_idx = int(center_idx.y - half_height)
-    bottom_idx = int(center_idx.y + half_height)
+    bottom_idx = int(center_idx.y - half_height)
+    top_idx = int(center_idx.y + half_height)
 
     data_width_pixels = len(da[x_dim])
     data_height_pixels = len(da[y_dim])
 
     left_pad_required = left_idx < 0
-    right_pad_required = right_idx >= data_width_pixels
-    top_pad_required = top_idx < 0
-    bottom_pad_required = bottom_idx >= data_height_pixels
+    right_pad_required = right_idx > data_width_pixels
+    bottom_pad_required = bottom_idx < 0
+    top_pad_required = top_idx > data_height_pixels
 
-    pad_required = any(
-        [left_pad_required, right_pad_required, top_pad_required, bottom_pad_required]
-    )
+    pad_required = left_pad_required | right_pad_required | bottom_pad_required | top_pad_required
 
     if pad_required:
         if allow_partial_slice:
-            left_pad_pixels = (-left_idx) if left_pad_required else 0
-            right_pad_pixels = (right_idx - (data_width_pixels - 1)) if right_pad_required else 0
-            top_pad_pixels = (-top_idx) if top_pad_required else 0
-            bottom_pad_pixels = (
-                (bottom_idx - (data_height_pixels - 1)) if bottom_pad_required else 0
-            )
 
-            da = _slice_patial_spatial_pixel_window_from_xarray(
+            left_pad_pixels = (-left_idx) if left_pad_required else 0
+            right_pad_pixels = (right_idx - data_width_pixels) if right_pad_required else 0
+
+            bottom_pad_pixels = (-bottom_idx) if bottom_pad_required else 0
+            top_pad_pixels = (top_idx - data_height_pixels) if top_pad_required else 0
+
+
+            da = _select_partial_spatial_slice_pixels(
                 da,
                 left_idx,
                 right_idx,
-                top_idx,
                 bottom_idx,
+                top_idx,
                 left_pad_pixels,
                 right_pad_pixels,
-                top_pad_pixels,
                 bottom_pad_pixels,
+                top_pad_pixels,
                 x_dim,
                 y_dim,
             )
         else:
             raise ValueError(
-                f"Window for location {center_idx} not available. Missing (left, right, top, "
-                f"bottom) pixels  = ({left_pad_required}, {right_pad_required}, "
-                f"{top_pad_required}, {bottom_pad_required}). "
+                f"Window for location {center_idx} not available. Missing (left, right, bottom, "
+                f"top) pixels  = ({left_pad_required}, {right_pad_required}, "
+                f"{bottom_pad_required}, {top_pad_required}). "
                 f"You may wish to set `allow_partial_slice=True`"
             )
 
@@ -289,7 +295,7 @@ def _select_spatial_slice_pixels(
         da = da.isel(
             {
                 x_dim: slice(left_idx, right_idx),
-                y_dim: slice(top_idx, bottom_idx),
+                y_dim: slice(bottom_idx, top_idx),
             }
         )
 
@@ -299,7 +305,7 @@ def _select_spatial_slice_pixels(
     )
     assert len(da[y_dim]) == height_pixels, (
         f"Expected y-dim len {height_pixels} got {len(da[y_dim])} "
-        f"for location {center_idx} for slice {top_idx}:{bottom_idx}"
+        f"for location {center_idx} for slice {bottom_idx}:{top_idx}"
     )
 
     return da
