@@ -15,7 +15,7 @@ def da_sat_like():
     """Create dummy data which looks like satellite data"""
     x = np.arange(-100, 100, 10)
     y = np.arange(-100, 100, 10)
-    datetimes = pd.date_range("2024-01-01 12:00", "2024-01-02 12:30", freq="5min")
+    datetimes = pd.date_range("2024-01-01 12:00", "2024-01-01 12:30", freq="5min")
     channels = ["VIS008", "IR016"]
 
     da_sat = xr.DataArray(

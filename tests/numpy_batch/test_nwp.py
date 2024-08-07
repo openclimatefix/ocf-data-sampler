@@ -4,7 +4,7 @@ import xarray as xr
 
 import pytest
 
-from ocf_data_sampler.numpy_batch.nwp import convert_nwp_to_numpy_batch
+from ocf_data_sampler.numpy_batch import convert_nwp_to_numpy_batch
 
 from ocf_datapipes.batch import NWPBatchKey
 
