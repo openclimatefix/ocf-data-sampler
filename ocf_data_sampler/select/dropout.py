@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 
 def draw_dropout_time(
-        t0: pd.Timedelta,
+        t0: datetime,
         dropout_timedeltas: list[timedelta] | None,
         dropout_frac: float = 0,
     ):
