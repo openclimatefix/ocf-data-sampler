@@ -357,11 +357,11 @@ def slice_datasets_by_time(
 
 def merge_dicts(list_of_dicts: list[dict]) -> dict:
     """Merge a list of dictionaries into a single dictionary"""
-    # TODO: This doesn't account for duplicate keys
-    all_d = {}
+    # TODO: This doesn't account for duplicate keys, which will be overwritten
+    combined_dict = {}
     for d in list_of_dicts:
-        all_d.update(d)
-    return all_d
+        combined_dict.update(d)
+    return combined_dict
 
 
 
@@ -455,15 +455,19 @@ class PVNetDataset(Dataset):
 
         # Remove national GSP ID
         datasets_dict["gsp"] = datasets_dict["gsp"].sel(gsp_id=slice(1, None))
-
-        if (start_time is not None) or (end_time is not None):
-            datasets_dict["gsp"] = datasets_dict["gsp"].sel(time_utc=slice(start_time, end_time))
         
         # Get t0 times where all input data is available
         valid_t0_times = find_valid_t0_times(
             datasets_dict,
             config,
         )
+
+        # Filter t0 times to given range
+        if start_time is not None:
+            valid_t0_times = valid_t0_times[valid_t0_times>=pd.Timestamp(start_time)]
+            
+        if end_time is not None:
+            valid_t0_times = valid_t0_times[valid_t0_times<=pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
         locations = get_locations(datasets_dict["gsp"])
@@ -523,7 +527,9 @@ class PVNetDataset(Dataset):
     
 
     def get_sample(self, t0: pd.Timestamp, gsp_id: int) -> NumpyBatch:
-        """Generate the PVNet sample for given coordinates
+        """Generate a sample for the given coordinates. 
+        
+        Useful for users to generate samples by GSP ID.
         
         Args:
             t0: init-time for sample
