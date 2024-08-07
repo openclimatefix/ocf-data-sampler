@@ -52,22 +52,6 @@ from ocf_datapipes.training.common import (
 xr.set_options(keep_attrs=True)
 
 
-# TODO: This is messy. Remove the need for this in NumpyBatch conversion
-def add_t0_idx_and_sample_period_duration(da: xr.DataArray, source_config) -> xr.DataArray:
-    """Add attributes to the xarray dataset needed for numpy batch
-
-    Args:
-        da: xarray DataArray
-        source_config: Input data source config
-    """
-
-    da.attrs["t0_idx"] = int(
-        source_config.history_minutes / source_config.time_resolution_minutes
-    )
-    da.attrs["sample_period_duration"] = minutes(source_config.time_resolution_minutes)
-    return da
-
-
 def minutes(m: float) -> timedelta:
     """Timedelta minutes
     
@@ -103,7 +87,6 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     gsp_config = config.input_data.gsp
 
     da_gsp = open_gsp(zarr_path=gsp_config.gsp_zarr_path)
-    da_gsp = add_t0_idx_and_sample_period_duration(da_gsp, gsp_config)
 
     datasets["gsp"] = da_gsp
 
@@ -117,8 +100,6 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
 
             da_nwp = da_nwp.sel(channel=list(nwp_config.nwp_channels))
 
-            da_nwp = add_t0_idx_and_sample_period_duration(da_nwp, nwp_config)
-
             datasets["nwp"][nwp_source] = da_nwp
 
     # Load satellite data if in config
@@ -128,8 +109,6 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
         da_sat = open_sat_data(sat_config.satellite_zarr_path)
 
         da_sat.sel(channel=list(sat_config.satellite_channels))
-
-        da_sat = add_t0_idx_and_sample_period_duration(da_sat, sat_config)
 
         datasets["sat"] = da_sat
 
@@ -397,7 +376,7 @@ def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> N
         nwp_numpy_modalities = dict()
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
-            # Normalise
+            # Standardise
             provider = conf_nwp[nwp_key].nwp_provider
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
             # Convert to NumpyBatch
@@ -407,7 +386,8 @@ def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> N
         numpy_modalities.append({BatchKey.nwp: nwp_numpy_modalities})
 
     if "sat" in dataset_dict:
-        # Normalise
+        # Standardise
+        # TODO: Since satellite is in range 0-1 already, so we don't need to standardize
         da_sat = (dataset_dict["sat"] - RSS_MEAN) / RSS_STD
         # Convert to NumpyBatch
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
@@ -416,7 +396,12 @@ def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> N
     # GSP always assumed to be in data
     da_gsp = concat_xr_time_utc([dataset_dict["gsp"], dataset_dict["gsp_future"]])
     da_gsp = normalize_gsp(da_gsp)
-    numpy_modalities.append(convert_gsp_to_numpy_batch(da_gsp))
+
+    gsp_t0_idx = (
+        config.input_data.gsp.history_minutes / config.input_data.gsp.time_resolution_minutes
+    )
+
+    numpy_modalities.append(convert_gsp_to_numpy_batch(da_gsp, t0_idx=gsp_t0_idx))
 
     # Combine all the modalities
     combined_sample = merge_dicts(numpy_modalities)
@@ -546,35 +531,3 @@ class PVNetDataset(Dataset):
         """
         location = self.location_lookup[gsp_id]
         return self._get_sample(t0, location)
-    
-    
-if __name__=="__main__":
-
-    # ------------------ basic usage ---------------------
-
-    # TODO: remove this, its messy, but useful until we have tests and docs
-    config_filename = (
-        "/home/jamesfulton/repos/PVNet/configs/datamodule/configuration/gcp_configuration.yaml"
-    )
-
-    # Create dataset object
-    dataset = PVNetDataset(config_filename)
-    
-    # Print number of samples
-    print(f"Found {len(dataset.valid_t0_times)} possible samples")
-
-    # Find the 0th sample coordinates
-    # TODO: Should we be able to use the dataset to map from index to t0, location coords more 
-    # easily?
-    idx = 0
-    t_index, loc_index = dataset.index_pairs[idx]
-
-    location = dataset.locations[loc_index]
-    t0 = dataset.valid_t0_times[t_index]
-
-    # Print coords
-    print(t0)
-    print(location)
-    
-    # Generate sample - no printing since its BIG
-    sample = dataset[idx]
