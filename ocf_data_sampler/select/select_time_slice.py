@@ -2,32 +2,44 @@ import xarray as xr
 import pandas as pd
 import numpy as np
 
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 
-def _sel_fillnan(ds, start_dt, end_dt, sample_period_duration: timedelta):
-    requested_times = pd.date_range(
-        start_dt,
-        end_dt,
-        freq=sample_period_duration,
-    )
-    # Missing time indexes are returned with all NaN values
-    return ds.reindex(time_utc=requested_times)
+def _sel_fillnan(
+        da: xr.DataArray, 
+        start_dt: datetime, 
+        end_dt: datetime, 
+        sample_period_duration: timedelta,
+    ) -> xr.DataArray:
+    """Select a time slice from a DataArray, filling missing times with NaNs."""
+    requested_times = pd.date_range(start_dt, end_dt, freq=sample_period_duration)
+    return da.reindex(time_utc=requested_times)
 
 
-def _sel_default(ds, start_dt, end_dt, sample_period_duration: timedelta):
-    # Note 'sample_period_duration' is not used but need as its is needed so it's the same as _sel_fillnan
-    return ds.sel(time_utc=slice(start_dt, end_dt))
+def _sel_default(
+        da: xr.DataArray, 
+        start_dt: datetime, 
+        end_dt: datetime, 
+        sample_period_duration: timedelta,
+    ) -> xr.DataArray:
+    """Select a time slice from a DataArray, without filling missing times."""
+    return da.sel(time_utc=slice(start_dt, end_dt))
 
 
 # TODO either implement this or remove it, which would tidy up the code
-def _sel_fillinterp(ds, start_dt, end_dt):
+def _sel_fillinterp(
+        da: xr.DataArray, 
+        start_dt: datetime, 
+        end_dt: datetime, 
+        sample_period_duration: timedelta,
+    ) -> xr.DataArray:
+    """Select a time slice from a DataArray, filling missing times with linear interpolation."""
     return NotImplemented
 
 
 def select_time_slice(
     ds: xr.Dataset | xr.DataArray,
-    t0,
+    t0: datetime,
     sample_period_duration: timedelta,
     history_duration: timedelta | None = None,
     forecast_duration: timedelta | None = None,
@@ -36,6 +48,7 @@ def select_time_slice(
     fill_selection: bool = False,
     max_steps_gap: int = 0,
 ):
+    """Select a time slice from a Dataset or DataArray."""
     used_duration = history_duration is not None and forecast_duration is not None
     used_intervals = interval_start is not None and interval_end is not None
     assert used_duration ^ used_intervals, "Either durations, or intervals must be supplied"
