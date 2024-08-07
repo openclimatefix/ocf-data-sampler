@@ -140,7 +140,7 @@ def select_time_slice_nwp(
         unique_init_times = np.unique(selected_init_times)
         # - find the min and max steps we slice over. Max is extended due to diff
         min_step = min(steps)
-        max_step = max(steps) + (ds.step[1] - ds.step[0])
+        max_step = max(steps) + sample_period_duration
 
         xr_min = ds.sel(
             {
