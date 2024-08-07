@@ -457,10 +457,7 @@ class PVNetDataset(Dataset):
         datasets_dict["gsp"] = datasets_dict["gsp"].sel(gsp_id=slice(1, None))
         
         # Get t0 times where all input data is available
-        valid_t0_times = find_valid_t0_times(
-            datasets_dict,
-            config,
-        )
+        valid_t0_times = find_valid_t0_times(datasets_dict, config)
 
         # Filter t0 times to given range
         if start_time is not None:
@@ -535,5 +532,11 @@ class PVNetDataset(Dataset):
             t0: init-time for sample
             gsp_id: GSP ID
         """
+        # Check the user has asked for a sample which we have the data for
+        assert t0 in self.valid_t0_times
+        assert gsp_id in self.location_lookup
+
         location = self.location_lookup[gsp_id]
+
+        
         return self._get_sample(t0, location)
