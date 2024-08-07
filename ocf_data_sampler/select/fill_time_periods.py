@@ -1,7 +1,7 @@
 """Select time periods"""
 
 import pandas as pd
-import  numpy as np
+import numpy as np
 from datetime import timedelta
 
 
@@ -9,8 +9,8 @@ from datetime import timedelta
 def fill_time_periods(time_periods: pd.DataFrame, freq: timedelta):
     datetimes = []
     for _, row in time_periods.iterrows():
-        start_dt = row["start_dt"]
-        end_dt = row["end_dt"]
+        start_dt = pd.Timestamp(row["start_dt"]).ceil(freq)
+        end_dt = pd.Timestamp(row["end_dt"])
         datetimes.append(pd.date_range(start_dt, end_dt, freq=freq))
 
     return pd.DatetimeIndex(np.concatenate(datetimes))
