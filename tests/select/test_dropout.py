@@ -56,7 +56,7 @@ def test_draw_dropout_time_none():
     assert dropout_time is None
 
     # Dropout fraction is 0
-    dropout_timedeltas = [pd.Timedelta(-30, "mins")]
+    dropout_timedeltas = [pd.Timedelta(-30, "min")]
     dropout_time = draw_dropout_time(t0, dropout_timedeltas=dropout_timedeltas, dropout_frac=0)
     assert dropout_time is None
 
