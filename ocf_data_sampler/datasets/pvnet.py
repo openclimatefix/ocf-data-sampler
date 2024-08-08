@@ -11,23 +11,21 @@ from torch.utils.data import Dataset
 from ocf_data_sampler.load.gsp import open_gsp
 from ocf_data_sampler.load.nwp import open_nwp
 from ocf_data_sampler.load.satellite import open_sat_data
+
 from ocf_data_sampler.select.find_contiguous_t0_time_periods import (
     find_contiguous_t0_time_periods, find_contiguous_t0_periods_nwp, 
     intersection_of_multiple_dataframes_of_periods,
 )
-
 from ocf_data_sampler.select.fill_time_periods import fill_time_periods
-
 from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
 from ocf_data_sampler.select.dropout import draw_dropout_time, apply_dropout_time
-
 from ocf_data_sampler.select.select_spatial_slice import select_spatial_slice_pixels
 
 from ocf_data_sampler.numpy_batch import (
     convert_gsp_to_numpy_batch,
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
-    add_sun_position,
+    add_sun_position_to_numpy_batch,
 )
 
 
@@ -45,20 +43,21 @@ from ocf_datapipes.utils.consts import (
 )
 
 from ocf_datapipes.training.common import (
-    is_config_and_path_valid, minutes_list_to_timedeltas, concat_xr_time_utc, normalize_gsp,
+    is_config_and_path_valid, concat_xr_time_utc, normalize_gsp,
 )
 
 
 xr.set_options(keep_attrs=True)
 
 
-def minutes(m: float) -> timedelta:
+
+def minutes(minutes: list[float]):
     """Timedelta minutes
     
     Args:
         m: minutes
     """
-    return timedelta(minutes=m)
+    return pd.to_timedelta(minutes, unit="m")
 
 
 def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataArray]]:
@@ -279,9 +278,7 @@ def slice_datasets_by_time(
         
         for nwp_key, da_nwp in datasets_dict["nwp"].items():
             
-            dropout_timedeltas = minutes_list_to_timedeltas(
-                conf_in.nwp[nwp_key].dropout_timedeltas_minutes
-            )
+            dropout_timedeltas = minutes(conf_in.nwp[nwp_key].dropout_timedeltas_minutes)
                 
             sliced_datasets_dict["nwp"][nwp_key] = select_time_slice_nwp(
                 da_nwp,
@@ -308,9 +305,7 @@ def slice_datasets_by_time(
         # Randomly sample dropout
         sat_dropout_time = draw_dropout_time(
             t0,
-            dropout_timedeltas=minutes_list_to_timedeltas(
-                conf_in.satellite.dropout_timedeltas_minutes
-            ),
+            dropout_timedeltas=minutes(conf_in.satellite.dropout_timedeltas_minutes),
             dropout_frac=conf_in.satellite.dropout_fraction,
         )
 
@@ -338,7 +333,7 @@ def slice_datasets_by_time(
     )
 
     # Dropout on the GSP, but not the future GSP
-    dropout_timedeltas = minutes_list_to_timedeltas(conf_in.gsp.dropout_timedeltas_minutes)
+    dropout_timedeltas = minutes(conf_in.gsp.dropout_timedeltas_minutes)
 
     gsp_dropout_time = draw_dropout_time(
         t0,
@@ -407,7 +402,7 @@ def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> N
     combined_sample = merge_dicts(numpy_modalities)
 
     # Add sun coords
-    combined_sample = add_sun_position(combined_sample, modality_name="gsp")
+    combined_sample = add_sun_position_to_numpy_batch(combined_sample, modality_name="gsp")
  
     return combined_sample
 
