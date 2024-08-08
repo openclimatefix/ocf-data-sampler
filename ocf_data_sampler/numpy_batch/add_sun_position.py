@@ -40,9 +40,8 @@ def add_sun_position_to_numpy_batch(np_batch, modality_name: str):
 
         modality_name: Modality to add the sun position for
     """
-    assert modality_name in [
-        "gsp",
-    ], f"Cant add sun position on {modality_name}"
+    if modality_name not in {"gsp"}:
+        raise NotImplementedError(f"Modality {modality_name} not supported")
 
     if modality_name == "gsp":
         times_utc: pd.DatetimeIndex = pd.to_datetime(np_batch[BatchKey.gsp_time_utc])

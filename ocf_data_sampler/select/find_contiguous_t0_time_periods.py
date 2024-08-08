@@ -1,7 +1,5 @@
 """Get contiguous time periods for training"""
 
-from datetime import timedelta
-
 import numpy as np
 import pandas as pd
 
@@ -10,7 +8,7 @@ import pandas as pd
 def find_contiguous_time_periods(
     datetimes: pd.DatetimeIndex,
     min_seq_length: int,
-    max_gap_duration: timedelta,
+    max_gap_duration: pd.Timedelta,
 ) -> pd.DataFrame:
     """Return a pd.DataFrame where each row records the boundary of a contiguous time period.
 
@@ -65,8 +63,8 @@ def find_contiguous_time_periods(
 
 def trim_contiguous_time_periods(
     contiguous_time_periods: pd.DataFrame, 
-    history_duration: timedelta,
-    forecast_duration: timedelta,
+    history_duration: pd.Timedelta,
+    forecast_duration: pd.Timedelta,
 ) -> pd.DataFrame:
     """Trim the contiguous time periods in-place to allow for history and forecast durations.
 
@@ -89,9 +87,9 @@ def trim_contiguous_time_periods(
 
 def find_contiguous_t0_time_periods(
         datetimes: pd.DatetimeIndex,
-        history_duration: timedelta,
-        forecast_duration: timedelta,
-        sample_period_duration: timedelta,
+        history_duration: pd.Timedelta,
+        forecast_duration: pd.Timedelta,
+        sample_period_duration: pd.Timedelta,
     ) -> pd.DataFrame:
     
     total_duration = history_duration + forecast_duration
@@ -113,12 +111,12 @@ def find_contiguous_t0_time_periods(
 
 def _find_contiguous_t0_time_periods_nwp(
         ds,
-        history_duration: timedelta,
-        forecast_duration: timedelta,
-        max_staleness: timedelta |  None = None,
-        max_dropout: timedelta = timedelta(minutes=0),
+        history_duration: pd.Timedelta,
+        forecast_duration: pd.Timedelta,
+        max_staleness: pd.Timedelta |  None = None,
+        max_dropout: pd.Timedelta = pd.Timedelta(0),
         time_dim: str = "init_time_utc",
-        end_buffer: timedelta = timedelta(minutes=0),
+        end_buffer: pd.Timedelta = pd.Timedelta(0),
     ):
 
     assert "step" in ds.coords
@@ -151,9 +149,9 @@ def _find_contiguous_t0_time_periods_nwp(
 
 def find_contiguous_t0_periods_nwp(
     datetimes: pd.DatetimeIndex,
-    history_duration: timedelta,
-    max_staleness: timedelta,
-    max_dropout: timedelta = timedelta(0),
+    history_duration: pd.Timedelta,
+    max_staleness: pd.Timedelta,
+    max_dropout: pd.Timedelta = pd.Timedelta(0),
 ) -> pd.DataFrame:
     """Get all time periods from the NWP init times which are valid as t0 datetimes.
 
@@ -174,8 +172,8 @@ def find_contiguous_t0_periods_nwp(
     assert len(datetimes) > 0
     assert datetimes.is_monotonic_increasing
     assert datetimes.is_unique
-    assert history_duration >= timedelta(0)
-    assert max_staleness >= timedelta(0)
+    assert history_duration >= pd.Timedelta(0)
+    assert max_staleness >= pd.Timedelta(0)
     assert max_dropout <= max_staleness
 
     hist_drop_buffer = max(history_duration, max_dropout)
@@ -212,10 +210,8 @@ def intersection_of_multiple_dataframes_of_periods(
     See the docstring of intersection_of_2_dataframes_of_periods() for more details.
     """
     assert len(time_periods) > 0
-    if len(time_periods) == 1:
-        return time_periods[0]
-    intersection = intersection_of_2_dataframes_of_periods(time_periods[0], time_periods[1])
-    for time_period in time_periods[2:]:
+    intersection = time_periods[0]
+    for time_period in time_periods[1:]:
         intersection = intersection_of_2_dataframes_of_periods(intersection, time_period)
     return intersection
 

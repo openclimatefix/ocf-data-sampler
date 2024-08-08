@@ -1,19 +1,18 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
-from datetime import timedelta, datetime
 
 
 def draw_dropout_time(
-        t0: datetime,
-        dropout_timedeltas: list[timedelta] | None,
+        t0: pd.Timestamp,
+        dropout_timedeltas: list[pd.Timedelta] | None,
         dropout_frac: float = 0,
     ):
 
     if dropout_timedeltas is not None:
         assert len(dropout_timedeltas) >= 1, "Must include list of relative dropout timedeltas"
         assert all(
-            [t < timedelta(minutes=0) for t in dropout_timedeltas]
+            [t < pd.Timedelta("0min") for t in dropout_timedeltas]
         ), "dropout timedeltas must be negative"
     assert 0 <= dropout_frac <= 1
 

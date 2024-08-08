@@ -1,4 +1,3 @@
-from datetime import timedelta
 import pandas as pd
 
 from ocf_data_sampler.select.find_contiguous_t0_time_periods import (
@@ -11,9 +10,9 @@ from ocf_data_sampler.select.find_contiguous_t0_time_periods import (
 def test_find_contiguous_t0_time_periods():
 
     # Create 5-minutely data timestamps
-    freq = timedelta(minutes=5)
-    history_duration = timedelta(minutes=60)
-    forecast_duration = timedelta(minutes=15)
+    freq = pd.Timedelta(5, "min")
+    history_duration = pd.Timedelta(60, "min")
+    forecast_duration = pd.Timedelta(15, "min")
 
     datetimes = (
         pd.date_range("2023-01-01 12:00", "2023-01-01 17:00", freq=freq)
@@ -126,27 +125,27 @@ def test_find_contiguous_t0_time_periods_nwp():
     ]
 
     # Create 3-hourly init times with a few time stamps missing
-    freq = timedelta(minutes=180)
+    freq = pd.Timedelta(3, "h")
 
     datetimes = (
         pd.date_range("2023-01-01 03:00", "2023-01-02 21:00", freq=freq)
         .delete([1, 4, 5, 6, 7, 9, 10])
     )
-    steps = [timedelta(hours=i) for i in range(24)]
+    steps = pd.to_timedelta(range(24), unit="h")
 
     # Choose some history durations and max stalenesses
     history_durations_hr = [0, 2, 2, 2]
     max_stalenesses_hr = [9, 9, 6, 3]
 
     for i in range(len(expected_results)):
-        history_duration = timedelta(hours=history_durations_hr[i])
-        max_staleness = timedelta(hours=max_stalenesses_hr[i])
+        history_duration = pd.Timedelta(history_durations_hr[i], "h")
+        max_staleness = pd.Timedelta(max_stalenesses_hr[i], "h")
 
         time_periods = find_contiguous_t0_periods_nwp(
             datetimes=datetimes,
             history_duration=history_duration,
             max_staleness=max_staleness,
-            max_dropout = timedelta(0),
+            max_dropout = pd.Timedelta(0),
         )
 
         # Check if results are as expected

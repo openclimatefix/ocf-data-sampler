@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from datetime import timedelta
 import pytest
 
 
@@ -26,7 +25,7 @@ def da_sample():
 def test_draw_dropout_time():
     t0 = pd.Timestamp("2021-01-01 04:00:00")
 
-    dropout_timedeltas = [timedelta(minutes=-30), timedelta(minutes=-60)]
+    dropout_timedeltas = pd.to_timedelta([-30, -60], unit="min")
     dropout_time = draw_dropout_time(t0, dropout_timedeltas, dropout_frac=1)
 
     assert isinstance(dropout_time, pd.Timestamp)
@@ -36,7 +35,7 @@ def test_draw_dropout_time():
 def test_draw_dropout_time_partial():
     t0 = pd.Timestamp("2021-01-01 04:00:00")
 
-    dropout_timedeltas = [timedelta(minutes=-30), timedelta(minutes=-60)]
+    dropout_timedeltas = pd.to_timedelta([-30, -60], unit="min")
 
     dropouts = set()
 
@@ -57,7 +56,8 @@ def test_draw_dropout_time_none():
     assert dropout_time is None
 
     # Dropout fraction is 0
-    dropout_time = draw_dropout_time(t0, dropout_timedeltas=[timedelta(minutes=-30)], dropout_frac=0)
+    dropout_timedeltas = [pd.Timedelta(-30, "mins")]
+    dropout_time = draw_dropout_time(t0, dropout_timedeltas=dropout_timedeltas, dropout_frac=0)
     assert dropout_time is None
 
     # No dropout timedeltas and dropout fraction is 0
@@ -71,4 +71,4 @@ def test_apply_dropout_time(da_sample, t0_str):
     da_dropout = apply_dropout_time(da_sample, dropout_time)
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
-    assert da_dropout.sel(time_utc=slice(dropout_time+timedelta(minutes=5), None)).isnull().all()
+    assert da_dropout.sel(time_utc=slice(dropout_time+pd.Timedelta(5, "min"), None)).isnull().all()

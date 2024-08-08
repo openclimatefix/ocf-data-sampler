@@ -2,11 +2,10 @@
 
 import pandas as pd
 import numpy as np
-from datetime import timedelta
 
 
 
-def fill_time_periods(time_periods: pd.DataFrame, freq: timedelta):
+def fill_time_periods(time_periods: pd.DataFrame, freq: pd.Timedelta):
     datetimes = []
     for _, row in time_periods.iterrows():
         start_dt = pd.Timestamp(row["start_dt"]).ceil(freq)
