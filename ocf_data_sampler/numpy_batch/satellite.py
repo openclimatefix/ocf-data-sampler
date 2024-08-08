@@ -2,14 +2,13 @@
 import xarray as xr
 
 from ocf_datapipes.batch import BatchKey, NumpyBatch
-from ocf_datapipes.utils.utils import datetime64_to_float
 
 
 def convert_satellite_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> NumpyBatch:
     """Convert from Xarray to NumpyBatch"""
     example: NumpyBatch = {
         BatchKey.satellite_actual: da.values,
-        BatchKey.satellite_time_utc: datetime64_to_float(da.time_utc.values),
+        BatchKey.satellite_time_utc: da.time_utc.values.astype(float),
     }
 
     for batch_key, dataset_key in (

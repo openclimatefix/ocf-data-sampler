@@ -1,10 +1,9 @@
 """Convert NWP to NumpyBatch"""
 
-import numpy as np
+import pandas as pd
 import xarray as xr
 
 from ocf_datapipes.batch import NWPBatchKey, NWPNumpyBatch
-from ocf_datapipes.utils.utils import datetime64_to_float
 
 
 def convert_nwp_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> NWPNumpyBatch:
@@ -13,13 +12,12 @@ def convert_nwp_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> N
     example: NWPNumpyBatch = {
         NWPBatchKey.nwp: da.values,
         NWPBatchKey.nwp_channel_names: da.channel.values,
-        NWPBatchKey.nwp_init_time_utc: datetime64_to_float(da.init_time_utc.values),
-        NWPBatchKey.nwp_step: (da.step.values / np.timedelta64(1, "h")).astype(np.int64),
+        NWPBatchKey.nwp_init_time_utc: da.init_time_utc.values.astype(float),
+        NWPBatchKey.nwp_step: (da.step.values / pd.Timedelta("1H")).astype(int),
     }
 
     if "target_time_utc" in da.coords:
-        target_time = da.target_time_utc.values
-        example[NWPBatchKey.nwp_target_time_utc] = datetime64_to_float(target_time)
+        example[NWPBatchKey.nwp_target_time_utc] = da.target_time_utc.values.astype(float)
 
     # TODO: Do we need this at all? Especially since it is only present in UKV data
     for batch_key, dataset_key in (
