@@ -189,12 +189,12 @@ def find_contiguous_t0_periods_nwp(
 
     for dt_init in datetimes[1:]:
         # If the previous init time becomes stale before the next init becomes valid whilst also
-        # considering dropout and the need for a historic period - then the contiguous period breaks
-        if end_this_period < dt_init + hist_drop_buffer:
+        # considering dropout - then the contiguous period breaks
+        if end_this_period < dt_init + max_dropout:
             contiguous_periods += [[start_this_period, end_this_period]]
 
             # And start a new period
-            start_this_period = dt_init + hist_drop_buffer
+            start_this_period = dt_init + max_dropout
         end_this_period = dt_init + max_staleness
 
     contiguous_periods += [[start_this_period, end_this_period]]
