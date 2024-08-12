@@ -18,8 +18,8 @@ input_data:
     ukv:
       nwp_provider: ukv
       nwp_zarr_path: set_in_temp_file
-      history_minutes: 30
-      forecast_minutes: 15
+      history_minutes: 60
+      forecast_minutes: 120
       time_resolution_minutes: 60
       nwp_channels:
         - t # 2-metre temperature
@@ -34,7 +34,7 @@ input_data:
     history_minutes: 30
     forecast_minutes: 0
     live_delay_minutes: 0
-    time_resolution_minutes: 15
+    time_resolution_minutes: 5
     satellite_channels:
       - IR_016
     satellite_image_size_pixels_height: 2

@@ -3,7 +3,7 @@ import pytest
 from ocf_data_sampler.datasets.pvnet import PVNetDataset
 from ocf_datapipes.config.load import load_yaml_configuration
 from ocf_datapipes.config.save import save_yaml_configuration
-from ocf_datapipes.batch import BatchKey
+from ocf_datapipes.batch import BatchKey, NWPBatchKey
 
 
 @pytest.fixture()
@@ -36,4 +36,13 @@ def test_pvnet(pvnet_config_filename):
 
     for key in [BatchKey.nwp, BatchKey.satellite_actual, BatchKey.gsp]:
         assert key in sample
+    
+    for nwp_source in ["ukv"]:
+        assert nwp_source in sample[BatchKey.nwp]
+    
+    assert sample[BatchKey.satellite_actual].shape == (7, 1, 2, 2)
+    assert sample[BatchKey.nwp]["ukv"][NWPBatchKey.nwp].shape == (4, 1, 2, 2)
+    assert sample[BatchKey.gsp].shape == (7,)
+
+
     

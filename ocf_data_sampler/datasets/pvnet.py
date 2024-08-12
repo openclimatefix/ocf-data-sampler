@@ -105,7 +105,7 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
 
         da_sat = open_sat_data(sat_config.satellite_zarr_path)
 
-        da_sat.sel(channel=list(sat_config.satellite_channels))
+        da_sat = da_sat.sel(channel=list(sat_config.satellite_channels))
 
         datasets["sat"] = da_sat
 
