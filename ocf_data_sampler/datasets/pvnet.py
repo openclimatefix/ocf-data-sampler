@@ -164,7 +164,6 @@ def find_valid_t0_times(
                 else:
                     # Make sure the max acceptable staleness isn't longer than the max possible
                     assert max_staleness <= max_possible_staleness
-                    max_staleness = max_staleness
 
                 time_periods = find_contiguous_t0_periods_nwp(
                     datetimes=pd.DatetimeIndex(da["init_time_utc"]),
