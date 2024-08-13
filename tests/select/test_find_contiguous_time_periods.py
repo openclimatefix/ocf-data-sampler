@@ -1,13 +1,13 @@
 import pandas as pd
 
-from ocf_data_sampler.select.find_contiguous_t0_time_periods import (
-    find_contiguous_t0_time_periods, find_contiguous_t0_periods_nwp, 
+from ocf_data_sampler.select.find_contiguous_time_periods import (
+    find_contiguous_t0_periods, find_contiguous_t0_periods_nwp, 
     intersection_of_multiple_dataframes_of_periods,
 )
 
 
 
-def test_find_contiguous_t0_time_periods():
+def test_find_contiguous_t0_periods():
 
     # Create 5-minutely data timestamps
     freq = pd.Timedelta(5, "min")
@@ -19,7 +19,7 @@ def test_find_contiguous_t0_time_periods():
         .delete([5, 6, 30])
     )
 
-    periods = find_contiguous_t0_time_periods(
+    periods = find_contiguous_t0_periods(
         datetimes=datetimes,
         history_duration=history_duration,
         forecast_duration=forecast_duration,
@@ -46,7 +46,7 @@ def test_find_contiguous_t0_time_periods():
     assert periods.equals(expected_results)
 
 
-def test_find_contiguous_t0_time_periods_nwp():
+def test_find_contiguous_t0_periods_nwp():
 
     # These are the expected results of the test
     expected_results = [

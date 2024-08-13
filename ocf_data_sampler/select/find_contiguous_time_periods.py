@@ -85,7 +85,7 @@ def trim_contiguous_time_periods(
 
 
 
-def find_contiguous_t0_time_periods(
+def find_contiguous_t0_periods(
         datetimes: pd.DatetimeIndex,
         history_duration: pd.Timedelta,
         forecast_duration: pd.Timedelta,
@@ -109,7 +109,7 @@ def find_contiguous_t0_time_periods(
     return contiguous_t0_periods
 
 
-def _find_contiguous_t0_time_periods_nwp(
+def _find_contiguous_t0_periods_nwp(
         ds,
         history_duration: pd.Timedelta,
         forecast_duration: pd.Timedelta,

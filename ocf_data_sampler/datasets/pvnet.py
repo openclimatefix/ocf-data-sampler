@@ -10,8 +10,8 @@ from ocf_data_sampler.load.gsp import open_gsp
 from ocf_data_sampler.load.nwp import open_nwp
 from ocf_data_sampler.load.satellite import open_sat_data
 
-from ocf_data_sampler.select.find_contiguous_t0_time_periods import (
-    find_contiguous_t0_time_periods, find_contiguous_t0_periods_nwp, 
+from ocf_data_sampler.select.find_contiguous_time_periods import (
+    find_contiguous_t0_periods, find_contiguous_t0_periods_nwp, 
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.select.fill_time_periods import fill_time_periods
@@ -64,34 +64,28 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     Args:
         config: Configuration file
     """
-    # Check which modalities to use
-    conf_in = config.input_data
+    
+    in_config = config.input_data
 
+    # Check which modalities to use
     # TODO: Clean these up
     use_nwp = (
-        
-        (conf_in.nwp is not None)
-        and len(conf_in.nwp) != 0
-        and all(v.nwp_zarr_path != "" for _, v in conf_in.nwp.items())
+        (in_config.nwp is not None)
+        and len(in_config.nwp) != 0
+        and all(v.nwp_zarr_path != "" for _, v in in_config.nwp.items())
     )
-    use_sat = is_config_and_path_valid(True, conf_in.satellite, "satellite_zarr_path")
-    use_gsp = is_config_and_path_valid(True, conf_in.gsp, "gsp_zarr_path")
-
+    use_sat = is_config_and_path_valid(True, in_config.satellite, "satellite_zarr_path")
 
     datasets = {}
 
     # We always assume GSP will be included
-    gsp_config = config.input_data.gsp
-
-    da_gsp = open_gsp(zarr_path=gsp_config.gsp_zarr_path)
-
-    datasets["gsp"] = da_gsp
+    datasets["gsp"] = open_gsp(zarr_path=in_config.gsp.gsp_zarr_path)
 
     # Load NWP data if in config
     if use_nwp:
         
         datasets["nwp"] = {}
-        for nwp_source, nwp_config in conf_in.nwp.items():
+        for nwp_source, nwp_config in in_config.nwp.items():
 
             da_nwp = open_nwp(nwp_config.nwp_zarr_path, provider=nwp_config.nwp_provider)
 
@@ -124,73 +118,77 @@ def find_valid_t0_times(
         config: Configuration file
     """
 
+    assert set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp"})
+
     contiguous_time_periods = []  # Used to store contiguous time periods from each data source
 
-    # TODO: Is this cleaner as series of `if key in datasets_dict` statements rather than  loop?
-    for key in datasets_dict.keys():
+    if "nwp" in datasets_dict:
+        for nwp_key, nwp_config in config.input_data.nwp.items():
 
-        if key == "nwp":
-            for nwp_key, nwp_conf in config.input_data.nwp.items():
+            da = datasets_dict["nwp"][nwp_key]
 
-                da = datasets_dict["nwp"][nwp_key]
-
-                if nwp_conf.dropout_timedeltas_minutes is None:
-                    max_dropout = minutes(0)
-                else:
-                    max_dropout = minutes(int(np.max(np.abs(nwp_conf.dropout_timedeltas_minutes))))
-
-                if nwp_conf.max_staleness_minutes is None:
-                    max_staleness = None
-                else:
-                    max_staleness = minutes(nwp_conf.max_staleness_minutes)
-
-                # The last step of the forecast is lost if we have to diff channels
-                if len(nwp_conf.nwp_accum_channels) > 0:
-                    # TODO: this hard codes the assumption of hourly steps
-                    end_buffer = minutes(60)
-                else:
-                    end_buffer = minutes(0)
-                
-                # This is the max staleness we can use considering the max step of the input data
-                max_possible_staleness = (
-                    pd.Timedelta(da["step"].max().item())
-                    - minutes(nwp_conf.forecast_minutes)
-                    - end_buffer
-                )
-
-                # Default to use max possible staleness unless specified in config
-                if max_staleness is None:
-                    max_staleness = max_possible_staleness
-                else:
-                    # Make sure the max acceptable staleness isn't longer than the max possible
-                    assert max_staleness <= max_possible_staleness
-
-                time_periods = find_contiguous_t0_periods_nwp(
-                    datetimes=pd.DatetimeIndex(da["init_time_utc"]),
-                    history_duration=minutes(nwp_conf.history_minutes),
-                    max_staleness=max_staleness,
-                    max_dropout=max_dropout,
-                )
-
-                contiguous_time_periods.append(time_periods)
-
-        else:
-            if key == "sat":
-                key_config = config.input_data.satellite
-            elif key == "gsp":
-                key_config = config.input_data.gsp
+            if nwp_config.dropout_timedeltas_minutes is None:
+                max_dropout = minutes(0)
             else:
-                raise ValueError(f"Unexpected key: {key}")
+                max_dropout = minutes(np.max(np.abs(nwp_config.dropout_timedeltas_minutes)))
 
+            if nwp_config.max_staleness_minutes is None:
+                max_staleness = None
+            else:
+                max_staleness = minutes(nwp_config.max_staleness_minutes)
 
-            time_periods = find_contiguous_t0_time_periods(
-                pd.DatetimeIndex(datasets_dict[key]["time_utc"]),
-                sample_period_duration=minutes(key_config.time_resolution_minutes),
-                history_duration=minutes(key_config.history_minutes),
-                forecast_duration=minutes(key_config.forecast_minutes),
+            # The last step of the forecast is lost if we have to diff channels
+            if len(nwp_config.nwp_accum_channels) > 0:
+                end_buffer = minutes(nwp_config.time_resolution_minutes)
+            else:
+                end_buffer = minutes(0)
+            
+            # This is the max staleness we can use considering the max step of the input data
+            max_possible_staleness = (
+                pd.Timedelta(da["step"].max().item())
+                - minutes(nwp_config.forecast_minutes)
+                - end_buffer
+            )
+
+            # Default to use max possible staleness unless specified in config
+            if max_staleness is None:
+                max_staleness = max_possible_staleness
+            else:
+                # Make sure the max acceptable staleness isn't longer than the max possible
+                assert max_staleness <= max_possible_staleness
+
+            time_periods = find_contiguous_t0_periods_nwp(
+                datetimes=pd.DatetimeIndex(da["init_time_utc"]),
+                history_duration=minutes(nwp_config.history_minutes),
+                max_staleness=max_staleness,
+                max_dropout=max_dropout,
             )
 
             contiguous_time_periods.append(time_periods)
+
+    if "sat" in datasets_dict:
+        sat_config = config.input_data.satellite
+
+        time_periods = find_contiguous_t0_periods(
+            pd.DatetimeIndex(datasets_dict["sat"]["time_utc"]),
+            sample_period_duration=minutes(sat_config.time_resolution_minutes),
+            history_duration=minutes(sat_config.history_minutes),
+            forecast_duration=minutes(sat_config.forecast_minutes),
+        )
+
+        contiguous_time_periods.append(time_periods)
+
+    # GSP always assumed to be in data
+    gsp_config = config.input_data.gsp
+
+    time_periods = find_contiguous_t0_periods(
+        pd.DatetimeIndex(datasets_dict["gsp"]["time_utc"]),
+        sample_period_duration=minutes(gsp_config.time_resolution_minutes),
+        history_duration=minutes(gsp_config.history_minutes),
+        forecast_duration=minutes(gsp_config.forecast_minutes),
+    )
+
+    contiguous_time_periods.append(time_periods)
 
     # Find joint overlapping contiguous time periods
     if len(contiguous_time_periods) > 1:
@@ -222,6 +220,8 @@ def slice_datasets_by_space(
         config: Configuration object.
     """
 
+    assert set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp"})
+
     sliced_datasets_dict = {}
     
     if "nwp" in datasets_dict:
@@ -238,13 +238,13 @@ def slice_datasets_by_space(
             )
 
     if "sat" in datasets_dict:
-        conf_sat = config.input_data.satellite
+        sat_config = config.input_data.satellite
 
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels(
             datasets_dict["sat"],
             location,
-            height_pixels=conf_sat.satellite_image_size_pixels_height,
-            width_pixels=conf_sat.satellite_image_size_pixels_width,
+            height_pixels=sat_config.satellite_image_size_pixels_height,
+            width_pixels=sat_config.satellite_image_size_pixels_width,
         )
 
     # GSP always assumed to be in data
@@ -265,7 +265,6 @@ def slice_datasets_by_time(
         t0: The init-time
         config: Configuration object.
     """
-    conf_in = config.input_data
 
     sliced_datasets_dict = {}
 
@@ -274,36 +273,38 @@ def slice_datasets_by_time(
         sliced_datasets_dict["nwp"] = {}
         
         for nwp_key, da_nwp in datasets_dict["nwp"].items():
-            
-            dropout_timedeltas = minutes(conf_in.nwp[nwp_key].dropout_timedeltas_minutes)
-                
+                            
+            nwp_config = config.input_data.nwp[nwp_key]
+
             sliced_datasets_dict["nwp"][nwp_key] = select_time_slice_nwp(
                 da_nwp,
                 t0,
-                sample_period_duration=minutes(conf_in.nwp[nwp_key].time_resolution_minutes),
-                history_duration=minutes(conf_in.nwp[nwp_key].history_minutes),
-                forecast_duration=minutes(conf_in.nwp[nwp_key].forecast_minutes),
-                dropout_timedeltas=dropout_timedeltas,
-                dropout_frac=conf_in.nwp[nwp_key].dropout_fraction,
-                accum_channels=conf_in.nwp[nwp_key].nwp_accum_channels,
+                sample_period_duration=minutes(nwp_config.time_resolution_minutes),
+                history_duration=minutes(nwp_config.history_minutes),
+                forecast_duration=minutes(nwp_config.forecast_minutes),
+                dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
+                dropout_frac=nwp_config.dropout_fraction,
+                accum_channels=nwp_config.nwp_accum_channels,
             )
 
     if "sat" in datasets_dict:
 
+        sat_config = config.input_data.satellite
+
         sliced_datasets_dict["sat"] = select_time_slice(
             datasets_dict["sat"],
             t0,
-            sample_period_duration=minutes(conf_in.satellite.time_resolution_minutes),
-            interval_start=minutes(-conf_in.satellite.history_minutes),
-            interval_end=minutes(-conf_in.satellite.live_delay_minutes),
+            sample_period_duration=minutes(sat_config.time_resolution_minutes),
+            interval_start=minutes(-sat_config.history_minutes),
+            interval_end=minutes(-sat_config.live_delay_minutes),
             max_steps_gap=2,
         )
 
         # Randomly sample dropout
         sat_dropout_time = draw_dropout_time(
             t0,
-            dropout_timedeltas=minutes(conf_in.satellite.dropout_timedeltas_minutes),
-            dropout_frac=conf_in.satellite.dropout_fraction,
+            dropout_timedeltas=minutes(sat_config.dropout_timedeltas_minutes),
+            dropout_frac=sat_config.dropout_fraction,
         )
 
         # Apply the dropout
@@ -313,36 +314,32 @@ def slice_datasets_by_time(
         )
 
     # GSP always assumed to be included
+    gsp_config = config.input_data.gsp
+
     sliced_datasets_dict["gsp_future"] = select_time_slice(
         datasets_dict["gsp"],
         t0,
-        sample_period_duration=minutes(conf_in.gsp.time_resolution_minutes),
+        sample_period_duration=minutes(gsp_config.time_resolution_minutes),
         interval_start=minutes(30),
-        interval_end=minutes(conf_in.gsp.forecast_minutes),
+        interval_end=minutes(gsp_config.forecast_minutes),
     )
         
     sliced_datasets_dict["gsp"] = select_time_slice(
         datasets_dict["gsp"],
         t0,
-        sample_period_duration=minutes(conf_in.gsp.time_resolution_minutes),
-        interval_start=-minutes(conf_in.gsp.history_minutes),
+        sample_period_duration=minutes(gsp_config.time_resolution_minutes),
+        interval_start=-minutes(gsp_config.history_minutes),
         interval_end=minutes(0),
     )
 
     # Dropout on the GSP, but not the future GSP
-    dropout_timedeltas = minutes(conf_in.gsp.dropout_timedeltas_minutes)
-
     gsp_dropout_time = draw_dropout_time(
         t0,
-        dropout_timedeltas=dropout_timedeltas,
-        dropout_frac=conf_in.gsp.dropout_fraction,
+        dropout_timedeltas=minutes(gsp_config.dropout_timedeltas_minutes),
+        dropout_frac=gsp_config.dropout_fraction,
     )
 
-    sliced_datasets_dict["gsp"] = apply_dropout_time(
-        sliced_datasets_dict["gsp"],
-        gsp_dropout_time,
-    )
-
+    sliced_datasets_dict["gsp"] = apply_dropout_time(sliced_datasets_dict["gsp"], gsp_dropout_time)
 
     return sliced_datasets_dict
 
@@ -356,7 +353,6 @@ def merge_dicts(list_of_dicts: list[dict]) -> dict:
     return combined_dict
 
 
-
 def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> NumpyBatch:
     """Normalize and convert data to numpy arrays"""    
 
@@ -364,12 +360,11 @@ def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> N
 
     if "nwp" in dataset_dict:
 
-        conf_nwp = config.input_data.nwp
         nwp_numpy_modalities = dict()
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
             # Standardise
-            provider = conf_nwp[nwp_key].nwp_provider
+            provider = config.input_data.nwp[nwp_key].nwp_provider
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
             # Convert to NumpyBatch
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
@@ -386,14 +381,16 @@ def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> N
 
 
     # GSP always assumed to be in data
+    gsp_config = config.input_data.gsp
     da_gsp = concat_xr_time_utc([dataset_dict["gsp"], dataset_dict["gsp_future"]])
     da_gsp = normalize_gsp(da_gsp)
 
-    gsp_t0_idx = (
-        config.input_data.gsp.history_minutes / config.input_data.gsp.time_resolution_minutes
+    numpy_modalities.append(
+        convert_gsp_to_numpy_batch(
+            da_gsp, 
+            t0_idx=gsp_config.history_minutes / gsp_config.time_resolution_minutes
+        )
     )
-
-    numpy_modalities.append(convert_gsp_to_numpy_batch(da_gsp, t0_idx=gsp_t0_idx))
 
     # Combine all the modalities
     combined_sample = merge_dicts(numpy_modalities)
@@ -414,16 +411,16 @@ def compute(xarray_dict: dict) -> dict:
     return xarray_dict
 
 
-def get_locations(gs_gsp: xr.DataArray) -> list[Location]:
+def get_locations(ga_gsp: xr.DataArray) -> list[Location]:
     """Get list of locations of GSP"""
     locations = []
-    for gsp_id in gs_gsp.gsp_id.values:
-        da_ = gs_gsp.sel(gsp_id=gsp_id)
+    for gsp_id in ga_gsp.gsp_id.values:
+        da = ga_gsp.sel(gsp_id=gsp_id)
         locations.append(
             Location(
                 coordinate_system = "osgb",
-                x=da_.x_osgb.item(),
-                y=da_.y_osgb.item(),
+                x=da.x_osgb.item(),
+                y=da.y_osgb.item(),
                 id=gsp_id,
             )
         )
@@ -437,8 +434,12 @@ class PVNetDataset(Dataset):
         start_time: str | None = None,
         end_time: str| None = None,
     ):
-        """A torch Dataset for PVNet
+        """A torch Dataset for creating PVNet UK GSP samples
 
+        Args:
+            config_filename: Path to the configuration file
+            start_time: Limit the init-times to be after this
+            end_time: Limit the init-times to be before this
         """
         
         config = load_yaml_configuration(config_filename)
