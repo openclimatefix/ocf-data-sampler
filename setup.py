@@ -10,7 +10,7 @@ install_requires = (this_directory / "requirements.txt").read_text().splitlines(
 
 setup(
     name="ocf_data_sampler",
-    version="0.0.3",
+    version="0.0.4",
     license="MIT",
     description="Sample from weather data for renewable energy prediction",
     author="James Fulton, Peter Dudfield, and the Open Climate Fix team",
