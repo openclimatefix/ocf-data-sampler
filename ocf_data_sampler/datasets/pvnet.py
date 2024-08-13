@@ -67,15 +67,6 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     
     in_config = config.input_data
 
-    # Check which modalities to use
-    # TODO: Clean these up
-    use_nwp = (
-        (in_config.nwp is not None)
-        and len(in_config.nwp) != 0
-        and all(v.nwp_zarr_path != "" for _, v in in_config.nwp.items())
-    )
-    use_sat = is_config_and_path_valid(True, in_config.satellite, "satellite_zarr_path")
-
     datasets_dict = {}
 
     # We always assume GSP will be included
@@ -85,7 +76,7 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     datasets_dict["gsp"] = da_gsp.sel(gsp_id=slice(1, None))
 
     # Load NWP data if in config
-    if use_nwp:
+    if in_config.nwp:
         
         datasets_dict["nwp"] = {}
         for nwp_source, nwp_config in in_config.nwp.items():
@@ -97,7 +88,7 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
             datasets_dict["nwp"][nwp_source] = da_nwp
 
     # Load satellite data if in config
-    if use_sat:
+    if in_config.satellite:
         sat_config = config.input_data.satellite
 
         da_sat = open_sat_data(sat_config.satellite_zarr_path)
