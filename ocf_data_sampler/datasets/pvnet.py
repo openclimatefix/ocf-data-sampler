@@ -76,22 +76,25 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     )
     use_sat = is_config_and_path_valid(True, in_config.satellite, "satellite_zarr_path")
 
-    datasets = {}
+    datasets_dict = {}
 
     # We always assume GSP will be included
-    datasets["gsp"] = open_gsp(zarr_path=in_config.gsp.gsp_zarr_path)
+    da_gsp = open_gsp(zarr_path=in_config.gsp.gsp_zarr_path)
+
+    # Remove national GSP
+    datasets_dict["gsp"] = da_gsp.sel(gsp_id=slice(1, None))
 
     # Load NWP data if in config
     if use_nwp:
         
-        datasets["nwp"] = {}
+        datasets_dict["nwp"] = {}
         for nwp_source, nwp_config in in_config.nwp.items():
 
             da_nwp = open_nwp(nwp_config.nwp_zarr_path, provider=nwp_config.nwp_provider)
 
             da_nwp = da_nwp.sel(channel=list(nwp_config.nwp_channels))
 
-            datasets["nwp"][nwp_source] = da_nwp
+            datasets_dict["nwp"][nwp_source] = da_nwp
 
     # Load satellite data if in config
     if use_sat:
@@ -101,9 +104,9 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
 
         da_sat = da_sat.sel(channel=list(sat_config.satellite_channels))
 
-        datasets["sat"] = da_sat
+        datasets_dict["sat"] = da_sat
 
-    return datasets
+    return datasets_dict
 
     
     
@@ -445,9 +448,6 @@ class PVNetDataset(Dataset):
         config = load_yaml_configuration(config_filename)
         
         datasets_dict = get_dataset_dict(config)
-
-        # Remove national GSP ID
-        datasets_dict["gsp"] = datasets_dict["gsp"].sel(gsp_id=slice(1, None))
         
         # Get t0 times where all input data is available
         valid_t0_times = find_valid_t0_times(datasets_dict, config)
