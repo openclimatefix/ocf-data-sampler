@@ -32,7 +32,7 @@ def find_contiguous_time_periods(
     assert datetimes.is_unique
 
     # Find indices of gaps larger than max_gap:
-    gap_mask = pd.TimedeltaIndex(np.diff(datetimes)) > max_gap_duration
+    gap_mask = datetimes.diff() > max_gap_duration
     gap_indices = np.argwhere(gap_mask)[:, 0]
 
     # gap_indicies are the indices into dt_index for the timestep immediately before the gap.
