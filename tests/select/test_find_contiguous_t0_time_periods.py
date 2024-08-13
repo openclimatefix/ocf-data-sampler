@@ -62,13 +62,11 @@ def test_find_contiguous_t0_time_periods_nwp():
                     [
                         "2023-01-01 05:00",
                         "2023-01-02 05:00",
-                        "2023-01-02 14:00",
                     ]
                 ),
                 "end_dt": pd.to_datetime(
                     [
                         "2023-01-01 21:00",
-                        "2023-01-02 12:00",
                         "2023-01-03 06:00",
                     ]
                 ),
@@ -79,14 +77,12 @@ def test_find_contiguous_t0_time_periods_nwp():
                 "start_dt": pd.to_datetime(
                     [
                         "2023-01-01 05:00",
-                        "2023-01-01 11:00",
                         "2023-01-02 05:00",
                         "2023-01-02 14:00",
                     ]
                 ),
                 "end_dt": pd.to_datetime(
                     [
-                        "2023-01-01 09:00",
                         "2023-01-01 18:00",
                         "2023-01-02 09:00",
                         "2023-01-03 03:00",
@@ -100,24 +96,36 @@ def test_find_contiguous_t0_time_periods_nwp():
                     [
                         "2023-01-01 05:00",
                         "2023-01-01 11:00",
-                        "2023-01-01 14:00",
                         "2023-01-02 05:00",
                         "2023-01-02 14:00",
-                        "2023-01-02 17:00",
-                        "2023-01-02 20:00",
-                        "2023-01-02 23:00",
                     ]
                 ),
                 "end_dt": pd.to_datetime(
                     [
                         "2023-01-01 06:00",
-                        "2023-01-01 12:00",
                         "2023-01-01 15:00",
                         "2023-01-02 06:00",
-                        "2023-01-02 15:00",
-                        "2023-01-02 18:00",
-                        "2023-01-02 21:00",
                         "2023-01-03 00:00",
+                    ]
+                ),
+            },
+        ),
+        pd.DataFrame(
+            {
+                "start_dt": pd.to_datetime(
+                    [
+                        "2023-01-01 06:00",
+                        "2023-01-01 12:00",
+                        "2023-01-02 06:00",
+                        "2023-01-02 15:00",
+                    ]
+                ),
+                "end_dt": pd.to_datetime(
+                    [
+                        "2023-01-01 09:00",
+                        "2023-01-01 18:00",
+                        "2023-01-02 09:00",
+                        "2023-01-03 03:00",
                     ]
                 ),
             },
@@ -131,21 +139,22 @@ def test_find_contiguous_t0_time_periods_nwp():
         pd.date_range("2023-01-01 03:00", "2023-01-02 21:00", freq=freq)
         .delete([1, 4, 5, 6, 7, 9, 10])
     )
-    steps = pd.to_timedelta(range(24), unit="h")
 
     # Choose some history durations and max stalenesses
-    history_durations_hr = [0, 2, 2, 2]
-    max_stalenesses_hr = [9, 9, 6, 3]
+    history_durations_hr = [0, 2, 2, 2, 2]
+    max_stalenesses_hr = [9, 9, 6, 3, 6]
+    max_dropouts_hr = [0, 0, 0, 0, 3]
 
     for i in range(len(expected_results)):
         history_duration = pd.Timedelta(history_durations_hr[i], "h")
         max_staleness = pd.Timedelta(max_stalenesses_hr[i], "h")
+        max_dropout = pd.Timedelta(max_dropouts_hr[i], "h")
 
         time_periods = find_contiguous_t0_periods_nwp(
             datetimes=datetimes,
             history_duration=history_duration,
             max_staleness=max_staleness,
-            max_dropout = pd.Timedelta(0),
+            max_dropout=max_dropout,
         )
 
         # Check if results are as expected
