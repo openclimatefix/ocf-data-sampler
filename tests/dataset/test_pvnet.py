@@ -25,8 +25,9 @@ def test_pvnet(pvnet_config_filename):
     # Create dataset object
     dataset = PVNetDataset(pvnet_config_filename)
 
-    assert len(dataset.locations) == 317
-    assert len(dataset.valid_t0_times) == 39 # NB. I have not checked this value is in fact correct
+    assert len(dataset.locations) == 317 # no of GSPs not including the National level
+    # NB. I have not checked this value is in fact correct, but it does seem to stay constant
+    assert len(dataset.valid_t0_times) == 39
     assert len(dataset) == 317*39
 
     # Generate a sample
@@ -39,9 +40,13 @@ def test_pvnet(pvnet_config_filename):
     
     for nwp_source in ["ukv"]:
         assert nwp_source in sample[BatchKey.nwp]
-    
+
+    # check the shape of the data is correct
+    # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
     assert sample[BatchKey.satellite_actual].shape == (7, 1, 2, 2)
+    # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
     assert sample[BatchKey.nwp]["ukv"][NWPBatchKey.nwp].shape == (4, 1, 2, 2)
+    # 3 hours of 30 minute data (inclusive)
     assert sample[BatchKey.gsp].shape == (7,)
 
 
