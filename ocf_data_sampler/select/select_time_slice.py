@@ -103,8 +103,6 @@ def select_time_slice_nwp(
         ds[channel_dim_name].values, accum_channels
     )
 
-    # TODO: Once all times have been converted to pd.Timestamp, remove this
-    t0 = pd.Timestamp(t0)
     start_dt = (t0 - history_duration).ceil(sample_period_duration)
     end_dt = (t0 + forecast_duration).ceil(sample_period_duration)
 
