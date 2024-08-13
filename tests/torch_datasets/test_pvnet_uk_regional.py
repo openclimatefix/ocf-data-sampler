@@ -1,6 +1,6 @@
 import pytest
 
-from ocf_data_sampler.datasets.pvnet import PVNetDataset
+from ocf_data_sampler.torch_datasets.pvnet_uk_regional import PVNetUKRegionalDataset
 from ocf_datapipes.config.load import load_yaml_configuration
 from ocf_datapipes.config.save import save_yaml_configuration
 from ocf_datapipes.batch import BatchKey, NWPBatchKey
@@ -23,7 +23,7 @@ def pvnet_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, uk_gsp_z
 def test_pvnet(pvnet_config_filename):
 
     # Create dataset object
-    dataset = PVNetDataset(pvnet_config_filename)
+    dataset = PVNetUKRegionalDataset(pvnet_config_filename)
 
     assert len(dataset.locations) == 317 # no of GSPs not including the National level
     # NB. I have not checked this value is in fact correct, but it does seem to stay constant

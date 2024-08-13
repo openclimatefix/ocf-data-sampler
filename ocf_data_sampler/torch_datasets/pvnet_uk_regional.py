@@ -421,7 +421,7 @@ def get_locations(ga_gsp: xr.DataArray) -> list[Location]:
     return locations
 
 
-class PVNetDataset(Dataset):
+class PVNetUKRegionalDataset(Dataset):
     def __init__(
         self, 
         config_filename: str, 
