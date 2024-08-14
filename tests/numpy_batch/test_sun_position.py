@@ -2,21 +2,21 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ocf_data_sampler.numpy_batch.add_sun_position import (
-    get_azimuth_and_elevation, add_sun_position_to_numpy_batch
+from ocf_data_sampler.numpy_batch.sun_position import (
+    calculate_azimuth_and_elevation, make_sun_position_numpy_batch
 )
 
 from ocf_datapipes.batch import NumpyBatch, BatchKey
 
 
 @pytest.mark.parametrize("lat", [0, 5, 10, 23.5])
-def test_get_azimuth_and_elevation_solstice(lat):
+def test_calculate_azimuth_and_elevation(lat):
 
     # Pick the day of the summer solstice
     datetimes = pd.to_datetime(["2024-06-20 12:00"])
 
     # Calculate sun angles
-    azimuth, elevation = get_azimuth_and_elevation(datetimes, lon=0, lat=lat)
+    azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon=0, lat=lat)
 
     assert len(azimuth)==len(datetimes)
     assert len(elevation)==len(datetimes)
@@ -25,7 +25,7 @@ def test_get_azimuth_and_elevation_solstice(lat):
     assert np.abs(elevation - (90-23.5+lat)) < 1
 
 
-def test_get_azimuth_and_elevation_random():
+def test_calculate_azimuth_and_elevation_random():
     """Test that the function produces the expected range of azimuths and elevations"""
 
     # Set seed so we know the test should pass
@@ -44,7 +44,7 @@ def test_get_azimuth_and_elevation_random():
         lat = np.random.uniform(low=-90, high=90)
 
         # Calculate sun angles
-        azimuth, elevation = get_azimuth_and_elevation(datetimes, lon=lon, lat=lat)
+        azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon=lon, lat=lat)
 
         azimuths.append(azimuth.item())
         elevations.append(elevation.item())
@@ -64,20 +64,15 @@ def test_get_azimuth_and_elevation_random():
     assert elevations.max() > 70
 
 
-def test_add_sun_position_to_numpy_batch():
-    datetimes = pd.to_datetime(["2024-06-20 12:00"]).values.astype(float) / 1000
+def test_make_sun_position_numpy_batch():
 
-    batch: NumpyBatch = {
-        BatchKey.gsp_time_utc: datetimes,
-        BatchKey.gsp_x_osgb: 0,
-        BatchKey.gsp_y_osgb: 0,
-    }
+    datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min")
+    lon, lat = 0, 51.5
 
-    batch = add_sun_position_to_numpy_batch(batch, modality_name="gsp")
+    batch = make_sun_position_numpy_batch(datetimes, lon, lat, key_preffix="gsp")
 
     assert BatchKey.gsp_solar_elevation in batch
     assert BatchKey.gsp_solar_azimuth in batch
-
 
     # The solar coords are normalised in the function
     assert (batch[BatchKey.gsp_solar_elevation]>=0).all()
