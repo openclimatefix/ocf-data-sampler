@@ -23,15 +23,16 @@ from ocf_data_sampler.numpy_batch import (
     convert_gsp_to_numpy_batch,
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
-    add_sun_position_to_numpy_batch,
+    make_sun_position_numpy_batch,
 )
 
 
 from ocf_datapipes.config.model import Configuration
 from ocf_datapipes.config.load import load_yaml_configuration
+from ocf_datapipes.batch import BatchKey, NumpyBatch
 
 from ocf_datapipes.utils.location import Location
-from ocf_datapipes.batch import BatchKey, NumpyBatch
+from ocf_datapipes.utils.geospatial import osgb_to_lon_lat
 
 from ocf_datapipes.utils.consts import (
     NWP_MEANS,
@@ -40,9 +41,8 @@ from ocf_datapipes.utils.consts import (
     RSS_STD,
 )
 
-from ocf_datapipes.training.common import (
-    is_config_and_path_valid, concat_xr_time_utc, normalize_gsp,
-)
+from ocf_datapipes.training.common import concat_xr_time_utc, normalize_gsp
+
 
 
 xr.set_options(keep_attrs=True)
@@ -347,7 +347,12 @@ def merge_dicts(list_of_dicts: list[dict]) -> dict:
     return combined_dict
 
 
-def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> NumpyBatch:
+def process_and_combine_datasets(
+        dataset_dict: dict, 
+        config: Configuration,
+        t0: pd.Timedelta,
+        location: Location,
+    ) -> NumpyBatch:
     """Normalize and convert data to numpy arrays"""    
 
     numpy_modalities = []
@@ -373,7 +378,6 @@ def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> N
         # Convert to NumpyBatch
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
 
-
     # GSP always assumed to be in data
     gsp_config = config.input_data.gsp
     da_gsp = concat_xr_time_utc([dataset_dict["gsp"], dataset_dict["gsp_future"]])
@@ -386,12 +390,20 @@ def process_and_combine_datasets(dataset_dict: dict, config: Configuration) -> N
         )
     )
 
+    # Make sun coords NumpyBatch
+    datetimes = pd.date_range(
+        t0-minutes(gsp_config.history_minutes),
+        t0+minutes(gsp_config.forecast_minutes),
+        freq=minutes(gsp_config.time_resolution_minutes),
+    )
+
+    lon, lat = osgb_to_lon_lat(location.x, location.y)
+
+    numpy_modalities.append(make_sun_position_numpy_batch(datetimes, lon, lat))
+
     # Combine all the modalities
     combined_sample = merge_dicts(numpy_modalities)
 
-    # Add sun coords
-    combined_sample = add_sun_position_to_numpy_batch(combined_sample, modality_name="gsp")
- 
     return combined_sample
 
 
@@ -491,7 +503,7 @@ class PVNetUKRegionalDataset(Dataset):
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = compute(sample_dict)
 
-        sample = process_and_combine_datasets(sample_dict, self.config)
+        sample = process_and_combine_datasets(sample_dict, self.config, t0, location)
         
         return sample
     
