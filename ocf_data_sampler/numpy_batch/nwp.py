@@ -13,7 +13,7 @@ def convert_nwp_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> N
         NWPBatchKey.nwp: da.values,
         NWPBatchKey.nwp_channel_names: da.channel.values,
         NWPBatchKey.nwp_init_time_utc: da.init_time_utc.values.astype(float),
-        NWPBatchKey.nwp_step: (da.step.values / pd.Timedelta("1H")).astype(int),
+        NWPBatchKey.nwp_step: (da.step.values / pd.Timedelta("1h")).astype(int),
     }
 
     if "target_time_utc" in da.coords:
