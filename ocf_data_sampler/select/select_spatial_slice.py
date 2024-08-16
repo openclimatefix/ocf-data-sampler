@@ -124,8 +124,10 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
     center_geostationary = Location(x=x, y=y, coordinate_system="geostationary")
 
     # Check that the requested point lies within the data
-    assert da[x_dim].min() < x < da[x_dim].max()
-    assert da[y_dim].min() < y < da[y_dim].max()
+    assert da[x_dim].min() < x < da[x_dim].max(), \
+        f"{x} not in {da[x_dim].min().values}: {da[x_dim].max().values}"
+    assert da[y_dim].min() < y < da[y_dim].max(), \
+        f"{y} not in {da[y_dim].min().values}: {da[y_dim].max().values}"
 
     # Get the index into x and y nearest to x_center_geostationary and y_center_geostationary:
     x_index_at_center = searchsorted(
