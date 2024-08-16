@@ -1,1 +1,2 @@
 include *.txt
+include ocf_data_sampler/data/*
