@@ -185,7 +185,7 @@ def find_valid_t0_times(
     contiguous_time_periods['gsp'] = time_periods
 
     # just get the values (no the keys)
-    contiguous_time_periods_values = list(contiguous_time_periods.values)
+    contiguous_time_periods_values = list(contiguous_time_periods.values())
 
     # Find joint overlapping contiguous time periods
     if len(contiguous_time_periods_values) > 1:
