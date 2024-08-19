@@ -184,16 +184,19 @@ def find_valid_t0_times(
 
     contiguous_time_periods['gsp'] = time_periods
 
+    # just get the values (no the keys)
+    contiguous_time_periods_values = list(contiguous_time_periods.values)
+
     # Find joint overlapping contiguous time periods
-    if len(contiguous_time_periods) > 1:
+    if len(contiguous_time_periods_values) > 1:
         valid_time_periods = intersection_of_multiple_dataframes_of_periods(
-            contiguous_time_periods.values
+            contiguous_time_periods_values
         )
     else:
-        valid_time_periods = contiguous_time_periods.values[0]
+        valid_time_periods = contiguous_time_periods_values[0]
 
     # check there are some valid time periods
-    if len(valid_time_periods) == 0:
+    if len(valid_time_periods.keys()) == 0:
         raise ValueError(f"No valid time periods found, {contiguous_time_periods=}")
 
     # Fill out the contiguous time periods to get the t0 times
