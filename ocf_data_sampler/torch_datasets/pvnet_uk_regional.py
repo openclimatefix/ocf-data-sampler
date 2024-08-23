@@ -37,8 +37,6 @@ from ocf_datapipes.utils.geospatial import osgb_to_lon_lat
 from ocf_datapipes.utils.consts import (
     NWP_MEANS,
     NWP_STDS,
-    RSS_MEAN,
-    RSS_STD,
 )
 
 from ocf_datapipes.training.common import concat_xr_time_utc, normalize_gsp
@@ -379,9 +377,7 @@ def process_and_combine_datasets(
         numpy_modalities.append({BatchKey.nwp: nwp_numpy_modalities})
 
     if "sat" in dataset_dict:
-        # Standardise
-        # TODO: Since satellite is in range 0-1 already, so we don't need to standardize
-        da_sat = (dataset_dict["sat"] - RSS_MEAN) / RSS_STD
+        # Satellite is already in the range [0-1] so no need to standardise
         # Convert to NumpyBatch
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
 
@@ -540,6 +536,5 @@ class PVNetUKRegionalDataset(Dataset):
         assert gsp_id in self.location_lookup
 
         location = self.location_lookup[gsp_id]
-
         
         return self._get_sample(t0, location)
