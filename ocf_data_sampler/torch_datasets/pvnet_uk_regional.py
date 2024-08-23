@@ -378,6 +378,8 @@ def process_and_combine_datasets(
 
     if "sat" in dataset_dict:
         # Satellite is already in the range [0-1] so no need to standardise
+        da_sat = dataset_dict["sat"]
+
         # Convert to NumpyBatch
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
 
