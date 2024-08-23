@@ -196,7 +196,7 @@ def find_valid_t0_times(
         valid_time_periods = contiguous_time_periods_values[0]
 
     # check there are some valid time periods
-    if len(valid_time_periods.keys()) == 0:
+    if len(valid_time_periods) == 0:
         raise ValueError(f"No valid time periods found, {contiguous_time_periods=}")
 
     # Fill out the contiguous time periods to get the t0 times
