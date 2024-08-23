@@ -114,7 +114,7 @@ def find_valid_t0_times(
 
     assert set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp"})
 
-    contiguous_time_periods = []  # Used to store contiguous time periods from each data source
+    contiguous_time_periods: dict[str: pd.DataFrame] = {}  # Used to store contiguous time periods from each data source
 
     if "nwp" in datasets_dict:
         for nwp_key, nwp_config in config.input_data.nwp.items():
@@ -158,7 +158,7 @@ def find_valid_t0_times(
                 max_dropout=max_dropout,
             )
 
-            contiguous_time_periods.append(time_periods)
+            contiguous_time_periods[f'nwp_{nwp_key}'] = time_periods
 
     if "sat" in datasets_dict:
         sat_config = config.input_data.satellite
@@ -170,7 +170,7 @@ def find_valid_t0_times(
             forecast_duration=minutes(sat_config.forecast_minutes),
         )
 
-        contiguous_time_periods.append(time_periods)
+        contiguous_time_periods['sat'] = time_periods
 
     # GSP always assumed to be in data
     gsp_config = config.input_data.gsp
@@ -182,15 +182,22 @@ def find_valid_t0_times(
         forecast_duration=minutes(gsp_config.forecast_minutes),
     )
 
-    contiguous_time_periods.append(time_periods)
+    contiguous_time_periods['gsp'] = time_periods
+
+    # just get the values (no the keys)
+    contiguous_time_periods_values = list(contiguous_time_periods.values())
 
     # Find joint overlapping contiguous time periods
-    if len(contiguous_time_periods) > 1:
+    if len(contiguous_time_periods_values) > 1:
         valid_time_periods = intersection_of_multiple_dataframes_of_periods(
-            contiguous_time_periods
+            contiguous_time_periods_values
         )
     else:
-        valid_time_periods = contiguous_time_periods[0]
+        valid_time_periods = contiguous_time_periods_values[0]
+
+    # check there are some valid time periods
+    if len(valid_time_periods.keys()) == 0:
+        raise ValueError(f"No valid time periods found, {contiguous_time_periods=}")
 
     # Fill out the contiguous time periods to get the t0 times
     valid_t0_times = fill_time_periods(
