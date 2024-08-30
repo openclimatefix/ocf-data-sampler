@@ -8,7 +8,7 @@ import xarray as xr
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
     make_spatial_coords_increasing,
-    underlying_array
+    get_xr_data_array_from_xr_dataset
 )
 
 
@@ -102,4 +102,4 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
     ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
 
     # TODO: should we control the dtype of the DataArray?
-    return underlying_array(ds)
+    return get_xr_data_array_from_xr_dataset(ds)
