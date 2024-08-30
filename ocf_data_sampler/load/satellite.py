@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pandas as pd
 import xarray as xr
-from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
+from ocf_data_sampler.load.utils import (
+    check_time_unique_increasing,
+    make_spatial_coords_increasing,
+    underlying_array
+)
 
 
 def _get_single_sat_data(zarr_path: Path | str) -> xr.DataArray:
@@ -98,4 +102,4 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
     ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
 
     # TODO: should we control the dtype of the DataArray?
-    return ds.data
+    return underlying_array(ds)
