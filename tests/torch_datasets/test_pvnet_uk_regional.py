@@ -1,4 +1,5 @@
 import pytest
+import tempfile
 
 from ocf_data_sampler.torch_datasets.pvnet_uk_regional import PVNetUKRegionalDataset
 from ocf_datapipes.config.load import load_yaml_configuration
@@ -56,4 +57,18 @@ def test_pvnet(pvnet_config_filename):
     assert sample[BatchKey.gsp_solar_elevation].shape == (7,)
 
 
-    
+def test_pvnet_no_gsp(pvnet_config_filename):
+
+    # load config
+    config = load_yaml_configuration(pvnet_config_filename)
+    # remove gsp
+    config.input_data.gsp.gsp_zarr_path = ''
+
+    # save temp config file
+    with tempfile.NamedTemporaryFile() as temp_config_file:
+        save_yaml_configuration(config, temp_config_file.name)
+        # Create dataset object
+        dataset = PVNetUKRegionalDataset(temp_config_file.name)
+
+        # Generate a sample
+        _ = dataset[0]
