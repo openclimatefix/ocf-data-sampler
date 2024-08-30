@@ -7,6 +7,7 @@ def check_time_unique_increasing(datetimes) -> None:
     assert time.is_unique
     assert time.is_monotonic_increasing
 
+
 def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -> xr.Dataset:
     """Make sure the spatial coordinates are in increasing order
     

@@ -37,7 +37,7 @@ def _sel_fillinterp(
 
 
 def select_time_slice(
-    ds: xr.Dataset | xr.DataArray,
+    ds: xr.DataArray,
     t0: pd.Timestamp,
     sample_period_duration: pd.Timedelta,
     history_duration: pd.Timedelta | None = None,
@@ -75,7 +75,7 @@ def select_time_slice(
 
 
 def select_time_slice_nwp(
-    ds: xr.Dataset | xr.DataArray,
+    ds: xr.DataArray,
     t0: pd.Timestamp,
     sample_period_duration: pd.Timedelta,
     history_duration: pd.Timedelta,

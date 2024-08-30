@@ -35,7 +35,7 @@ def open_ukv(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
         }
     )
 
-    # Check the timestmps are unique and increasing
+    # Check the timestamps are unique and increasing
     check_time_unique_increasing(ds.init_time_utc)
 
     # Make sure the spatial coords are in increasing order
