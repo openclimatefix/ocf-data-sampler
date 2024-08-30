@@ -386,8 +386,8 @@ def process_and_combine_datasets(
         # Convert to NumpyBatch
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
 
+    gsp_config = config.input_data.gsp
     if "gsp" in dataset_dict:
-        gsp_config = config.input_data.gsp
         da_gsp = concat_xr_time_utc([dataset_dict["gsp"], dataset_dict["gsp_future"]])
         da_gsp = normalize_gsp(da_gsp)
 
