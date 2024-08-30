@@ -6,3 +6,11 @@ dask
 ocf_blosc2
 ocf_datapipes==3.3.39
 pvlib
+pytest
+pydantic
+setuptools
+fsspec
+pathy
+yaml
+pyyaml
+torch

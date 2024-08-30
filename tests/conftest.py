@@ -6,6 +6,15 @@ import pytest
 import xarray as xr
 import tempfile
 
+_top_test_directory = os.path.dirname(os.path.realpath(__file__))
+
+@pytest.fixture()
+def top_test_directory():
+    return _top_test_directory
+
+@pytest.fixture()
+def test_config_filename():
+    return f"{_top_test_directory}/test_data/configs/test.yaml"
 
 
 @pytest.fixture(scope="session")

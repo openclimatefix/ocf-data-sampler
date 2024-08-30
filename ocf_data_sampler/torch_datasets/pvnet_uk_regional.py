@@ -27,8 +27,8 @@ from ocf_data_sampler.numpy_batch import (
 )
 
 
-from ocf_datapipes.config.model import Configuration
-from ocf_datapipes.config.load import load_yaml_configuration
+from ocf_data_sampler.config.model import Configuration
+from ocf_data_sampler.config.load import load_yaml_configuration
 from ocf_datapipes.batch import BatchKey, NumpyBatch
 
 from ocf_datapipes.utils.location import Location

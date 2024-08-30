@@ -1,8 +1,8 @@
 import pytest
 
 from ocf_data_sampler.torch_datasets.pvnet_uk_regional import PVNetUKRegionalDataset
-from ocf_datapipes.config.load import load_yaml_configuration
-from ocf_datapipes.config.save import save_yaml_configuration
+from ocf_data_sampler.config.load import load_yaml_configuration
+from ocf_data_sampler.config.save import save_yaml_configuration
 from ocf_datapipes.batch import BatchKey, NWPBatchKey
 
 
@@ -54,6 +54,3 @@ def test_pvnet(pvnet_config_filename):
     # Solar angles have same shape as GSP data
     assert sample[BatchKey.gsp_solar_azimuth].shape == (7,)
     assert sample[BatchKey.gsp_solar_elevation].shape == (7,)
-
-
-    
