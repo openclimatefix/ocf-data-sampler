@@ -1,8 +1,12 @@
 """ECMWF provider loaders"""
 from pathlib import Path
 import xarray as xr
-from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
-from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
+from ocf_data_sampler.load.nwp.providers.utils import open_zarr_pathsfrom ocf_data_sampler.load.utils import (
+    check_time_unique_increasing,
+    make_spatial_coords_increasing,
+    underlying_array
+)
+
 
 def open_ifs(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
     """
@@ -34,4 +38,4 @@ def open_ifs(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
     ds = ds.transpose("init_time_utc", "step", "channel", "longitude", "latitude")
     
     # TODO: should we control the dtype of the DataArray?
-    return ds.ECMWF_UK
+    return underlying_array(ds)
