@@ -27,7 +27,7 @@ def draw_dropout_time(
 
 
 def apply_dropout_time(
-        ds: xr.Dataset,
+        ds: xr.DataArray,
         dropout_time: pd.Timestamp | None,
     ):
 

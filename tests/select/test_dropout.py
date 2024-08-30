@@ -64,6 +64,7 @@ def test_draw_dropout_time_none():
     dropout_time = draw_dropout_time(t0, dropout_timedeltas=None, dropout_frac=0)
     assert dropout_time is None
 
+
 @pytest.mark.parametrize("t0_str", ["12:00", "12:30", "13:00"])
 def test_apply_dropout_time(da_sample, t0_str):
     dropout_time = pd.Timestamp(f"2024-01-01 {t0_str}")
