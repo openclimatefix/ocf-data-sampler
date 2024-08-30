@@ -11,6 +11,5 @@ pydantic
 setuptools
 fsspec
 pathy
-yaml
 pyyaml
 torch
