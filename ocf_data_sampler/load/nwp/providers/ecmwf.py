@@ -1,7 +1,8 @@
 """ECMWF provider loaders"""
 from pathlib import Path
 import xarray as xr
-from ocf_data_sampler.load.nwp.providers.utils import open_zarr_pathsfrom ocf_data_sampler.load.utils import (
+from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
+from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
     make_spatial_coords_increasing,
     underlying_array
