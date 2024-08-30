@@ -4,6 +4,7 @@ import xarray as xr
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
 from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
 
+
 def open_ifs(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
     """
     Opens the ECMWF IFS NWP data
@@ -25,7 +26,7 @@ def open_ifs(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
         }
     )
 
-    # Check the timestmps are unique and increasing
+    # Check the timestamps are unique and increasing
     check_time_unique_increasing(ds.init_time_utc)
 
     # Make sure the spatial coords are in increasing order

@@ -3,12 +3,11 @@
 import subprocess
 from pathlib import Path
 
-import pandas as pd
 import xarray as xr
 from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
 
 
-def _get_single_sat_data(zarr_path: Path | str) -> xr.DataArray:
+def _get_single_sat_data(zarr_path: Path | str) -> xr.Dataset:
     """Helper function to open a zarr from either local or GCP path.
 
     The local or GCP path may contain wildcard matching (*)
@@ -89,7 +88,7 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
         }
     )
 
-    # Check the timestmps are unique and increasing
+    # Check the timestamps are unique and increasing
     check_time_unique_increasing(ds.time_utc)
 
     # Make sure the spatial coords are in increasing order
