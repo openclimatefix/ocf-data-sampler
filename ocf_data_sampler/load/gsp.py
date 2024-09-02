@@ -4,8 +4,6 @@ import pkg_resources
 import pandas as pd
 import xarray as xr
 
-from ocf_data_sampler.load.utils import get_xr_data_array_from_xr_dataset
-
 
 def open_gsp(zarr_path: str | Path) -> xr.DataArray:
 
@@ -30,4 +28,4 @@ def open_gsp(zarr_path: str | Path) -> xr.DataArray:
 
     )
 
-    return get_xr_data_array_from_xr_dataset(ds, datavar='generation_mw')
+    return ds.generation_mw
