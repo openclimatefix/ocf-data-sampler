@@ -30,17 +30,14 @@ def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -
     return ds
 
 
-def get_xr_data_array_from_xr_dataset(ds: xr.Dataset, datavar: str | None = None) -> xr.DataArray:
-    """Return underlying xr.DataArray from passed xr.Dataset. If davar provided, returns specified variable. 
-    If datavar not provided, checks only one variable is present and returns it as an xr.DataArray.
+def get_xr_data_array_from_xr_dataset(ds: xr.Dataset) -> xr.DataArray:
+    """Return underlying xr.DataArray from passed xr.Dataset. 
+    Checks only one variable is present and returns it as an xr.DataArray.
 
     Args:
         ds: xr.Dataset to extract xr.DataArray from
-        datavar: (if provided) return specific variable from ds
     """
-    
-    if datavar:
-        return ds[datavar]
+
     datavars = list(ds.var())
     assert len(datavars) == 1, "Cannot open as xr.DataArray: dataset contains multiple variables"
     return ds[datavars[0]]
