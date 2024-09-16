@@ -403,6 +403,7 @@ def process_and_combine_datasets(
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
 
     gsp_config = config.input_data.gsp
+    
     if "gsp" in dataset_dict:
         da_gsp = concat_xr_time_utc([dataset_dict["gsp"], dataset_dict["gsp_future"]])
         da_gsp = normalize_gsp(da_gsp)
@@ -424,11 +425,17 @@ def process_and_combine_datasets(
     lon, lat = osgb_to_lon_lat(location.x, location.y)
 
     numpy_modalities.append(make_sun_position_numpy_batch(datetimes, lon, lat))
+    
+    # Add coordinate data
+    # TODO: Do we need all of these?
+    numpy_modalities.append({
+        BatchKey.gsp_id: location.id,
+        BatchKey.gsp_x_osgb: location.x,
+        BatchKey.gsp_y_osgb: location.y,
+    })
 
-    # Combine all the modalities
+    # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
-    
-    
     combined_sample = fill_nans_in_arrays(combined_sample)
 
     return combined_sample
@@ -442,22 +449,6 @@ def compute(xarray_dict: dict) -> dict:
         else:
             xarray_dict[k] = v.compute(scheduler="single-threaded")
     return xarray_dict
-
-
-def get_locations(ga_gsp: xr.DataArray) -> list[Location]:
-    """Get list of locations of GSP"""
-    locations = []
-    for gsp_id in ga_gsp.gsp_id.values:
-        da = ga_gsp.sel(gsp_id=gsp_id)
-        locations.append(
-            Location(
-                coordinate_system = "osgb",
-                x=da.x_osgb.item(),
-                y=da.y_osgb.item(),
-                id=gsp_id,
-            )
-        )
-    return locations
 
 
 def get_gsp_locations() -> list[Location]:
