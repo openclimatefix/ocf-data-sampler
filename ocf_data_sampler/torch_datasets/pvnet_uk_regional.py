@@ -451,7 +451,7 @@ def compute(xarray_dict: dict) -> dict:
     return xarray_dict
 
 
-def get_gsp_locations(gsp_ids: list[int] | None) -> list[Location]:
+def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
     """Get list of locations of all GSPs"""
     
     if gsp_ids is None:
@@ -484,7 +484,7 @@ class PVNetUKRegionalDataset(Dataset):
         config_filename: str, 
         start_time: str | None = None,
         end_time: str| None = None,
-        gsp_ids: list[int] | None,
+        gsp_ids: list[int] | None = None,
     ):
         """A torch Dataset for creating PVNet UK GSP samples
 
@@ -492,7 +492,7 @@ class PVNetUKRegionalDataset(Dataset):
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
-            gsp_ids: List of GSP IDs to create samples for
+            gsp_ids: List of GSP IDs to create samples for. Defaults to all
         """
         
         config = load_yaml_configuration(config_filename)
