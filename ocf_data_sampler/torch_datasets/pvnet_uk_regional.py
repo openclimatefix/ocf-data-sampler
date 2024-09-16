@@ -69,7 +69,7 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
 
     # Load GSP data unless the path is None
     if in_config.gsp.gsp_zarr_path:
-        da_gsp = open_gsp(zarr_path=in_config.gsp.gsp_zarr_path)
+        da_gsp = open_gsp(zarr_path=in_config.gsp.gsp_zarr_path).compute()
 
         # Remove national GSP
         datasets_dict["gsp"] = da_gsp.sel(gsp_id=slice(1, None))
@@ -344,6 +344,24 @@ def slice_datasets_by_time(
     return sliced_datasets_dict
 
 
+def fill_nans_in_arrays(batch: NumpyBatch) -> NumpyBatch:
+    """Fills all NaN values in each np.ndarray in the batch dictionary with zeros.
+
+    Operation is performed in-place on the batch.
+    """
+    for k, v in batch.items():
+        if isinstance(v, np.ndarray) and np.issubdtype(v.dtype, np.number):
+            if np.isnan(v).any():
+                batch[k] = np.nan_to_num(v, copy=False, nan=0.0)
+
+        # Recursion is included to reach NWP arrays in subdict
+        elif isinstance(v, dict):
+            fill_nans_in_arrays(v)
+
+    return batch
+
+
+
 def merge_dicts(list_of_dicts: list[dict]) -> dict:
     """Merge a list of dictionaries into a single dictionary"""
     # TODO: This doesn't account for duplicate keys, which will be overwritten
@@ -409,6 +427,9 @@ def process_and_combine_datasets(
 
     # Combine all the modalities
     combined_sample = merge_dicts(numpy_modalities)
+    
+    
+    combined_sample = fill_nans_in_arrays(combined_sample)
 
     return combined_sample
 
