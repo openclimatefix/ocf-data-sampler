@@ -451,8 +451,12 @@ def compute(xarray_dict: dict) -> dict:
     return xarray_dict
 
 
-def get_gsp_locations() -> list[Location]:
+def get_gsp_locations(gsp_ids: list[int] | None) -> list[Location]:
     """Get list of locations of all GSPs"""
+    
+    if gsp_ids is None:
+        gsp_ids = [i for i in range(1, 318)]
+    
     locations = []
 
     # Load UK GSP locations
@@ -461,7 +465,7 @@ def get_gsp_locations() -> list[Location]:
         index_col="gsp_id",
     )
 
-    for gsp_id in np.arange(1, 318):
+    for gsp_id in gsp_ids:
         locations.append(
             Location(
                 coordinate_system = "osgb",
@@ -480,6 +484,7 @@ class PVNetUKRegionalDataset(Dataset):
         config_filename: str, 
         start_time: str | None = None,
         end_time: str| None = None,
+        gsp_ids: list[int] | None,
     ):
         """A torch Dataset for creating PVNet UK GSP samples
 
@@ -487,6 +492,7 @@ class PVNetUKRegionalDataset(Dataset):
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
+            gsp_ids: List of GSP IDs to create samples for
         """
         
         config = load_yaml_configuration(config_filename)
@@ -504,7 +510,7 @@ class PVNetUKRegionalDataset(Dataset):
             valid_t0_times = valid_t0_times[valid_t0_times<=pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
-        locations = get_gsp_locations()
+        locations = get_gsp_locations(gsp_ids)
 
         # Construct a lookup for locations - useful for users to construct sample by GSP ID
         location_lookup = {loc.id: loc for loc in locations}
