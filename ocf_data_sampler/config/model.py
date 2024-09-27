@@ -9,7 +9,7 @@ for gcp start with 'gs://'.
 import logging
 from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo
+from pydantic import BaseModel, Field, RootModel, field_validator
 
 from ocf_datapipes.utils.consts import NWP_PROVIDERS
 
@@ -30,26 +30,9 @@ class Base(BaseModel):
 class General(Base):
     """General pydantic model"""
 
-    name: str = Field("example", description="The name of this configuration file.")
+    name: str = Field("example", description="The name of this configuration file")
     description: str = Field(
         "example configuration", description="Description of this configuration file"
-    )
-
-
-class DataSourceMixin(Base):
-    """Mixin class, to add forecast and history minutes"""
-
-    forecast_minutes: int = Field(
-        None,
-        ge=0,
-        description="how many minutes to forecast in the future. "
-        "If set to None, the value is defaulted to InputData.default_forecast_minutes",
-    )
-    history_minutes: int = Field(
-        None,
-        ge=0,
-        description="how many historic minutes to use. "
-        "If set to None, the value is defaulted to InputData.default_history_minutes",
     )
 
 
@@ -81,36 +64,65 @@ class DropoutMixin(Base):
 
 
 # noinspection PyMethodParameters
-class TimeResolutionMixin(Base):
+class TimeWindowMixin(Base):
     """Time resolution mix in"""
 
     time_resolution_minutes: int = Field(
         ...,
-        description="The temporal resolution of the data in minutes",
+        description="temporal resolution of the data in minutes",
+    )
+
+    forecast_minutes: int = Field(
+        None,
+        ge=0,
+        description="how many minutes to forecast in the future",
+    )
+    history_minutes: int = Field(
+        None,
+        ge=0,
+        description="how many historic minutes to use",
+    )
+
+    @field_validator("forecast_minutes")
+    def forecast_minutes_divide_by_time_resolution(cls, v, values) -> int:
+        if v % values.data["time_resolution_minutes"] != 0:
+            message = "Forecast duration must be divisible by time resolution"
+            logger.error(message)
+            raise Exception(message)
+        return v
+
+    @field_validator("history_minutes")
+    def history_minutes_divide_by_time_resolution(cls, v, values) -> int:
+        if v % values.data["time_resolution_minutes"] != 0:
+            message = "History duration must be divisible by time resolution"
+            logger.error(message)
+            raise Exception(message)
+        return v
+
+
+class DataSourceBase(TimeWindowMixin, DropoutMixin):
+    """Mixin class, to add path and image size"""
+    zarr_path: Union[str, tuple[str], list[str]] = Field(
+        ...,
+        description="The path or list of paths which hold the data zarr",
+    )
+
+    image_size_pixels_height: int = Field(
+        ...,
+        description="The number of pixels of the height of the region of interest",
+    )
+
+    image_size_pixels_width: int = Field(
+        ...,
+        description="The number of pixels of the width of the region of interest",
     )
 
 
-class Satellite(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
+class Satellite(DataSourceBase):
     """Satellite configuration model"""
 
-    # Todo: remove 'satellite' from names
-    satellite_zarr_path: Union[str, tuple[str], list[str]] = Field(
-        ...,
-        description="The path or list of paths which hold the satellite zarr",
-    )
-    satellite_channels: tuple = Field(
+    channels: tuple = Field(
         ..., description="the satellite channels that are used"
-    )
-    satellite_image_size_pixels_height: int = Field(
-        ...,
-        description="The number of pixels of the height of the region of interest"
-        " for non-HRV satellite channels.",
-    )
-
-    satellite_image_size_pixels_width: int = Field(
-        ...,
-        description="The number of pixels of the width of the region "
-        "of interest for non-HRV satellite channels.",
     )
 
     live_delay_minutes: int = Field(
@@ -119,21 +131,16 @@ class Satellite(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
 
 
 # noinspection PyMethodParameters
-class NWP(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
+class NWP(DataSourceBase):
     """NWP configuration model"""
 
-    nwp_zarr_path: Union[str, tuple[str], list[str]] = Field(
-        ...,
-        description="The path which holds the NWP zarr",
-    )
-    nwp_channels: tuple = Field(
+    channels: tuple = Field(
         ..., description="the channels used in the nwp data"
     )
-    nwp_accum_channels: tuple = Field([], description="the nwp channels which need to be diffed")
-    nwp_image_size_pixels_height: int = Field(..., description="The size of NWP spacial crop in pixels")
-    nwp_image_size_pixels_width: int = Field(..., description="The size of NWP spacial crop in pixels")
 
-    nwp_provider: str = Field(..., description="The provider of the NWP data")
+    provider: str = Field(..., description="The provider of the NWP data")
+
+    accum_channels: tuple = Field([], description="the nwp channels which need to be diffed")
 
     max_staleness_minutes: Optional[int] = Field(
         None,
@@ -143,30 +150,13 @@ class NWP(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
     )
 
 
-    @field_validator("nwp_provider")
-    def validate_nwp_provider(cls, v: str) -> str:
-        """Validate 'nwp_provider'"""
+    @field_validator("provider")
+    def validate_provider(cls, v: str) -> str:
+        """Validate 'provider'"""
         if v.lower() not in NWP_PROVIDERS:
             message = f"NWP provider {v} is not in {NWP_PROVIDERS}"
             logger.warning(message)
             assert Exception(message)
-        return v
-
-    # Todo: put into time mixin when moving intervals there
-    @field_validator("forecast_minutes")
-    def forecast_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
-        if v % info.data["time_resolution_minutes"] != 0:
-            message = "Forecast duration must be divisible by time resolution"
-            logger.error(message)
-            raise Exception(message)
-        return v
-
-    @field_validator("history_minutes")
-    def history_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
-        if v % info.data["time_resolution_minutes"] != 0:
-            message = "History duration must be divisible by time resolution"
-            logger.error(message)
-            raise Exception(message)
         return v
 
 
@@ -196,28 +186,6 @@ class MultiNWP(RootModel):
         return self.root.items()
 
 
-# noinspection PyMethodParameters
-class GSP(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
-    """GSP configuration model"""
-
-    gsp_zarr_path: str = Field(..., description="The path which holds the GSP zarr")
-    gsp_image_size_pixels_height: int = Field(64, description="The size of GSP spacial crop in pixels")
-    gsp_image_size_pixels_width: int = Field(64, description="The size of GSP spacial crop in pixels")
-
-    # Todo: needs to be changes from hardcode when moving to mixin
-    @field_validator("history_minutes")
-    def history_minutes_divide_by_30(cls, v):
-        """Validate 'history_minutes'"""
-        assert v % 30 == 0  # this means it also divides by 5
-        return v
-
-    @field_validator("forecast_minutes")
-    def forecast_minutes_divide_by_30(cls, v):
-        """Validate 'forecast_minutes'"""
-        assert v % 30 == 0  # this means it also divides by 5
-        return v
-
-
 # noinspection PyPep8Naming
 class InputData(Base):
     """
@@ -226,7 +194,7 @@ class InputData(Base):
 
     satellite: Optional[Satellite] = None
     nwp: Optional[MultiNWP] = None
-    gsp: Optional[GSP] = None
+    gsp: Optional[DataSourceBase] = None
 
 
 class Configuration(Base):

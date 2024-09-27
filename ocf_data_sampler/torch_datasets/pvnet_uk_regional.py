@@ -68,8 +68,8 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     datasets_dict = {}
 
     # Load GSP data unless the path is None
-    if in_config.gsp.gsp_zarr_path:
-        da_gsp = open_gsp(zarr_path=in_config.gsp.gsp_zarr_path)
+    if in_config.gsp.zarr_path:
+        da_gsp = open_gsp(zarr_path=in_config.gsp.zarr_path)
 
         # Remove national GSP
         datasets_dict["gsp"] = da_gsp.sel(gsp_id=slice(1, None))
@@ -80,9 +80,9 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
         datasets_dict["nwp"] = {}
         for nwp_source, nwp_config in in_config.nwp.items():
 
-            da_nwp = open_nwp(nwp_config.nwp_zarr_path, provider=nwp_config.nwp_provider)
+            da_nwp = open_nwp(nwp_config.zarr_path, provider=nwp_config.provider)
 
-            da_nwp = da_nwp.sel(channel=list(nwp_config.nwp_channels))
+            da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
 
             datasets_dict["nwp"][nwp_source] = da_nwp
 
@@ -90,9 +90,9 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     if in_config.satellite:
         sat_config = config.input_data.satellite
 
-        da_sat = open_sat_data(sat_config.satellite_zarr_path)
+        da_sat = open_sat_data(sat_config.zarr_path)
 
-        da_sat = da_sat.sel(channel=list(sat_config.satellite_channels))
+        da_sat = da_sat.sel(channel=list(sat_config.channels))
 
         datasets_dict["sat"] = da_sat
 
@@ -131,7 +131,7 @@ def find_valid_t0_times(
                 max_staleness = minutes(nwp_config.max_staleness_minutes)
 
             # The last step of the forecast is lost if we have to diff channels
-            if len(nwp_config.nwp_accum_channels) > 0:
+            if len(nwp_config.accum_channels) > 0:
                 end_buffer = minutes(nwp_config.time_resolution_minutes)
             else:
                 end_buffer = minutes(0)
@@ -233,8 +233,8 @@ def slice_datasets_by_space(
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
                 datasets_dict["nwp"][nwp_key],
                 location,
-                height_pixels=nwp_config.nwp_image_size_pixels_height,
-                width_pixels=nwp_config.nwp_image_size_pixels_width,
+                height_pixels=nwp_config.image_size_pixels_height,
+                width_pixels=nwp_config.image_size_pixels_width,
             )
 
     if "sat" in datasets_dict:
@@ -243,8 +243,8 @@ def slice_datasets_by_space(
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels(
             datasets_dict["sat"],
             location,
-            height_pixels=sat_config.satellite_image_size_pixels_height,
-            width_pixels=sat_config.satellite_image_size_pixels_width,
+            height_pixels=sat_config.image_size_pixels_height,
+            width_pixels=sat_config.image_size_pixels_width,
         )
 
     if "gsp" in datasets_dict:
@@ -284,7 +284,7 @@ def slice_datasets_by_time(
                 forecast_duration=minutes(nwp_config.forecast_minutes),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
                 dropout_frac=nwp_config.dropout_fraction,
-                accum_channels=nwp_config.nwp_accum_channels,
+                accum_channels=nwp_config.accum_channels,
             )
 
     if "sat" in datasets_dict:
@@ -369,7 +369,7 @@ def process_and_combine_datasets(
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
             # Standardise
-            provider = config.input_data.nwp[nwp_key].nwp_provider
+            provider = config.input_data.nwp[nwp_key].provider
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
             # Convert to NumpyBatch
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
