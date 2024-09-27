@@ -19,12 +19,10 @@ def test_default():
     _ = Configuration()
 
 
-def test_yaml_load_test_config(top_test_directory):
+def test_yaml_load_test_config(test_config_filename):
     """Test that yaml loading works for 'test_config.yaml'"""
 
-    filename = f"{top_test_directory}/test_data/configs/test_config.yaml"
-
-    config = load_yaml_configuration(filename)
+    config = load_yaml_configuration(test_config_filename)
 
     assert isinstance(config, Configuration)
 
@@ -73,26 +71,24 @@ def test_extra_field():
         _ = Configuration(**configuration_dict)
 
 
-def test_incorrect_forecast_minutes(top_test_directory):
+def test_incorrect_forecast_minutes(test_config_filename):
     """
     Check a forecast length not divisible by time resolution causes error
     """
 
-    filename = f"{top_test_directory}/test_data/configs/test_config.yaml"
-    configuration = load_yaml_configuration(filename)
+    configuration = load_yaml_configuration(test_config_filename)
 
     configuration.input_data.nwp['ukv'].forecast_minutes = 1111
     with pytest.raises(Exception):
         _ = Configuration(**configuration.model_dump())
 
 
-def test_incorrect_history_minutes(top_test_directory):
+def test_incorrect_history_minutes(test_config_filename):
     """
     Check a history length not divisible by time resolution causes error
     """
 
-    filename = f"{top_test_directory}/test_data/configs/test_config.yaml"
-    configuration = load_yaml_configuration(filename)
+    configuration = load_yaml_configuration(test_config_filename)
 
     configuration.input_data.nwp['ukv'].history_minutes = 1111
     with pytest.raises(Exception):
