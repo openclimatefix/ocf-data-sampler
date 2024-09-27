@@ -5,15 +5,15 @@ import logging
 import numpy as np
 import xarray as xr
 
-from ocf_datapipes.utils import Location
-from ocf_datapipes.utils.geospatial import (
+from ocf_data_sampler.utils.location import Location
+from ocf_data_sampler.utils.geospatial import (
     lon_lat_to_geostationary_area_coords,
     lon_lat_to_osgb,
     osgb_to_geostationary_area_coords,
     osgb_to_lon_lat,
     spatial_coord_type,
 )
-from ocf_datapipes.utils.utils import searchsorted
+
 
 logger = logging.getLogger(__name__)
 
@@ -130,13 +130,8 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
         f"{y} is not in the interval {da[y_dim].min().values}: {da[y_dim].max().values}"
 
     # Get the index into x and y nearest to x_center_geostationary and y_center_geostationary:
-    x_index_at_center = searchsorted(
-        da[x_dim].values, center_geostationary.x, assume_ascending=True
-    )
-
-    y_index_at_center = searchsorted(
-        da[y_dim].values, center_geostationary.y, assume_ascending=True
-    )
+    x_index_at_center = np.searchsorted(da[x_dim].values, center_geostationary.x)
+    y_index_at_center = np.searchsorted(da[y_dim].values, center_geostationary.y)
 
     return Location(x=x_index_at_center, y=y_index_at_center, coordinate_system="idx")
 
