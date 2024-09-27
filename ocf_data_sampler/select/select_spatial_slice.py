@@ -5,9 +5,8 @@ import logging
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.utils.location import Location
-from ocf_data_sampler.utils.geospatial import (
-    lon_lat_to_geostationary_area_coords,
+from ocf_data_sampler.select.location import Location
+from ocf_data_sampler.select.geospatial import (
     lon_lat_to_osgb,
     osgb_to_geostationary_area_coords,
     osgb_to_lon_lat,
@@ -44,9 +43,6 @@ def convert_coords_to_match_xarray(
     if target_coords == "geostationary":
         if from_coords == "osgb":
             x, y = osgb_to_geostationary_area_coords(x, y, da)
-
-        elif from_coords == "lon_lat":
-            x, y = lon_lat_to_geostationary_area_coords(x, y, da)
 
     elif target_coords == "lon_lat":
         if from_coords == "osgb":
@@ -97,8 +93,8 @@ def _get_idx_of_pixel_closest_to_poi(
     x_index = da.get_index(x_dim)
     y_index = da.get_index(y_dim)
 
-    closest_x = x_index.get_indexer([x], method="nearest")[0]
-    closest_y = y_index.get_indexer([y], method="nearest")[0]
+    closest_x = float(x_index.get_indexer([x], method="nearest")[0])
+    closest_y = float(y_index.get_indexer([y], method="nearest")[0])
 
     return Location(x=closest_x, y=closest_y, coordinate_system="idx")
 
