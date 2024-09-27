@@ -19,10 +19,10 @@ def test_default():
     _ = Configuration()
 
 
-def test_yaml_load_on_premises(top_test_directory):
-    """Test that yaml loading works for 'on_premises.yaml'"""
+def test_yaml_load_test_config(top_test_directory):
+    """Test that yaml loading works for 'test_config.yaml'"""
 
-    filename = f"{top_test_directory}/test_data/configs/on_premises.yaml"
+    filename = f"{top_test_directory}/test_data/configs/test_config.yaml"
 
     config = load_yaml_configuration(filename)
 
@@ -37,7 +37,7 @@ def test_yaml_save():
     with tempfile.NamedTemporaryFile(suffix=".yaml") as fp:
         filename = fp.name
 
-        # check that temp file cant be loaded
+        # check that temp file can't be loaded
         with pytest.raises(TypeError):
             _ = load_yaml_configuration(filename)
 
@@ -78,7 +78,7 @@ def test_incorrect_forecast_minutes(top_test_directory):
     Check a forecast length not divisible by time resolution causes error
     """
 
-    filename = f"{top_test_directory}/test_data/configs/on_premises.yaml"
+    filename = f"{top_test_directory}/test_data/configs/test_config.yaml"
     configuration = load_yaml_configuration(filename)
 
     configuration.input_data.nwp['ukv'].forecast_minutes = 1111
@@ -91,7 +91,7 @@ def test_incorrect_history_minutes(top_test_directory):
     Check a history length not divisible by time resolution causes error
     """
 
-    filename = f"{top_test_directory}/test_data/configs/on_premises.yaml"
+    filename = f"{top_test_directory}/test_data/configs/test_config.yaml"
     configuration = load_yaml_configuration(filename)
 
     configuration.input_data.nwp['ukv'].history_minutes = 1111
