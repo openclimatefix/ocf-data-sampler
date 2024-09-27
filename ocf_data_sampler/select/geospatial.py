@@ -59,7 +59,6 @@ def lon_lat_to_osgb(
     return _lon_lat_to_osgb(xx=x, yy=y)
 
 
-
 def osgb_to_geostationary_area_coords(
     x: Union[Number, np.ndarray],
     y: Union[Number, np.ndarray],
@@ -100,18 +99,14 @@ def _coord_priority(available_coords):
         return "geostationary", "x_geostationary", "y_geostationary"
     elif "x_osgb" in available_coords:
         return "osgb", "x_osgb", "y_osgb"
-    elif "x" in available_coords:
-        return "xy", "x", "y"
     else:
-        return None, None, None
+        raise ValueError(f"Unrecognized coordinate system: {available_coords}")
 
 
 def spatial_coord_type(ds: xr.Dataset):
     """Searches the dataset to determine the kind of spatial coordinates present.
 
-    This search has a preference for the dimension coordinates of the xarray object. If none of the
-    expected coordinates exist in the dimension coordinates, it then searches the non-dimension
-    coordinates. See https://docs.xarray.dev/en/latest/user-guide/data-structures.html#coordinates.
+    This search has a preference for the dimension coordinates of the xarray object.
 
     Args:
         ds: Dataset with spatial coords
@@ -124,14 +119,7 @@ def spatial_coord_type(ds: xr.Dataset):
     if isinstance(ds, xr.DataArray):
         # Search dimension coords of dataarray
         coords = _coord_priority(ds.xindexes)
-    elif isinstance(ds, xr.Dataset):
-        # Search dimension coords of all variables in dataset
-        coords = _coord_priority(set([v for k in ds.keys() for v in list(ds[k].xindexes)]))
     else:
         raise ValueError(f"Unrecognized input type: {type(ds)}")
-
-    if coords == (None, None, None):
-        # If no dimension coords found, search non-dimension coords
-        coords = _coord_priority(list(ds.coords))
 
     return coords
