@@ -1,12 +1,9 @@
 """Geospatial functions"""
 
-from datetime import datetime
 from numbers import Number
 from typing import Union
 
 import numpy as np
-import pandas as pd
-import pvlib
 import pyproj
 import xarray as xr
 
@@ -75,7 +72,6 @@ def osgb_to_geostationary_area_coords(
         Geostationary coords: x, y
     """
     # Only load these if using geostationary projection
-    import pyproj
     import pyresample
 
     try:
@@ -103,8 +99,8 @@ def _coord_priority(available_coords):
         raise ValueError(f"Unrecognized coordinate system: {available_coords}")
 
 
-def spatial_coord_type(ds: xr.Dataset):
-    """Searches the dataset to determine the kind of spatial coordinates present.
+def spatial_coord_type(ds: xr.DataArray):
+    """Searches the data array to determine the kind of spatial coordinates present.
 
     This search has a preference for the dimension coordinates of the xarray object.
 
