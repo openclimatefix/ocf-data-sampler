@@ -93,8 +93,8 @@ def _get_idx_of_pixel_closest_to_poi(
     x_index = da.get_index(x_dim)
     y_index = da.get_index(y_dim)
 
-    closest_x = float(x_index.get_indexer([x], method="nearest")[0])
-    closest_y = float(y_index.get_indexer([y], method="nearest")[0])
+    closest_x = x_index.get_indexer([x], method="nearest")[0]
+    closest_y = y_index.get_indexer([y], method="nearest")[0]
 
     return Location(x=closest_x, y=closest_y, coordinate_system="idx")
 
