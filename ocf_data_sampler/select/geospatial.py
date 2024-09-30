@@ -59,7 +59,7 @@ def lon_lat_to_osgb(
 def osgb_to_geostationary_area_coords(
     x: Union[Number, np.ndarray],
     y: Union[Number, np.ndarray],
-    xr_data: Union[xr.Dataset, xr.DataArray],
+    xr_data: xr.DataArray,
 ) -> tuple[Union[Number, np.ndarray], Union[Number, np.ndarray]]:
     """Loads geostationary area and transformation from OSGB to geostationary coords
 
@@ -74,10 +74,8 @@ def osgb_to_geostationary_area_coords(
     # Only load these if using geostationary projection
     import pyresample
 
-    try:
-        area_definition_yaml = xr_data.attrs["area"]
-    except KeyError:
-        area_definition_yaml = xr_data.data.attrs["area"]
+    area_definition_yaml = xr_data.attrs["area"]
+
     geostationary_area_definition = pyresample.area_config.load_area_from_string(
         area_definition_yaml
     )
