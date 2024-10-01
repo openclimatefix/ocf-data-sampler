@@ -133,3 +133,20 @@ def test_incorrect_dropout_fraction(test_config_filename):
     configuration.input_data.nwp['ukv'].dropout_fraction= -0.1
     with pytest.raises(Exception):
         _ = Configuration(**configuration.model_dump())
+
+
+def test_inconsistent_dropout_use(test_config_filename):
+    """
+    Check dropout fraction outside of range causes error
+    """
+
+    configuration = load_yaml_configuration(test_config_filename)
+    configuration.input_data.satellite.dropout_fraction= 1.0
+    configuration.input_data.satellite.dropout_timedeltas_minutes = None
+
+    with pytest.raises(ValueError):
+        _ = Configuration(**configuration.model_dump())
+    configuration.input_data.satellite.dropout_fraction= 0.0
+    configuration.input_data.satellite.dropout_timedeltas_minutes = [-120, -60]
+    with pytest.raises(ValueError):
+        _ = Configuration(**configuration.model_dump())

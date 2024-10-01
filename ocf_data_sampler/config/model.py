@@ -12,9 +12,9 @@ Example:
 
 import logging
 from typing import Dict, List, Optional
+from typing_extensions import Self
 
-from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo
-
+from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo, model_validator
 from ocf_datapipes.utils.consts import NWP_PROVIDERS
 
 logger = logging.getLogger(__name__)
@@ -46,14 +46,12 @@ class DataSourceMixin(Base):
     forecast_minutes: int = Field(
         ...,
         ge=0,
-        description="how many minutes to forecast in the future. "
-        "If set to None, the value is defaulted to InputData.default_forecast_minutes",
+        description="how many minutes to forecast in the future. ",
     )
     history_minutes: int = Field(
         ...,
         ge=0,
-        description="how many historic minutes to use. "
-        "If set to None, the value is defaulted to InputData.default_history_minutes",
+        description="how many historic minutes to use. ",
     )
 
 
@@ -82,6 +80,16 @@ class DropoutMixin(Base):
         """Validate 'dropout_fraction'"""
         assert 0 <= v <= 1
         return v
+
+    @model_validator(mode="after")
+    def dropout_instructions_consistent(self) -> Self:
+        if self.dropout_fraction == 0:
+            if self.dropout_timedeltas_minutes is not None:
+                raise ValueError("To use dropout timedeltas dropout fraction should be > 0")
+        else:
+            if self.dropout_timedeltas_minutes is None:
+                raise ValueError("To dropout fraction > 0 requires a list of dropout timedeltas")
+        return self
 
 
 # noinspection PyMethodParameters
