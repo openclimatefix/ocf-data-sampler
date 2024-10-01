@@ -107,7 +107,7 @@ def test_incorrect_nwp_provider(test_config_filename):
 
 def test_incorrect_dropout(test_config_filename):
     """
-    Check unexpected nwp provider causes error
+    Check dropout over 0 causes error and 0 doesn't
     """
 
     configuration = load_yaml_configuration(test_config_filename)
@@ -124,11 +124,15 @@ def test_incorrect_dropout(test_config_filename):
 
 def test_incorrect_dropout_fraction(test_config_filename):
     """
-    Check unexpected nwp provider causes error
+    Check dropout fraction outside of range causes error
     """
 
     configuration = load_yaml_configuration(test_config_filename)
 
-    configuration.input_data.nwp['ukv'].dropout_fraction= 120
+    configuration.input_data.nwp['ukv'].dropout_fraction= 1.1
+    with pytest.raises(Exception):
+        _ = Configuration(**configuration.model_dump())
+
+    configuration.input_data.nwp['ukv'].dropout_fraction= -0.1
     with pytest.raises(Exception):
         _ = Configuration(**configuration.model_dump())
