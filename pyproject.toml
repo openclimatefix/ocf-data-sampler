@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ocf_data_sampler"
-version = "0.0.17"
+version = "0.0.20"
 license = { file = "LICENSE" }
 readme = "README.md"
 description = "Sample from weather data for renewable energy prediction"
@@ -25,10 +25,17 @@ dependencies = [ # Migration from requirements.txt
     "dask",
     "ocf_blosc2",
     "ocf_datapipes==3.3.39",
-    "pvlib"
+    "pvlib",
+    "pytest",
+    "pydantic",
+    "setuptools",
+    "fsspec",
+    "pathy",
+    "pyyaml",
+    "torch",
 ]
 
-keywords = [ # I've added some keywords, but please provide feedback if you'd like them changed!
+keywords = [
     "weather data",
     "renewable energy prediction",
     "sample weather data"   
@@ -36,7 +43,7 @@ keywords = [ # I've added some keywords, but please provide feedback if you'd li
 
 classifiers = [
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.8", # Sourced from .readthedocs.yml (please advise if this is wrong!)
+    "Programming Language :: Python :: 3.8", # Sourced from .readthedocs.yml
     "Operating System :: POSIX :: Linux", # Sourced from .github/workflows/workflows.yaml
 ]
 requires-python = ">=3.8"
