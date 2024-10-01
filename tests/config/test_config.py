@@ -1,5 +1,3 @@
-"""Test config"""
-
 import tempfile
 
 import pytest
@@ -13,16 +11,16 @@ from ocf_data_sampler.config import (
 
 
 def test_default():
-    """
-    Test default pydantic class
-    """
+    """Test default pydantic class"""
 
     _ = Configuration()
 
 
 def test_yaml_load_test_config(test_config_filename):
-    """Test that yaml loading works for 'test_config.yaml'
-        and fails for an empty .yaml file"""
+    """
+    Test that yaml loading works for 'test_config.yaml'
+    and fails for an empty .yaml file
+    """
 
     # check we get an error if loading a file with no config
     with tempfile.NamedTemporaryFile(suffix=".yaml") as fp:
@@ -40,7 +38,7 @@ def test_yaml_load_test_config(test_config_filename):
 
 def test_yaml_save(test_config_filename):
     """
-    Check a configuration can be saved to a yaml file
+    Check configuration can be saved to a .yaml file
     """
 
     test_config = load_yaml_configuration(test_config_filename)
@@ -60,7 +58,7 @@ def test_yaml_save(test_config_filename):
 
 def test_extra_field():
     """
-    Check a extra parameters in config causes error
+    Check an extra parameters in config causes error
     """
 
     configuration = Configuration()
@@ -96,7 +94,7 @@ def test_incorrect_history_minutes(test_config_filename):
 
 def test_incorrect_nwp_provider(test_config_filename):
     """
-    Check unexpected nwp provider causes error
+    Check an unexpected nwp provider causes error
     """
 
     configuration = load_yaml_configuration(test_config_filename)
@@ -107,20 +105,19 @@ def test_incorrect_nwp_provider(test_config_filename):
 
 def test_incorrect_dropout(test_config_filename):
     """
-    Check dropout over 0 causes error and 0 doesn't
+    Check a dropout timedelta over 0 causes error and 0 doesn't
     """
 
     configuration = load_yaml_configuration(test_config_filename)
 
     # check a positive number is not allowed
-    configuration.input_data.nwp['ukv'].dropout_timedeltas_minutes = 120
+    configuration.input_data.nwp['ukv'].dropout_timedeltas_minutes = [120]
     with pytest.raises(Exception):
         _ = Configuration(**configuration.model_dump())
 
     # check 0 is allowed
-    configuration.input_data.nwp['ukv'].dropout_timedeltas_minutes = 0
-    with pytest.raises(Exception):
-        _ = Configuration(**configuration.model_dump())
+    configuration.input_data.nwp['ukv'].dropout_timedeltas_minutes = [0]
+    _ = Configuration(**configuration.model_dump())
 
 def test_incorrect_dropout_fraction(test_config_filename):
     """

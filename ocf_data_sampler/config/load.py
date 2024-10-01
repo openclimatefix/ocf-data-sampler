@@ -1,4 +1,10 @@
-""" Loading configuration functions """
+"""Loading configuration functions.
+
+Example:
+
+    from ocf_data_sampler.config import load_yaml_configuration
+    configuration = load_yaml_configuration(filename)
+"""
 
 import fsspec
 from pathy import Pathy

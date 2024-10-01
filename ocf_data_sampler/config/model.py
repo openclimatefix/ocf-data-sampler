@@ -1,9 +1,13 @@
-""" Configuration model for the dataset.
+"""Configuration model for the dataset.
 
 All paths must include the protocol prefix.  For local files,
 it's sufficient to just start with a '/'.  For aws, start with 's3://',
 for gcp start with 'gs://'.
 
+Example:
+
+    from ocf_data_sampler.config import Configuration
+    config = Configuration(**config_dict)
 """
 
 import logging

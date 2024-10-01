@@ -1,4 +1,10 @@
-""" Save functions for the configuration model"""
+"""Save functions for the configuration model.
+
+Example:
+
+    from ocf_data_sampler.config import save_yaml_configuration
+    configuration = save_yaml_configuration(config, filename)
+"""
 
 import json
 
