@@ -1,10 +1,11 @@
 general:
-  description: !ENV example configuration with env ${PATH}
+  description: test example configuration
   name: example
 input_data:
   gsp:
     gsp_zarr_path: tests/data/gsp/test.zarr
-    history_minutes: 120
+    history_minutes: 60
+    forecast_minutes: 120
     time_resolution_minutes: 30
     dropout_timedeltas_minutes: [-30]
     dropout_fraction: 0.1
@@ -30,3 +31,5 @@ input_data:
     satellite_zarr_path: tests/data/sat_data.zarr
     time_resolution_minutes: 15
     history_minutes: 60
+    forecast_minutes: 0
+    live_delay_minutes: 0
