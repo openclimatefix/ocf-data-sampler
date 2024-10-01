@@ -1,18 +1,13 @@
 """ Loading configuration functions """
 
-import logging
-from typing import Union
-
 import fsspec
 from pathy import Pathy
 from pyaml_env import parse_config
 
-from ocf_data_sampler.config.model import Configuration
-
-logger = logging.getLogger(__name__)
+from ocf_data_sampler.config import Configuration
 
 
-def load_yaml_configuration(filename: Union[str, Pathy]) -> Configuration:
+def load_yaml_configuration(filename: str | Pathy) -> Configuration:
     """
     Load a yaml file which has a configuration in it
 

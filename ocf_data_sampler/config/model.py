@@ -7,7 +7,7 @@ for gcp start with 'gs://'.
 """
 
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo
 
@@ -40,13 +40,13 @@ class DataSourceMixin(Base):
     """Mixin class, to add forecast and history minutes"""
 
     forecast_minutes: int = Field(
-        None,
+        ...,
         ge=0,
         description="how many minutes to forecast in the future. "
         "If set to None, the value is defaulted to InputData.default_forecast_minutes",
     )
     history_minutes: int = Field(
-        None,
+        ...,
         ge=0,
         description="how many historic minutes to use. "
         "If set to None, the value is defaulted to InputData.default_history_minutes",
@@ -94,11 +94,11 @@ class Satellite(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
     """Satellite configuration model"""
 
     # Todo: remove 'satellite' from names
-    satellite_zarr_path: Union[str, tuple[str], list[str]] = Field(
+    satellite_zarr_path: str | tuple[str] | list[str] = Field(
         ...,
         description="The path or list of paths which hold the satellite zarr",
     )
-    satellite_channels: tuple = Field(
+    satellite_channels: list[str] = Field(
         ..., description="the satellite channels that are used"
     )
     satellite_image_size_pixels_height: int = Field(
@@ -114,7 +114,7 @@ class Satellite(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
     )
 
     live_delay_minutes: int = Field(
-        30, description="The expected delay in minutes of the satellite data"
+        ..., description="The expected delay in minutes of the satellite data"
     )
 
 
@@ -122,14 +122,14 @@ class Satellite(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
 class NWP(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
     """NWP configuration model"""
 
-    nwp_zarr_path: Union[str, tuple[str], list[str]] = Field(
+    nwp_zarr_path: str | tuple[str] | list[str] = Field(
         ...,
         description="The path which holds the NWP zarr",
     )
-    nwp_channels: tuple = Field(
+    nwp_channels: list[str] = Field(
         ..., description="the channels used in the nwp data"
     )
-    nwp_accum_channels: tuple = Field([], description="the nwp channels which need to be diffed")
+    nwp_accum_channels: list[str] = Field([], description="the nwp channels which need to be diffed")
     nwp_image_size_pixels_height: int = Field(..., description="The size of NWP spacial crop in pixels")
     nwp_image_size_pixels_width: int = Field(..., description="The size of NWP spacial crop in pixels")
 
@@ -201,8 +201,6 @@ class GSP(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
     """GSP configuration model"""
 
     gsp_zarr_path: str = Field(..., description="The path which holds the GSP zarr")
-    gsp_image_size_pixels_height: int = Field(64, description="The size of GSP spacial crop in pixels")
-    gsp_image_size_pixels_width: int = Field(64, description="The size of GSP spacial crop in pixels")
 
     # Todo: needs to be changes from hardcode when moving to mixin
     @field_validator("history_minutes")
