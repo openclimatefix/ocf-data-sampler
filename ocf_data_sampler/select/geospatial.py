@@ -25,7 +25,6 @@ _osgb_to_lon_lat = pyproj.Transformer.from_crs(
 _lon_lat_to_osgb = pyproj.Transformer.from_crs(
     crs_from=WGS84, crs_to=OSGB36, always_xy=True
 ).transform
-_geod = pyproj.Geod(ellps="WGS84")
 
 
 def osgb_to_lon_lat(
