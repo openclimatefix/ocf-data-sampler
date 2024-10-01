@@ -149,7 +149,7 @@ class NWP(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
         if v.lower() not in NWP_PROVIDERS:
             message = f"NWP provider {v} is not in {NWP_PROVIDERS}"
             logger.warning(message)
-            assert Exception(message)
+            raise Exception(message)
         return v
 
     # Todo: put into time mixin when moving intervals there
@@ -202,17 +202,20 @@ class GSP(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
 
     gsp_zarr_path: str = Field(..., description="The path which holds the GSP zarr")
 
-    # Todo: needs to be changes from hardcode when moving to mixin
-    @field_validator("history_minutes")
-    def history_minutes_divide_by_30(cls, v):
-        """Validate 'history_minutes'"""
-        assert v % 30 == 0  # this means it also divides by 5
+    @field_validator("forecast_minutes")
+    def forecast_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
+        if v % info.data["time_resolution_minutes"] != 0:
+            message = "Forecast duration must be divisible by time resolution"
+            logger.error(message)
+            raise Exception(message)
         return v
 
-    @field_validator("forecast_minutes")
-    def forecast_minutes_divide_by_30(cls, v):
-        """Validate 'forecast_minutes'"""
-        assert v % 30 == 0  # this means it also divides by 5
+    @field_validator("history_minutes")
+    def history_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
+        if v % info.data["time_resolution_minutes"] != 0:
+            message = "History duration must be divisible by time resolution"
+            logger.error(message)
+            raise Exception(message)
         return v
 
 
