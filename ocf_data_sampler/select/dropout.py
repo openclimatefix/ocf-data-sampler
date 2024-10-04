@@ -11,6 +11,9 @@ def draw_dropout_time(
 
     if dropout_timedeltas is not None:
         assert len(dropout_timedeltas) >= 1, "Must include list of relative dropout timedeltas"
+        assert all(
+            [t <= pd.Timedelta("0min") for t in dropout_timedeltas]
+        ), "dropout timedeltas must be negative"
     assert 0 <= dropout_frac <= 1
 
     if (dropout_timedeltas is None) or (np.random.uniform() >= dropout_frac):
