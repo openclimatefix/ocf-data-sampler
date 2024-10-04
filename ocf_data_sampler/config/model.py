@@ -72,13 +72,13 @@ class DropoutMixin(Base):
         """Validate 'dropout_timedeltas_minutes'"""
         if v is not None:
             for m in v:
-                assert m <= 0
+                assert m <= 0, "Dropout timedeltas must be negative"
         return v
 
     @field_validator("dropout_fraction")
     def dropout_fraction_valid(cls, v: float) -> float:
         """Validate 'dropout_fraction'"""
-        assert 0 <= v <= 1
+        assert 0 <= v <= 1, "Dropout fraction must be between 0 and 1"
         return v
 
     @model_validator(mode="after")
