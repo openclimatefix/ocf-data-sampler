@@ -25,17 +25,10 @@ dependencies = [ # Migration from requirements.txt
     "dask",
     "ocf_blosc2",
     "ocf_datapipes==3.3.39",
-    "pvlib",
-    "pytest",
-    "pydantic",
-    "setuptools",
-    "fsspec",
-    "pathy",
-    "pyyaml",
-    "torch",
+    "pvlib"
 ]
 
-keywords = [
+keywords = [ # I've added some keywords, but please provide feedback if you'd like them changed!
     "weather data",
     "renewable energy prediction",
     "sample weather data"   
@@ -43,7 +36,6 @@ keywords = [
 
 classifiers = [
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.8", # Sourced from .readthedocs.yml
     "Operating System :: POSIX :: Linux", # Sourced from .github/workflows/workflows.yaml
 ]
 requires-python = ">=3.8"
