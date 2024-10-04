@@ -3,8 +3,6 @@ general:
   name: pvnet_test
 
 input_data:
-  default_history_minutes: 60
-  default_forecast_minutes: 120
 
   gsp:
     gsp_zarr_path: set_in_temp_file

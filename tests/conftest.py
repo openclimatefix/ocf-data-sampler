@@ -6,11 +6,16 @@ import pytest
 import xarray as xr
 import tempfile
 
+_top_test_directory = os.path.dirname(os.path.realpath(__file__))
+
+@pytest.fixture()
+def test_config_filename():
+    return f"{_top_test_directory}/test_data/configs/test_config.yaml"
 
 
 @pytest.fixture(scope="session")
 def config_filename():
-    return f"{os.path.dirname(os.path.abspath(__file__))}/test_data/pvnet_test_config.yaml"
+    return f"{os.path.dirname(os.path.abspath(__file__))}/test_data/configs/pvnet_test_config.yaml"
 
 
 @pytest.fixture(scope="session")
