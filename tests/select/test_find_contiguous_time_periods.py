@@ -11,8 +11,8 @@ def test_find_contiguous_t0_periods():
 
     # Create 5-minutely data timestamps
     freq = pd.Timedelta(5, "min")
-    history_duration = pd.Timedelta(60, "min")
-    forecast_duration = pd.Timedelta(15, "min")
+    interval_start = pd.Timedelta(-60, "min")
+    interval_end = pd.Timedelta(15, "min")
 
     datetimes = (
         pd.date_range("2023-01-01 12:00", "2023-01-01 17:00", freq=freq)
@@ -21,8 +21,8 @@ def test_find_contiguous_t0_periods():
 
     periods = find_contiguous_t0_periods(
         datetimes=datetimes,
-        history_duration=history_duration,
-        forecast_duration=forecast_duration,
+        interval_start=interval_start,
+        interval_end=interval_end,
         sample_period_duration=freq,
     )
 
@@ -135,7 +135,7 @@ def test_find_contiguous_t0_periods_nwp():
     # Create 3-hourly init times with a few time stamps missing
     freq = pd.Timedelta(3, "h")
 
-    datetimes = (
+    init_times = (
         pd.date_range("2023-01-01 03:00", "2023-01-02 21:00", freq=freq)
         .delete([1, 4, 5, 6, 7, 9, 10])
     )
@@ -146,13 +146,13 @@ def test_find_contiguous_t0_periods_nwp():
     max_dropouts_hr = [0, 0, 0, 0, 3]
 
     for i in range(len(expected_results)):
-        history_duration = pd.Timedelta(history_durations_hr[i], "h")
+        interval_start = pd.Timedelta(-history_durations_hr[i], "h")
         max_staleness = pd.Timedelta(max_stalenesses_hr[i], "h")
         max_dropout = pd.Timedelta(max_dropouts_hr[i], "h")
 
         time_periods = find_contiguous_t0_periods_nwp(
-            datetimes=datetimes,
-            history_duration=history_duration,
+            init_times=init_times,
+            interval_start=interval_start,
             max_staleness=max_staleness,
             max_dropout=max_dropout,
         )
