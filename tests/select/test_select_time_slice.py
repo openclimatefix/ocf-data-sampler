@@ -55,31 +55,19 @@ def test_select_time_slice(da_sat_like, t0_str):
 
     # Slice parameters
     t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    forecast_duration = pd.Timedelta("0min")
-    history_duration = pd.Timedelta("60min")
+    interval_start = pd.Timedelta(-0, "min")
+    interval_end = pd.Timedelta(60, "min")
     freq = pd.Timedelta("5min")
 
     # Expect to return these timestamps from the selection
-    expected_datetimes = pd.date_range(t0 - history_duration, t0 + forecast_duration, freq=freq)
+    expected_datetimes = pd.date_range(t0 +interval_start, t0 + interval_end, freq=freq)
 
-    # Make the selection using the `[x]_duration` parameters
+    # Make the selection
     sat_sample = select_time_slice(
-        ds=da_sat_like,
+        da_sat_like,
         t0=t0,
-        history_duration=history_duration,
-        forecast_duration=forecast_duration,
-        sample_period_duration=freq,
-    )
-
-    # Check the returned times are as expected
-    assert (sat_sample.time_utc == expected_datetimes).all()
-
-    # Make the selection using the `interval_[x]` parameters
-    sat_sample = select_time_slice(
-        ds=da_sat_like,
-        t0=t0,
-        interval_start=-history_duration,
-        interval_end=forecast_duration,
+        interval_start=interval_start,
+        interval_end=interval_end,
         sample_period_duration=freq,
     )
 
@@ -93,8 +81,8 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
 
     # Slice parameters
     t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    forecast_duration = pd.Timedelta("30min")
-    history_duration = pd.Timedelta("60min")
+    interval_start = pd.Timedelta(-30, "min")
+    interval_end = pd.Timedelta(60, "min")
     freq = pd.Timedelta("5min")
 
     # The data is available between these times
@@ -102,14 +90,14 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
     max_time = da_sat_like.time_utc.max()
 
     # Expect to return these timestamps from the selection
-    expected_datetimes = pd.date_range(t0 - history_duration, t0 + forecast_duration, freq=freq)
+    expected_datetimes = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
 
     # Make the partially out of bounds selection
     sat_sample = select_time_slice(
-        ds=da_sat_like,
+        da_sat_like,
         t0=t0,
-        history_duration=history_duration,
-        forecast_duration=forecast_duration,
+        interval_start=interval_start,
+        interval_end=interval_end,
         sample_period_duration=freq,
         fill_selection=True
     )
@@ -138,8 +126,8 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
 
     # Slice parameters
     t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    forecast_duration = pd.Timedelta("6H")
-    history_duration = pd.Timedelta("3H")
+    interval_start = pd.Timedelta(-6, "H")
+    interval_end = pd.Timedelta(3, "H")
     freq = pd.Timedelta("1H")
 
     # Make the selection
@@ -147,8 +135,8 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
         da_nwp_like,
         t0,
         sample_period_duration=freq,
-        history_duration=history_duration,
-        forecast_duration=forecast_duration,
+        interval_start=interval_start,
+        interval_end=interval_end,
         dropout_timedeltas = None,
         dropout_frac = 0,
         accum_channels = [],
@@ -156,7 +144,7 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
     )
 
     # Check the target-times are as expected
-    expected_target_times = pd.date_range(t0 - history_duration, t0 + forecast_duration, freq=freq)
+    expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
     assert (da_slice.target_time_utc==expected_target_times).all()
 
     # Check the init-times are as expected
@@ -172,8 +160,8 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
     """Test the functionality of select_time_slice_nwp with dropout"""
 
     t0 = pd.Timestamp("2024-01-02 12:00")
-    forecast_duration = pd.Timedelta("6H")
-    history_duration = pd.Timedelta("3H")
+    interval_start = pd.Timedelta(-6, "H")
+    interval_end = pd.Timedelta(3, "H")
     freq = pd.Timedelta("1H")
     dropout_timedelta = pd.Timedelta(f"-{dropout_hours}H")
 
@@ -181,8 +169,8 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
         da_nwp_like,
         t0,
         sample_period_duration=freq,
-        history_duration=history_duration,
-        forecast_duration=forecast_duration,
+        interval_start=interval_start,
+        interval_end=interval_end,
         dropout_timedeltas = [dropout_timedelta],
         dropout_frac = 1,
         accum_channels = [],
@@ -190,7 +178,7 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
     )
 
     # Check the target-times are as expected
-    expected_target_times = pd.date_range(t0 - history_duration, t0 + forecast_duration, freq=freq)
+    expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
     assert (da_slice.target_time_utc==expected_target_times).all()
 
     # Check the init-times are as expected considering the delay
@@ -207,8 +195,8 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
 
     # Slice parameters
     t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    forecast_duration = pd.Timedelta("6H")
-    history_duration = pd.Timedelta("3H")
+    interval_start = pd.Timedelta(-6, "H")
+    interval_end = pd.Timedelta(3, "H")
     freq = pd.Timedelta("1H")
     dropout_timedelta = pd.Timedelta("-2H")
 
@@ -218,8 +206,8 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
         da_nwp_like,
         t0,
         sample_period_duration=freq,
-        history_duration=history_duration,
-        forecast_duration=forecast_duration,
+        interval_start=interval_start,
+        interval_end=interval_end,
         dropout_timedeltas=[dropout_timedelta],
         dropout_frac=1,
         accum_channels=["dswrf"],
@@ -227,7 +215,7 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
     )
 
     # Check the target-times are as expected
-    expected_target_times = pd.date_range(t0 - history_duration, t0 + forecast_duration, freq=freq)
+    expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
     assert (da_slice.target_time_utc==expected_target_times).all()
 
     # Check the init-times are as expected considering the delay
@@ -254,7 +242,7 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
             init_time_utc=t0_delayed, 
             channel="dswrf", 
         ).diff(dim="step", label="lower")
-        .sel(step=slice(t0-t0_delayed - history_duration, t0-t0_delayed + forecast_duration))
+        .sel(step=slice(t0-t0_delayed + interval_start, t0-t0_delayed + interval_end))
     )
 
     # Check the values are the same
@@ -275,7 +263,7 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
             init_time_utc=t0_delayed, 
             channel="t", 
         )
-        .sel(step=slice(t0-t0_delayed - history_duration, t0-t0_delayed + forecast_duration))
+        .sel(step=slice(t0-t0_delayed + interval_start, t0-t0_delayed + interval_end))
     )
 
     # Check the values are the same

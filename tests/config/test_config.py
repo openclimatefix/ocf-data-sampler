@@ -10,13 +10,13 @@ from ocf_data_sampler.config import (
 )
 
 
-def test_default():
+def test_default_configuration():
     """Test default pydantic class"""
 
     _ = Configuration()
 
 
-def test_yaml_load_test_config(test_config_filename):
+def test_load_yaml_configuration(test_config_filename):
     """
     Test that yaml loading works for 'test_config.yaml'
     and fails for an empty .yaml file
@@ -56,7 +56,7 @@ def test_yaml_save(test_config_filename):
         assert test_config == tmp_config
 
 
-def test_extra_field():
+def test_extra_field_error():
     """
     Check an extra parameters in config causes error
     """
@@ -68,27 +68,33 @@ def test_extra_field():
         _ = Configuration(**configuration_dict)
 
 
-def test_incorrect_forecast_minutes(test_config_filename):
-    """
-    Check a forecast length not divisible by time resolution causes error
-    """
-
-    configuration = load_yaml_configuration(test_config_filename)
-
-    configuration.input_data.nwp['ukv'].forecast_minutes = 1111
-    with pytest.raises(Exception, match="duration must be divisible by time resolution"):
-        _ = Configuration(**configuration.model_dump())
-
-
-def test_incorrect_history_minutes(test_config_filename):
+def test_incorrect_interval_start_minutes(test_config_filename):
     """
     Check a history length not divisible by time resolution causes error
     """
 
     configuration = load_yaml_configuration(test_config_filename)
 
-    configuration.input_data.nwp['ukv'].history_minutes = 1111
-    with pytest.raises(Exception, match="duration must be divisible by time resolution"):
+    configuration.input_data.nwp['ukv'].interval_start_minutes = -1111
+    with pytest.raises(
+        ValueError, 
+        match="interval_start_minutes must be divisible by time_resolution_minutes"
+    ):
+        _ = Configuration(**configuration.model_dump())
+
+
+def test_incorrect_interval_end_minutes(test_config_filename):
+    """
+    Check a forecast length not divisible by time resolution causes error
+    """
+
+    configuration = load_yaml_configuration(test_config_filename)
+
+    configuration.input_data.nwp['ukv'].interval_end_minutes = 1111
+    with pytest.raises(
+        ValueError, 
+        match="interval_end_minutes must be divisible by time_resolution_minutes"
+    ):
         _ = Configuration(**configuration.model_dump())
 
 
@@ -102,6 +108,7 @@ def test_incorrect_nwp_provider(test_config_filename):
     configuration.input_data.nwp['ukv'].nwp_provider = "unexpected_provider"
     with pytest.raises(Exception, match="NWP provider"):
         _ = Configuration(**configuration.model_dump())
+
 
 def test_incorrect_dropout(test_config_filename):
     """
@@ -118,6 +125,7 @@ def test_incorrect_dropout(test_config_filename):
     # check 0 is allowed
     configuration.input_data.nwp['ukv'].dropout_timedeltas_minutes = [0]
     _ = Configuration(**configuration.model_dump())
+
 
 def test_incorrect_dropout_fraction(test_config_filename):
     """

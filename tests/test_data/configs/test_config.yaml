@@ -4,8 +4,8 @@ general:
 input_data:
   gsp:
     gsp_zarr_path: tests/data/gsp/test.zarr
-    history_minutes: 60
-    forecast_minutes: 120
+    interval_start_minutes: -60
+    interval_end_minutes: 120
     time_resolution_minutes: 30
     dropout_timedeltas_minutes: [-30]
     dropout_fraction: 0.1
@@ -17,8 +17,8 @@ input_data:
       nwp_image_size_pixels_width: 2
       nwp_zarr_path: tests/data/nwp_data/test.zarr
       nwp_provider: "ukv"
-      history_minutes: 60
-      forecast_minutes: 120
+      interval_start_minutes: -60
+      interval_end_minutes: 120
       time_resolution_minutes: 60
       dropout_timedeltas_minutes: [-180]
       dropout_fraction: 1.0
@@ -30,6 +30,5 @@ input_data:
     satellite_image_size_pixels_width: 24
     satellite_zarr_path: tests/data/sat_data.zarr
     time_resolution_minutes: 15
-    history_minutes: 60
-    forecast_minutes: 0
-    live_delay_minutes: 0
+    interval_start_minutes: -60
+    interval_end_minutes: 0

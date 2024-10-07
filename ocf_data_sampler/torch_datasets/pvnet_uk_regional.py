@@ -138,7 +138,7 @@ def find_valid_t0_times(
             # This is the max staleness we can use considering the max step of the input data
             max_possible_staleness = (
                 pd.Timedelta(da["step"].max().item())
-                - minutes(nwp_config.forecast_minutes)
+                - minutes(nwp_config.interval_end_minutes)
                 - end_buffer
             )
 
@@ -149,11 +149,15 @@ def find_valid_t0_times(
                 # Make sure the max acceptable staleness isn't longer than the max possible
                 assert max_staleness <= max_possible_staleness
 
+            # Find the first forecast step
+            first_forecast_step = pd.Timedelta(da["step"].min().item())
+
             time_periods = find_contiguous_t0_periods_nwp(
-                datetimes=pd.DatetimeIndex(da["init_time_utc"]),
-                history_duration=minutes(nwp_config.history_minutes),
+                init_times=pd.DatetimeIndex(da["init_time_utc"]),
+                interval_start=minutes(nwp_config.interval_start_minutes),
                 max_staleness=max_staleness,
                 max_dropout=max_dropout,
+                first_forecast_step = first_forecast_step,
             )
 
             contiguous_time_periods[f'nwp_{nwp_key}'] = time_periods
@@ -164,8 +168,8 @@ def find_valid_t0_times(
         time_periods = find_contiguous_t0_periods(
             pd.DatetimeIndex(datasets_dict["sat"]["time_utc"]),
             sample_period_duration=minutes(sat_config.time_resolution_minutes),
-            history_duration=minutes(sat_config.history_minutes),
-            forecast_duration=minutes(sat_config.forecast_minutes),
+            interval_start=minutes(sat_config.interval_start_minutes),
+            interval_end=minutes(sat_config.interval_end_minutes),
         )
 
         contiguous_time_periods['sat'] = time_periods
@@ -176,8 +180,8 @@ def find_valid_t0_times(
         time_periods = find_contiguous_t0_periods(
             pd.DatetimeIndex(datasets_dict["gsp"]["time_utc"]),
             sample_period_duration=minutes(gsp_config.time_resolution_minutes),
-            history_duration=minutes(gsp_config.history_minutes),
-            forecast_duration=minutes(gsp_config.forecast_minutes),
+            interval_start=minutes(gsp_config.interval_start_minutes),
+            interval_end=minutes(gsp_config.interval_end_minutes),
         )
 
         contiguous_time_periods['gsp'] = time_periods
@@ -279,8 +283,8 @@ def slice_datasets_by_time(
                 da_nwp,
                 t0,
                 sample_period_duration=minutes(nwp_config.time_resolution_minutes),
-                history_duration=minutes(nwp_config.history_minutes),
-                forecast_duration=minutes(nwp_config.forecast_minutes),
+                interval_start=minutes(nwp_config.interval_start_minutes),
+                interval_end=minutes(nwp_config.interval_end_minutes),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
                 dropout_frac=nwp_config.dropout_fraction,
                 accum_channels=nwp_config.nwp_accum_channels,
@@ -294,8 +298,8 @@ def slice_datasets_by_time(
             datasets_dict["sat"],
             t0,
             sample_period_duration=minutes(sat_config.time_resolution_minutes),
-            interval_start=minutes(-sat_config.history_minutes),
-            interval_end=minutes(-sat_config.live_delay_minutes),
+            interval_start=minutes(sat_config.interval_start_minutes),
+            interval_end=minutes(sat_config.interval_end_minutes),
             max_steps_gap=2,
         )
 
@@ -319,15 +323,15 @@ def slice_datasets_by_time(
             datasets_dict["gsp"],
             t0,
             sample_period_duration=minutes(gsp_config.time_resolution_minutes),
-            interval_start=minutes(30),
-            interval_end=minutes(gsp_config.forecast_minutes),
+            interval_start=minutes(gsp_config.time_resolution_minutes),
+            interval_end=minutes(gsp_config.interval_end_minutes),
         )
-            
+    
         sliced_datasets_dict["gsp"] = select_time_slice(
             datasets_dict["gsp"],
             t0,
             sample_period_duration=minutes(gsp_config.time_resolution_minutes),
-            interval_start=-minutes(gsp_config.history_minutes),
+            interval_start=minutes(gsp_config.interval_start_minutes),
             interval_end=minutes(0),
         )
 
@@ -410,14 +414,14 @@ def process_and_combine_datasets(
         numpy_modalities.append(
             convert_gsp_to_numpy_batch(
                 da_gsp, 
-                t0_idx=gsp_config.history_minutes / gsp_config.time_resolution_minutes
+                t0_idx=abs(gsp_config.interval_start_minutes) / gsp_config.time_resolution_minutes
             )
         )
 
     # Make sun coords NumpyBatch
     datetimes = pd.date_range(
-        t0-minutes(gsp_config.history_minutes),
-        t0+minutes(gsp_config.forecast_minutes),
+        t0+minutes(gsp_config.interval_start_minutes),
+        t0+minutes(gsp_config.interval_end_minutes),
         freq=minutes(gsp_config.time_resolution_minutes),
     )
 
