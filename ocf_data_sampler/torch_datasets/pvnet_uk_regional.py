@@ -34,10 +34,7 @@ from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 
-from ocf_datapipes.utils.consts import (
-    NWP_MEANS,
-    NWP_STDS,
-)
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
 
 
 
