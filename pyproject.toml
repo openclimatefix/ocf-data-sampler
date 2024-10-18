@@ -18,6 +18,7 @@ maintainers = [
 ]
 
 dependencies = [ # Migration from requirements.txt
+    "torch<2.5.0",
     "numpy",
     "pandas",
     "xarray",
