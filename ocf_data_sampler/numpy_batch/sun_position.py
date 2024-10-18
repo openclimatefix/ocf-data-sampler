@@ -2,7 +2,6 @@
 import pvlib
 import numpy as np
 import pandas as pd
-from ocf_datapipes.batch import BatchKey, NumpyBatch
 
 
 def calculate_azimuth_and_elevation(
@@ -38,7 +37,7 @@ def make_sun_position_numpy_batch(
         lon: float, 
         lat: float, 
         key_preffix: str = "gsp"
-) -> NumpyBatch:
+) -> dict:
     """Creates NumpyBatch with standardized solar coordinates
 
     Args:
@@ -58,9 +57,9 @@ def make_sun_position_numpy_batch(
     elevation = elevation / 180 + 0.5
     
     # Make NumpyBatch
-    sun_numpy_batch: NumpyBatch = {
-        BatchKey[key_preffix + "_solar_azimuth"]: azimuth,
-        BatchKey[key_preffix + "_solar_elevation"]: elevation,
+    sun_numpy_batch = {
+        key_preffix + "_solar_azimuth": azimuth,
+        key_preffix + "_solar_elevation": elevation,
     }
 
     return sun_numpy_batch
