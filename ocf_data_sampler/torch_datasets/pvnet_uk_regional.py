@@ -28,9 +28,8 @@ from ocf_data_sampler.numpy_batch import (
 
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
-from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
+from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
@@ -40,7 +39,6 @@ from ocf_datapipes.utils.consts import (
     NWP_STDS,
 )
 
-from ocf_datapipes.training.common import concat_xr_time_utc, normalize_gsp
 
 
 
@@ -406,8 +404,8 @@ def process_and_combine_datasets(
     gsp_config = config.input_data.gsp
     
     if "gsp" in dataset_dict:
-        da_gsp = concat_xr_time_utc([dataset_dict["gsp"], dataset_dict["gsp_future"]])
-        da_gsp = normalize_gsp(da_gsp)
+        da_gsp = xr.concat([dataset_dict["gsp"], dataset_dict["gsp_future"]], dim="time_utc")
+        da_gsp = da_gsp / da_gsp.effective_capacity_mwp
 
         numpy_modalities.append(
             convert_gsp_to_numpy_batch(
@@ -430,9 +428,9 @@ def process_and_combine_datasets(
     # Add coordinate data
     # TODO: Do we need all of these?
     numpy_modalities.append({
-        BatchKey.gsp_id: location.id,
-        BatchKey.gsp_x_osgb: location.x,
-        BatchKey.gsp_y_osgb: location.y,
+        GSPBatchKey.gsp_id: location.id,
+        GSPBatchKey.gsp_x_osgb: location.x,
+        GSPBatchKey.gsp_y_osgb: location.y,
     })
 
     # Combine all the modalities and fill NaNs
