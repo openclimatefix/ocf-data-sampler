@@ -30,8 +30,8 @@ from ocf_data_sampler.numpy_batch import (
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_datapipes.batch import BatchKey, NumpyBatch
 
-from ocf_datapipes.utils.location import Location
-from ocf_datapipes.utils.geospatial import osgb_to_lon_lat
+from ocf_data_sampler.select.location import Location
+from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 
 from ocf_datapipes.utils.consts import (
     NWP_MEANS,
