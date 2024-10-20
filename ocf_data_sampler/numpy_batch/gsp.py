@@ -12,6 +12,9 @@ class GSPBatchKey:
     gsp_t0_idx = 'gsp_t0_idx'
     gsp_solar_azimuth = 'gsp_solar_azimuth'
     gsp_solar_elevation = 'gsp_solar_elevation'
+    gsp_id = 'gsp_id'
+    gsp_x_osgb = 'gsp_x_osgb'
+    gsp_y_osgb = 'gsp_y_osgb'
 
 
 def convert_gsp_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> dict:
