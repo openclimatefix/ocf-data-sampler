@@ -27,6 +27,8 @@ dependencies = [ # Migration from requirements.txt
     "ocf_blosc2",
     "pvlib",
     "pydantic",
+    "pyproj",
+    "pathy",
 ]
 
 keywords = [ # I've added some keywords, but please provide feedback if you'd like them changed!
