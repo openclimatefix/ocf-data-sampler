@@ -25,7 +25,8 @@ dependencies = [ # Migration from requirements.txt
     "zarr",
     "dask",
     "ocf_blosc2",
-    "pvlib"
+    "pvlib",
+    "pydantic",
 ]
 
 keywords = [ # I've added some keywords, but please provide feedback if you'd like them changed!
