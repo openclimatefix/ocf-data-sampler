@@ -16,7 +16,7 @@ def da_nwp_like():
 
     x = np.arange(-100, 100, 10)
     y = np.arange(-100, 100, 10)
-    steps = pd.timedelta_range("0H", "8H", freq="1H")
+    steps = pd.timedelta_range("0h", "8h", freq="1h")
     target_times = t0 + steps
 
     channels = ["t", "dswrf"]
