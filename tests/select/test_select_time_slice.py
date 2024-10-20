@@ -6,7 +6,7 @@ import xarray as xr
 import pytest
 
 
-NWP_FREQ = pd.Timedelta("3H")
+NWP_FREQ = pd.Timedelta("3h")
 
 @pytest.fixture(scope="module")
 def da_sat_like():
@@ -175,7 +175,7 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
     forecast_duration = pd.Timedelta("6h")
     history_duration = pd.Timedelta("3h")
     freq = pd.Timedelta("1h")
-    dropout_timedelta = pd.Timedelta(f"-{dropout_hours}H")
+    dropout_timedelta = pd.Timedelta(f"-{dropout_hours}h")
 
     da_slice = select_time_slice_nwp(
         da_nwp_like,
