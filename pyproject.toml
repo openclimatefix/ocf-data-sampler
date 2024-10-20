@@ -29,6 +29,7 @@ dependencies = [ # Migration from requirements.txt
     "pydantic",
     "pyproj",
     "pathy",
+    "pyaml_env",
 ]
 
 keywords = [ # I've added some keywords, but please provide feedback if you'd like them changed!
