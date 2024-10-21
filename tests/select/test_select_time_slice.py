@@ -6,7 +6,7 @@ import xarray as xr
 import pytest
 
 
-NWP_FREQ = pd.Timedelta("3H")
+NWP_FREQ = pd.Timedelta("3h")
 
 @pytest.fixture(scope="module")
 def da_sat_like():
@@ -33,7 +33,7 @@ def da_nwp_like():
     x = np.arange(-100, 100)
     y = np.arange(-100, 100)
     datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq=NWP_FREQ)
-    steps = pd.timedelta_range("0H", "16H", freq="1H")
+    steps = pd.timedelta_range("0h", "16h", freq="1h")
     channels = ["t", "dswrf"]
 
     da_nwp = xr.DataArray(
@@ -138,9 +138,9 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
 
     # Slice parameters
     t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    forecast_duration = pd.Timedelta("6H")
-    history_duration = pd.Timedelta("3H")
-    freq = pd.Timedelta("1H")
+    forecast_duration = pd.Timedelta("6h")
+    history_duration = pd.Timedelta("3h")
+    freq = pd.Timedelta("1h")
 
     # Make the selection
     da_slice = select_time_slice_nwp(
@@ -172,10 +172,10 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
     """Test the functionality of select_time_slice_nwp with dropout"""
 
     t0 = pd.Timestamp("2024-01-02 12:00")
-    forecast_duration = pd.Timedelta("6H")
-    history_duration = pd.Timedelta("3H")
-    freq = pd.Timedelta("1H")
-    dropout_timedelta = pd.Timedelta(f"-{dropout_hours}H")
+    forecast_duration = pd.Timedelta("6h")
+    history_duration = pd.Timedelta("3h")
+    freq = pd.Timedelta("1h")
+    dropout_timedelta = pd.Timedelta(f"-{dropout_hours}h")
 
     da_slice = select_time_slice_nwp(
         da_nwp_like,
@@ -207,10 +207,10 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
 
     # Slice parameters
     t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    forecast_duration = pd.Timedelta("6H")
-    history_duration = pd.Timedelta("3H")
-    freq = pd.Timedelta("1H")
-    dropout_timedelta = pd.Timedelta("-2H")
+    forecast_duration = pd.Timedelta("6h")
+    history_duration = pd.Timedelta("3h")
+    freq = pd.Timedelta("1h")
+    dropout_timedelta = pd.Timedelta("-2h")
 
     t0_delayed = (t0 + dropout_timedelta).floor(NWP_FREQ)
 
