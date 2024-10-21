@@ -6,7 +6,7 @@ import pytest
 
 from ocf_data_sampler.numpy_batch import convert_nwp_to_numpy_batch
 
-from ocf_datapipes.batch import NWPBatchKey
+from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
 
 @pytest.fixture(scope="module")
 def da_nwp_like():

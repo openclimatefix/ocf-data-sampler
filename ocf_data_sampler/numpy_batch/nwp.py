@@ -3,13 +3,23 @@
 import pandas as pd
 import xarray as xr
 
-from ocf_datapipes.batch import NWPBatchKey, NWPNumpyBatch
+
+class NWPBatchKey:
+
+    nwp = 'nwp'
+    nwp_channel_names = 'nwp_channel_names'
+    nwp_init_time_utc = 'nwp_init_time_utc'
+    nwp_step = 'nwp_step'
+    nwp_target_time_utc = 'nwp_target_time_utc'
+    nwp_t0_idx = 'nwp_t0_idx'
+    nwp_y_osgb = 'nwp_y_osgb'
+    nwp_x_osgb = 'nwp_x_osgb'
 
 
-def convert_nwp_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> NWPNumpyBatch:
+def convert_nwp_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> dict:
     """Convert from Xarray to NWP NumpyBatch"""
 
-    example: NWPNumpyBatch = {
+    example = {
         NWPBatchKey.nwp: da.values,
         NWPBatchKey.nwp_channel_names: da.channel.values,
         NWPBatchKey.nwp_init_time_utc: da.init_time_utc.values.astype(float),
