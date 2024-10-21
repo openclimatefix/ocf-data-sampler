@@ -58,8 +58,8 @@ def make_sun_position_numpy_batch(
     
     # Make NumpyBatch
     sun_numpy_batch = {
-        key_preffix + "_solar_azimuth": azimuth,
-        key_preffix + "_solar_elevation": elevation,
+        key_prefix + "_solar_azimuth": azimuth,
+        key_prefix + "_solar_elevation": elevation,
     }
 
     return sun_numpy_batch
