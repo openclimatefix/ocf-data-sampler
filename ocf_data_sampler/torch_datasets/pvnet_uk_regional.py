@@ -28,17 +28,14 @@ from ocf_data_sampler.numpy_batch import (
 
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-from ocf_datapipes.batch import BatchKey, NumpyBatch
+from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
+from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 
-from ocf_datapipes.utils.location import Location
-from ocf_datapipes.utils.geospatial import osgb_to_lon_lat
+from ocf_data_sampler.select.location import Location
+from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 
-from ocf_datapipes.utils.consts import (
-    NWP_MEANS,
-    NWP_STDS,
-)
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
 
-from ocf_datapipes.training.common import concat_xr_time_utc, normalize_gsp
 
 
 
@@ -343,7 +340,7 @@ def slice_datasets_by_time(
     return sliced_datasets_dict
 
 
-def fill_nans_in_arrays(batch: NumpyBatch) -> NumpyBatch:
+def fill_nans_in_arrays(batch: dict) -> dict:
     """Fills all NaN values in each np.ndarray in the batch dictionary with zeros.
 
     Operation is performed in-place on the batch.
@@ -375,7 +372,7 @@ def process_and_combine_datasets(
         config: Configuration,
         t0: pd.Timedelta,
         location: Location,
-    ) -> NumpyBatch:
+    ) -> dict:
     """Normalize and convert data to numpy arrays"""    
 
     numpy_modalities = []
@@ -392,7 +389,7 @@ def process_and_combine_datasets(
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
         
         # Combine the NWPs into NumpyBatch
-        numpy_modalities.append({BatchKey.nwp: nwp_numpy_modalities})
+        numpy_modalities.append({NWPBatchKey.nwp: nwp_numpy_modalities})
 
     if "sat" in dataset_dict:
         # Satellite is already in the range [0-1] so no need to standardise
@@ -404,8 +401,8 @@ def process_and_combine_datasets(
     gsp_config = config.input_data.gsp
     
     if "gsp" in dataset_dict:
-        da_gsp = concat_xr_time_utc([dataset_dict["gsp"], dataset_dict["gsp_future"]])
-        da_gsp = normalize_gsp(da_gsp)
+        da_gsp = xr.concat([dataset_dict["gsp"], dataset_dict["gsp_future"]], dim="time_utc")
+        da_gsp = da_gsp / da_gsp.effective_capacity_mwp
 
         numpy_modalities.append(
             convert_gsp_to_numpy_batch(
@@ -428,9 +425,9 @@ def process_and_combine_datasets(
     # Add coordinate data
     # TODO: Do we need all of these?
     numpy_modalities.append({
-        BatchKey.gsp_id: location.id,
-        BatchKey.gsp_x_osgb: location.x,
-        BatchKey.gsp_y_osgb: location.y,
+        GSPBatchKey.gsp_id: location.id,
+        GSPBatchKey.gsp_x_osgb: location.x,
+        GSPBatchKey.gsp_y_osgb: location.y,
     })
 
     # Combine all the modalities and fill NaNs
@@ -538,7 +535,7 @@ class PVNetUKRegionalDataset(Dataset):
         return len(self.index_pairs)
     
     
-    def _get_sample(self, t0: pd.Timestamp, location: Location) -> NumpyBatch:
+    def _get_sample(self, t0: pd.Timestamp, location: Location) -> dict:
         """Generate the PVNet sample for given coordinates
         
         Args:
@@ -565,7 +562,7 @@ class PVNetUKRegionalDataset(Dataset):
         return self._get_sample(t0, location)
     
 
-    def get_sample(self, t0: pd.Timestamp, gsp_id: int) -> NumpyBatch:
+    def get_sample(self, t0: pd.Timestamp, gsp_id: int) -> dict:
         """Generate a sample for the given coordinates. 
         
         Useful for users to generate samples by GSP ID.
