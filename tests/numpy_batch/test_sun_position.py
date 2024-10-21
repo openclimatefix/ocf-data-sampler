@@ -69,7 +69,7 @@ def test_make_sun_position_numpy_batch():
     datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min")
     lon, lat = 0, 51.5
 
-    batch = make_sun_position_numpy_batch(datetimes, lon, lat, key_preffix="gsp")
+    batch = make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix="gsp")
 
     assert GSPBatchKey.gsp_solar_elevation in batch
     assert GSPBatchKey.gsp_solar_azimuth in batch
