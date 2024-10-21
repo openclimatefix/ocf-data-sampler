@@ -25,7 +25,7 @@ class NWPStatDict(dict):
             return super().__getitem__(key)
         else:
             raise KeyError(
-                f"Values for {key} not yet available in ocf-datapipes {list(self.keys())}"
+                f"Values for {key} not yet available in ocf-data-sampler {list(self.keys())}"
             )
 
 # ------ UKV
