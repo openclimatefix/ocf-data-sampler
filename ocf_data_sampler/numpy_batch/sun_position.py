@@ -36,7 +36,7 @@ def make_sun_position_numpy_batch(
         datetimes: pd.DatetimeIndex, 
         lon: float, 
         lat: float, 
-        key_preffix: str = "gsp"
+        key_prefix: str = "gsp"
 ) -> dict:
     """Creates NumpyBatch with standardized solar coordinates
 
