@@ -18,14 +18,19 @@ maintainers = [
 ]
 
 dependencies = [ # Migration from requirements.txt
+    "torch",
     "numpy",
     "pandas",
     "xarray",
     "zarr",
     "dask",
     "ocf_blosc2",
-    "ocf_datapipes==3.3.39",
-    "pvlib"
+    "pvlib",
+    "pydantic",
+    "pyproj",
+    "pathy",
+    "pyaml_env",
+    "pyresample"
 ]
 
 keywords = [ # I've added some keywords, but please provide feedback if you'd like them changed!

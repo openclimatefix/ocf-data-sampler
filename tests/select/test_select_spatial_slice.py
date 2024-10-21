@@ -1,6 +1,6 @@
 import numpy as np
 import xarray as xr
-from ocf_datapipes.utils import Location
+from ocf_data_sampler.select.location import Location
 import pytest
 
 from ocf_data_sampler.select.select_spatial_slice import (
