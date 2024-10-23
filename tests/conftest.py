@@ -16,6 +16,11 @@ _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 def test_config_filename():
     return f"{_top_test_directory}/test_data/configs/test_config.yaml"
 
+@pytest.fixture()
+def icon_eu_zarr_path():
+    icon_sample_data_dir = f"{_top_test_directory}/test_data/icon"
+    return [os.path.join(icon_sample_data_dir, file) for file in os.listdir(icon_sample_data_dir) if file.endswith(".zarr.zip")]
+
 
 @pytest.fixture(scope="session")
 def config_filename():
