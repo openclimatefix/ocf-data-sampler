@@ -1,21 +1,23 @@
-""" Configuration model for the dataset.
-
+"""Configuration model for the dataset.
 All paths must include the protocol prefix.  For local files,
 it's sufficient to just start with a '/'.  For aws, start with 's3://',
 for gcp start with 'gs://'.
-
+Example:
+    from ocf_data_sampler.config import Configuration
+    config = Configuration(**config_dict)
 """
 
 import logging
-from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, RootModel, field_validator
+from typing import Dict, List, Optional
+from typing_extensions import Self
 
-from ocf_datapipes.utils.consts import NWP_PROVIDERS
-
-logger = logging.getLogger(__name__)
+from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo, model_validator
+from ocf_data_sampler.constants import NWP_PROVIDERS
 
 providers = ["pvoutput.org", "solar_sheffield_passiv"]
+
+logger = logging.getLogger(__name__)
 
 
 class Base(BaseModel):
@@ -53,14 +55,24 @@ class DropoutMixin(Base):
         """Validate 'dropout_timedeltas_minutes'"""
         if v is not None:
             for m in v:
-                assert m <= 0
+                assert m <= 0, "Dropout timedeltas must be negative"
         return v
 
     @field_validator("dropout_fraction")
     def dropout_fraction_valid(cls, v: float) -> float:
         """Validate 'dropout_fraction'"""
-        assert 0 <= v <= 1
+        assert 0 <= v <= 1, "Dropout fraction must be between 0 and 1"
         return v
+
+    @model_validator(mode="after")
+    def dropout_instructions_consistent(self) -> Self:
+        if self.dropout_fraction == 0:
+            if self.dropout_timedeltas_minutes is not None:
+                raise ValueError("To use dropout timedeltas dropout fraction should be > 0")
+        else:
+            if self.dropout_timedeltas_minutes is None:
+                raise ValueError("To dropout fraction > 0 requires a list of dropout timedeltas")
+        return self
 
 
 # noinspection PyMethodParameters
@@ -69,7 +81,7 @@ class TimeWindowMixin(Base):
 
     time_resolution_minutes: int = Field(
         ...,
-        description="temporal resolution of the data in minutes",
+        description="The temporal resolution of the data in minutes",
     )
 
     forecast_minutes: int = Field(
@@ -126,7 +138,7 @@ class Satellite(DataSourceBase):
     )
 
     live_delay_minutes: int = Field(
-        30, description="The expected delay in minutes of the satellite data"
+        ..., description="The expected delay in minutes of the satellite data"
     )
 
 
