@@ -10,13 +10,13 @@ from ocf_data_sampler.config import (
 )
 
 
-def test_default():
+def test_default_configuration():
     """Test default pydantic class"""
 
     _ = Configuration()
 
 
-def test_yaml_load_test_config(test_config_filename):
+def test_load_yaml_configuration(test_config_filename):
     """
     Test that yaml loading works for 'test_config.yaml'
     and fails for an empty .yaml file
@@ -56,7 +56,7 @@ def test_yaml_save(test_config_filename):
         assert test_config == tmp_config
 
 
-def test_extra_field():
+def test_extra_field_error():
     """
     Check an extra parameters in config causes error
     """
@@ -99,9 +99,10 @@ def test_incorrect_nwp_provider(test_config_filename):
 
     configuration = load_yaml_configuration(test_config_filename)
 
-    configuration.input_data.nwp['ukv'].nwp_provider = "unexpected_provider"
+    configuration.input_data.nwp['ukv'].provider = "unexpected_provider"
     with pytest.raises(Exception, match="NWP provider"):
         _ = Configuration(**configuration.model_dump())
+
 
 def test_incorrect_dropout(test_config_filename):
     """
@@ -119,6 +120,7 @@ def test_incorrect_dropout(test_config_filename):
     configuration.input_data.nwp['ukv'].dropout_timedeltas_minutes = [0]
     _ = Configuration(**configuration.model_dump())
 
+
 def test_incorrect_dropout_fraction(test_config_filename):
     """
     Check dropout fraction outside of range causes error
@@ -127,11 +129,12 @@ def test_incorrect_dropout_fraction(test_config_filename):
     configuration = load_yaml_configuration(test_config_filename)
 
     configuration.input_data.nwp['ukv'].dropout_fraction= 1.1
-    with pytest.raises(Exception, match="Dropout fraction must be between 0 and 1"):
+
+    with pytest.raises(ValidationError,  match="Input should be less than or equal to 1"):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp['ukv'].dropout_fraction= -0.1
-    with pytest.raises(Exception, match="Dropout fraction must be between 0 and 1"):
+    with pytest.raises(ValidationError, match="Input should be greater than or equal to 0"):
         _ = Configuration(**configuration.model_dump())
 
 

@@ -3,7 +3,7 @@ general:
   name: example
 input_data:
   gsp:
-    gsp_zarr_path: tests/data/gsp/test.zarr
+    zarr_path: tests/data/gsp/test.zarr
     history_minutes: 60
     forecast_minutes: 120
     time_resolution_minutes: 30
@@ -11,12 +11,12 @@ input_data:
     dropout_fraction: 0.1
   nwp:
     ukv:
-      nwp_channels:
+      channels:
         - t
-      nwp_image_size_pixels_height: 2
-      nwp_image_size_pixels_width: 2
-      nwp_zarr_path: tests/data/nwp_data/test.zarr
-      nwp_provider: "ukv"
+      image_size_pixels_height: 2
+      image_size_pixels_width: 2
+      zarr_path: tests/data/nwp_data/test.zarr
+      provider: "ukv"
       history_minutes: 60
       forecast_minutes: 120
       time_resolution_minutes: 60
@@ -24,11 +24,11 @@ input_data:
       dropout_fraction: 1.0
 
   satellite:
-    satellite_channels:
+    channels:
       - IR_016
-    satellite_image_size_pixels_height: 24
-    satellite_image_size_pixels_width: 24
-    satellite_zarr_path: tests/data/sat_data.zarr
+    image_size_pixels_height: 24
+    image_size_pixels_width: 24
+    zarr_path: tests/data/sat_data.zarr
     time_resolution_minutes: 15
     history_minutes: 60
     forecast_minutes: 0

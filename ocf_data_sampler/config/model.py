@@ -202,7 +202,7 @@ class MultiNWP(RootModel):
 class GSP(TimeWindowMixin, DropoutMixin):
     """GSP configuration model"""
 
-    gsp_zarr_path: str = Field(..., description="The path which holds the GSP zarr")
+    zarr_path: str = Field(..., description="The path which holds the GSP zarr")
 
 
 # noinspection PyPep8Naming

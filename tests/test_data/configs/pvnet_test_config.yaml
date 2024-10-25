@@ -11,8 +11,6 @@ input_data:
     time_resolution_minutes: 30
     dropout_timedeltas_minutes: null
     dropout_fraction: 0
-    image_size_pixels_height: 2
-    image_size_pixels_width: 2
 
   nwp:
     ukv:
