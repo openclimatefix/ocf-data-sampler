@@ -1,4 +1,4 @@
-""""Configuration model for the dataset.
+"""Configuration model for the dataset.
 
 All paths must include the protocol prefix.  For local files,
 it's sufficient to just start with a '/'.  For aws, start with 's3://',
@@ -11,7 +11,7 @@ Example:
 """
 
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 from typing_extensions import Self
 
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
@@ -116,7 +116,7 @@ class TimeWindowMixin(Base):
 
 class DataSourceBase(TimeWindowMixin, DropoutMixin):
     """Mixin class, to add path and image size"""
-    zarr_path: Union[str, tuple[str], list[str]] = Field(
+    zarr_path: str | tuple[str] | list[str] = Field(
         ...,
         description="The path or list of paths which hold the data zarr",
     )
@@ -135,7 +135,7 @@ class DataSourceBase(TimeWindowMixin, DropoutMixin):
 class Satellite(DataSourceBase):
     """Satellite configuration model"""
 
-    channels: tuple = Field(
+    channels: list[str] = Field(
         ..., description="the satellite channels that are used"
     )
 
@@ -148,13 +148,13 @@ class Satellite(DataSourceBase):
 class NWP(DataSourceBase):
     """NWP configuration model"""
 
-    channels: tuple = Field(
+    channels: list[str] = Field(
         ..., description="the channels used in the nwp data"
     )
 
     provider: str = Field(..., description="The provider of the NWP data")
 
-    accum_channels: tuple = Field([], description="the nwp channels which need to be diffed")
+    accum_channels: list[str] = Field([], description="the nwp channels which need to be diffed")
 
     max_staleness_minutes: Optional[int] = Field(
         None,
@@ -163,14 +163,13 @@ class NWP(DataSourceBase):
         " the maximum forecast horizon of the NWP and the requested forecast length.",
     )
 
-
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:
         """Validate 'provider'"""
         if v.lower() not in NWP_PROVIDERS:
             message = f"NWP provider {v} is not in {NWP_PROVIDERS}"
             logger.warning(message)
-            assert Exception(message)
+            raise Exception(message)
         return v
 
 
