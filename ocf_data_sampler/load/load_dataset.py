@@ -1,3 +1,4 @@
+""" Loads all data sources """
 import xarray as xr
 
 from ocf_data_sampler.config import Configuration
