@@ -115,6 +115,17 @@ def slice_datasets_by_time(
             interval_end=minutes(site_config.forecast_minutes),
         )
 
-        # TODO add dropout?
+        # Randomly sample dropout
+        site_dropout_time = draw_dropout_time(
+            t0,
+            dropout_timedeltas=minutes(site_config.dropout_timedeltas_minutes),
+            dropout_frac=site_config.dropout_fraction,
+        )
+
+        # Apply the dropout
+        sliced_datasets_dict["site"] = apply_dropout_time(
+            sliced_datasets_dict["site"],
+            site_dropout_time,
+        )
 
     return sliced_datasets_dict
