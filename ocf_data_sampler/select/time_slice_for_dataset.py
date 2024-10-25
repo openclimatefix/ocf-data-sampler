@@ -1,17 +1,10 @@
+""" Slice datasets by time"""
 import pandas as pd
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.dropout import draw_dropout_time, apply_dropout_time
 from ocf_data_sampler.select.select_time_slice import select_time_slice_nwp, select_time_slice
-
-
-def minutes(minutes: list[float]):
-    """Timedelta minutes
-
-    Args:
-        m: minutes
-    """
-    return pd.to_timedelta(minutes, unit="m")
+from ocf_data_sampler.time_functions import minutes
 
 
 def slice_datasets_by_time(

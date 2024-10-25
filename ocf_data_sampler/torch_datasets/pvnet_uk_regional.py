@@ -21,16 +21,10 @@ from ocf_data_sampler.torch_datasets.process_and_combine import process_and_comb
 from ocf_data_sampler.select.space_slice_for_dataset import slice_datasets_by_space
 from ocf_data_sampler.select.time_slice_for_dataset import slice_datasets_by_time
 from ocf_data_sampler.torch_datasets.xarray_compute import compute
+from ocf_data_sampler.time_functions import minutes
 
 xr.set_options(keep_attrs=True)
 
-def minutes(minutes: list[float]):
-    """Timedelta minutes
-
-    Args:
-        m: minutes
-    """
-    return pd.to_timedelta(minutes, unit="m")
 
 
 def find_valid_t0_times(

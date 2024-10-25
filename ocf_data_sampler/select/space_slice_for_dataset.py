@@ -1,3 +1,4 @@
+""" Functions for selecting data around a given location """
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.select_spatial_slice import select_spatial_slice_pixels

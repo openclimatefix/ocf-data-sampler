@@ -21,7 +21,7 @@ from ocf_data_sampler.select.time_slice_for_dataset import slice_datasets_by_tim
 from ocf_data_sampler.select.space_slice_for_dataset import slice_datasets_by_space
 from ocf_data_sampler.torch_datasets.xarray_compute import compute
 from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets
-
+from ocf_data_sampler.time_functions import minutes
 
 
 xr.set_options(keep_attrs=True)
@@ -55,25 +55,25 @@ def find_valid_t0_and_site_ids(
             da = datasets_dict["nwp"][nwp_key]
 
             if nwp_config.dropout_timedeltas_minutes is None:
-                max_dropout = pd.to_timedelta(0, unit="m")
+                max_dropout = minutes(0)
             else:
-                max_dropout = pd.to_timedelta(np.max(np.abs(nwp_config.dropout_timedeltas_minutes)), unit="m")
+                max_dropout = minutes(np.max(np.abs(nwp_config.dropout_timedeltas_minutes)))
 
             if nwp_config.max_staleness_minutes is None:
                 max_staleness = None
             else:
-                max_staleness = pd.to_timedelta(nwp_config.max_staleness_minutes, unit="m")
+                max_staleness = minutes(nwp_config.max_staleness_minutes)
 
             # The last step of the forecast is lost if we have to diff channels
             if len(nwp_config.nwp_accum_channels) > 0:
-                end_buffer = pd.to_timedelta(nwp_config.time_resolution_minutes, unit="m")
+                end_buffer = pd.to_timedelta(nwp_config.time_resolution_minutes)
             else:
-                end_buffer = pd.to_timedelta(0, unit="m")
+                end_buffer =minutes(0)
 
             # This is the max staleness we can use considering the max step of the input data
             max_possible_staleness = (
                     pd.Timedelta(da["step"].max().item())
-                    - pd.to_timedelta(nwp_config.forecast_minutes, unit='m')
+                    - minutes(nwp_config.forecast_minutes)
                     - end_buffer
             )
 
@@ -86,7 +86,7 @@ def find_valid_t0_and_site_ids(
 
             time_periods = find_contiguous_t0_periods_nwp(
                 datetimes=pd.DatetimeIndex(da["init_time_utc"]),
-                history_duration=pd.to_timedelta(nwp_config.history_minutes, unit="m"),
+                history_duration=minutes(nwp_config.history_minutes),
                 max_staleness=max_staleness,
                 max_dropout=max_dropout,
             )
@@ -98,9 +98,9 @@ def find_valid_t0_and_site_ids(
 
         time_periods = find_contiguous_t0_periods(
             pd.DatetimeIndex(datasets_dict["sat"]["time_utc"]),
-            sample_period_duration=pd.to_timedelta(sat_config.time_resolution_minutes, unit="m"),
-            history_duration=pd.to_timedelta(sat_config.history_minutes, unit="m"),
-            forecast_duration=pd.to_timedelta(sat_config.forecast_minutes, unit="m"),
+            sample_period_duration=minutes(sat_config.time_resolution_minutes),
+            history_duration=minutes(sat_config.history_minutes),
+            forecast_duration=minutes(sat_config.forecast_minutes),
         )
 
         contiguous_time_periods['sat'] = time_periods
@@ -136,9 +136,9 @@ def find_valid_t0_and_site_ids(
         # Get the valid time periods for this location
         time_periods = find_contiguous_t0_periods(
             pd.DatetimeIndex(site["time_utc"]),
-            sample_period_duration=pd.to_timedelta(site_config.time_resolution_minutes, unit="m"),
-            history_duration=pd.to_timedelta(site_config.history_minutes, unit="m"),
-            forecast_duration=pd.to_timedelta(site_config.forecast_minutes, unit="m"),
+            sample_period_duration=minutes(site_config.time_resolution_minutes),
+            history_duration=minutes(site_config.history_minutes),
+            forecast_duration=minutes(site_config.forecast_minutes),
         )
         valid_time_periods_per_site = intersection_of_multiple_dataframes_of_periods(
             [valid_time_periods, time_periods]
@@ -147,7 +147,7 @@ def find_valid_t0_and_site_ids(
         # Fill out the contiguous time periods to get the t0 times
         valid_t0_times_per_site = fill_time_periods(
             valid_time_periods_per_site,
-            freq=pd.to_timedelta(site_config.time_resolution_minutes,unit='m')
+            freq=minutes(site_config.time_resolution_minutes)
         )
 
         valid_t0_per_site = pd.DataFrame(index=valid_t0_times_per_site)

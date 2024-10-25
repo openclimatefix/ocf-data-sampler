@@ -15,15 +15,7 @@ from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 from ocf_data_sampler.select.location import Location
-
-
-def minutes(minutes: list[float]):
-    """Timedelta minutes
-
-    Args:
-        m: minutes
-    """
-    return pd.to_timedelta(minutes, unit="m")
+from ocf_data_sampler.time_functions import minutes
 
 
 def process_and_combine_datasets(
