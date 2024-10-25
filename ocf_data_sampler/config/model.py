@@ -114,11 +114,6 @@ class Sites(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
         description="The CSV files describing wind system.",
     )
 
-    # site_ids: List[int] = Field(
-    #     None,
-    #     description="List of the ML IDs of the Wind systems you'd like to filter to.",
-    # )
-
     @field_validator("forecast_minutes")
     def forecast_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
         """Check forecast length requested will give stable number of timesteps"""

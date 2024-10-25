@@ -4,7 +4,7 @@ from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.load.gsp import open_gsp
 from ocf_data_sampler.load.nwp import open_nwp
 from ocf_data_sampler.load.satellite import open_sat_data
-from ocf_data_sampler.load.sites import open_sites
+from ocf_data_sampler.load.site import open_site
 
 
 def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataArray]]:
@@ -48,7 +48,7 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
         datasets_dict["sat"] = da_sat
 
     if in_config.site:
-        da_sites = open_sites(in_config.site)
+        da_sites = open_site(in_config.site)
         datasets_dict["site"] = da_sites
 
     return datasets_dict

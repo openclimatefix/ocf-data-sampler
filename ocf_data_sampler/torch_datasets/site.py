@@ -27,7 +27,7 @@ from ocf_data_sampler.torch_datasets.process_and_combine import process_and_comb
 xr.set_options(keep_attrs=True)
 
 
-def find_valid_t0_and_system_ids(
+def find_valid_t0_and_site_ids(
         datasets_dict: dict,
         config: Configuration,
 ) -> pd.DataFrame:
@@ -123,11 +123,11 @@ def find_valid_t0_and_system_ids(
     # 4. Now lets loop over each location in system id and find the valid periods
     # Should we have a different option if there are not nans
     sites = datasets_dict["site"]
-    system_ids = sites.system_id.values
+    site_ids = sites.site_id.values
     site_config = config.input_data.site
-    valid_t0_and_system_ids = []
-    for system_id in system_ids:
-        site = sites.sel(system_id=system_id)
+    valid_t0_and_site_ids = []
+    for site_id in site_ids:
+        site = sites.sel(site_id=site_id)
 
         # drop any nan values
         # not sure this is right?
@@ -151,26 +151,24 @@ def find_valid_t0_and_system_ids(
         )
 
         valid_t0_per_site = pd.DataFrame(index=valid_t0_times_per_site)
-        valid_t0_per_site['system_id'] = system_id
-        valid_t0_and_system_ids.append(valid_t0_per_site)
+        valid_t0_per_site['site_id'] = site_id
+        valid_t0_and_site_ids.append(valid_t0_per_site)
 
-    valid_t0_and_system_ids = pd.concat(valid_t0_and_system_ids)
-    valid_t0_and_system_ids.index.name = 't0'
-    valid_t0_and_system_ids.reset_index(inplace=True)
+    valid_t0_and_site_ids = pd.concat(valid_t0_and_site_ids)
+    valid_t0_and_site_ids.index.name = 't0'
+    valid_t0_and_site_ids.reset_index(inplace=True)
 
-    print(valid_t0_and_system_ids)
-
-    return valid_t0_and_system_ids
+    return valid_t0_and_site_ids
 
 
 def get_locations(site_xr:xr.Dataset):
     """Get list of locations of all sites"""
 
     locations = []
-    for system_id in site_xr.system_id.values:
-        site = site_xr.sel(system_id=system_id)
+    for site_id in site_xr.site_id.values:
+        site = site_xr.sel(site_id=site_id)
         location = Location(
-            id=system_id,
+            id=site_id,
             x=site.longitude.values,
             y=site.latitude.values,
             coordinate_system="lon_lat"
@@ -205,19 +203,19 @@ class SitesDataset(Dataset):
         self.locations = get_locations(datasets_dict['site'])
 
         # Get t0 times where all input data is available
-        valid_t0_and_system_ids = find_valid_t0_and_system_ids(datasets_dict, config)
+        valid_t0_and_site_ids = find_valid_t0_and_site_ids(datasets_dict, config)
 
         # Filter t0 times to given range
 
         # Assign coords and indices to self
-        self.valid_t0_and_system_ids = valid_t0_and_system_ids
+        self.valid_t0_and_site_ids = valid_t0_and_site_ids
 
         # Assign config and input data to self
         self.datasets_dict = datasets_dict
         self.config = config
 
     def __len__(self):
-        return len(self.valid_t0_and_system_ids)
+        return len(self.valid_t0_and_site_ids)
 
     def _get_sample(self, t0: pd.Timestamp, location: Location) -> dict:
         """Generate the PVNet sample for given coordinates
@@ -234,15 +232,15 @@ class SitesDataset(Dataset):
 
         return sample
 
-    def get_location_from_system_id(self, system_id):
+    def get_location_from_site_id(self, site_id):
         """Get location from system id"""
 
-        locations = [loc for loc in self.locations if loc.id == system_id]
+        locations = [loc for loc in self.locations if loc.id == site_id]
         if len(locations) == 0:
-            raise ValueError(f"Location not found for system_id {system_id}")
+            raise ValueError(f"Location not found for site_id {site_id}")
 
         if len(locations) > 1:
-            logging.warning(f"Multiple locations found for system_id {system_id}, but will take the first")
+            logging.warning(f"Multiple locations found for site_id {site_id}, but will take the first")
 
         return locations[0]
 
@@ -250,11 +248,10 @@ class SitesDataset(Dataset):
 
         # Get the coordinates of the sample
         # TOD change to system ids
-        t0_and_system_id = self.valid_t0_and_system_ids.iloc[idx]
-        t0, system_id = t0_and_system_id
+        t0, site_id = self.valid_t0_and_site_ids.iloc[idx]
 
-        # get location from system_id
-        location = self.get_location_from_system_id(system_id)
+        # get location from site id
+        location = self.get_location_from_site_id(site_id)
 
         # Generate the sample
         return self._get_sample(t0, location)

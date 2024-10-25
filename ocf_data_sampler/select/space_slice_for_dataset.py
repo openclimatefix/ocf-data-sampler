@@ -47,6 +47,6 @@ def slice_datasets_by_space(
         sliced_datasets_dict["gsp"] = datasets_dict["gsp"].sel(gsp_id=location.id)
 
     if "site" in datasets_dict:
-        sliced_datasets_dict["site"] = datasets_dict["site"].sel(system_id=location.id)
+        sliced_datasets_dict["site"] = datasets_dict["site"].sel(site_id=location.id)
 
     return sliced_datasets_dict

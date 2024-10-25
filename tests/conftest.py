@@ -206,20 +206,20 @@ def data_sites() -> Sites:
     Returns: filename for netcdf file, and csv metadata
     """
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    system_ids = list(range(0,10))
+    site_ids = list(range(0,10))
     capacity_kwp_1d = np.array([0.1,1.1,4,6,8,9,15,2,3,4])
     # these are quite specific for the fake satellite data
     longitude = np.arange(-4, -3, 0.1)
     latitude = np.arange(51, 52, 0.1)
 
-    generation = np.random.uniform(0, 200, size=(len(times), len(system_ids))).astype(np.float32)
+    generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(np.float32)
 
     # repeat capacity in new dims len(times) times
     capacity_kwp = (np.tile(capacity_kwp_1d, len(times))).reshape(len(times),10)
 
     coords = (
         ("time_utc", times),
-        ("system_id", system_ids),
+        ("site_id", site_ids),
     )
 
 
@@ -235,7 +235,7 @@ def data_sites() -> Sites:
 
     # metadata
     meta_df = pd.DataFrame(columns=[], data = [])
-    meta_df['system_id'] = system_ids
+    meta_df['site_id'] = site_ids
     meta_df['capacity_kwp'] = capacity_kwp_1d
     meta_df['longitude'] = longitude
     meta_df['latitude'] = latitude
