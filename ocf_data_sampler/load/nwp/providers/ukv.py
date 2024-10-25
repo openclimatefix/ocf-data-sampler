@@ -5,7 +5,11 @@ import xarray as xr
 from pathlib import Path
 
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
-from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
+from ocf_data_sampler.load.utils import (
+    check_time_unique_increasing,
+    make_spatial_coords_increasing,
+    get_xr_data_array_from_xr_dataset
+)
 
 
 def open_ukv(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
@@ -40,6 +44,6 @@ def open_ukv(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
     ds = ds.transpose("init_time_utc", "step", "channel", "x_osgb", "y_osgb")
 
     # TODO: should we control the dtype of the DataArray?
-    return ds.UKV
+    return get_xr_data_array_from_xr_dataset(ds)
 
 

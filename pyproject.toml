@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ocf_data_sampler"
+version = "0.0.23"
+license = { file = "LICENSE" }
+readme = "README.md"
+description = "Sample from weather data for renewable energy prediction"
+authors = [
+    {name = "James Fulton, Peter Dudfield, and the Open Climate Fix team"},
+    {email = "info@openclimatefix.org"}
+]
+
+maintainers = [
+    {name="Open Climate Fix Ltd"}
+]
+
+dependencies = [ # Migration from requirements.txt
+    "torch",
+    "numpy",
+    "pandas",
+    "xarray",
+    "zarr",
+    "dask",
+    "ocf_blosc2",
+    "pvlib",
+    "pydantic",
+    "pyproj",
+    "pathy",
+    "pyaml_env",
+    "pyresample"
+]
+
+keywords = [ # I've added some keywords, but please provide feedback if you'd like them changed!
+    "weather data",
+    "renewable energy prediction",
+    "sample weather data"   
+]
+
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.8", # Sourced from .readthedocs.yml (please advise if this is wrong!)
+    "Operating System :: POSIX :: Linux", # Sourced from .github/workflows/workflows.yaml
+]
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+docs = [
+    "mkdocs>=1.2",
+    "mkdocs-material>=8.0"
+]
+
+[project.urls]
+homepage = "https://github.com/openclimatefix"
+repository = "https://github.com/openclimatefix/ocf-data-sampler"
+
+[tool.setuptools]
+packages = { find = {} } # Replaces the find_packages() in the setup.py
+include-package-data = true
+
+[tool.ruff]
+line-length = 100
+exclude = ["tests","data","scripts"]

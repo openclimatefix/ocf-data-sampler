@@ -1,23 +1,25 @@
-""" Save functions for the configuration model"""
+"""Save functions for the configuration model.
+
+Example:
+
+    from ocf_data_sampler.config import save_yaml_configuration
+    configuration = save_yaml_configuration(config, filename)
+"""
 
 import json
-import logging
-from typing import Optional, Union
 
 import fsspec
 import yaml
 from pathy import Pathy
 
-from ocf_data_sampler.config.model import Configuration
-
-logger = logging.getLogger(__name__)
+from ocf_data_sampler.config import Configuration
 
 
 def save_yaml_configuration(
-    configuration: Configuration, filename: Optional[Union[str, Pathy]] = None
+    configuration: Configuration, filename: str | Pathy
 ):
     """
-    Save a local yaml file which has the a configuration in it.
+    Save a local yaml file which has the configuration in it.
 
     If `filename` is None then saves to configuration.output_data.filepath / configuration.yaml.
 
@@ -25,10 +27,9 @@ def save_yaml_configuration(
     """
     # make a dictionary from the configuration,
     # Note that we make the object json'able first, so that it can be saved to a yaml file
-    d = json.loads(configuration.json())
+    d = json.loads(configuration.model_dump_json())
     if filename is None:
         filename = Pathy(configuration.output_data.filepath) / "configuration.yaml"
-    logger.info(f"Saving configuration to {filename}")
 
     # save to a yaml file
     with fsspec.open(filename, "w") as yaml_file:

@@ -15,7 +15,7 @@ def test_config_filename():
 
 @pytest.fixture(scope="session")
 def config_filename():
-    return f"{os.path.dirname(os.path.abspath(__file__))}/test_data/pvnet_test_config.yaml"
+    return f"{os.path.dirname(os.path.abspath(__file__))}/test_data/configs/pvnet_test_config.yaml"
 
 
 @pytest.fixture(scope="session")

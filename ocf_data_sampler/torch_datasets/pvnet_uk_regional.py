@@ -27,19 +27,15 @@ from ocf_data_sampler.numpy_batch import (
 )
 
 
-from ocf_data_sampler.config.model import Configuration
-from ocf_data_sampler.config.load import load_yaml_configuration
-from ocf_datapipes.batch import BatchKey, NumpyBatch
+from ocf_data_sampler.config import Configuration, load_yaml_configuration
+from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
+from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 
-from ocf_datapipes.utils.location import Location
-from ocf_datapipes.utils.geospatial import osgb_to_lon_lat
+from ocf_data_sampler.select.location import Location
+from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 
-from ocf_datapipes.utils.consts import (
-    NWP_MEANS,
-    NWP_STDS,
-)
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
 
-from ocf_datapipes.training.common import concat_xr_time_utc, normalize_gsp
 
 
 
@@ -68,8 +64,8 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     datasets_dict = {}
 
     # Load GSP data unless the path is None
-    if in_config.gsp.zarr_path:
-        da_gsp = open_gsp(zarr_path=in_config.gsp.zarr_path)
+    if in_config.gsp.gsp_zarr_path:
+        da_gsp = open_gsp(zarr_path=in_config.gsp.gsp_zarr_path).compute()
 
         # Remove national GSP
         datasets_dict["gsp"] = da_gsp.sel(gsp_id=slice(1, None))
@@ -80,9 +76,9 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
         datasets_dict["nwp"] = {}
         for nwp_source, nwp_config in in_config.nwp.items():
 
-            da_nwp = open_nwp(nwp_config.zarr_path, provider=nwp_config.provider)
+            da_nwp = open_nwp(nwp_config.nwp_zarr_path, provider=nwp_config.nwp_provider)
 
-            da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
+            da_nwp = da_nwp.sel(channel=list(nwp_config.nwp_channels))
 
             datasets_dict["nwp"][nwp_source] = da_nwp
 
@@ -90,9 +86,9 @@ def get_dataset_dict(config: Configuration) -> dict[xr.DataArray, dict[xr.DataAr
     if in_config.satellite:
         sat_config = config.input_data.satellite
 
-        da_sat = open_sat_data(sat_config.zarr_path)
+        da_sat = open_sat_data(sat_config.satellite_zarr_path)
 
-        da_sat = da_sat.sel(channel=list(sat_config.channels))
+        da_sat = da_sat.sel(channel=list(sat_config.satellite_channels))
 
         datasets_dict["sat"] = da_sat
 
@@ -131,7 +127,7 @@ def find_valid_t0_times(
                 max_staleness = minutes(nwp_config.max_staleness_minutes)
 
             # The last step of the forecast is lost if we have to diff channels
-            if len(nwp_config.accum_channels) > 0:
+            if len(nwp_config.nwp_accum_channels) > 0:
                 end_buffer = minutes(nwp_config.time_resolution_minutes)
             else:
                 end_buffer = minutes(0)
@@ -233,8 +229,8 @@ def slice_datasets_by_space(
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
                 datasets_dict["nwp"][nwp_key],
                 location,
-                height_pixels=nwp_config.image_size_pixels_height,
-                width_pixels=nwp_config.image_size_pixels_width,
+                height_pixels=nwp_config.nwp_image_size_pixels_height,
+                width_pixels=nwp_config.nwp_image_size_pixels_width,
             )
 
     if "sat" in datasets_dict:
@@ -243,8 +239,8 @@ def slice_datasets_by_space(
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels(
             datasets_dict["sat"],
             location,
-            height_pixels=sat_config.image_size_pixels_height,
-            width_pixels=sat_config.image_size_pixels_width,
+            height_pixels=sat_config.satellite_image_size_pixels_height,
+            width_pixels=sat_config.satellite_image_size_pixels_width,
         )
 
     if "gsp" in datasets_dict:
@@ -284,7 +280,7 @@ def slice_datasets_by_time(
                 forecast_duration=minutes(nwp_config.forecast_minutes),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
                 dropout_frac=nwp_config.dropout_fraction,
-                accum_channels=nwp_config.accum_channels,
+                accum_channels=nwp_config.nwp_accum_channels,
             )
 
     if "sat" in datasets_dict:
@@ -344,6 +340,24 @@ def slice_datasets_by_time(
     return sliced_datasets_dict
 
 
+def fill_nans_in_arrays(batch: dict) -> dict:
+    """Fills all NaN values in each np.ndarray in the batch dictionary with zeros.
+
+    Operation is performed in-place on the batch.
+    """
+    for k, v in batch.items():
+        if isinstance(v, np.ndarray) and np.issubdtype(v.dtype, np.number):
+            if np.isnan(v).any():
+                batch[k] = np.nan_to_num(v, copy=False, nan=0.0)
+
+        # Recursion is included to reach NWP arrays in subdict
+        elif isinstance(v, dict):
+            fill_nans_in_arrays(v)
+
+    return batch
+
+
+
 def merge_dicts(list_of_dicts: list[dict]) -> dict:
     """Merge a list of dictionaries into a single dictionary"""
     # TODO: This doesn't account for duplicate keys, which will be overwritten
@@ -358,7 +372,7 @@ def process_and_combine_datasets(
         config: Configuration,
         t0: pd.Timedelta,
         location: Location,
-    ) -> NumpyBatch:
+    ) -> dict:
     """Normalize and convert data to numpy arrays"""    
 
     numpy_modalities = []
@@ -369,13 +383,13 @@ def process_and_combine_datasets(
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
             # Standardise
-            provider = config.input_data.nwp[nwp_key].provider
+            provider = config.input_data.nwp[nwp_key].nwp_provider
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
             # Convert to NumpyBatch
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
         
         # Combine the NWPs into NumpyBatch
-        numpy_modalities.append({BatchKey.nwp: nwp_numpy_modalities})
+        numpy_modalities.append({NWPBatchKey.nwp: nwp_numpy_modalities})
 
     if "sat" in dataset_dict:
         # Satellite is already in the range [0-1] so no need to standardise
@@ -385,9 +399,10 @@ def process_and_combine_datasets(
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
 
     gsp_config = config.input_data.gsp
+    
     if "gsp" in dataset_dict:
-        da_gsp = concat_xr_time_utc([dataset_dict["gsp"], dataset_dict["gsp_future"]])
-        da_gsp = normalize_gsp(da_gsp)
+        da_gsp = xr.concat([dataset_dict["gsp"], dataset_dict["gsp_future"]], dim="time_utc")
+        da_gsp = da_gsp / da_gsp.effective_capacity_mwp
 
         numpy_modalities.append(
             convert_gsp_to_numpy_batch(
@@ -406,9 +421,18 @@ def process_and_combine_datasets(
     lon, lat = osgb_to_lon_lat(location.x, location.y)
 
     numpy_modalities.append(make_sun_position_numpy_batch(datetimes, lon, lat))
+    
+    # Add coordinate data
+    # TODO: Do we need all of these?
+    numpy_modalities.append({
+        GSPBatchKey.gsp_id: location.id,
+        GSPBatchKey.gsp_x_osgb: location.x,
+        GSPBatchKey.gsp_y_osgb: location.y,
+    })
 
-    # Combine all the modalities
+    # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
+    combined_sample = fill_nans_in_arrays(combined_sample)
 
     return combined_sample
 
@@ -423,24 +447,12 @@ def compute(xarray_dict: dict) -> dict:
     return xarray_dict
 
 
-def get_locations(ga_gsp: xr.DataArray) -> list[Location]:
-    """Get list of locations of GSP"""
-    locations = []
-    for gsp_id in ga_gsp.gsp_id.values:
-        da = ga_gsp.sel(gsp_id=gsp_id)
-        locations.append(
-            Location(
-                coordinate_system = "osgb",
-                x=da.x_osgb.item(),
-                y=da.y_osgb.item(),
-                id=gsp_id,
-            )
-        )
-    return locations
-
-
-def get_gsp_locations() -> list[Location]:
+def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
     """Get list of locations of all GSPs"""
+    
+    if gsp_ids is None:
+        gsp_ids = [i for i in range(1, 318)]
+    
     locations = []
 
     # Load UK GSP locations
@@ -449,7 +461,7 @@ def get_gsp_locations() -> list[Location]:
         index_col="gsp_id",
     )
 
-    for gsp_id in np.arange(1, 318):
+    for gsp_id in gsp_ids:
         locations.append(
             Location(
                 coordinate_system = "osgb",
@@ -468,6 +480,7 @@ class PVNetUKRegionalDataset(Dataset):
         config_filename: str, 
         start_time: str | None = None,
         end_time: str| None = None,
+        gsp_ids: list[int] | None = None,
     ):
         """A torch Dataset for creating PVNet UK GSP samples
 
@@ -475,6 +488,7 @@ class PVNetUKRegionalDataset(Dataset):
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
+            gsp_ids: List of GSP IDs to create samples for. Defaults to all
         """
         
         config = load_yaml_configuration(config_filename)
@@ -492,7 +506,7 @@ class PVNetUKRegionalDataset(Dataset):
             valid_t0_times = valid_t0_times[valid_t0_times<=pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
-        locations = get_gsp_locations()
+        locations = get_gsp_locations(gsp_ids)
 
         # Construct a lookup for locations - useful for users to construct sample by GSP ID
         location_lookup = {loc.id: loc for loc in locations}
@@ -521,7 +535,7 @@ class PVNetUKRegionalDataset(Dataset):
         return len(self.index_pairs)
     
     
-    def _get_sample(self, t0: pd.Timestamp, location: Location) -> NumpyBatch:
+    def _get_sample(self, t0: pd.Timestamp, location: Location) -> dict:
         """Generate the PVNet sample for given coordinates
         
         Args:
@@ -548,7 +562,7 @@ class PVNetUKRegionalDataset(Dataset):
         return self._get_sample(t0, location)
     
 
-    def get_sample(self, t0: pd.Timestamp, gsp_id: int) -> NumpyBatch:
+    def get_sample(self, t0: pd.Timestamp, gsp_id: int) -> dict:
         """Generate a sample for the given coordinates. 
         
         Useful for users to generate samples by GSP ID.
