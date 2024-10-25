@@ -47,3 +47,45 @@ graph TD
     E0 --> F[Sample]
 ```
 
+## Site
+The Site torch dataset gets sample for each site. 
+This works for mulitple sites with different valid time periods of data
+
+```mermaid
+graph TD
+    A1([Load Site])
+    A2([Load NWP])
+    A3([Load Satellite])
+    D0[All Site Locations]
+    A1 --> D1
+    A2 --> D1
+    A3 --> D1
+    A1 --> D0
+    A1 --> D3
+    A2 --> D3
+    A3 --> D3
+    D1[T0 and Site Ids \n for each Site] --> D2
+    D2[T0 and Site Ids Pairs]
+    D3[Data]
+```
+
+### Get a Sample
+
+```mermaid
+graph TD
+    A0([Index])
+    A1([T0 and Site Ids Pairs])
+    A2([All Site Locations])
+    A0 --> B0
+    A1 --> B0
+    A2 --> B0
+    B0[T0 and Location]
+    B1([Data])
+    B0 --> D0
+    B1 --> D0
+    D0[Filter by Location \n Site, Satellite and NWP] --> D1
+    D1[Filter by Time \n Site, Satellite and NWP] --> D2
+    D2[Load into Memory] --> E0
+    E0[Add Site Sun Features]
+    E0 --> F[Sample]
+```

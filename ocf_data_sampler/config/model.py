@@ -102,6 +102,44 @@ class TimeResolutionMixin(Base):
     )
 
 
+class Sites(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
+    """Site configuration model"""
+
+    filename: str = Field(
+        ...,
+        description="The NetCDF files holding the power timeseries.",
+    )
+    metadata_filename: str = Field(
+        ...,
+        description="The CSV files describing wind system.",
+    )
+
+    # site_ids: List[int] = Field(
+    #     None,
+    #     description="List of the ML IDs of the Wind systems you'd like to filter to.",
+    # )
+
+    @field_validator("forecast_minutes")
+    def forecast_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
+        """Check forecast length requested will give stable number of timesteps"""
+        if v % info.data["time_resolution_minutes"] != 0:
+            message = "Forecast duration must be divisible by time resolution"
+            logger.error(message)
+            raise Exception(message)
+        return v
+
+    @field_validator("history_minutes")
+    def history_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
+        """Check history length requested will give stable number of timesteps"""
+        if v % info.data["time_resolution_minutes"] != 0:
+            message = "History duration must be divisible by time resolution"
+            logger.error(message)
+            raise Exception(message)
+        return v
+
+    # TODO validate the netcdf for sites
+    # TODO validate the csv for metadata
+
 class Satellite(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
     """Satellite configuration model"""
 
@@ -240,6 +278,7 @@ class InputData(Base):
     satellite: Optional[Satellite] = None
     nwp: Optional[MultiNWP] = None
     gsp: Optional[GSP] = None
+    site: Optional[Sites] = None
 
 
 class Configuration(Base):

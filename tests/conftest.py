@@ -6,6 +6,8 @@ import pytest
 import xarray as xr
 import tempfile
 
+from ocf_data_sampler.config.model import Sites
+
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
 @pytest.fixture()
@@ -195,6 +197,67 @@ def ds_uk_gsp():
         "installedcapacity_mwp": da_cap, 
         "generation_mw":da_gen
     })
+
+
+@pytest.fixture(scope="session")
+def data_sites() -> Sites:
+    """
+    Make fake data for sites
+    Returns: filename for netcdf file, and csv metadata
+    """
+    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
+    system_ids = list(range(0,10))
+    capacity_kwp_1d = np.array([0.1,1.1,4,6,8,9,15,2,3,4])
+    # these are quite specific for the fake satellite data
+    longitude = np.arange(-4, -3, 0.1)
+    latitude = np.arange(51, 52, 0.1)
+
+    generation = np.random.uniform(0, 200, size=(len(times), len(system_ids))).astype(np.float32)
+
+    # repeat capacity in new dims len(times) times
+    capacity_kwp = (np.tile(capacity_kwp_1d, len(times))).reshape(len(times),10)
+
+    coords = (
+        ("time_utc", times),
+        ("system_id", system_ids),
+    )
+
+
+    da_cap = xr.DataArray(
+        capacity_kwp,
+        coords=coords,
+    )
+
+    da_gen = xr.DataArray(
+        generation,
+        coords=coords,
+    )
+
+    # metadata
+    meta_df = pd.DataFrame(columns=[], data = [])
+    meta_df['system_id'] = system_ids
+    meta_df['capacity_kwp'] = capacity_kwp_1d
+    meta_df['longitude'] = longitude
+    meta_df['latitude'] = latitude
+
+    generation = xr.Dataset({
+        "capacity_kwp": da_cap,
+        "generation_kw":da_gen
+    })
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filename = tmpdir + "/sites.netcdf"
+        filename_csv = tmpdir + "/sites_metadata.csv"
+        generation.to_netcdf(filename)
+        meta_df.to_csv(filename_csv)
+
+        site = Sites(filename=filename,
+                     metadata_filename=filename_csv,
+                     time_resolution_minutes=30,
+                     forecast_minutes=60,
+                     history_minutes=30)
+
+        yield site
 
 
 @pytest.fixture(scope="session")
