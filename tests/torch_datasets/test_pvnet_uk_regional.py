@@ -3,9 +3,7 @@ import tempfile
 
 from ocf_data_sampler.torch_datasets.pvnet_uk_regional import PVNetUKRegionalDataset
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
-from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
-from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
-from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
+from ocf_data_sampler.numpy_batch import NWPBatchKey, GSPBatchKey, SatelliteBatchKey
 
 
 @pytest.fixture()
@@ -39,7 +37,7 @@ def test_pvnet(pvnet_config_filename):
 
     for key in [
         NWPBatchKey.nwp, SatelliteBatchKey.satellite_actual, GSPBatchKey.gsp,
-        GSPBatchKey.gsp_solar_azimuth, GSPBatchKey.gsp_solar_elevation,
+        GSPBatchKey.solar_azimuth, GSPBatchKey.solar_elevation,
     ]:
         assert key in sample
     
@@ -54,8 +52,8 @@ def test_pvnet(pvnet_config_filename):
     # 3 hours of 30 minute data (inclusive)
     assert sample[GSPBatchKey.gsp].shape == (7,)
     # Solar angles have same shape as GSP data
-    assert sample[GSPBatchKey.gsp_solar_azimuth].shape == (7,)
-    assert sample[GSPBatchKey.gsp_solar_elevation].shape == (7,)
+    assert sample[GSPBatchKey.solar_azimuth].shape == (7,)
+    assert sample[GSPBatchKey.solar_elevation].shape == (7,)
 
 def test_pvnet_no_gsp(pvnet_config_filename):
 
