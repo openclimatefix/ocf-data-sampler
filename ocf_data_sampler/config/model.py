@@ -1,23 +1,25 @@
-"""Configuration model for the dataset.
+""""Configuration model for the dataset.
+
 All paths must include the protocol prefix.  For local files,
 it's sufficient to just start with a '/'.  For aws, start with 's3://',
 for gcp start with 'gs://'.
+
 Example:
+
     from ocf_data_sampler.config import Configuration
     config = Configuration(**config_dict)
 """
 
 import logging
-
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from typing_extensions import Self
 
-from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo, model_validator
-from ocf_data_sampler.constants import NWP_PROVIDERS
-
-providers = ["pvoutput.org", "solar_sheffield_passiv"]
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
+from ocf_datapipes.utils.consts import NWP_PROVIDERS
 
 logger = logging.getLogger(__name__)
+
+providers = ["pvoutput.org", "solar_sheffield_passiv"]
 
 
 class Base(BaseModel):
@@ -48,7 +50,12 @@ class DropoutMixin(Base):
         "negative or zero.",
     )
 
-    dropout_fraction: float = Field(0, description="Chance of dropout being applied to each sample")
+    dropout_fraction: float = Field(
+        default=0,
+        description="Chance of dropout being applied to each sample",
+        ge=0,
+        le=1,
+    )
 
     @field_validator("dropout_timedeltas_minutes")
     def dropout_timedeltas_minutes_negative(cls, v: List[int]) -> List[int]:
@@ -56,12 +63,6 @@ class DropoutMixin(Base):
         if v is not None:
             for m in v:
                 assert m <= 0, "Dropout timedeltas must be negative"
-        return v
-
-    @field_validator("dropout_fraction")
-    def dropout_fraction_valid(cls, v: float) -> float:
-        """Validate 'dropout_fraction'"""
-        assert 0 <= v <= 1, "Dropout fraction must be between 0 and 1"
         return v
 
     @model_validator(mode="after")
@@ -81,16 +82,17 @@ class TimeWindowMixin(Base):
 
     time_resolution_minutes: int = Field(
         ...,
+        gt=0,
         description="The temporal resolution of the data in minutes",
     )
 
     forecast_minutes: int = Field(
-        None,
+        ...,
         ge=0,
         description="how many minutes to forecast in the future",
     )
     history_minutes: int = Field(
-        None,
+        ...,
         ge=0,
         description="how many historic minutes to use",
     )
@@ -198,6 +200,12 @@ class MultiNWP(RootModel):
         return self.root.items()
 
 
+class GSP(TimeWindowMixin, DropoutMixin):
+    """GSP configuration model"""
+
+    gsp_zarr_path: str = Field(..., description="The path which holds the GSP zarr")
+
+
 # noinspection PyPep8Naming
 class InputData(Base):
     """
@@ -206,7 +214,7 @@ class InputData(Base):
 
     satellite: Optional[Satellite] = None
     nwp: Optional[MultiNWP] = None
-    gsp: Optional[DataSourceBase] = None
+    gsp: Optional[GSP] = None
 
 
 class Configuration(Base):
