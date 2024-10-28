@@ -24,12 +24,12 @@ from ocf_data_sampler.numpy_batch import (
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
     make_sun_position_numpy_batch,
+    NWPBatchKey,
+    GSPBatchKey,
 )
 
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
-from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
@@ -426,8 +426,8 @@ def process_and_combine_datasets(
     # TODO: Do we need all of these?
     numpy_modalities.append({
         GSPBatchKey.gsp_id: location.id,
-        GSPBatchKey.gsp_x_osgb: location.x,
-        GSPBatchKey.gsp_y_osgb: location.y,
+        GSPBatchKey.x_osgb: location.x,
+        GSPBatchKey.y_osgb: location.y,
     })
 
     # Combine all the modalities and fill NaNs
