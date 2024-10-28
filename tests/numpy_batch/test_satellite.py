@@ -5,9 +5,7 @@ import xarray as xr
 
 import pytest
 
-from ocf_data_sampler.numpy_batch import convert_satellite_to_numpy_batch
-
-from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
+from ocf_data_sampler.numpy_batch import convert_satellite_to_numpy_batch, SatelliteBatchKey
 
 
 @pytest.fixture(scope="module")

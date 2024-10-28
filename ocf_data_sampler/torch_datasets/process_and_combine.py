@@ -67,8 +67,8 @@ def process_and_combine_datasets(
         numpy_modalities.append(
             {
                 GSPBatchKey.gsp_id: location.id,
-                GSPBatchKey.gsp_x_osgb: location.x,
-                GSPBatchKey.gsp_y_osgb: location.y,
+                GSPBatchKey.x_osgb: location.x,
+                GSPBatchKey.y_osgb: location.y,
             }
         )
 
