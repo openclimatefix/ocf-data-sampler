@@ -6,32 +6,6 @@ import fsspec
 
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
 
-def transform_to_channels(nwp : xr.Dataset):
-    """
-    Adds a channel dimension to the NWP data
-    
-    Args:
-        nwp: NWP data without channel dimension
-    
-    Returns:
-        NWP data with channel dimension
-    """
-    
-    channel_data = []
-    channel_names = []
-
-    for var_name in nwp.data_vars:
-        data_array = nwp[var_name]
-        expanded_data = data_array.expand_dims(dim={"channel": [var_name]})
-        
-        channel_data.append(expanded_data)
-        channel_names.append(var_name)
-
-    nwp_channels = xr.concat(channel_data, dim="channel")
-    nwp_channels["channel"] = channel_names
-    
-    return nwp_channels
-
 def remove_isobaric_lelvels_from_coords(nwp: xr.Dataset) -> xr.Dataset:
     """
     Removes the isobaric levels from the coordinates of the NWP data
@@ -68,8 +42,7 @@ def open_icon_eu(zarr_path) -> xr.Dataset:
     assert time.is_monotonic_increasing
     nwp = nwp.isel(step=slice(0, 48))
     nwp = remove_isobaric_lelvels_from_coords(nwp)
-    nwp =  transform_to_channels(nwp)
-    print("loaded icon eu data with shape", nwp.shape)
+    nwp = nwp.to_array().rename({"variable": "channel"})
     return nwp.transpose('init_time_utc', 'step', 'channel', 'latitude', 'longitude')
 
 
