@@ -40,7 +40,8 @@ def open_icon_eu(zarr_path) -> xr.Dataset:
     time = pd.DatetimeIndex(nwp.init_time_utc)
     assert time.is_unique
     assert time.is_monotonic_increasing
-    nwp = nwp.isel(step=slice(0, 48))
+    # 0–78 one hour steps, rest 3 hour steps
+    nwp = nwp.isel(step=slice(0, 78))
     nwp = remove_isobaric_lelvels_from_coords(nwp)
     nwp = nwp.to_array().rename({"variable": "channel"})
     return nwp.transpose('init_time_utc', 'step', 'channel', 'latitude', 'longitude')
