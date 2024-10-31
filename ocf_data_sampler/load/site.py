@@ -1,10 +1,10 @@
 import pandas as pd
 import xarray as xr
 
-from ocf_data_sampler.config.model import Sites
+from ocf_data_sampler.config.model import Site
 
 
-def open_site(sites_config: Sites) -> xr.DataArray:
+def open_site(sites_config: Site) -> xr.DataArray:
 
     # Load site generation xr.Dataset
     data_ds = xr.open_dataset(sites_config.filename)

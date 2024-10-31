@@ -6,7 +6,7 @@ import pytest
 import xarray as xr
 import tempfile
 
-from ocf_data_sampler.config.model import Sites
+from ocf_data_sampler.config.model import Site
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -200,7 +200,7 @@ def ds_uk_gsp():
 
 
 @pytest.fixture(scope="session")
-def data_sites() -> Sites:
+def data_sites() -> Site:
     """
     Make fake data for sites
     Returns: filename for netcdf file, and csv metadata
@@ -222,7 +222,6 @@ def data_sites() -> Sites:
         ("site_id", site_ids),
     )
 
-
     da_cap = xr.DataArray(
         capacity_kwp,
         coords=coords,
@@ -242,7 +241,7 @@ def data_sites() -> Sites:
 
     generation = xr.Dataset({
         "capacity_kwp": da_cap,
-        "generation_kw":da_gen
+        "generation_kw": da_gen,
     })
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -251,11 +250,11 @@ def data_sites() -> Sites:
         generation.to_netcdf(filename)
         meta_df.to_csv(filename_csv)
 
-        site = Sites(filename=filename,
-                     metadata_filename=filename_csv,
-                     time_resolution_minutes=30,
-                     forecast_minutes=60,
-                     history_minutes=30)
+        site = Site(filename=filename,
+                    metadata_filename=filename_csv,
+                    time_resolution_minutes=30,
+                    forecast_minutes=60,
+                    history_minutes=30)
 
         yield site
 

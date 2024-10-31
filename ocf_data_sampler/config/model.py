@@ -102,7 +102,7 @@ class TimeResolutionMixin(Base):
     )
 
 
-class Sites(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
+class Site(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
     """Site configuration model"""
 
     filename: str = Field(
@@ -273,7 +273,7 @@ class InputData(Base):
     satellite: Optional[Satellite] = None
     nwp: Optional[MultiNWP] = None
     gsp: Optional[GSP] = None
-    site: Optional[Sites] = None
+    site: Optional[Site] = None
 
 
 class Configuration(Base):
