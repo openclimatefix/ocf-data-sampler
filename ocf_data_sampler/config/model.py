@@ -111,7 +111,7 @@ class Sites(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
     )
     metadata_filename: str = Field(
         ...,
-        description="The CSV files describing wind system.",
+        description="The CSV files describing power system",
     )
 
     @field_validator("forecast_minutes")
