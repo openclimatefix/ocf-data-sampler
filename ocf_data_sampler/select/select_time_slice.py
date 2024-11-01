@@ -46,7 +46,6 @@ def select_time_slice(
     max_steps_gap: int = 0,
 ):
     """Select a time slice from a Dataset or DataArray."""
-    used_intervals = interval_start is not None and interval_end is not None
     assert max_steps_gap >= 0, "max_steps_gap must be >= 0 "
     
     if fill_selection and max_steps_gap == 0:
