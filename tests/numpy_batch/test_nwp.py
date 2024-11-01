@@ -4,9 +4,7 @@ import xarray as xr
 
 import pytest
 
-from ocf_data_sampler.numpy_batch import convert_nwp_to_numpy_batch
-
-from ocf_datapipes.batch import NWPBatchKey
+from ocf_data_sampler.numpy_batch import convert_nwp_to_numpy_batch, NWPBatchKey
 
 @pytest.fixture(scope="module")
 def da_nwp_like():
@@ -16,7 +14,7 @@ def da_nwp_like():
 
     x = np.arange(-100, 100, 10)
     y = np.arange(-100, 100, 10)
-    steps = pd.timedelta_range("0H", "8H", freq="1H")
+    steps = pd.timedelta_range("0h", "8h", freq="1h")
     target_times = t0 + steps
 
     channels = ["t", "dswrf"]

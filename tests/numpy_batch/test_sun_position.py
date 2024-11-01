@@ -6,7 +6,7 @@ from ocf_data_sampler.numpy_batch.sun_position import (
     calculate_azimuth_and_elevation, make_sun_position_numpy_batch
 )
 
-from ocf_datapipes.batch import NumpyBatch, BatchKey
+from ocf_data_sampler.numpy_batch import GSPBatchKey
 
 
 @pytest.mark.parametrize("lat", [0, 5, 10, 23.5])
@@ -69,13 +69,13 @@ def test_make_sun_position_numpy_batch():
     datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min")
     lon, lat = 0, 51.5
 
-    batch = make_sun_position_numpy_batch(datetimes, lon, lat, key_preffix="gsp")
+    batch = make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix="gsp")
 
-    assert BatchKey.gsp_solar_elevation in batch
-    assert BatchKey.gsp_solar_azimuth in batch
+    assert GSPBatchKey.solar_elevation in batch
+    assert GSPBatchKey.solar_azimuth in batch
 
     # The solar coords are normalised in the function
-    assert (batch[BatchKey.gsp_solar_elevation]>=0).all()
-    assert (batch[BatchKey.gsp_solar_elevation]<=1).all()
-    assert (batch[BatchKey.gsp_solar_azimuth]>=0).all()
-    assert (batch[BatchKey.gsp_solar_azimuth]<=1).all()
+    assert (batch[GSPBatchKey.solar_elevation]>=0).all()
+    assert (batch[GSPBatchKey.solar_elevation]<=1).all()
+    assert (batch[GSPBatchKey.solar_azimuth]>=0).all()
+    assert (batch[GSPBatchKey.solar_azimuth]<=1).all()

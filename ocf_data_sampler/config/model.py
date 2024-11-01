@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 from typing_extensions import Self
 
 from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo, model_validator
-from ocf_datapipes.utils.consts import NWP_PROVIDERS
+from ocf_data_sampler.constants import NWP_PROVIDERS
 
 logger = logging.getLogger(__name__)
 
