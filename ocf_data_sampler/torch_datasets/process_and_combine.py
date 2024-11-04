@@ -58,7 +58,7 @@ def process_and_combine_datasets(
 
         numpy_modalities.append(
             convert_gsp_to_numpy_batch(
-                da_gsp, t0_idx=gsp_config.history_minutes / gsp_config.time_resolution_minutes
+                da_gsp, t0_idx=gsp_config.history_minutes // gsp_config.time_resolution_minutes
             )
         )
 
