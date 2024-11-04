@@ -70,7 +70,6 @@ def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
     return locations
 
 
-
 class PVNetUKRegionalDataset(Dataset):
     def __init__(
         self, 
