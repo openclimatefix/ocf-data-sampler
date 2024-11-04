@@ -2,21 +2,15 @@
 
 import numpy as np
 import pandas as pd
+import pkg_resources
 import xarray as xr
 from torch.utils.data import Dataset
-import pkg_resources
-
-from ocf_data_sampler.select.fill_time_periods import fill_time_periods
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-
-from ocf_data_sampler.select.location import Location
-
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
-from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets, compute
-from ocf_data_sampler.select.spatial_slice_for_dataset import slice_datasets_by_space
-from ocf_data_sampler.select.time_slice_for_dataset import slice_datasets_by_time
+from ocf_data_sampler.select import fill_time_periods, Location, slice_datasets_by_space, slice_datasets_by_time
 from ocf_data_sampler.time_functions import minutes
+from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets, compute
 from ocf_data_sampler.torch_datasets.valid_time_periods import find_valid_time_periods
 
 xr.set_options(keep_attrs=True)

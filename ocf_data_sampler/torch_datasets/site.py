@@ -1,28 +1,22 @@
 """Torch dataset for sites"""
 import logging
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
 
-from ocf_data_sampler.select.find_contiguous_time_periods import (
-    find_contiguous_t0_periods, find_contiguous_t0_periods_nwp,
-    intersection_of_multiple_dataframes_of_periods,
-)
-from ocf_data_sampler.select.fill_time_periods import fill_time_periods
-
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-
-from ocf_data_sampler.select.location import Location
-
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
-from ocf_data_sampler.select.time_slice_for_dataset import slice_datasets_by_time
-from ocf_data_sampler.select.spatial_slice_for_dataset import slice_datasets_by_space
-from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets, compute
+from ocf_data_sampler.select import (
+    Location,
+    fill_time_periods,
+    find_contiguous_t0_periods,
+    intersection_of_multiple_dataframes_of_periods,
+    slice_datasets_by_time, slice_datasets_by_space
+)
 from ocf_data_sampler.time_functions import minutes
+from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets, compute
 from ocf_data_sampler.torch_datasets.valid_time_periods import find_valid_time_periods
-
 
 xr.set_options(keep_attrs=True)
 
