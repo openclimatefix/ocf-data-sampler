@@ -58,3 +58,19 @@ def test_site(site_config_filename):
     # Solar angles have same shape as GSP data
     assert sample[SiteBatchKey.site_solar_azimuth].shape == (4,)
     assert sample[SiteBatchKey.site_solar_elevation].shape == (4,)
+
+
+def test_site_time_filter_start(site_config_filename):
+
+    # Create dataset object
+    dataset = SitesDataset(site_config_filename, start_time="2024-01-01")
+
+    assert len(dataset) == 0
+
+
+def test_site_time_filter_end(site_config_filename):
+
+    # Create dataset object
+    dataset = SitesDataset(site_config_filename, end_time="2000-01-01")
+
+    assert len(dataset) == 0
