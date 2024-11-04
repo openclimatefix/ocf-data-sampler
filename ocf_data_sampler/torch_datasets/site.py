@@ -44,7 +44,7 @@ def find_valid_t0_and_site_ids(
         config: Configuration file
     """
 
-    assert set(datasets_dict.keys()).issubset({"nwp", "sat", "site", "gsp"})
+    assert set(datasets_dict.keys()).issubset({"nwp", "sat", "site"})
 
     contiguous_time_periods: dict[str: pd.DataFrame] = {}  # Used to store contiguous time periods from each data source
 
