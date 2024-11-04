@@ -132,7 +132,7 @@ class DataSourceBaseMixin(TimeWindowMixin, DropoutMixin):
     )
 
 
-class Satellite(DataSourceBase):
+class Satellite(DataSourceBaseMixin):
     """Satellite configuration model"""
 
     channels: list[str] = Field(
@@ -145,7 +145,7 @@ class Satellite(DataSourceBase):
 
 
 # noinspection PyMethodParameters
-class NWP(DataSourceBase):
+class NWP(DataSourceBaseMixin):
     """NWP configuration model"""
 
     channels: list[str] = Field(
