@@ -114,7 +114,7 @@ class TimeWindowMixin(Base):
         return v
 
 
-class DataSourceBaseMixin(TimeWindowMixin, DropoutMixin):
+class DataSourceMixin(TimeWindowMixin, DropoutMixin):
     """Mixin class, to add path and image size"""
     zarr_path: str | tuple[str] | list[str] = Field(
         ...,
@@ -132,7 +132,7 @@ class DataSourceBaseMixin(TimeWindowMixin, DropoutMixin):
     )
 
 
-class Satellite(DataSourceBaseMixin):
+class Satellite(DataSourceMixin):
     """Satellite configuration model"""
 
     channels: list[str] = Field(
@@ -145,7 +145,7 @@ class Satellite(DataSourceBaseMixin):
 
 
 # noinspection PyMethodParameters
-class NWP(DataSourceBaseMixin):
+class NWP(DataSourceMixin):
     """NWP configuration model"""
 
     channels: list[str] = Field(
