@@ -16,7 +16,7 @@ def legacy_format(data_ds, metadata_df):
         metadata_df["capacity_kwp"] = metadata_df["capacity_megawatts"] * 1000
 
     # only site data has the site_id as data variables.
-    # We want to join them all together and create another variable canned site_id
+    # We want to join them all together and create another coordinate called site_id
     if "0" in data_ds:
         gen_df = data_ds.to_dataframe()
         gen_da = xr.DataArray(
