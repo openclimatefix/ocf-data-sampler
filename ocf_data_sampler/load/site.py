@@ -7,12 +7,10 @@ from ocf_data_sampler.config.model import Site
 def open_site(sites_config: Site) -> xr.DataArray:
 
     # Load site generation xr.Dataset
-    data_ds = xr.open_dataset(sites_config.filename)
+    data_ds = xr.open_dataset(sites_config.file_path)
 
     # Load site generation data
-    metadata_df = pd.read_csv(sites_config.metadata_filename)
-
-    metadata_df.set_index("site_id", inplace=True, drop=True)
+    metadata_df = pd.read_csv(sites_config.metadata_file_path, index_col="site_id")
 
     # Add coordinates
     ds = data_ds.assign_coords(

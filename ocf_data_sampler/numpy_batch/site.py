@@ -5,22 +5,20 @@ import xarray as xr
 
 class SiteBatchKey:
 
-    site = "site"
+    generation = "site"
     site_capacity_kwp = "site_capacity_kwp"
     site_time_utc = "site_time_utc"
     site_t0_idx = "site_t0_idx"
     site_solar_azimuth = "site_solar_azimuth"
     site_solar_elevation = "site_solar_elevation"
     site_id = "site_id"
-    site_latitude = "site_latitude"
-    site_longitude = "site_longitude"
 
 
 def convert_site_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> dict:
     """Convert from Xarray to NumpyBatch"""
 
     example = {
-        SiteBatchKey.site: da.values,
+        SiteBatchKey.generation: da.values,
         SiteBatchKey.site_capacity_kwp: da.isel(time_utc=0)["capacity_kwp"].values,
         SiteBatchKey.site_time_utc: da["time_utc"].values.astype(float),
     }

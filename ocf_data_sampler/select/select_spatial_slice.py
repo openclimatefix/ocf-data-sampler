@@ -8,7 +8,7 @@ import xarray as xr
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.geospatial import (
     lon_lat_to_osgb,
-    lat_lon_to_geostationary_area_coords,
+    lon_lat_to_geostationary_area_coords,
     osgb_to_geostationary_area_coords,
     osgb_to_lon_lat,
     spatial_coord_type,
@@ -120,7 +120,7 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
     if center.coordinate_system == 'osgb':
         x, y = osgb_to_geostationary_area_coords(x=center.x, y=center.y, xr_data=da)
     elif center.coordinate_system == 'lon_lat':
-        x, y = lat_lon_to_geostationary_area_coords(longitude=center.x, latitude=center.y, xr_data=da)
+        x, y = lon_lat_to_geostationary_area_coords(longitude=center.x, latitude=center.y, xr_data=da)
     else:
         x,y = center.x, center.y
     center_geostationary = Location(x=x, y=y, coordinate_system="geostationary")

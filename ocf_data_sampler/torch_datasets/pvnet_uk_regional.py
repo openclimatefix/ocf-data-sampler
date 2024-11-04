@@ -17,10 +17,9 @@ from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.select.location import Location
 
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
-from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets
-from ocf_data_sampler.select.space_slice_for_dataset import slice_datasets_by_space
+from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets, compute
+from ocf_data_sampler.select.spatial_slice_for_dataset import slice_datasets_by_space
 from ocf_data_sampler.select.time_slice_for_dataset import slice_datasets_by_time
-from ocf_data_sampler.torch_datasets.xarray_compute import compute
 from ocf_data_sampler.time_functions import minutes
 
 xr.set_options(keep_attrs=True)

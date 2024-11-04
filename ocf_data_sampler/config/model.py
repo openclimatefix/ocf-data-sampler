@@ -105,11 +105,11 @@ class TimeResolutionMixin(Base):
 class Site(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
     """Site configuration model"""
 
-    filename: str = Field(
+    file_path: str = Field(
         ...,
         description="The NetCDF files holding the power timeseries.",
     )
-    metadata_filename: str = Field(
+    metadata_file_path: str = Field(
         ...,
         description="The CSV files describing power system",
     )

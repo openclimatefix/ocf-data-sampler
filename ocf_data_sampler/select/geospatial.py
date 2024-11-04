@@ -55,7 +55,7 @@ def lon_lat_to_osgb(
     return _lon_lat_to_osgb(xx=x, yy=y)
 
 
-def lat_lon_to_geostationary_area_coords(
+def lon_lat_to_geostationary_area_coords(
     longitude: Union[Number, np.ndarray],
     latitude: Union[Number, np.ndarray],
     xr_data: xr.DataArray,

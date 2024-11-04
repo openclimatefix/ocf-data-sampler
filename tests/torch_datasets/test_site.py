@@ -39,7 +39,7 @@ def test_site(site_config_filename):
     for key in [
         NWPBatchKey.nwp,
         SatelliteBatchKey.satellite_actual,
-        SiteBatchKey.site,
+        SiteBatchKey.generation,
         SiteBatchKey.site_solar_azimuth,
         SiteBatchKey.site_solar_elevation,
     ]:
@@ -54,7 +54,7 @@ def test_site(site_config_filename):
     # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
     assert sample[NWPBatchKey.nwp]["ukv"][NWPBatchKey.nwp].shape == (4, 1, 2, 2)
     # 3 hours of 30 minute data (inclusive)
-    assert sample[SiteBatchKey.site].shape == (4,)
+    assert sample[SiteBatchKey.generation].shape == (4,)
     # Solar angles have same shape as GSP data
     assert sample[SiteBatchKey.site_solar_azimuth].shape == (4,)
     assert sample[SiteBatchKey.site_solar_elevation].shape == (4,)

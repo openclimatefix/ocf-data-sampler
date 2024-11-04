@@ -250,8 +250,8 @@ def data_sites() -> Site:
         generation.to_netcdf(filename)
         meta_df.to_csv(filename_csv)
 
-        site = Site(filename=filename,
-                    metadata_filename=filename_csv,
+        site = Site(file_path=filename,
+                    metadata_file_path=filename_csv,
                     time_resolution_minutes=30,
                     forecast_minutes=60,
                     history_minutes=30)

@@ -12,7 +12,7 @@ def slice_datasets_by_time(
     t0: pd.Timestamp,
     config: Configuration,
 ) -> dict:
-    """Slice a dictionaries of input data sources around a given t0 time
+    """Slice the dictionary of input data sources around a given t0 time
 
     Args:
         datasets_dict: Dictionary of the input data sources

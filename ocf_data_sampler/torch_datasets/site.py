@@ -18,9 +18,8 @@ from ocf_data_sampler.select.location import Location
 
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.select.time_slice_for_dataset import slice_datasets_by_time
-from ocf_data_sampler.select.space_slice_for_dataset import slice_datasets_by_space
-from ocf_data_sampler.torch_datasets.xarray_compute import compute
-from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets
+from ocf_data_sampler.select.spatial_slice_for_dataset import slice_datasets_by_space
+from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets, compute
 from ocf_data_sampler.time_functions import minutes
 
 
@@ -184,15 +183,13 @@ class SitesDataset(Dataset):
             config_filename: str,
             start_time: str | None = None,
             end_time: str | None = None,
-            gsp_ids: list[int] | None = None,
     ):
-        """A torch Dataset for creating PVNet UK GSP samples
+        """A torch Dataset for creating PVNet Site samples
 
         Args:
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
-            gsp_ids: List of GSP IDs to create samples for. Defaults to all
         """
 
         config = load_yaml_configuration(config_filename)
@@ -204,6 +201,15 @@ class SitesDataset(Dataset):
 
         # Get t0 times where all input data is available
         valid_t0_and_site_ids = find_valid_t0_and_site_ids(datasets_dict, config)
+
+        # Filter t0 times to given range
+        if start_time is not None:
+            valid_t0_and_site_ids \
+                = valid_t0_and_site_ids[valid_t0_and_site_ids['t0'] >= pd.Timestamp(start_time)]
+
+        if end_time is not None:
+            valid_t0_and_site_ids \
+                = valid_t0_and_site_ids[valid_t0_and_site_ids['t0'] <= pd.Timestamp(end_time)]
 
         # Filter t0 times to given range
 
@@ -247,25 +253,10 @@ class SitesDataset(Dataset):
     def __getitem__(self, idx):
 
         # Get the coordinates of the sample
-        # TOD change to system ids
         t0, site_id = self.valid_t0_and_site_ids.iloc[idx]
 
         # get location from site id
         location = self.get_location_from_site_id(site_id)
 
         # Generate the sample
-        return self._get_sample(t0, location)
-
-    def get_sample(self, t0: pd.Timestamp, location: Location) -> dict:
-        """Generate a sample for the given coordinates.
-
-        Useful for users to generate samples by t0 and location
-
-        Args:
-            t0: init-time for sample
-            location: location object
-        """
-        # Check the user has asked for a sample which we have the data for
-        # TODO
-
         return self._get_sample(t0, location)
