@@ -1,4 +1,4 @@
-""" Helper functions for refactoring sitethe site data """
+""" Helper functions for refactoring legacy site data """
 
 
 def legacy_format(data_ds, metadata_df):
