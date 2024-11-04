@@ -114,7 +114,7 @@ class TimeWindowMixin(Base):
         return v
 
 
-class DataSourceBase(TimeWindowMixin, DropoutMixin):
+class DataSourceBaseMixin(TimeWindowMixin, DropoutMixin):
     """Mixin class, to add path and image size"""
     zarr_path: str | tuple[str] | list[str] = Field(
         ...,
