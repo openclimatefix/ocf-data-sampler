@@ -9,7 +9,7 @@ def slice_datasets_by_space(
     location: Location,
     config: Configuration,
 ) -> dict:
-    """Slice a dictionaries of input data sources around a given location
+    """Slice the dictionary of input data sources around a given location
 
     Args:
         datasets_dict: Dictionary of the input data sources
