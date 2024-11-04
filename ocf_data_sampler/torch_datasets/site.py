@@ -181,3 +181,17 @@ class SitesDataset(Dataset):
 
         # Generate the sample
         return self._get_sample(t0, location)
+
+    def get_sample(self, t0: pd.Timestamp, site_id: int) -> dict:
+        """Generate a sample for a given site id and t0.
+
+        Useful for users to generate samples by t0 and site id
+
+        Args:
+            t0: init-time for sample
+            site_id: location object
+        """
+
+        location = self.get_location_from_site_id(site_id)
+
+        return self._get_sample(t0, location)

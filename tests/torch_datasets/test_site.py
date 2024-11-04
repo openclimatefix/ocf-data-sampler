@@ -1,5 +1,5 @@
+import pandas as pd
 import pytest
-import tempfile
 
 from ocf_data_sampler.torch_datasets.site import SitesDataset
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
@@ -74,3 +74,12 @@ def test_site_time_filter_end(site_config_filename):
     dataset = SitesDataset(site_config_filename, end_time="2000-01-01")
 
     assert len(dataset) == 0
+
+
+def test_site_get_sample(site_config_filename):
+
+    # Create dataset object
+    dataset = SitesDataset(site_config_filename)
+
+    assert len(dataset) == 410
+    sample = dataset.get_sample(t0=pd.Timestamp("2023-01-01 12:00"), site_id=1)
