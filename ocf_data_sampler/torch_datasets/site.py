@@ -66,7 +66,7 @@ def find_valid_t0_and_site_ids(
 
             # The last step of the forecast is lost if we have to diff channels
             if len(nwp_config.nwp_accum_channels) > 0:
-                end_buffer = pd.to_timedelta(nwp_config.time_resolution_minutes)
+                end_buffer = minutes(nwp_config.time_resolution_minutes)
             else:
                 end_buffer =minutes(0)
 
