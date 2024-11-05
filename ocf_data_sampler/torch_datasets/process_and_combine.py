@@ -35,7 +35,7 @@ def process_and_combine_datasets(
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
             # Standardise
-            provider = config.input_data.nwp[nwp_key].nwp_provider
+            provider = config.input_data.nwp[nwp_key].provider
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
             # Convert to NumpyBatch
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)

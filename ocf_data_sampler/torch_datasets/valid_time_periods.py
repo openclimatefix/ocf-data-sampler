@@ -38,7 +38,7 @@ def find_valid_time_periods(
                 max_staleness = minutes(nwp_config.max_staleness_minutes)
 
             # The last step of the forecast is lost if we have to diff channels
-            if len(nwp_config.nwp_accum_channels) > 0:
+            if len(nwp_config.accum_channels) > 0:
                 end_buffer = minutes(nwp_config.time_resolution_minutes)
             else:
                 end_buffer = minutes(0)

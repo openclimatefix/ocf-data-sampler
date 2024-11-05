@@ -38,7 +38,7 @@ def slice_datasets_by_time(
                 forecast_duration=minutes(nwp_config.forecast_minutes),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
                 dropout_frac=nwp_config.dropout_fraction,
-                accum_channels=nwp_config.nwp_accum_channels,
+                accum_channels=nwp_config.accum_channels,
             )
 
     if "sat" in datasets_dict:

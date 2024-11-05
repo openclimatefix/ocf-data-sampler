@@ -87,45 +87,6 @@ class TimeWindowMixin(Base):
     )
 
     forecast_minutes: int = Field(
-
-class Site(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
-    """Site configuration model"""
-
-    file_path: str = Field(
-        ...,
-        description="The NetCDF files holding the power timeseries.",
-    )
-    metadata_file_path: str = Field(
-        ...,
-        description="The CSV files describing power system",
-    )
-
-    @field_validator("forecast_minutes")
-    def forecast_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
-        """Check forecast length requested will give stable number of timesteps"""
-        if v % info.data["time_resolution_minutes"] != 0:
-            message = "Forecast duration must be divisible by time resolution"
-            logger.error(message)
-            raise Exception(message)
-        return v
-
-    @field_validator("history_minutes")
-    def history_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
-        """Check history length requested will give stable number of timesteps"""
-        if v % info.data["time_resolution_minutes"] != 0:
-            message = "History duration must be divisible by time resolution"
-            logger.error(message)
-            raise Exception(message)
-        return v
-
-    # TODO validate the netcdf for sites
-    # TODO validate the csv for metadata
-
-class Satellite(DataSourceMixin, TimeResolutionMixin, DropoutMixin):
-    """Satellite configuration model"""
-
-    # Todo: remove 'satellite' from names
-    satellite_zarr_path: str | tuple[str] | list[str] = Field(
         ...,
         ge=0,
         description="how many minutes to forecast in the future",
@@ -242,6 +203,22 @@ class GSP(TimeWindowMixin, DropoutMixin):
     """GSP configuration model"""
 
     zarr_path: str = Field(..., description="The path which holds the GSP zarr")
+
+
+class Site(TimeWindowMixin, DropoutMixin):
+    """Site configuration model"""
+
+    file_path: str = Field(
+        ...,
+        description="The NetCDF files holding the power timeseries.",
+    )
+    metadata_file_path: str = Field(
+        ...,
+        description="The CSV files describing power system",
+    )
+
+    # TODO validate the netcdf for sites
+    # TODO validate the csv for metadata
 
 
 # noinspection PyPep8Naming
