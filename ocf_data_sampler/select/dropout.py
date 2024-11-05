@@ -1,3 +1,4 @@
+""" Functions for simulating dropout in time series data """
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -5,7 +6,7 @@ import xarray as xr
 
 def draw_dropout_time(
         t0: pd.Timestamp,
-        dropout_timedeltas: list[pd.Timedelta] | None,
+        dropout_timedeltas: list[pd.Timedelta] | pd.Timedelta | None,
         dropout_frac: float = 0,
     ):
 

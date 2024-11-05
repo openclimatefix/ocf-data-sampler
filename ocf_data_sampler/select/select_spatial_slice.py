@@ -8,6 +8,7 @@ import xarray as xr
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.geospatial import (
     lon_lat_to_osgb,
+    lon_lat_to_geostationary_area_coords,
     osgb_to_geostationary_area_coords,
     osgb_to_lon_lat,
     spatial_coord_type,
@@ -101,7 +102,7 @@ def _get_idx_of_pixel_closest_to_poi(
 
 def _get_idx_of_pixel_closest_to_poi_geostationary(
     da: xr.DataArray,
-    center_osgb: Location,
+    center: Location,
 ) -> Location:
     """
     Return x and y index location of pixel at center of region of interest.
@@ -116,7 +117,12 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
 
     _, x_dim, y_dim = spatial_coord_type(da)
 
-    x, y = osgb_to_geostationary_area_coords(x=center_osgb.x, y=center_osgb.y, xr_data=da)
+    if center.coordinate_system == 'osgb':
+        x, y = osgb_to_geostationary_area_coords(x=center.x, y=center.y, xr_data=da)
+    elif center.coordinate_system == 'lon_lat':
+        x, y = lon_lat_to_geostationary_area_coords(longitude=center.x, latitude=center.y, xr_data=da)
+    else:
+        x,y = center.x, center.y
     center_geostationary = Location(x=x, y=y, coordinate_system="geostationary")
 
     # Check that the requested point lies within the data
