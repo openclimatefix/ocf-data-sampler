@@ -189,7 +189,7 @@ class SitesDataset(Dataset):
 
         Args:
             t0: init-time for sample
-            site_id: location object
+            site_id: site id as int
         """
 
         location = self.get_location_from_site_id(site_id)
