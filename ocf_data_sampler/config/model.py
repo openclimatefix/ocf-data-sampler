@@ -114,12 +114,8 @@ class TimeWindowMixin(Base):
         return v
 
 
-class DataSourceMixin(TimeWindowMixin, DropoutMixin):
+class SpatialWindowMixin(Base):
     """Mixin class, to add path and image size"""
-    zarr_path: str | tuple[str] | list[str] = Field(
-        ...,
-        description="The path or list of paths which hold the data zarr",
-    )
 
     image_size_pixels_height: int = Field(
         ...,
@@ -132,8 +128,13 @@ class DataSourceMixin(TimeWindowMixin, DropoutMixin):
     )
 
 
-class Satellite(DataSourceMixin):
+class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     """Satellite configuration model"""
+    
+    zarr_path: str | tuple[str] | list[str] = Field(
+        ...,
+        description="The path or list of paths which hold the data zarr",
+    )
 
     channels: list[str] = Field(
         ..., description="the satellite channels that are used"
@@ -145,9 +146,14 @@ class Satellite(DataSourceMixin):
 
 
 # noinspection PyMethodParameters
-class NWP(DataSourceMixin):
+class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     """NWP configuration model"""
-
+    
+    zarr_path: str | tuple[str] | list[str] = Field(
+        ...,
+        description="The path or list of paths which hold the data zarr",
+    )
+    
     channels: list[str] = Field(
         ..., description="the channels used in the nwp data"
     )
