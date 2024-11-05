@@ -132,7 +132,6 @@ class SitesDataset(Dataset):
             valid_t0_and_site_ids \
                 = valid_t0_and_site_ids[valid_t0_and_site_ids['t0'] <= pd.Timestamp(end_time)]
 
-        # Filter t0 times to given range
 
         # Assign coords and indices to self
         self.valid_t0_and_site_ids = valid_t0_and_site_ids
