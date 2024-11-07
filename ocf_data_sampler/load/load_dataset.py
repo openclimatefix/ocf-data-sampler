@@ -20,8 +20,8 @@ def get_dataset_dict(config: Configuration) -> dict[str, dict[xr.DataArray]]:
     datasets_dict = {}
 
     # Load GSP data unless the path is None
-    if in_config.gsp and in_config.gsp.gsp_zarr_path:
-        da_gsp = open_gsp(zarr_path=in_config.gsp.gsp_zarr_path).compute()
+    if in_config.gsp and in_config.gsp.zarr_path:
+        da_gsp = open_gsp(zarr_path=in_config.gsp.zarr_path).compute()
 
         # Remove national GSP
         datasets_dict["gsp"] = da_gsp.sel(gsp_id=slice(1, None))
@@ -32,9 +32,9 @@ def get_dataset_dict(config: Configuration) -> dict[str, dict[xr.DataArray]]:
         datasets_dict["nwp"] = {}
         for nwp_source, nwp_config in in_config.nwp.items():
 
-            da_nwp = open_nwp(nwp_config.nwp_zarr_path, provider=nwp_config.nwp_provider)
+            da_nwp = open_nwp(nwp_config.zarr_path, provider=nwp_config.provider)
 
-            da_nwp = da_nwp.sel(channel=list(nwp_config.nwp_channels))
+            da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
 
             datasets_dict["nwp"][nwp_source] = da_nwp
 
@@ -42,9 +42,9 @@ def get_dataset_dict(config: Configuration) -> dict[str, dict[xr.DataArray]]:
     if in_config.satellite:
         sat_config = config.input_data.satellite
 
-        da_sat = open_sat_data(sat_config.satellite_zarr_path)
+        da_sat = open_sat_data(sat_config.zarr_path)
 
-        da_sat = da_sat.sel(channel=list(sat_config.satellite_channels))
+        da_sat = da_sat.sel(channel=list(sat_config.channels))
 
         datasets_dict["sat"] = da_sat
 

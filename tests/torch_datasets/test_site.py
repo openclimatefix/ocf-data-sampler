@@ -13,8 +13,8 @@ def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_
 
     # adjust config to point to the zarr file
     config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].nwp_zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.satellite_zarr_path = sat_zarr_path
+    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.input_data.satellite.zarr_path = sat_zarr_path
     config.input_data.site = data_sites
     config.input_data.gsp = None
 

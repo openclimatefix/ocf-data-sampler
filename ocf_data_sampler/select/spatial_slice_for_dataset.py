@@ -30,8 +30,8 @@ def slice_datasets_by_space(
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
                 datasets_dict["nwp"][nwp_key],
                 location,
-                height_pixels=nwp_config.nwp_image_size_pixels_height,
-                width_pixels=nwp_config.nwp_image_size_pixels_width,
+                height_pixels=nwp_config.image_size_pixels_height,
+                width_pixels=nwp_config.image_size_pixels_width,
             )
 
     if "sat" in datasets_dict:
@@ -40,8 +40,8 @@ def slice_datasets_by_space(
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels(
             datasets_dict["sat"],
             location,
-            height_pixels=sat_config.satellite_image_size_pixels_height,
-            width_pixels=sat_config.satellite_image_size_pixels_width,
+            height_pixels=sat_config.image_size_pixels_height,
+            width_pixels=sat_config.image_size_pixels_width,
         )
 
     if "gsp" in datasets_dict:
