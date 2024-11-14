@@ -5,7 +5,7 @@ general:
 input_data:
 
   gsp:
-    gsp_zarr_path: set_in_temp_file
+    zarr_path: set_in_temp_file
     interval_start_minutes: -60
     interval_end_minutes: 120
     time_resolution_minutes: 30
@@ -14,27 +14,27 @@ input_data:
 
   nwp:
     ukv:
-      nwp_provider: ukv
-      nwp_zarr_path: set_in_temp_file
+      provider: ukv
+      zarr_path: set_in_temp_file
       interval_start_minutes: -60
       interval_end_minutes: 120
       time_resolution_minutes: 60
-      nwp_channels:
+      channels:
         - t # 2-metre temperature
-      nwp_image_size_pixels_height: 2
-      nwp_image_size_pixels_width: 2
+      image_size_pixels_height: 2
+      image_size_pixels_width: 2
       dropout_timedeltas_minutes: [-180]
       dropout_fraction: 1.0
       max_staleness_minutes: null
 
   satellite:
-    satellite_zarr_path: set_in_temp_file
+    zarr_path: set_in_temp_file
     interval_start_minutes: -30
     interval_end_minutes: 0
     time_resolution_minutes: 5
-    satellite_channels:
+    channels:
       - IR_016
-    satellite_image_size_pixels_height: 2
-    satellite_image_size_pixels_width: 2
+    image_size_pixels_height: 2
+    image_size_pixels_width: 2
     dropout_timedeltas_minutes: null
     dropout_fraction: 0

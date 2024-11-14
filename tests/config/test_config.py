@@ -105,7 +105,7 @@ def test_incorrect_nwp_provider(test_config_filename):
 
     configuration = load_yaml_configuration(test_config_filename)
 
-    configuration.input_data.nwp['ukv'].nwp_provider = "unexpected_provider"
+    configuration.input_data.nwp['ukv'].provider = "unexpected_provider"
     with pytest.raises(Exception, match="NWP provider"):
         _ = Configuration(**configuration.model_dump())
 

@@ -11,9 +11,9 @@ def pvnet_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, uk_gsp_z
 
     # adjust config to point to the zarr file
     config = load_yaml_configuration(config_filename)
-    config.input_data.nwp['ukv'].nwp_zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.satellite_zarr_path = sat_zarr_path
-    config.input_data.gsp.gsp_zarr_path = uk_gsp_zarr_path
+    config.input_data.nwp['ukv'].zarr_path = nwp_ukv_zarr_path
+    config.input_data.satellite.zarr_path = sat_zarr_path
+    config.input_data.gsp.zarr_path = uk_gsp_zarr_path
 
     filename = f"{tmp_path}/configuration.yaml"
     save_yaml_configuration(config, filename)
@@ -60,7 +60,7 @@ def test_pvnet_no_gsp(pvnet_config_filename):
     # load config
     config = load_yaml_configuration(pvnet_config_filename)
     # remove gsp
-    config.input_data.gsp.gsp_zarr_path = ''
+    config.input_data.gsp.zarr_path = ''
 
     # save temp config file
     with tempfile.NamedTemporaryFile() as temp_config_file:

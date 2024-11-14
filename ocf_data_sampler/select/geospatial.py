@@ -55,6 +55,23 @@ def lon_lat_to_osgb(
     return _lon_lat_to_osgb(xx=x, yy=y)
 
 
+def lon_lat_to_geostationary_area_coords(
+    longitude: Union[Number, np.ndarray],
+    latitude: Union[Number, np.ndarray],
+    xr_data: xr.DataArray,
+) -> tuple[Union[Number, np.ndarray], Union[Number, np.ndarray]]:
+    """Loads geostationary area and transformation from lat-lon to geostationary coords
+
+    Args:
+        longitude: longitude
+        latitude: latitude
+        xr_data: xarray object with geostationary area
+
+    Returns:
+        Geostationary coords: x, y
+    """
+    return coordinates_to_geostationary_area_coords(longitude, latitude, xr_data, WGS84)
+
 def osgb_to_geostationary_area_coords(
     x: Union[Number, np.ndarray],
     y: Union[Number, np.ndarray],
@@ -70,6 +87,31 @@ def osgb_to_geostationary_area_coords(
     Returns:
         Geostationary coords: x, y
     """
+
+    return coordinates_to_geostationary_area_coords(x, y, xr_data, OSGB36)
+
+
+
+def coordinates_to_geostationary_area_coords(
+    x: Union[Number, np.ndarray],
+    y: Union[Number, np.ndarray],
+    xr_data: xr.DataArray,
+    crs_from: int
+) -> tuple[Union[Number, np.ndarray], Union[Number, np.ndarray]]:
+    """Loads geostationary area and transformation from respective coordiates to geostationary coords
+
+        Args:
+            x: osgb east-west, or latitude
+            y: osgb north-south, or longitude
+            xr_data: xarray object with geostationary area
+            crs_from: the cordiates system of x,y
+
+        Returns:
+            Geostationary coords: x, y
+        """
+
+    assert crs_from in [OSGB36, WGS84], f"Unrecognized coordinate system: {crs_from}"
+
     # Only load these if using geostationary projection
     import pyresample
 
@@ -80,7 +122,7 @@ def osgb_to_geostationary_area_coords(
     )
     geostationary_crs = geostationary_area_definition.crs
     osgb_to_geostationary = pyproj.Transformer.from_crs(
-        crs_from=OSGB36, crs_to=geostationary_crs, always_xy=True
+        crs_from=crs_from, crs_to=geostationary_crs, always_xy=True
     ).transform
     return osgb_to_geostationary(xx=x, yy=y)
 
