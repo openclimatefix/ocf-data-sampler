@@ -14,7 +14,7 @@ from ocf_data_sampler.select import (
     intersection_of_multiple_dataframes_of_periods,
     slice_datasets_by_time, slice_datasets_by_space
 )
-from ocf_data_sampler.time_functions import minutes
+from ocf_data_sampler.utils import minutes
 from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets, compute
 from ocf_data_sampler.torch_datasets.valid_time_periods import find_valid_time_periods
 
@@ -22,8 +22,8 @@ xr.set_options(keep_attrs=True)
 
 
 def find_valid_t0_and_site_ids(
-        datasets_dict: dict,
-        config: Configuration,
+    datasets_dict: dict,
+    config: Configuration,
 ) -> pd.DataFrame:
     """Find the t0 times where all of the requested input data is available
 
@@ -57,8 +57,8 @@ def find_valid_t0_and_site_ids(
         time_periods = find_contiguous_t0_periods(
             pd.DatetimeIndex(site["time_utc"]),
             sample_period_duration=minutes(site_config.time_resolution_minutes),
-            history_duration=minutes(site_config.history_minutes),
-            forecast_duration=minutes(site_config.forecast_minutes),
+            interval_start=minutes(site_config.interval_start_minutes),
+            interval_end=minutes(site_config.interval_end_minutes),
         )
         valid_time_periods_per_site = intersection_of_multiple_dataframes_of_periods(
             [valid_time_periods, time_periods]
@@ -100,10 +100,10 @@ def get_locations(site_xr: xr.Dataset):
 
 class SitesDataset(Dataset):
     def __init__(
-            self,
-            config_filename: str,
-            start_time: str | None = None,
-            end_time: str | None = None,
+        self,
+        config_filename: str,
+        start_time: str | None = None,
+        end_time: str | None = None,
     ):
         """A torch Dataset for creating PVNet Site samples
 
@@ -154,7 +154,7 @@ class SitesDataset(Dataset):
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = compute(sample_dict)
 
-        sample = process_and_combine_datasets(sample_dict, self.config, t0, location, sun_position_key='site')
+        sample = process_and_combine_datasets(sample_dict, self.config, t0, location, target_key='site')
 
         return sample
 

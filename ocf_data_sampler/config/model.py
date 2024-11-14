@@ -14,7 +14,8 @@ import logging
 from typing import Dict, List, Optional
 from typing_extensions import Self
 
-from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
+from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo, model_validator
+
 from ocf_data_sampler.constants import NWP_PROVIDERS
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,45 @@ class General(Base):
     description: str = Field(
         "example configuration", description="Description of this configuration file"
     )
+
+
+class TimeWindowMixin(Base):
+    """Mixin class, to add interval start, end and resolution minutes"""
+
+    time_resolution_minutes: int = Field(
+        ...,
+        gt=0,
+        description="The temporal resolution of the data in minutes",
+    )
+    
+    interval_start_minutes: int = Field(
+        ...,
+        description="Data interval starts at `t0 + interval_start_minutes`",
+    )
+
+    interval_end_minutes: int = Field(
+        ...,
+        description="Data interval ends at `t0 + interval_end_minutes`",
+    )
+    
+    @model_validator(mode='after')
+    def check_interval_range(cls, values):
+        if values.interval_start_minutes > values.interval_end_minutes:
+            raise ValueError('interval_start_minutes must be <= interval_end_minutes')
+        return values
+
+    @field_validator("interval_start_minutes")
+    def interval_start_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
+        if v % info.data["time_resolution_minutes"] != 0:
+            raise ValueError("interval_start_minutes must be divisible by time_resolution_minutes")
+        return v
+
+    @field_validator("interval_end_minutes")
+    def interval_end_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
+        if v % info.data["time_resolution_minutes"] != 0:
+            raise ValueError("interval_end_minutes must be divisible by time_resolution_minutes")
+        return v
+
 
 
 # noinspection PyMethodParameters
@@ -76,54 +116,18 @@ class DropoutMixin(Base):
         return self
 
 
-# noinspection PyMethodParameters
-class TimeWindowMixin(Base):
-    """Time resolution mix in"""
-
-    time_resolution_minutes: int = Field(
-        ...,
-        gt=0,
-        description="The temporal resolution of the data in minutes",
-    )
-
-    forecast_minutes: int = Field(
-        ...,
-        ge=0,
-        description="how many minutes to forecast in the future",
-    )
-    history_minutes: int = Field(
-        ...,
-        ge=0,
-        description="how many historic minutes to use",
-    )
-
-    @field_validator("forecast_minutes")
-    def forecast_minutes_divide_by_time_resolution(cls, v, values) -> int:
-        if v % values.data["time_resolution_minutes"] != 0:
-            message = "Forecast duration must be divisible by time resolution"
-            logger.error(message)
-            raise Exception(message)
-        return v
-
-    @field_validator("history_minutes")
-    def history_minutes_divide_by_time_resolution(cls, v, values) -> int:
-        if v % values.data["time_resolution_minutes"] != 0:
-            message = "History duration must be divisible by time resolution"
-            logger.error(message)
-            raise Exception(message)
-        return v
-
-
 class SpatialWindowMixin(Base):
     """Mixin class, to add path and image size"""
 
     image_size_pixels_height: int = Field(
         ...,
+        ge=0,
         description="The number of pixels of the height of the region of interest",
     )
 
     image_size_pixels_width: int = Field(
         ...,
+        ge=0,
         description="The number of pixels of the width of the region of interest",
     )
 
@@ -138,10 +142,6 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
 
     channels: list[str] = Field(
         ..., description="the satellite channels that are used"
-    )
-
-    live_delay_minutes: int = Field(
-        ..., description="The expected delay in minutes of the satellite data"
     )
 
 
@@ -168,6 +168,7 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         " used to construct an example. If set to None, then the max staleness is set according to"
         " the maximum forecast horizon of the NWP and the requested forecast length.",
     )
+
 
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:
@@ -227,11 +228,10 @@ class Site(TimeWindowMixin, DropoutMixin):
     # TODO validate the csv for metadata
 
 
+
 # noinspection PyPep8Naming
 class InputData(Base):
-    """
-    Input data model.
-    """
+    """Input data model"""
 
     satellite: Optional[Satellite] = None
     nwp: Optional[MultiNWP] = None

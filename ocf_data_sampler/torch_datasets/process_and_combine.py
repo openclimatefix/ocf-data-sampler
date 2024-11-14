@@ -15,7 +15,7 @@ from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 from ocf_data_sampler.select.location import Location
-from ocf_data_sampler.time_functions import minutes
+from ocf_data_sampler.utils import minutes
 
 
 def process_and_combine_datasets(
@@ -23,7 +23,7 @@ def process_and_combine_datasets(
     config: Configuration,
     t0: pd.Timestamp,
     location: Location,
-    sun_position_key: str = 'gsp'
+    target_key: str = 'gsp'
 ) -> dict:
     """Normalize and convert data to numpy arrays"""
 
@@ -58,7 +58,8 @@ def process_and_combine_datasets(
 
         numpy_modalities.append(
             convert_gsp_to_numpy_batch(
-                da_gsp, t0_idx=gsp_config.history_minutes // gsp_config.time_resolution_minutes
+                da_gsp, 
+                t0_idx=-gsp_config.interval_start_minutes / gsp_config.time_resolution_minutes
             )
         )
 
@@ -80,34 +81,32 @@ def process_and_combine_datasets(
 
         numpy_modalities.append(
             convert_site_to_numpy_batch(
-                da_sites, t0_idx=site_config.history_minutes / site_config.time_resolution_minutes
+                da_sites, t0_idx=-site_config.interval_start_minutes / site_config.time_resolution_minutes
             )
         )
 
-    if sun_position_key == 'gsp':
+    if target_key == 'gsp':
         # Make sun coords NumpyBatch
         datetimes = pd.date_range(
-            t0 - minutes(gsp_config.history_minutes),
-            t0 + minutes(gsp_config.forecast_minutes),
+            t0+minutes(gsp_config.interval_start_minutes),
+            t0+minutes(gsp_config.interval_end_minutes),
             freq=minutes(gsp_config.time_resolution_minutes),
         )
 
         lon, lat = osgb_to_lon_lat(location.x, location.y)
-        key_prefix = "gsp"
 
-    elif sun_position_key == 'site':
+    elif target_key == 'site':
         # Make sun coords NumpyBatch
         datetimes = pd.date_range(
-            t0 - minutes(site_config.history_minutes),
-            t0 + minutes(site_config.forecast_minutes),
+            t0+minutes(site_config.interval_start_minutes),
+            t0+minutes(site_config.interval_end_minutes),
             freq=minutes(site_config.time_resolution_minutes),
         )
 
         lon, lat = location.x, location.y
-        key_prefix = "site"
 
     numpy_modalities.append(
-        make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix=key_prefix)
+        make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix=target_key)
     )
 
     # Combine all the modalities and fill NaNs

@@ -4,7 +4,7 @@ The aim of this folder is to create torch datasets which can easily be used in o
 
 ## PVNet UK Regional
 
-This pipline is for creating GSP predictions which we have used in our PVNet model.
+This dataset is for creating GSP predictions which we have used in our PVNet model.
 
 ### Init
 

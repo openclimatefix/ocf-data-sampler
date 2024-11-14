@@ -68,27 +68,33 @@ def test_extra_field_error():
         _ = Configuration(**configuration_dict)
 
 
-def test_incorrect_forecast_minutes(test_config_filename):
-    """
-    Check a forecast length not divisible by time resolution causes error
-    """
-
-    configuration = load_yaml_configuration(test_config_filename)
-
-    configuration.input_data.nwp['ukv'].forecast_minutes = 1111
-    with pytest.raises(Exception, match="duration must be divisible by time resolution"):
-        _ = Configuration(**configuration.model_dump())
-
-
-def test_incorrect_history_minutes(test_config_filename):
+def test_incorrect_interval_start_minutes(test_config_filename):
     """
     Check a history length not divisible by time resolution causes error
     """
 
     configuration = load_yaml_configuration(test_config_filename)
 
-    configuration.input_data.nwp['ukv'].history_minutes = 1111
-    with pytest.raises(Exception, match="duration must be divisible by time resolution"):
+    configuration.input_data.nwp['ukv'].interval_start_minutes = -1111
+    with pytest.raises(
+        ValueError, 
+        match="interval_start_minutes must be divisible by time_resolution_minutes"
+    ):
+        _ = Configuration(**configuration.model_dump())
+
+
+def test_incorrect_interval_end_minutes(test_config_filename):
+    """
+    Check a forecast length not divisible by time resolution causes error
+    """
+
+    configuration = load_yaml_configuration(test_config_filename)
+
+    configuration.input_data.nwp['ukv'].interval_end_minutes = 1111
+    with pytest.raises(
+        ValueError, 
+        match="interval_end_minutes must be divisible by time_resolution_minutes"
+    ):
         _ = Configuration(**configuration.model_dump())
 
 

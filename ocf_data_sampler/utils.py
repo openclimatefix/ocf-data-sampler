@@ -7,5 +7,4 @@ def minutes(minutes: int | list[float]) -> pd.Timedelta | pd.TimedeltaIndex:
     Args:
         minutes: the number of minutes, single value or list
     """
-    minutes_delta = pd.to_timedelta(minutes, unit="m")
-    return minutes_delta
+    return pd.to_timedelta(minutes, unit="m")
