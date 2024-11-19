@@ -152,10 +152,9 @@ class SitesDataset(Dataset):
         """
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-        sample_dict = compute(sample_dict)
 
         sample = process_and_combine_site_sample_dict(sample_dict, self.config)
-
+        sample = sample.compute()
         return sample
 
     def get_location_from_site_id(self, site_id):

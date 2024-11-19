@@ -120,7 +120,17 @@ def process_and_combine_site_sample_dict(
     dataset_dict: dict,
     config: Configuration,
 ) -> xr.Dataset:
-    """Normalize and combine data to xr Dataset"""
+    """
+    Normalize and combine data into a single xr Dataset
+
+    Args:
+        dataset_dict: dict containing sliced xr DataArrays
+        config: Configuration for the model
+
+    Returns:
+        xr.Dataset: A merged Dataset with nans filled in.
+    
+    """
 
     data_arrays = []
 
@@ -156,7 +166,7 @@ def merge_dicts(list_of_dicts: list[dict]) -> dict:
         combined_dict.update(d)
     return combined_dict
 
-def merge_arrays(list_of_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
+def merge_arrays(normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
     """
     Combine a list of DataArrays into a single Dataset with unique naming conventions.
 
@@ -170,7 +180,7 @@ def merge_arrays(list_of_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
     """
     datasets = []
 
-    for key, data_array in list_of_arrays:
+    for key, data_array in normalised_data_arrays:
         # Ensure all attributes are strings for consistency
         data_array = data_array.assign_attrs(
             {attr_key: str(attr_value) for attr_key, attr_value in data_array.attrs.items()}
