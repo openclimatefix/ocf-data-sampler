@@ -10,7 +10,6 @@ from ocf_data_sampler.numpy_batch import (
     convert_satellite_to_numpy_batch,
     convert_gsp_to_numpy_batch,
     make_sun_position_numpy_batch,
-    convert_site_to_numpy_batch,
 )
 from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
@@ -74,18 +73,6 @@ def process_and_combine_datasets(
             }
         )
 
-
-    if "site" in dataset_dict:
-        site_config = config.input_data.site
-        da_sites = dataset_dict["site"]
-        da_sites = da_sites / da_sites.capacity_kwp
-
-        numpy_modalities.append(
-            convert_site_to_numpy_batch(
-                da_sites, t0_idx=-site_config.interval_start_minutes / site_config.time_resolution_minutes
-            )
-        )
-
     if target_key == 'gsp':
         # Make sun coords NumpyBatch
         datetimes = pd.date_range(
@@ -95,16 +82,6 @@ def process_and_combine_datasets(
         )
 
         lon, lat = osgb_to_lon_lat(location.x, location.y)
-
-    elif target_key == 'site':
-        # Make sun coords NumpyBatch
-        datetimes = pd.date_range(
-            t0+minutes(site_config.interval_start_minutes),
-            t0+minutes(site_config.interval_end_minutes),
-            freq=minutes(site_config.time_resolution_minutes),
-        )
-
-        lon, lat = location.x, location.y
 
     numpy_modalities.append(
         make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix=target_key)
