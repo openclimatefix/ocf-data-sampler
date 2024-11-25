@@ -28,7 +28,9 @@ taken the opportunity to make the code much cleaner and more manageable.
 
 ## Documentation
 
-> [!Note] Side note: I'd like to put some high-level overview here of what dsampler does, but open to suggestions
+**ocf-data-sampler** doesn't have expeternal documentation;
+you can read a bit about how our torch datasets work in the 
+Readme [here](https://github.com/openclimatefix/ocf-data-sampler/tree/readme-update/ocf_data_sampler/torch_datasets).
 
 
 ## FAQ
