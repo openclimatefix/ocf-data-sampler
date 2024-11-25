@@ -4,7 +4,6 @@
 [![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-[![workflows badge](https://img.shields.io/github/actions/workflow/status/openclimatefix/ocf-data-sampler/release.yaml?branch=maine&color=FFD053&label=workflow)](https://github.com/openclimatefix/ocf-data-sampler/actions/workflows/workflows.yaml)
 [![tags badge](https://img.shields.io/github/v/tag/openclimatefix/ocf-data-sampler?include_prereleases&sort=semver&color=FFAC5F)](https://github.com/openclimatefix/ocf-data-sampler/tags)
 [![ease of contribution: easy](https://img.shields.io/badge/ease%20of%20contribution:%20easy-32bd50)](https://github.com/openclimatefix#how-easy-is-it-to-get-involved) 
 
@@ -17,15 +16,15 @@ samples, normalising and reshaping, and saving to and reading
 from disk.
 
 We are currently migrating to this repo from [ocf_datapipes](https://github.com/openclimatefix/ocf_datapipes/), which 
-has performed the same functions but was centered around PyTorch DataPipes, 
-which were quite cumbersome to work with and are no longer maintained by
-PyTorch. **ocf-data-sampler** uses PyTorch Datasets, and we've
+performs the same functions but is centered around `PyTorch DataPipes`, 
+which are quite cumbersome to work with and are no longer maintained by
+PyTorch. **ocf-data-sampler** uses `PyTorch Datasets`, and we've
 taken the opportunity to make the code much cleaner and more manageable.
 
 > [!Note]
-> This repository is still in the development stage and does not yet have the full 
+> This repository is still in development and does not yet have the full 
 > functionality of its predecessor, [ocf_datapipes](https://github.com/openclimatefix/ocf_datapipes/).
-> It might not be ready for use out-of-the-box! So we would really appreciate any help to let us make the transition faster.
+> It might not be ready for use out-of-the-box! We would really appreciate any help to let us make the transition faster.
 
 ## Documentation
 
@@ -37,13 +36,40 @@ taken the opportunity to make the code much cleaner and more manageable.
 If you have any questions about this or any other of our repos,
 don't hesitate to hop to our [Discussions Page](https://github.com/orgs/openclimatefix/discussions)!
 
-### How does ocf-data-sampler deal with data sources using different projections (e.g., some are in latitude-longitude, and some in OSGB)?
+### How does ocf-data-sampler deal with data sources that use different projections (e.g. some are in latitude-longitude, and some in OSGB)?
 
-[Clever and concise answer here]
+When creating samples, we make an areal crop of a 
+preset size centered around a 
+point-of-interest (POI, usually a solar or 
+wind farm). The size of the crop is set not in 
+miles or kilometres, but in 'pixels', which would
+be different for different data sources, 
+depending on their spatial resolution, projections 
+they use, and where the POI is. For example, a
+latitude-longitude source with a 1° 
+resolution will have pixel sizes corresponding to
+very different 'surface' distances (that you might
+measure in, e.g., kilometres) from a source with 0.1°
+resolution. The pixel size will even be 
+different for the same source depending on how close 
+the POI is to the equator!
 
-I don't like the FAQ having less than 2 q-ns 
-and also not sure this should go here, 
-but open to suggestions as well
+Instead of trying to accommodate for all these 
+differences and make all the source use the same 
+spatial grid, we translate the POI's position 
+into the corresponding coordinate system and 
+select the crop using the source's original grid. 
+This 'snapshot' is then passed to the model with
+no additional information on what specific 
+coordinates it represents; instead, since the 
+size is always the same and the POI is always
+in the centre, the model gets consistent 
+information on the measurements at a location
+near the POI and how it affects the target, 
+without any explicit knowledge on where
+that location is in coordinate system terms.
+
+
 
 
 
