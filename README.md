@@ -1,8 +1,8 @@
 # ocf-data-sampler
  
 
+[![workflows badge](https://img.shields.io/github/actions/workflow/status/openclimatefix/ocf-data-sampler/release.yaml?branch=maine&color=FFD053&label=workflow)](https://github.com/openclimatefix/ocf-data-sampler/actions/workflows/workflows.yaml)
 [![tags badge](https://img.shields.io/github/v/tag/openclimatefix/ocf-data-sampler?include_prereleases&sort=semver&color=FFAC5F)](https://github.com/openclimatefix/ocf-data-sampler/tags)
-[![documentation badge](https://img.shields.io/badge/docs-latest-086788)](https://openclimatefix.github.io/ocf-data-sampler/)
 [![contributors badge](https://img.shields.io/github/contributors/openclimatefix/ocf-data-sampler?color=FFFFFF)](https://github.com/openclimatefix/ocf-data-samplergraphs/contributors)
 [![ease of contribution: easy](https://img.shields.io/badge/ease%20of%20contribution:%20easy-32bd50)](https://github.com/openclimatefix#how-easy-is-it-to-get-involved) 
 
@@ -27,15 +27,15 @@ taken the opportunity to make the code much cleaner and more manageable.
 
 ## Documentation
 
-> [!Note ] Side note: I'd like to put some high-level overview here of what dsampler does, but open to suggestions
+> [!Note] Side note: I'd like to put some high-level overview here of what dsampler does, but open to suggestions
 
 
 ## FAQ
 
 If you have any questions about this or any other of our repos,
-don't hesitate to ask it in our [Discussions Page](https://github.com/orgs/openclimatefix/discussions)!
+don't hesitate to hop to our [Discussions Page](https://github.com/orgs/openclimatefix/discussions)!
 
-### How does ocf-data-sampler deal with data sources using different projections (e g some are in latitude-longitude, and some in OSGB)?
+### How does ocf-data-sampler deal with data sources using different projections (e. g., some are in latitude-longitude, and some in OSGB)?
 
 [Clever and concise answer here]
 
@@ -49,18 +49,23 @@ but open to suggestions as well
 
 You can install **ocf-data-sampler** for development as follows:
 
-``` pip install git+https://github.com/openclimatefix/ocf-data-sampler.git```
+``` 
+pip install git+https://github.com/openclimatefix/ocf-data-sampler.git
+```
 
 ### Running the test suite
 
 The tests in this project use `pytest`. Once you have it installed, 
-you can run
+you can run it from the project's directory:
 
-```pytest``` 
+```
+cd ocf-data-sampler
+pytest
+``` 
 
 ## Contributing and community
 
-[![issues badge](https://img.shields.io/github/issues/openclimatefix/ocf-data-sampler?color=FFAC5F)](https://github.com/openclimatefix/ocf-template/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc)
+[![issues badge](https://img.shields.io/github/issues/openclimatefix/ocf-data-sampler?color=FFAC5F)](https://github.com/openclimatefix/ocf-data-sampler/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc)
 
 - PR's are welcome! See the [Organisation Profile](https://github.com/openclimatefix) for details on contributing
 - Find out about our other projects in the [OCF Meta Repo](https://github.com/openclimatefix/ocf-meta-repo)
