@@ -18,7 +18,7 @@ We are currently migrating to this repo from [ocf_datapipes](https://github.com/
 
 ## Documentation
 
-**ocf-data-sampler** doesn't have external documentation; you can read a bit about how our torch datasets work in the Readme [here](https://github.com/openclimatefix/ocf-data-sampler/tree/readme-update/ocf_data_sampler/torch_datasets).
+**ocf-data-sampler** doesn't have external documentation _yet_; you can read a bit about how our torch datasets work in the Readme [here](https://github.com/openclimatefix/ocf-data-sampler/tree/readme-update/ocf_data_sampler/torch_datasets).
 
 
 ## FAQ
