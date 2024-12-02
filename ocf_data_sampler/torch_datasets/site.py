@@ -15,7 +15,7 @@ from ocf_data_sampler.select import (
     slice_datasets_by_time, slice_datasets_by_space
 )
 from ocf_data_sampler.utils import minutes
-from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_datasets, compute
+from ocf_data_sampler.torch_datasets.process_and_combine import process_and_combine_site_sample_dict
 from ocf_data_sampler.torch_datasets.valid_time_periods import find_valid_time_periods
 
 xr.set_options(keep_attrs=True)
@@ -152,10 +152,9 @@ class SitesDataset(Dataset):
         """
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-        sample_dict = compute(sample_dict)
 
-        sample = process_and_combine_datasets(sample_dict, self.config, t0, location, target_key='site')
-
+        sample = process_and_combine_site_sample_dict(sample_dict, self.config)
+        sample = sample.compute()
         return sample
 
     def get_location_from_site_id(self, site_id):
