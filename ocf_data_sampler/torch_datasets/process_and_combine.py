@@ -8,6 +8,7 @@ from ocf_data_sampler.numpy_batch import (
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
     convert_gsp_to_numpy_batch,
+    make_datetime_numpy_batch,
     make_sun_position_numpy_batch,
     convert_site_to_numpy_batch,
 )
@@ -107,6 +108,9 @@ def process_and_combine_datasets(
 
     numpy_modalities.append(
         make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix=target_key)
+    )
+    numpy_modalities.append(
+        make_datetime_numpy_batch(datetimes, key_prefix=target_key)
     )
 
     # Combine all the modalities and fill NaNs
