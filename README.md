@@ -18,8 +18,7 @@ We are currently migrating to this repo from [ocf_datapipes](https://github.com/
 
 ## Documentation
 
-**ocf-data-sampler** doesn't have external documentation _yet_; you can read a bit about how our torch datasets work in the Readme [here]([torch datasets documentation](ocf_data_sampler/torch_datasets/README.md)
-
+**ocf-data-sampler** doesn't have external documentation _yet_; you can read a bit about how our torch datasets work in the README [here](ocf_data_sampler/torch_datasets/README.md).
 
 
 ## FAQ
