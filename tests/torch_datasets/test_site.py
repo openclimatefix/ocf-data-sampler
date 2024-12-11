@@ -40,8 +40,8 @@ def test_site(site_config_filename):
         NWPBatchKey.nwp,
         SatelliteBatchKey.satellite_actual,
         SiteBatchKey.generation,
-        SiteBatchKey.site_solar_azimuth,
-        SiteBatchKey.site_solar_elevation,
+        SiteBatchKey.solar_azimuth,
+        SiteBatchKey.solar_elevation,
     ]:
         assert key in sample
 
@@ -56,8 +56,8 @@ def test_site(site_config_filename):
     # 3 hours of 30 minute data (inclusive)
     assert sample[SiteBatchKey.generation].shape == (4,)
     # Solar angles have same shape as GSP data
-    assert sample[SiteBatchKey.site_solar_azimuth].shape == (4,)
-    assert sample[SiteBatchKey.site_solar_elevation].shape == (4,)
+    assert sample[SiteBatchKey.solar_azimuth].shape == (4,)
+    assert sample[SiteBatchKey.solar_elevation].shape == (4,)
 
 
 def test_site_time_filter_start(site_config_filename):
