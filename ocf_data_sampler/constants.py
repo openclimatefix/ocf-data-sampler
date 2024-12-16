@@ -7,6 +7,10 @@ NWP_PROVIDERS = [
     "ecmwf",
 ]
 
+SAT_PROVIDERS = [
+    "rss",
+]
+
 
 def _to_data_array(d):
     return xr.DataArray(
@@ -27,6 +31,21 @@ class NWPStatDict(dict):
             raise KeyError(
                 f"Values for {key} not yet available in ocf-data-sampler {list(self.keys())}"
             )
+
+
+class SatStatDict(dict):
+    """Custom dictionary class to hold Satellite normalization stats"""
+
+    def __getitem__(self, key):
+        if key not in SAT_PROVIDERS:
+            raise KeyError(f"{key} is not a supported Satellite provider - {SAT_PROVIDERS}")
+        elif key in self.keys():
+            return super().__getitem__(key)
+        else:
+            raise KeyError(
+                f"Values for {key} not yet available in ocf-data-sampler {list(self.keys())}"
+            )
+
 
 # ------ UKV
 # Means and std computed WITH version_7 and higher, MetOffice values
@@ -49,6 +68,7 @@ UKV_STD = {
     "prmsl": 1252.71790539,
     "prate": 0.00021497,
 }
+
 UKV_MEAN = {
     "cdcb": 1412.26599062,
     "lcc": 50.08362643,
@@ -97,6 +117,7 @@ ECMWF_STD = {
     "diff_duvrs": 81605.25,
     "diff_sr": 818950.6875,
 }
+
 ECMWF_MEAN = {
     "dlwrf": 27187026.0,
     "dswrf": 11458988.0,
@@ -133,3 +154,49 @@ NWP_MEANS = NWPStatDict(
     ecmwf=ECMWF_MEAN,
 )
 
+# ------ Satellite
+# RSS Mean and std values from randomised 20% of 2020 imagery
+
+RSS_STD = {
+    "HRV": 0.11405209,
+    "IR_016": 0.21462157,
+    "IR_039": 0.04618041,
+    "IR_087": 0.06687243,
+    "IR_097": 0.0468558,
+    "IR_108": 0.17482725,
+    "IR_120": 0.06115861,
+    "IR_134": 0.04492306,
+    "VIS006": 0.12184761,
+    "VIS008": 0.13090034,
+    "WV_062": 0.16111417,
+    "WV_073": 0.12924142,
+}
+
+RSS_MEAN = {
+    "HRV": 0.09298719,
+    "IR_016": 0.17594202,
+    "IR_039": 0.86167645,
+    "IR_087": 0.7719318,
+    "IR_097": 0.8014212,
+    "IR_108": 0.71254843,
+    "IR_120": 0.89058584,
+    "IR_134": 0.944365,
+    "VIS006": 0.09633306,
+    "VIS008": 0.11426069,
+    "WV_062": 0.7359355,
+    "WV_073": 0.62479186,
+}
+
+# Specified to ensure calculation stability
+EPSILON = 1e-8
+
+RSS_STD = _to_data_array(RSS_STD)
+RSS_MEAN = _to_data_array(RSS_MEAN)
+
+SAT_STDS = SatStatDict(
+    rss=RSS_STD,
+)
+
+SAT_MEANS = SatStatDict(
+    rss=RSS_MEAN,
+)

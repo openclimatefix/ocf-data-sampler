@@ -3,7 +3,7 @@ import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, SAT_MEANS, SAT_STDS, EPSILON
 from ocf_data_sampler.numpy_batch import (
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
@@ -13,6 +13,8 @@ from ocf_data_sampler.numpy_batch import (
 )
 from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
+from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
+
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.utils import minutes
@@ -25,8 +27,8 @@ def process_and_combine_datasets(
     location: Location,
     target_key: str = 'gsp'
 ) -> dict:
-    """Normalize and convert data to numpy arrays"""
 
+    """Normalise and convert data to numpy arrays"""
     numpy_modalities = []
 
     if "nwp" in dataset_dict:
@@ -37,18 +39,29 @@ def process_and_combine_datasets(
             # Standardise
             provider = config.input_data.nwp[nwp_key].provider
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
+
             # Convert to NumpyBatch
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
 
         # Combine the NWPs into NumpyBatch
         numpy_modalities.append({NWPBatchKey.nwp: nwp_numpy_modalities})
 
-    if "sat" in dataset_dict:
-        # Satellite is already in the range [0-1] so no need to standardise
-        da_sat = dataset_dict["sat"]
 
-        # Convert to NumpyBatch
-        numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
+    if "sat" in dataset_dict:
+
+        sat_numpy_modalities = dict()
+
+        for sat_key, da_sat in dataset_dict["sat"].items():
+            # Standardise
+            provider = config.input_data.satellite[sat_key].provider
+            da_sat = (da_sat - SAT_MEANS[provider]) / (SAT_STDS[provider] + EPSILON)
+
+            # Convert to NumpyBatch
+            sat_numpy_modalities[sat_key] = convert_satellite_to_numpy_batch(da_sat)
+
+        # Combine the Sattelites into NumpyBatch
+        numpy_modalities.append({SatelliteBatchKey.satellite_actual: sat_numpy_modalities})
+
 
     gsp_config = config.input_data.gsp
 
