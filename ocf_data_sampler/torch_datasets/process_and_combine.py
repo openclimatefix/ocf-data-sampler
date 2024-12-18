@@ -119,7 +119,7 @@ def process_and_combine_site_sample_dict(
             data_arrays.append((f"nwp-{provider}", da_nwp))
           
     if "sat" in dataset_dict:
-        # Satellite is already in the range [0-1] so no need to standardise
+        # TODO add some satellite normalisation
         da_sat = dataset_dict["sat"]
         data_arrays.append(("satellite", da_sat))
 
