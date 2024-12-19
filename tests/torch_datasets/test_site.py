@@ -1,11 +1,12 @@
 import pandas as pd
 import pytest
 
-from ocf_data_sampler.torch_datasets.site import SitesDataset
+from ocf_data_sampler.torch_datasets import SitesDataset
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
 from ocf_data_sampler.numpy_batch.site import SiteBatchKey
 from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
+from xarray import Dataset
 
 
 @pytest.fixture()
@@ -34,31 +35,26 @@ def test_site(site_config_filename):
     # Generate a sample
     sample = dataset[0]
 
-    assert isinstance(sample, dict)
+    assert isinstance(sample, Dataset)
 
-    for key in [
-        NWPBatchKey.nwp,
-        SatelliteBatchKey.satellite_actual,
-        SiteBatchKey.generation,
-        SiteBatchKey.solar_azimuth,
-        SiteBatchKey.solar_elevation,
-    ]:
-        assert key in sample
+    # Expected dimensions and data variables
+    expected_dims = {'satellite__x_geostationary', 'sites__time_utc', 'nwp-ukv__target_time_utc',
+                     'nwp-ukv__x_osgb', 'satellite__channel', 'satellite__y_geostationary',
+                     'satellite__time_utc', 'nwp-ukv__channel', 'nwp-ukv__y_osgb'}
+    expected_data_vars = {"nwp-ukv", "satellite", "sites"}
 
-    for nwp_source in ["ukv"]:
-        assert nwp_source in sample[NWPBatchKey.nwp]
+    # Check dimensions
+    assert set(sample.dims) == expected_dims, f"Missing or extra dimensions: {set(sample.dims) ^ expected_dims}"
+    # Check data variables
+    assert set(sample.data_vars) == expected_data_vars, f"Missing or extra data variables: {set(sample.data_vars) ^ expected_data_vars}"
 
     # check the shape of the data is correct
     # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
-    assert sample[SatelliteBatchKey.satellite_actual].shape == (7, 1, 2, 2)
+    assert sample["satellite"].values.shape == (7, 1, 2, 2)
     # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
-    assert sample[NWPBatchKey.nwp]["ukv"][NWPBatchKey.nwp].shape == (4, 1, 2, 2)
-    # 3 hours of 30 minute data (inclusive)
-    assert sample[SiteBatchKey.generation].shape == (4,)
-    # Solar angles have same shape as GSP data
-    assert sample[SiteBatchKey.solar_azimuth].shape == (4,)
-    assert sample[SiteBatchKey.solar_elevation].shape == (4,)
-
+    assert sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
+    # 1.5 hours of 30 minute data (inclusive)
+    assert sample["sites"].values.shape == (4,)
 
 def test_site_time_filter_start(site_config_filename):
 
