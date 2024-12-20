@@ -50,17 +50,22 @@ def da_nwp_like():
 
 
 def test_merge_dicts():
+    # Example dict list with overlap
     dicts = [
         {"a": 1, "b": 2},
         {"c": 3, "d": 4},
         {"b": 5, "e": 6},
     ]
+    
     result = merge_dicts(dicts)
+    
+    # Prioritise later values for overlap
     expected = {"a": 1, "b": 5, "c": 3, "d": 4, "e": 6}
     assert result == expected
 
 
 def test_fill_nans_in_arrays():
+    # Arrays with NaN, nested dict and non numerical key
     batch = {
         "array_1": np.array([1, np.nan, 3]),
         "array_2": np.array([[np.nan, 2], [3, np.nan]]),
@@ -71,6 +76,8 @@ def test_fill_nans_in_arrays():
     }
 
     result = fill_nans_in_arrays(batch)
+
+    # NaN should be filled with zeros
     expected = {
         "array_1": np.array([1, 0, 3]),
         "array_2": np.array([[0, 2], [3, 0]]),
