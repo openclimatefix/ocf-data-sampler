@@ -9,6 +9,7 @@ from ocf_data_sampler.numpy_batch import (
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
     convert_gsp_to_numpy_batch,
+    make_datetime_numpy_batch,
     make_sun_position_numpy_batch,
 )
 from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
