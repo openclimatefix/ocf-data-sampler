@@ -16,8 +16,8 @@ def _get_date_time_in_pi(
     minute_of_day = dt.minute + dt.hour * 60
 
     # converting into positions on sin-cos circle
-    time_in_pi = (2 * np.pi) * (minute_of_day / (24 * 3600))
-    date_in_pi = (2 * np.pi) * (day_of_year / (365 * 24 * 3600))
+    time_in_pi = (2 * np.pi) * (minute_of_day / (24 * 60))
+    date_in_pi = (2 * np.pi) * (day_of_year / 365)
 
     return date_in_pi, time_in_pi
 
