@@ -54,6 +54,9 @@ def process_and_combine_datasets(
         for sat_key, da_sat in dataset_dict["sat"].items():
             # Standardise
             provider = config.input_data.satellite[sat_key].provider
+
+            # Not entirely sure if epsilon is necessary considering mean and std values are consistently non-zero
+            # Purely a safety measure
             da_sat = (da_sat - SAT_MEANS[provider]) / (SAT_STDS[provider] + EPSILON)
 
             # Convert to NumpyBatch
