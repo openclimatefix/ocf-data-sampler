@@ -13,6 +13,13 @@ class SatelliteBatchKey:
 
 def convert_satellite_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> dict:
     """Convert from Xarray to NumpyBatch"""
+
+    # Missing coordinate checking stage
+    required_coords = ["x_geostationary", "y_geostationary"]
+    for coord in required_coords:
+        if coord not in da.coords:
+            raise ValueError(f"Input DataArray missing '{coord}'")
+
     example = {
         SatelliteBatchKey.satellite_actual: da.values,
         SatelliteBatchKey.time_utc: da.time_utc.values.astype(float),
