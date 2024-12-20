@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
-from typing import Tuple
+from typing import Optional, Tuple
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
@@ -9,6 +9,7 @@ from ocf_data_sampler.numpy_batch import (
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
     convert_gsp_to_numpy_batch,
+    convert_site_to_numpy_batch,
     make_sun_position_numpy_batch,
 )
 from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
@@ -21,8 +22,8 @@ from ocf_data_sampler.utils import minutes
 def process_and_combine_datasets(
     dataset_dict: dict,
     config: Configuration,
-    t0: pd.Timestamp,
-    location: Location,
+    t0: Optional[pd.Timestamp] = None,
+    location: Optional[Location] = None,
     target_key: str = 'gsp'
 ) -> dict:
     """Normalize and convert data to numpy arrays"""
@@ -73,6 +74,15 @@ def process_and_combine_datasets(
             }
         )
 
+    if "sites" in dataset_dict:
+
+        da_sites = dataset_dict["sites"]
+        da_sites = da_sites / da_sites.capacity_kwp
+
+        sites_sample = convert_site_to_numpy_batch(da_sites)
+
+        numpy_modalities.append(sites_sample)
+
     if target_key == 'gsp':
         # Make sun coords NumpyBatch
         datetimes = pd.date_range(
@@ -83,15 +93,18 @@ def process_and_combine_datasets(
 
         lon, lat = osgb_to_lon_lat(location.x, location.y)
 
-    numpy_modalities.append(
-        make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix=target_key)
-    )
+        numpy_modalities.append(
+            make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix=target_key)
+        )
+
+    # TODO add sun and time features for site
 
     # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
     combined_sample = fill_nans_in_arrays(combined_sample)
 
     return combined_sample
+
 
 def process_and_combine_site_sample_dict(
     dataset_dict: dict,
