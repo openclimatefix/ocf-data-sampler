@@ -88,11 +88,6 @@ def process_and_combine_datasets(
         make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix=target_key)
     )
 
-    if "site" in dataset_dict:
-        numpy_modalities.append(
-            make_datetime_numpy_batch(datetimes, key_prefix=target_key)
-        )
-
     # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
     combined_sample = fill_nans_in_arrays(combined_sample)
