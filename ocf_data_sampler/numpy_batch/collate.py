@@ -65,8 +65,6 @@ def stack_data_list(
     batch_key: Union[str, NWPBatchKey],
 ):
     """How to combine data entries for each key
-
-    See also: `extract_sample_from_batch()` for opposite
     """
     if _key_is_constant(batch_key):
         # These are always the same for all examples.
