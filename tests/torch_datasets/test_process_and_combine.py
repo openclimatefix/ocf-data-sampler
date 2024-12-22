@@ -2,9 +2,13 @@ import pytest
 import numpy as np
 import pandas as pd
 import xarray as xr
+
 from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
+from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
 from ocf_data_sampler.select.location import Location
-from ocf_data_sampler.select.select_time_slice import select_time_slice_nwp
+from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
+from ocf_data_sampler.utils import minutes
 
 from ocf_data_sampler.torch_datasets.process_and_combine import (
     process_and_combine_datasets,
@@ -12,141 +16,204 @@ from ocf_data_sampler.torch_datasets.process_and_combine import (
     fill_nans_in_arrays,
     compute,
 )
-from ocf_data_sampler.numpy_batch import NWPBatchKey, SatelliteBatchKey, GSPBatchKey
 
 
-@pytest.fixture
-def mock_configuration():
-    config = Configuration()
-    config.input_data.nwp = {
-        "ukv": type("Provider", (object,), {"provider": "ukv"}),
-        "ecmwf": type("Provider", (object,), {"provider": "ecmwf"}),
-    }
-    config.input_data.gsp = type(
-        "GSPConfig",
-        (object,),
-        {
-            "interval_start_minutes": -180,
-            "interval_end_minutes": 180,
-            "time_resolution_minutes": 30,
-        },
-    )()
-    config.input_data.site = type(
-        "SiteConfig",
-        (object,),
-        {
-            "interval_start_minutes": -120,
-            "interval_end_minutes": 120,
-            "time_resolution_minutes": 15,
-        },
-    )()
-    return config
+NWP_FREQ = pd.Timedelta("3h")
 
 
-@pytest.fixture
-def mock_dataset_dict():
-    x_osgb = np.linspace(0, 10, 2)
-    y_osgb = np.linspace(0, 10, 2)
-    init_time_utc = pd.date_range("2023-01-01T00:00", periods=10, freq="1h")
-    step = pd.to_timedelta(np.arange(10), unit="h")  # Create a valid step coordinate
+@pytest.fixture(scope="module")
+def da_sat_like():
+    """Create dummy satellite data"""
+    x = np.arange(-100, 100)
+    y = np.arange(-100, 100)
+    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq="5min")
 
-    # Create mock NWP data with valid `step` and `init_time_utc`
-    nwp_data = xr.DataArray(
-        np.random.rand(10, 5, 2, 2),
-        dims=["step", "channel", "x", "y"],
-        coords={
-            "step": step,  # Properly define `step` as a coordinate
-            "init_time_utc": ("step", init_time_utc),  # Link `init_time_utc` to `step`
-            "channel": ["cdcb", "lcc", "mcc", "hcc", "sde"],
-            "x_osgb": ("x", x_osgb),
-            "y_osgb": ("y", y_osgb),
-        },
-    )
-
-    # Ensure step remains accessible even after dimension swapping
-    nwp_data = nwp_data.swap_dims({"step": "init_time_utc"}).reset_coords("step", drop=False)
-
-    # Create mock satellite data
-    sat_data = xr.DataArray(
-        np.random.rand(10, 1, 2, 2),
-        dims=["time", "channel", "x", "y"],
-        coords={
-            "time": pd.date_range("2023-01-01", periods=10, freq="30min"),
-            "channel": ["HRV"],
-            "x_osgb": ("x", x_osgb),
-            "y_osgb": ("y", y_osgb),
-        },
-    )
-
-    # Create mock GSP data
-    gsp_data = xr.DataArray(
-        np.random.rand(10),
-        dims=["time"],
-        coords={"time": pd.date_range("2023-01-01", periods=10, freq="30min")},
-    )
-    gsp_future_data = xr.DataArray(
-        np.random.rand(10),
-        dims=["time"],
-        coords={"time": pd.date_range("2023-01-01T05:00", periods=10, freq="30min")},
-    )
-
-    return {
-        "nwp": {"ukv": nwp_data},
-        "sat": sat_data,
-        "gsp": gsp_data,
-        "gsp_future": gsp_future_data,
-    }
-
-
-def test_process_and_combine_datasets(mock_configuration, mock_dataset_dict):
-    location = Location(x=0, y=0, id=1)
-    t0 = pd.Timestamp("2023-01-01 06:00")
-
-    # Apply time slicing to the NWP data
-    for nwp_key, da_nwp in mock_dataset_dict["nwp"].items():
-        mock_dataset_dict["nwp"][nwp_key] = select_time_slice_nwp(
-            da=da_nwp,
-            t0=t0,
-            interval_start=pd.Timedelta(hours=-3),
-            interval_end=pd.Timedelta(hours=3),
-            sample_period_duration=pd.Timedelta(minutes=30),
+    da_sat = xr.DataArray(
+        np.random.normal(size=(len(datetimes), len(x), len(y))),
+        coords=dict(
+            time_utc=(["time_utc"], datetimes),
+            x_geostationary=(["x_geostationary"], x),
+            y_geostationary=(["y_geostationary"], y),
         )
-
-    result = process_and_combine_datasets(
-        dataset_dict=mock_dataset_dict,
-        config=mock_configuration,
-        t0=t0,
-        location=location,
-        target_key="gsp",
     )
+    return da_sat
 
-    assert isinstance(result, dict)
-    assert GSPBatchKey.gsp in result
-    assert NWPBatchKey.nwp in result
-    assert SatelliteBatchKey.satellite_actual in result
+
+@pytest.fixture(scope="module")
+def da_nwp_like():
+    """Create dummy  NWP data"""
+    x = np.arange(-100, 100)
+    y = np.arange(-100, 100)
+    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq=NWP_FREQ)
+    steps = pd.timedelta_range("0h", "16h", freq="1h")
+    channels = ["t", "dswrf"]
+
+    da_nwp = xr.DataArray(
+        np.random.normal(size=(len(datetimes), len(steps), len(channels), len(x), len(y))),
+        coords=dict(
+            init_time_utc=(["init_time_utc"], datetimes),
+            step=(["step"], steps),
+            channel=(["channel"], channels),
+            x_osgb=(["x_osgb"], x),
+            y_osgb=(["y_osgb"], y),
+        )
+    )
+    return da_nwp
+
+
+@pytest.fixture
+def mock_constants(monkeypatch):
+    """Creation of dummy constants used in normalisation process"""
+    mock_nwp_means = {"ukv": {
+        "t": 10.0,
+        "dswrf": 50.0
+    }}
+    mock_nwp_stds = {"ukv": {
+        "t": 2.0,
+        "dswrf": 10.0
+    }}
+    mock_sat_means = 100.0
+    mock_sat_stds = 20.0
+    
+    monkeypatch.setattr("ocf_data_sampler.constants.NWP_MEANS", mock_nwp_means)
+    monkeypatch.setattr("ocf_data_sampler.constants.NWP_STDS", mock_nwp_stds)
+    monkeypatch.setattr("ocf_data_sampler.constants.SAT_MEANS", mock_sat_means)
+    monkeypatch.setattr("ocf_data_sampler.constants.SAT_STDS", mock_sat_stds)
+
+
+@pytest.fixture
+def mock_config():
+    """Specify dummy configuration"""
+    class MockConfig:
+        class InputData:
+            class NWP:
+                provider = "ukv"
+                interval_start_minutes = -360
+                interval_end_minutes = 180
+                time_resolution_minutes = 60
+
+            class GSP:
+                interval_start_minutes = -120
+                interval_end_minutes = 120
+                time_resolution_minutes = 30
+
+            def __init__(self):
+                self.nwp = {"ukv": self.NWP()}
+                self.gsp = self.GSP()
+
+        def __init__(self):
+            self.input_data = self.InputData()
+    
+    return MockConfig()
+
+
+@pytest.fixture
+def mock_location():
+    """Create dummy location"""
+    return Location(id=12345, x=400000, y=500000)
 
 
 def test_merge_dicts():
-    dicts = [{"a": 1, "b": 2}, {"b": 3, "c": 4}]
-    merged = merge_dicts(dicts)
-    assert merged == {"a": 1, "b": 3, "c": 4}
+    """Test merge_dicts function"""
+    dict1 = {"a": 1, "b": 2}
+    dict2 = {"c": 3, "d": 4}
+    dict3 = {"e": 5}
+    
+    result = merge_dicts([dict1, dict2, dict3])
+    assert result == {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}
+    
+    # Test key overwriting
+    dict4 = {"a": 10, "f": 6}
+    result = merge_dicts([dict1, dict4])
+    assert result["a"] == 10
 
 
 def test_fill_nans_in_arrays():
-    batch = {
-        "a": np.array([1.0, np.nan, 3.0]),
-        "b": {"nested": np.array([np.nan, 5.0])},
+    """Test the fill_nans_in_arrays function"""
+    array_with_nans = np.array([1.0, np.nan, 3.0, np.nan])
+    nested_dict = {
+        "array1": array_with_nans,
+        "nested": {
+            "array2": np.array([np.nan, 2.0, np.nan, 4.0])
+        },
+        "string_key": "not_an_array"
     }
-    filled_batch = fill_nans_in_arrays(batch)
-    assert np.array_equal(filled_batch["a"], np.array([1.0, 0.0, 3.0]))
-    assert np.array_equal(filled_batch["b"]["nested"], np.array([0.0, 5.0]))
+    
+    result = fill_nans_in_arrays(nested_dict)
+    
+    assert not np.isnan(result["array1"]).any()
+    assert np.array_equal(result["array1"], np.array([1.0, 0.0, 3.0, 0.0]))
+    assert not np.isnan(result["nested"]["array2"]).any()
+    assert np.array_equal(result["nested"]["array2"], np.array([0.0, 2.0, 0.0, 4.0]))
+    assert result["string_key"] == "not_an_array"
 
 
 def test_compute():
-    data = xr.DataArray(
-        np.random.rand(10), dims=["time"], coords={"time": pd.date_range("2023-01-01", periods=10)}
-    )
-    nested_dict = {"level1": {"level2": data}}
-    computed_dict = compute(nested_dict)
+    """Test the compute function"""
+    da = xr.DataArray(np.random.rand(5, 5))
 
-    assert computed_dict["level1"]["level2"].equals(data)
+    # Create nested dictionary
+    nested_dict = {
+        "array1": da,
+        "nested": {
+            "array2": da
+        }
+    }
+    
+    result = compute(nested_dict)
+    
+    # Ensure function applied - check if data is no longer lazy array and determine structural alterations
+    # Check that result is an xarray DataArray
+    assert isinstance(result["array1"], xr.DataArray)
+    assert isinstance(result["nested"]["array2"], xr.DataArray)
+    
+    # Check data is no longer lazy object
+    assert isinstance(result["array1"].data, np.ndarray)
+    assert isinstance(result["nested"]["array2"].data, np.ndarray)
+    
+    # Check for NaN
+    assert not np.isnan(result["array1"].data).any()
+    assert not np.isnan(result["nested"]["array2"].data).any()
+
+
+# TO DO - Update the below to include satellite and finalise testing procedure
+# Currently for NWP only - awaiting confirmation
+@pytest.mark.parametrize("t0_str", ["10:00", "11:00", "12:00"])
+def test_full_pipeline(da_nwp_like, mock_config, mock_location, mock_constants, t0_str):
+    """Test full pipeline considering time slice selection and then process and combine"""
+    t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
+    
+    # Obtain NWP data slice
+    nwp_sample = select_time_slice_nwp(
+        da_nwp_like,
+        t0,
+        sample_period_duration=pd.Timedelta(minutes=mock_config.input_data.nwp["ukv"].time_resolution_minutes),
+        interval_start=pd.Timedelta(minutes=mock_config.input_data.nwp["ukv"].interval_start_minutes),
+        interval_end=pd.Timedelta(minutes=mock_config.input_data.nwp["ukv"].interval_end_minutes),
+        dropout_timedeltas=None,
+        dropout_frac=0,
+        accum_channels=["dswrf"],
+        channel_dim_name="channel",
+    )
+    
+    # Prepare dataset dictionary
+    dataset_dict = {
+        "nwp": {"ukv": nwp_sample},
+    }
+    
+    # Process data with main function
+    result = process_and_combine_datasets(
+        dataset_dict,
+        mock_config,
+        t0,
+        mock_location,
+        target_key='gsp'
+    )
+    
+    # Verify results structure
+    assert NWPBatchKey.nwp in result
+    
+    # Check NWP data normalisation and NaN handling
+    nwp_data = result[NWPBatchKey.nwp]["ukv"]
+    assert isinstance(nwp_data['nwp'], np.ndarray)
+    assert not np.isnan(nwp_data['nwp']).any()
