@@ -7,10 +7,6 @@ NWP_PROVIDERS = [
     "ecmwf",
 ]
 
-SAT_PROVIDERS = [
-    "rss",
-]
-
 
 def _to_data_array(d):
     return xr.DataArray(
@@ -25,20 +21,6 @@ class NWPStatDict(dict):
     def __getitem__(self, key):
         if key not in NWP_PROVIDERS:
             raise KeyError(f"{key} is not a supported NWP provider - {NWP_PROVIDERS}")
-        elif key in self.keys():
-            return super().__getitem__(key)
-        else:
-            raise KeyError(
-                f"Values for {key} not yet available in ocf-data-sampler {list(self.keys())}"
-            )
-
-
-class SatStatDict(dict):
-    """Custom dictionary class to hold Satellite normalization stats"""
-
-    def __getitem__(self, key):
-        if key not in SAT_PROVIDERS:
-            raise KeyError(f"{key} is not a supported Satellite provider - {SAT_PROVIDERS}")
         elif key in self.keys():
             return super().__getitem__(key)
         else:
@@ -157,7 +139,7 @@ NWP_MEANS = NWPStatDict(
 # ------ Satellite
 # RSS Mean and std values from randomised 20% of 2020 imagery
 
-RSS_STD = {
+SAT_STD = {
     "HRV": 0.11405209,
     "IR_016": 0.21462157,
     "IR_039": 0.04618041,
@@ -172,7 +154,7 @@ RSS_STD = {
     "WV_073": 0.12924142,
 }
 
-RSS_MEAN = {
+SAT_MEAN = {
     "HRV": 0.09298719,
     "IR_016": 0.17594202,
     "IR_039": 0.86167645,
@@ -187,16 +169,9 @@ RSS_MEAN = {
     "WV_073": 0.62479186,
 }
 
-# Specified to ensure calculation stability
-EPSILON = 1e-8
+SAT_STD = _to_data_array(SAT_STD)
+SAT_MEAN = _to_data_array(SAT_MEAN)
 
-RSS_STD = _to_data_array(RSS_STD)
-RSS_MEAN = _to_data_array(RSS_MEAN)
-
-SAT_STDS = SatStatDict(
-    rss=RSS_STD,
-)
-
-SAT_MEANS = SatStatDict(
-    rss=RSS_MEAN,
-)
+# SatStatDict wrapper not needed due to singular provider - direct assignment of meand and std
+SAT_STDS = SAT_STD
+SAT_MEANS = SAT_MEAN

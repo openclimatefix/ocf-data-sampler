@@ -3,7 +3,7 @@ import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, SAT_MEANS, SAT_STDS, EPSILON
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, SAT_MEANS, SAT_STDS
 from ocf_data_sampler.numpy_batch import (
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
@@ -48,21 +48,12 @@ def process_and_combine_datasets(
 
 
     if "sat" in dataset_dict:
-
-        sat_numpy_modalities = dict()
-
-        for sat_key, da_sat in dataset_dict["sat"].items():
-            # Standardise
-            provider = config.input_data.satellite[sat_key].provider
-
-            # Not entirely sure if epsilon is necessary considering mean and std values are consistently non-zero
-            # Purely a safety measure
-            da_sat = (da_sat - SAT_MEANS[provider]) / (SAT_STDS[provider] + EPSILON)
-
-            # Convert to NumpyBatch
-            sat_numpy_modalities[sat_key] = convert_satellite_to_numpy_batch(da_sat)
-
-        # Combine the Sattelites into NumpyBatch
+        # Standardise
+        da_sat = dataset_dict["sat"]
+        da_sat = (da_sat - SAT_MEANS) / SAT_STDS
+        # Convert to NumpyBatch
+        sat_numpy_modalities = convert_satellite_to_numpy_batch(da_sat)
+        # Combine the Satellite into NumpyBatch
         numpy_modalities.append({SatelliteBatchKey.satellite_actual: sat_numpy_modalities})
 
 

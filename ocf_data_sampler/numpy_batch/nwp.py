@@ -18,12 +18,6 @@ class NWPBatchKey:
 def convert_nwp_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> dict:
     """Convert from Xarray to NWP NumpyBatch"""
 
-    # Missing coordinate checking stage
-    required_coords = ["y_osgb", "x_osgb"]
-    for coord in required_coords:
-        if coord not in da.coords:
-            raise ValueError(f"Input DataArray missing '{coord}'")
-
     example = {
         NWPBatchKey.nwp: da.values,
         NWPBatchKey.channel_names: da.channel.values,
