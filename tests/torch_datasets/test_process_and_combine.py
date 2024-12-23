@@ -4,6 +4,7 @@ import tempfile
 import numpy as np
 import pandas as pd
 import xarray as xr
+import dask.array as da
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config import Configuration
@@ -24,17 +25,17 @@ def test_process_and_combine_datasets(pvnet_config_filename):
 
     # Load in config for function and define location 
     config = load_yaml_configuration(pvnet_config_filename)
-    t0 = pd.Timestamp("2024-01-01")
+    t0 = pd.Timestamp("2024-01-01 00:00")
     location = Location(coordinate_system="osgb", x=1234, y=5678, id=1)
 
     nwp_data = xr.DataArray(
         np.random.rand(4, 2, 2, 2),
         dims=["time_utc", "channel", "y", "x"],
         coords={
-            "time_utc": pd.date_range("2024-01-01", periods=4, freq="h"),
+            "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
             "channel": ["t2m", "dswrf"],
             "step": ("time_utc", pd.timedelta_range(start='0h', periods=4, freq='h')),
-            "init_time_utc": pd.Timestamp("2024-01-01")
+            "init_time_utc": pd.Timestamp("2024-01-01 00:00")
         }
     )
 
@@ -42,7 +43,7 @@ def test_process_and_combine_datasets(pvnet_config_filename):
         np.random.rand(7, 1, 2, 2),
         dims=["time_utc", "channel", "y", "x"],
         coords={
-            "time_utc": pd.date_range("2024-01-01", periods=7, freq="5min"),
+            "time_utc": pd.date_range("2024-01-01 00:00", periods=7, freq="5min"),
             "channel": ["HRV"],
             "x_geostationary": (["y", "x"], np.array([[1, 2], [1, 2]])),
             "y_geostationary": (["y", "x"], np.array([[1, 1], [2, 2]]))
@@ -58,7 +59,7 @@ def test_process_and_combine_datasets(pvnet_config_filename):
     # Call relevant function
     result = process_and_combine_datasets(dataset_dict, config, t0, location)
 
-    # Assert result is dicr - check and validate
+    # Assert result is dict - check and validate
     assert isinstance(result, dict)
     assert NWPBatchKey.nwp in result
     assert result[SatelliteBatchKey.satellite_actual].shape == (7, 1, 2, 2)
@@ -101,29 +102,31 @@ def test_fill_nans_in_arrays():
 
 
 def test_compute():
-    """Test the compute function"""
-    da = xr.DataArray(np.random.rand(5, 5))
+    """Test compute function with dask array"""
+    da_dask = xr.DataArray(da.random.random((5, 5)))
 
-    # Create nested dictionary
+    # Create a nested dictionary with dask array
     nested_dict = {
-        "array1": da,
+        "array1": da_dask,
         "nested": {
-            "array2": da
+            "array2": da_dask
         }
     }
-    
+
+    # Ensure initial data is lazy - i.e. not yet computed
+    assert not isinstance(nested_dict["array1"].data, np.ndarray)
+    assert not isinstance(nested_dict["nested"]["array2"].data, np.ndarray)
+
+    # Call the compute function
     result = compute(nested_dict)
-    
-    # Ensure function applied - check if data is no longer lazy array and determine structural alterations
-    # Check that result is an xarray DataArray
+
+    # Assert that the result is an xarray DataArray and no longer lazy
     assert isinstance(result["array1"], xr.DataArray)
     assert isinstance(result["nested"]["array2"], xr.DataArray)
-    
-    # Check data is no longer lazy object
     assert isinstance(result["array1"].data, np.ndarray)
     assert isinstance(result["nested"]["array2"].data, np.ndarray)
-    
-    # Check for NaN
+
+    # Ensure there no NaN values in computed data
     assert not np.isnan(result["array1"].data).any()
     assert not np.isnan(result["nested"]["array2"].data).any()
 
@@ -140,7 +143,7 @@ def test_process_and_combine_site_sample_dict(pvnet_config_filename):
                 raw_nwp_values,
                 dims=["time_utc", "channel", "y", "x"],
                 coords={
-                    "time_utc": pd.date_range("2024-01-01", periods=4, freq="h"),
+                    "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
                     "channel": ["dswrf"],  # Single channel
                 },
             )
