@@ -139,7 +139,7 @@ NWP_MEANS = NWPStatDict(
 # ------ Satellite
 # RSS Mean and std values from randomised 20% of 2020 imagery
 
-SAT_STD = {
+RSS_STD = {
     "HRV": 0.11405209,
     "IR_016": 0.21462157,
     "IR_039": 0.04618041,
@@ -154,7 +154,7 @@ SAT_STD = {
     "WV_073": 0.12924142,
 }
 
-SAT_MEAN = {
+RSS_MEAN = {
     "HRV": 0.09298719,
     "IR_016": 0.17594202,
     "IR_039": 0.86167645,
@@ -169,9 +169,5 @@ SAT_MEAN = {
     "WV_073": 0.62479186,
 }
 
-SAT_STD = _to_data_array(SAT_STD)
-SAT_MEAN = _to_data_array(SAT_MEAN)
-
-# SatStatDict wrapper not needed due to singular provider - direct assignment of meand and std
-SAT_STDS = SAT_STD
-SAT_MEANS = SAT_MEAN
+RSS_STD = _to_data_array(RSS_STD)
+RSS_MEAN = _to_data_array(RSS_MEAN)

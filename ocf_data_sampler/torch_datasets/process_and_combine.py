@@ -4,7 +4,7 @@ import xarray as xr
 from typing import Tuple
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, SAT_MEANS, SAT_STDS
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
 from ocf_data_sampler.numpy_batch import (
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
@@ -14,7 +14,6 @@ from ocf_data_sampler.numpy_batch import (
 from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
 from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
-
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.utils import minutes
@@ -50,7 +49,7 @@ def process_and_combine_datasets(
     if "sat" in dataset_dict:
         # Standardise
         da_sat = dataset_dict["sat"]
-        da_sat = (da_sat - SAT_MEANS) / SAT_STDS
+        da_sat = (da_sat - RSS_MEAN) / RSS_STD
 
         # Convert to NumpyBatch
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
@@ -99,6 +98,7 @@ def process_and_combine_datasets(
 
     return combined_sample
 
+
 def process_and_combine_site_sample_dict(
     dataset_dict: dict,
     config: Configuration,
@@ -125,8 +125,9 @@ def process_and_combine_site_sample_dict(
             data_arrays.append((f"nwp-{provider}", da_nwp))
           
     if "sat" in dataset_dict:
-        # TODO add some satellite normalisation
+        # Satellite normalisation added
         da_sat = dataset_dict["sat"]
+        da_sat = (da_sat - RSS_MEAN) / RSS_STD
         data_arrays.append(("satellite", da_sat))
 
     if "site" in dataset_dict:
@@ -148,6 +149,7 @@ def merge_dicts(list_of_dicts: list[dict]) -> dict:
     for d in list_of_dicts:
         combined_dict.update(d)
     return combined_dict
+
 
 def merge_arrays(normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
     """

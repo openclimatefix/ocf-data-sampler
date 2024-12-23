@@ -1,116 +1,123 @@
 import pytest
+import tempfile
+
 import numpy as np
 import pandas as pd
 import xarray as xr
 
+from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
-from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
 from ocf_data_sampler.select.location import Location
-from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
-from ocf_data_sampler.utils import minutes
+from ocf_data_sampler.numpy_batch import NWPBatchKey, GSPBatchKey, SatelliteBatchKey
+from ocf_data_sampler.torch_datasets import PVNetUKRegionalDataset
 
 from ocf_data_sampler.torch_datasets.process_and_combine import (
     process_and_combine_datasets,
+    process_and_combine_site_sample_dict,
     merge_dicts,
     fill_nans_in_arrays,
     compute,
 )
 
 
-NWP_FREQ = pd.Timedelta("3h")
+# Currently leaving here for reference purpose - not strictly needed
+def test_pvnet(pvnet_config_filename):
 
+    # Create dataset object
+    dataset = PVNetUKRegionalDataset(pvnet_config_filename)
 
-@pytest.fixture(scope="module")
-def da_sat_like():
-    """Create dummy satellite data"""
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
-    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq="5min")
+    assert len(dataset.locations) == 317 # no of GSPs not including the National level
+    # NB. I have not checked this value is in fact correct, but it does seem to stay constant
+    assert len(dataset.valid_t0_times) == 39
+    assert len(dataset) == 317*39
 
-    da_sat = xr.DataArray(
-        np.random.normal(size=(len(datetimes), len(x), len(y))),
-        coords=dict(
-            time_utc=(["time_utc"], datetimes),
-            x_geostationary=(["x_geostationary"], x),
-            y_geostationary=(["y_geostationary"], y),
-        )
-    )
-    return da_sat
+    # Generate a sample
+    sample = dataset[0]
 
+    assert isinstance(sample, dict)
 
-@pytest.fixture(scope="module")
-def da_nwp_like():
-    """Create dummy  NWP data"""
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
-    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq=NWP_FREQ)
-    steps = pd.timedelta_range("0h", "16h", freq="1h")
-    channels = ["t", "dswrf"]
-
-    da_nwp = xr.DataArray(
-        np.random.normal(size=(len(datetimes), len(steps), len(channels), len(x), len(y))),
-        coords=dict(
-            init_time_utc=(["init_time_utc"], datetimes),
-            step=(["step"], steps),
-            channel=(["channel"], channels),
-            x_osgb=(["x_osgb"], x),
-            y_osgb=(["y_osgb"], y),
-        )
-    )
-    return da_nwp
-
-
-@pytest.fixture
-def mock_constants(monkeypatch):
-    """Creation of dummy constants used in normalisation process"""
-    mock_nwp_means = {"ukv": {
-        "t": 10.0,
-        "dswrf": 50.0
-    }}
-    mock_nwp_stds = {"ukv": {
-        "t": 2.0,
-        "dswrf": 10.0
-    }}
-    mock_sat_means = 100.0
-    mock_sat_stds = 20.0
+    for key in [
+        NWPBatchKey.nwp, SatelliteBatchKey.satellite_actual, GSPBatchKey.gsp,
+        GSPBatchKey.solar_azimuth, GSPBatchKey.solar_elevation,
+    ]:
+        assert key in sample
     
-    monkeypatch.setattr("ocf_data_sampler.constants.NWP_MEANS", mock_nwp_means)
-    monkeypatch.setattr("ocf_data_sampler.constants.NWP_STDS", mock_nwp_stds)
-    monkeypatch.setattr("ocf_data_sampler.constants.SAT_MEANS", mock_sat_means)
-    monkeypatch.setattr("ocf_data_sampler.constants.SAT_STDS", mock_sat_stds)
+    for nwp_source in ["ukv"]:
+        assert nwp_source in sample[NWPBatchKey.nwp]
+
+    # check the shape of the data is correct
+    # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
+    assert sample[SatelliteBatchKey.satellite_actual].shape == (7, 1, 2, 2)
+    # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
+    assert sample[NWPBatchKey.nwp]["ukv"][NWPBatchKey.nwp].shape == (4, 1, 2, 2)
+    # 3 hours of 30 minute data (inclusive)
+    assert sample[GSPBatchKey.gsp].shape == (7,)
+    # Solar angles have same shape as GSP data
+    assert sample[GSPBatchKey.solar_azimuth].shape == (7,)
+    assert sample[GSPBatchKey.solar_elevation].shape == (7,)
 
 
-@pytest.fixture
-def mock_config():
-    """Specify dummy configuration"""
-    class MockConfig:
-        class InputData:
-            class NWP:
-                provider = "ukv"
-                interval_start_minutes = -360
-                interval_end_minutes = 180
-                time_resolution_minutes = 60
+# Currently leaving here for reference purpose - not strictly needed
+def test_pvnet_no_gsp(pvnet_config_filename):
 
-            class GSP:
-                interval_start_minutes = -120
-                interval_end_minutes = 120
-                time_resolution_minutes = 30
+    # load config
+    config = load_yaml_configuration(pvnet_config_filename)
+    # remove gsp
+    config.input_data.gsp.zarr_path = ''
 
-            def __init__(self):
-                self.nwp = {"ukv": self.NWP()}
-                self.gsp = self.GSP()
+    # save temp config file
+    with tempfile.NamedTemporaryFile() as temp_config_file:
+        save_yaml_configuration(config, temp_config_file.name)
+        # Create dataset object
+        dataset = PVNetUKRegionalDataset(temp_config_file.name)
 
-        def __init__(self):
-            self.input_data = self.InputData()
-    
-    return MockConfig()
+        # Generate a sample
+        _ = dataset[0]
 
 
-@pytest.fixture
-def mock_location():
-    """Create dummy location"""
-    return Location(id=12345, x=400000, y=500000)
+def test_process_and_combine_datasets(pvnet_config_filename):
+
+    # Load in config for function and define location 
+    config = load_yaml_configuration(pvnet_config_filename)
+    t0 = pd.Timestamp("2024-01-01")
+    location = Location(coordinate_system="osgb", x=1234, y=5678, id=1)
+
+    nwp_data = xr.DataArray(
+        np.random.rand(4, 2, 2, 2),
+        dims=["time_utc", "channel", "y", "x"],
+        coords={
+            "time_utc": pd.date_range("2024-01-01", periods=4, freq="h"),
+            "channel": ["t2m", "dswrf"],
+            "step": ("time_utc", pd.timedelta_range(start='0h', periods=4, freq='h')),
+            "init_time_utc": pd.Timestamp("2024-01-01")
+        }
+    )
+
+    sat_data = xr.DataArray(
+        np.random.rand(7, 1, 2, 2),
+        dims=["time_utc", "channel", "y", "x"],
+        coords={
+            "time_utc": pd.date_range("2024-01-01", periods=7, freq="5min"),
+            "channel": ["HRV"],
+            "x_geostationary": (["y", "x"], np.array([[1, 2], [1, 2]])),
+            "y_geostationary": (["y", "x"], np.array([[1, 1], [2, 2]]))
+        }
+    )
+
+    # Combine as dict
+    dataset_dict = {
+        "nwp": {"ukv": nwp_data},
+        "sat": sat_data
+    }
+
+    # Call relevant function
+    result = process_and_combine_datasets(dataset_dict, config, t0, location)
+
+    # Assert result is dicr - check and validate
+    assert isinstance(result, dict)
+    assert NWPBatchKey.nwp in result
+    assert result[SatelliteBatchKey.satellite_actual].shape == (7, 1, 2, 2)
+    assert result[NWPBatchKey.nwp]["ukv"][NWPBatchKey.nwp].shape == (4, 1, 2, 2)
 
 
 def test_merge_dicts():
@@ -176,44 +183,35 @@ def test_compute():
     assert not np.isnan(result["nested"]["array2"].data).any()
 
 
-# TO DO - Update the below to include satellite and finalise testing procedure
-# Currently for NWP only - awaiting confirmation
-@pytest.mark.parametrize("t0_str", ["10:00", "11:00", "12:00"])
-def test_full_pipeline(da_nwp_like, mock_config, mock_location, mock_constants, t0_str):
-    """Test full pipeline considering time slice selection and then process and combine"""
-    t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    
-    # Obtain NWP data slice
-    nwp_sample = select_time_slice_nwp(
-        da_nwp_like,
-        t0,
-        sample_period_duration=pd.Timedelta(minutes=mock_config.input_data.nwp["ukv"].time_resolution_minutes),
-        interval_start=pd.Timedelta(minutes=mock_config.input_data.nwp["ukv"].interval_start_minutes),
-        interval_end=pd.Timedelta(minutes=mock_config.input_data.nwp["ukv"].interval_end_minutes),
-        dropout_timedeltas=None,
-        dropout_frac=0,
-        accum_channels=["dswrf"],
-        channel_dim_name="channel",
-    )
-    
-    # Prepare dataset dictionary
-    dataset_dict = {
-        "nwp": {"ukv": nwp_sample},
+def test_process_and_combine_site_sample_dict(pvnet_config_filename):
+    # Load config
+    config = load_yaml_configuration(pvnet_config_filename)
+
+    # Specify minimal structure for testing
+    raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
+    site_dict = {
+        "nwp": {
+            "ukv": xr.DataArray(
+                raw_nwp_values,
+                dims=["time_utc", "channel", "y", "x"],
+                coords={
+                    "time_utc": pd.date_range("2024-01-01", periods=4, freq="h"),
+                    "channel": ["dswrf"],  # Single channel
+                },
+            )
+        }
     }
-    
-    # Process data with main function
-    result = process_and_combine_datasets(
-        dataset_dict,
-        mock_config,
-        t0,
-        mock_location,
-        target_key='gsp'
-    )
-    
-    # Verify results structure
-    assert NWPBatchKey.nwp in result
-    
-    # Check NWP data normalisation and NaN handling
-    nwp_data = result[NWPBatchKey.nwp]["ukv"]
-    assert isinstance(nwp_data['nwp'], np.ndarray)
-    assert not np.isnan(nwp_data['nwp']).any()
+    print(f"Input site_dict: {site_dict}")
+
+    # Call function
+    result = process_and_combine_site_sample_dict(site_dict, config)
+
+    # Assert to validate output structure
+    assert isinstance(result, xr.Dataset), "Result should be an xarray.Dataset"
+    assert len(result.data_vars) > 0, "Dataset should contain data variables"
+
+    # Validate variable via assertion and shape of such
+    expected_variable = "nwp-ukv"
+    assert expected_variable in result.data_vars, f"Expected variable '{expected_variable}' not found"
+    nwp_result = result[expected_variable]
+    assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for '{expected_variable}': {nwp_result.shape}"
