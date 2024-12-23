@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
+from typing import Tuple
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, SAT_MEANS, SAT_STDS
@@ -9,7 +10,6 @@ from ocf_data_sampler.numpy_batch import (
     convert_satellite_to_numpy_batch,
     convert_gsp_to_numpy_batch,
     make_sun_position_numpy_batch,
-    convert_site_to_numpy_batch,
 )
 from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
@@ -79,18 +79,6 @@ def process_and_combine_datasets(
             }
         )
 
-
-    if "site" in dataset_dict:
-        site_config = config.input_data.site
-        da_sites = dataset_dict["site"]
-        da_sites = da_sites / da_sites.capacity_kwp
-
-        numpy_modalities.append(
-            convert_site_to_numpy_batch(
-                da_sites, t0_idx=-site_config.interval_start_minutes / site_config.time_resolution_minutes
-            )
-        )
-
     if target_key == 'gsp':
         # Make sun coords NumpyBatch
         datetimes = pd.date_range(
@@ -100,16 +88,6 @@ def process_and_combine_datasets(
         )
 
         lon, lat = osgb_to_lon_lat(location.x, location.y)
-
-    elif target_key == 'site':
-        # Make sun coords NumpyBatch
-        datetimes = pd.date_range(
-            t0+minutes(site_config.interval_start_minutes),
-            t0+minutes(site_config.interval_end_minutes),
-            freq=minutes(site_config.time_resolution_minutes),
-        )
-
-        lon, lat = location.x, location.y
 
     numpy_modalities.append(
         make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix=target_key)
@@ -121,6 +99,47 @@ def process_and_combine_datasets(
 
     return combined_sample
 
+def process_and_combine_site_sample_dict(
+    dataset_dict: dict,
+    config: Configuration,
+) -> xr.Dataset:
+    """
+    Normalize and combine data into a single xr Dataset
+
+    Args:
+        dataset_dict: dict containing sliced xr DataArrays
+        config: Configuration for the model
+
+    Returns:
+        xr.Dataset: A merged Dataset with nans filled in.
+    
+    """
+
+    data_arrays = []
+
+    if "nwp" in dataset_dict:
+        for nwp_key, da_nwp in dataset_dict["nwp"].items():
+            # Standardise
+            provider = config.input_data.nwp[nwp_key].provider
+            da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
+            data_arrays.append((f"nwp-{provider}", da_nwp))
+          
+    if "sat" in dataset_dict:
+        # TODO add some satellite normalisation
+        da_sat = dataset_dict["sat"]
+        data_arrays.append(("satellite", da_sat))
+
+    if "site" in dataset_dict:
+        # site_config = config.input_data.site
+        da_sites = dataset_dict["site"]
+        da_sites = da_sites / da_sites.capacity_kwp
+        data_arrays.append(("sites", da_sites))
+    
+    combined_sample_dataset = merge_arrays(data_arrays)
+
+    # Fill any nan values
+    return combined_sample_dataset.fillna(0.0)
+
 
 def merge_dicts(list_of_dicts: list[dict]) -> dict:
     """Merge a list of dictionaries into a single dictionary"""
@@ -130,6 +149,59 @@ def merge_dicts(list_of_dicts: list[dict]) -> dict:
         combined_dict.update(d)
     return combined_dict
 
+def merge_arrays(normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
+    """
+    Combine a list of DataArrays into a single Dataset with unique naming conventions.
+
+    Args:
+        list_of_arrays: List of tuples where each tuple contains:
+            - A string (key name).
+            - An xarray.DataArray.
+
+    Returns:
+        xr.Dataset: A merged Dataset with uniquely named variables, coordinates, and dimensions.
+    """
+    datasets = []
+
+    for key, data_array in normalised_data_arrays:
+        # Ensure all attributes are strings for consistency
+        data_array = data_array.assign_attrs(
+            {attr_key: str(attr_value) for attr_key, attr_value in data_array.attrs.items()}
+        )
+
+        # Convert DataArray to Dataset with the variable name as the key
+        dataset = data_array.to_dataset(name=key)
+
+        # Prepend key name to all dimension and coordinate names for uniqueness
+        dataset = dataset.rename(
+            {dim: f"{key}__{dim}" for dim in dataset.dims if dim not in dataset.coords}
+        )
+        dataset = dataset.rename(
+            {coord: f"{key}__{coord}" for coord in dataset.coords}
+        )
+
+        # Handle concatenation dimension if applicable
+        concat_dim = (
+            f"{key}__target_time_utc" if f"{key}__target_time_utc" in dataset.coords
+            else f"{key}__time_utc"
+        )
+
+        if f"{key}__init_time_utc" in dataset.coords:
+            init_coord = f"{key}__init_time_utc"
+            if dataset[init_coord].ndim == 0:  # Check if scalar
+                expanded_init_times = [dataset[init_coord].values] * len(dataset[concat_dim])
+                dataset = dataset.assign_coords({init_coord: (concat_dim, expanded_init_times)})
+
+        datasets.append(dataset)
+
+    # Ensure all datasets are valid xarray.Dataset objects
+    for ds in datasets:
+        assert isinstance(ds, xr.Dataset), f"Object is not an xr.Dataset: {type(ds)}"
+
+    # Merge all prepared datasets
+    combined_dataset = xr.merge(datasets)
+
+    return combined_dataset
 
 def fill_nans_in_arrays(batch: dict) -> dict:
     """Fills all NaN values in each np.ndarray in the batch dictionary with zeros.

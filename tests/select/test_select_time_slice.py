@@ -197,7 +197,7 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
     t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
     interval_start = pd.Timedelta(-6, "h")
     interval_end = pd.Timedelta(3, "h")
-    freq = pd.Timedelta("1H")
+    freq = pd.Timedelta("1h")
     dropout_timedelta = pd.Timedelta("-2h")
 
     t0_delayed = (t0 + dropout_timedelta).floor(NWP_FREQ)

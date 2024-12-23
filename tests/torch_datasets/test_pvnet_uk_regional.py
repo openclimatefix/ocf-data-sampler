@@ -1,23 +1,10 @@
 import pytest
 import tempfile
 
-from ocf_data_sampler.torch_datasets.pvnet_uk_regional import PVNetUKRegionalDataset
+from ocf_data_sampler.torch_datasets import PVNetUKRegionalDataset
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.numpy_batch import NWPBatchKey, GSPBatchKey, SatelliteBatchKey
 
-
-@pytest.fixture()
-def pvnet_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, uk_gsp_zarr_path, sat_zarr_path):
-
-    # adjust config to point to the zarr file
-    config = load_yaml_configuration(config_filename)
-    config.input_data.nwp['ukv'].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.gsp.zarr_path = uk_gsp_zarr_path
-
-    filename = f"{tmp_path}/configuration.yaml"
-    save_yaml_configuration(config, filename)
-    return filename
 
 
 def test_pvnet(pvnet_config_filename):
