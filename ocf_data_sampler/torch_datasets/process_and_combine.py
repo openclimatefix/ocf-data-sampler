@@ -51,10 +51,9 @@ def process_and_combine_datasets(
         # Standardise
         da_sat = dataset_dict["sat"]
         da_sat = (da_sat - SAT_MEANS) / SAT_STDS
+
         # Convert to NumpyBatch
-        sat_numpy_modalities = convert_satellite_to_numpy_batch(da_sat)
-        # Combine the Satellite into NumpyBatch
-        numpy_modalities.append({SatelliteBatchKey.satellite_actual: sat_numpy_modalities})
+        numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
 
 
     gsp_config = config.input_data.gsp
