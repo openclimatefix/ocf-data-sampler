@@ -5,14 +5,14 @@ from typing import Tuple
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
-from ocf_data_sampler.numpy_batch import (
-    convert_nwp_to_numpy_batch,
-    convert_satellite_to_numpy_batch,
-    convert_gsp_to_numpy_batch,
-    make_sun_position_numpy_batch,
+from ocf_data_sampler.numpy_sample import (
+    convert_nwp_to_numpy_sample,
+    convert_satellite_to_numpy_sample,
+    convert_gsp_to_numpy_sample,
+    make_sun_position_numpy_sample,
 )
-from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
-from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
+from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
+from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.utils import minutes
@@ -37,18 +37,18 @@ def process_and_combine_datasets(
             # Standardise
             provider = config.input_data.nwp[nwp_key].provider
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
-            # Convert to NumpyBatch
-            nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
+            # Convert to NumpySample
+            nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
-        # Combine the NWPs into NumpyBatch
-        numpy_modalities.append({NWPBatchKey.nwp: nwp_numpy_modalities})
+        # Combine the NWPs into NumpySample
+        numpy_modalities.append({NWPSampleKey.nwp: nwp_numpy_modalities})
 
     if "sat" in dataset_dict:
         # Satellite is already in the range [0-1] so no need to standardise
         da_sat = dataset_dict["sat"]
 
-        # Convert to NumpyBatch
-        numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
+        # Convert to NumpySample
+        numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
     gsp_config = config.input_data.gsp
 
@@ -57,7 +57,7 @@ def process_and_combine_datasets(
         da_gsp = da_gsp / da_gsp.effective_capacity_mwp
 
         numpy_modalities.append(
-            convert_gsp_to_numpy_batch(
+            convert_gsp_to_numpy_sample(
                 da_gsp, 
                 t0_idx=-gsp_config.interval_start_minutes / gsp_config.time_resolution_minutes
             )
@@ -67,14 +67,14 @@ def process_and_combine_datasets(
         # TODO: Do we need all of these?
         numpy_modalities.append(
             {
-                GSPBatchKey.gsp_id: location.id,
-                GSPBatchKey.x_osgb: location.x,
-                GSPBatchKey.y_osgb: location.y,
+                GSPSampleKey.gsp_id: location.id,
+                GSPSampleKey.x_osgb: location.x,
+                GSPSampleKey.y_osgb: location.y,
             }
         )
 
     if target_key == 'gsp':
-        # Make sun coords NumpyBatch
+        # Make sun coords NumpySample
         datetimes = pd.date_range(
             t0+minutes(gsp_config.interval_start_minutes),
             t0+minutes(gsp_config.interval_end_minutes),
@@ -84,7 +84,7 @@ def process_and_combine_datasets(
         lon, lat = osgb_to_lon_lat(location.x, location.y)
 
     numpy_modalities.append(
-        make_sun_position_numpy_batch(datetimes, lon, lat, key_prefix=target_key)
+        make_sun_position_numpy_sample(datetimes, lon, lat, key_prefix=target_key)
     )
 
     # Combine all the modalities and fill NaNs
@@ -197,21 +197,21 @@ def merge_arrays(normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.D
 
     return combined_dataset
 
-def fill_nans_in_arrays(batch: dict) -> dict:
-    """Fills all NaN values in each np.ndarray in the batch dictionary with zeros.
+def fill_nans_in_arrays(sample: dict) -> dict:
+    """Fills all NaN values in each np.ndarray in the sample dictionary with zeros.
 
-    Operation is performed in-place on the batch.
+    Operation is performed in-place on the sample.
     """
-    for k, v in batch.items():
+    for k, v in sample.items():
         if isinstance(v, np.ndarray) and np.issubdtype(v.dtype, np.number):
             if np.isnan(v).any():
-                batch[k] = np.nan_to_num(v, copy=False, nan=0.0)
+                sample[k] = np.nan_to_num(v, copy=False, nan=0.0)
 
         # Recursion is included to reach NWP arrays in subdict
         elif isinstance(v, dict):
             fill_nans_in_arrays(v)
 
-    return batch
+    return sample
 
 
 def compute(xarray_dict: dict) -> dict:
