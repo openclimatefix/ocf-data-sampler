@@ -13,7 +13,6 @@ from ocf_data_sampler.numpy_batch import (
 )
 from ocf_data_sampler.numpy_batch.gsp import GSPBatchKey
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
-from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.utils import minutes
