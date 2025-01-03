@@ -4,7 +4,7 @@ import xarray as xr
 from typing import Tuple
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
 from ocf_data_sampler.numpy_batch import (
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
@@ -25,8 +25,8 @@ def process_and_combine_datasets(
     location: Location,
     target_key: str = 'gsp'
 ) -> dict:
-    """Normalize and convert data to numpy arrays"""
 
+    """Normalise and convert data to numpy arrays"""
     numpy_modalities = []
 
     if "nwp" in dataset_dict:
@@ -37,18 +37,22 @@ def process_and_combine_datasets(
             # Standardise
             provider = config.input_data.nwp[nwp_key].provider
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
+
             # Convert to NumpyBatch
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
 
         # Combine the NWPs into NumpyBatch
         numpy_modalities.append({NWPBatchKey.nwp: nwp_numpy_modalities})
 
+
     if "sat" in dataset_dict:
-        # Satellite is already in the range [0-1] so no need to standardise
+        # Standardise
         da_sat = dataset_dict["sat"]
+        da_sat = (da_sat - RSS_MEAN) / RSS_STD
 
         # Convert to NumpyBatch
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
+
 
     gsp_config = config.input_data.gsp
 
@@ -93,6 +97,7 @@ def process_and_combine_datasets(
 
     return combined_sample
 
+
 def process_and_combine_site_sample_dict(
     dataset_dict: dict,
     config: Configuration,
@@ -119,8 +124,9 @@ def process_and_combine_site_sample_dict(
             data_arrays.append((f"nwp-{provider}", da_nwp))
           
     if "sat" in dataset_dict:
-        # TODO add some satellite normalisation
+        # Standardise
         da_sat = dataset_dict["sat"]
+        da_sat = (da_sat - RSS_MEAN) / RSS_STD
         data_arrays.append(("satellite", da_sat))
 
     if "site" in dataset_dict:
@@ -142,6 +148,7 @@ def merge_dicts(list_of_dicts: list[dict]) -> dict:
     for d in list_of_dicts:
         combined_dict.update(d)
     return combined_dict
+
 
 def merge_arrays(normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
     """

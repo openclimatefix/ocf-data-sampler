@@ -13,6 +13,7 @@ class SatelliteBatchKey:
 
 def convert_satellite_to_numpy_batch(da: xr.DataArray, t0_idx: int | None = None) -> dict:
     """Convert from Xarray to NumpyBatch"""
+
     example = {
         SatelliteBatchKey.satellite_actual: da.values,
         SatelliteBatchKey.time_utc: da.time_utc.values.astype(float),
