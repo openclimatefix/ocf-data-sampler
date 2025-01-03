@@ -63,8 +63,7 @@ def stack_nested_keys(dict_list, parent_key, child_key):
     }
 
 def _key_is_constant(sample_key):
-    is_constant = sample_key.endswith("t0_idx") or sample_key == NWPSampleKey.channel_names
-    return is_constant
+    return sample_key.endswith("t0_idx") or sample_key == NWPSampleKey.channel_names
 
 
 def stack_data_list(
