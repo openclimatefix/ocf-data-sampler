@@ -124,7 +124,7 @@ def process_and_combine_site_sample_dict(
             data_arrays.append((f"nwp-{provider}", da_nwp))
           
     if "sat" in dataset_dict:
-        # Satellite normalisation added
+        # Standardise
         da_sat = dataset_dict["sat"]
         da_sat = (da_sat - RSS_MEAN) / RSS_STD
         data_arrays.append(("satellite", da_sat))
