@@ -20,7 +20,6 @@ def test_convert_gsp_to_numpy_sample(uk_gsp_zarr_path):
         GSPSampleKey.nominal_capacity_mwp,
         GSPSampleKey.effective_capacity_mwp,
         GSPSampleKey.time_utc,
-        GSPSampleKey.t0_idx
     }), "Unexpected keys"
 
     # Assert data content and capacity values
