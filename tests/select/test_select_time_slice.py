@@ -99,7 +99,6 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
         interval_start=interval_start,
         interval_end=interval_end,
         sample_period_duration=freq,
-        fill_selection=True
     )
 
     # Check the returned times are as expected
