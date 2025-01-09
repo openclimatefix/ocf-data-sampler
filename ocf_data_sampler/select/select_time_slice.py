@@ -4,16 +4,6 @@ import numpy as np
 
 
 
-def _sel_fillnan(
-        da: xr.DataArray, 
-        start_dt: pd.Timestamp, 
-        end_dt: pd.Timestamp, 
-        sample_period_duration: pd.Timedelta,
-    ) -> xr.DataArray:
-    """Select a time slice from a DataArray, filling missing times with NaNs."""
-    requested_times = pd.date_range(start_dt, end_dt, freq=sample_period_duration)
-    return da.reindex(time_utc=requested_times)
-
 
 def _sel_default(
         da: xr.DataArray, 
@@ -25,36 +15,16 @@ def _sel_default(
     return da.sel(time_utc=slice(start_dt, end_dt))
 
 
-# TODO either implement this or remove it, which would tidy up the code
-def _sel_fillinterp(
-        da: xr.DataArray, 
-        start_dt: pd.Timestamp, 
-        end_dt: pd.Timestamp, 
-        sample_period_duration: pd.Timedelta,
-    ) -> xr.DataArray:
-    """Select a time slice from a DataArray, filling missing times with linear interpolation."""
-    return NotImplemented
-
-
 def select_time_slice(
     ds: xr.DataArray,
     t0: pd.Timestamp,
     interval_start: pd.Timedelta,
     interval_end: pd.Timedelta,
     sample_period_duration: pd.Timedelta,
-    fill_selection: bool = False,
-    max_steps_gap: int = 0,
 ):
     """Select a time slice from a Dataset or DataArray."""
-    assert max_steps_gap >= 0, "max_steps_gap must be >= 0 "
+    _sel = _sel_default
     
-    if fill_selection and max_steps_gap == 0:
-        _sel = _sel_fillnan
-    elif fill_selection and max_steps_gap > 0:
-        _sel = _sel_fillinterp
-    else:
-        _sel = _sel_default
-
     t0_datetime_utc = pd.Timestamp(t0)
     start_dt = t0_datetime_utc + interval_start
     end_dt = t0_datetime_utc + interval_end
