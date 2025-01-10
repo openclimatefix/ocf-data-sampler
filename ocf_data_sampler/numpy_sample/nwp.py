@@ -31,6 +31,7 @@ def convert_nwp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> 
     if "target_time_utc" in da.coords:
         example[NWPSampleKey.target_time_utc] = da.target_time_utc.values.astype(float)
 
+    # TODO: Do we need this at all? Especially since it is only present in UKV data
     for sample_key, dataset_key in ((NWPSampleKey.y_osgb, "y_osgb"),(NWPSampleKey.x_osgb, "x_osgb"),):
         if dataset_key in da.coords:
             example[sample_key] = da[dataset_key].values
