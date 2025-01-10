@@ -57,11 +57,12 @@ def _key_is_constant(sample_key):
     return sample_key.endswith("t0_idx") or sample_key == NWPSampleKey.channel_names
 
 
-def stack_data_list(
-    data_list: list,
-    sample_key: Union[str, NWPSampleKey],
-):
+def stack_data_list(data_list: list,sample_key: Union[str, NWPSampleKey],):
     """How to combine data entries for each key
+
+     Args:
+        data_list: List of data entries to combine
+        sample_key: Key identifying the data type
     """
     if _key_is_constant(sample_key):
         # These are always the same for all examples.
