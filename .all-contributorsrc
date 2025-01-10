@@ -51,6 +51,33 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "SophiaLi20",
+      "name": "Unnati Bhardwaj",
+      "avatar_url": "https://avatars.githubusercontent.com/u/163532536?v=4",
+      "profile": "https://github.com/SophiaLi20",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "alirashidAR",
+      "name": "Ali Rashid",
+      "avatar_url": "https://avatars.githubusercontent.com/u/110668489?v=4",
+      "profile": "https://github.com/alirashidAR",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "felix-e-h-p",
+      "name": "Felix",
+      "avatar_url": "https://avatars.githubusercontent.com/u/137530077?v=4",
+      "profile": "https://github.com/felix-e-h-p",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

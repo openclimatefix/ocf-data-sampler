@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "**/README.md" # ignores all README files
+      - "**/.all-contributorsrc" # ignore contributors file
+      
 jobs:
   call-run-python-release:
     uses: openclimatefix/.github/.github/workflows/python-release.yml@v1.7.2

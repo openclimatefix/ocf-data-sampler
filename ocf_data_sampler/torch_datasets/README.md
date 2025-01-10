@@ -40,8 +40,8 @@ graph TD
     B1([Data])
     B0 --> D0
     B1 --> D0
-    D0[Filter by Location \n GSP, Satellite and NWP] --> D1
-    D1[Filter by Time \n GSP, Satellite and NWP] --> D2
+    D0[Filter by Location <br> GSP, Satellite and NWP] --> D1
+    D1[Filter by Time <br> GSP, Satellite and NWP] --> D2
     D2[Load into Memory] --> E0
     E0[Add GSP Sun Features]
     E0 --> F[Sample]
@@ -64,7 +64,7 @@ graph TD
     A1 --> D3
     A2 --> D3
     A3 --> D3
-    D1[T0 and Site Ids \n for each Site] --> D2
+    D1[T0 and Site Ids <br> for each Site] --> D2
     D2[T0 and Site Ids Pairs]
     D3[Data]
 ```
@@ -83,8 +83,8 @@ graph TD
     B1([Data])
     B0 --> D0
     B1 --> D0
-    D0[Filter by Location \n Site, Satellite and NWP] --> D1
-    D1[Filter by Time \n Site, Satellite and NWP] --> D2
+    D0[Filter by Location <br> Site, Satellite and NWP] --> D1
+    D1[Filter by Time <br> Site, Satellite and NWP] --> D2
     D2[Load into Memory] --> E0
     E0[Add Site Sun Features]
     E0 --> F[Sample]
