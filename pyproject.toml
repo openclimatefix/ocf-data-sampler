@@ -22,7 +22,7 @@ dependencies = [ # Migration from requirements.txt
     "numpy",
     "pandas",
     "xarray",
-    "zarr",
+    "zarr==2.18.3",
     "dask",
     "ocf_blosc2",
     "pvlib",
