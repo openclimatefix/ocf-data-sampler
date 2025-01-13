@@ -5,7 +5,7 @@ import xarray as xr
 
 import pytest
 
-from ocf_data_sampler.numpy_batch import convert_satellite_to_numpy_batch, SatelliteBatchKey
+from ocf_data_sampler.numpy_sample import convert_satellite_to_numpy_sample, SatelliteSampleKey
 
 
 @pytest.fixture(scope="module")
@@ -28,13 +28,13 @@ def da_sat_like():
     return da_sat
 
 
-def test_convert_satellite_to_numpy_batch(da_sat_like):
+def test_convert_satellite_to_numpy_sample(da_sat_like):
 
     # Call the function
-    numpy_batch = convert_satellite_to_numpy_batch(da_sat_like)
+    numpy_sample = convert_satellite_to_numpy_sample(da_sat_like)
 
     # Assert the output type
-    assert isinstance(numpy_batch, dict)
+    assert isinstance(numpy_sample, dict)
 
-    # Assert the shape of the numpy batch
-    assert (numpy_batch[SatelliteBatchKey.satellite_actual] == da_sat_like.values).all()
+    # Assert the shape of the numpy sample
+    assert (numpy_sample[SatelliteSampleKey.satellite_actual] == da_sat_like.values).all()
