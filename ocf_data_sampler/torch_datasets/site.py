@@ -3,6 +3,8 @@ import logging
 
 import pandas as pd
 import xarray as xr
+from typing import Tuple
+
 from torch.utils.data import Dataset
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
@@ -16,10 +18,12 @@ from ocf_data_sampler.select import (
 )
 from ocf_data_sampler.utils import minutes
 from ocf_data_sampler.torch_datasets.valid_time_periods import find_valid_time_periods
-from typing import Tuple
-
 from ocf_data_sampler.torch_datasets.process_and_combine import merge_dicts, fill_nans_in_arrays
-from ocf_data_sampler.numpy_batch import convert_site_to_numpy_batch, convert_satellite_to_numpy_batch, convert_nwp_to_numpy_batch
+from ocf_data_sampler.numpy_batch import (
+    convert_site_to_numpy_batch, 
+    convert_satellite_to_numpy_batch, 
+    convert_nwp_to_numpy_batch
+)
 from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
 
@@ -243,7 +247,7 @@ class SitesDataset(Dataset):
         return combined_sample_dataset.fillna(0.0)
 
 
-    def merge_data_arrays(normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
+    def merge_data_arrays(self, normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
         """
         Combine a list of DataArrays into a single Dataset with unique naming conventions.
 
