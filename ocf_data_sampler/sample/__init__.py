@@ -1,6 +1,6 @@
 # __init__.py
 
-from .base import SampleBaseBase
+from .base import SampleBase
 
 __all__ = ['SampleBase']
 
