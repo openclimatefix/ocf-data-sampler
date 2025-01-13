@@ -1,11 +1,8 @@
 import pandas as pd
-import pytest
 
 from ocf_data_sampler.torch_datasets import SitesDataset
-from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
-from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
-from ocf_data_sampler.numpy_batch.site import SiteBatchKey
-from ocf_data_sampler.numpy_batch.satellite import SatelliteBatchKey
+from ocf_data_sampler.torch_datasets.site import convert_from_dataset_to_dict_datasets
+
 from xarray import Dataset
 
 
@@ -64,3 +61,20 @@ def test_site_get_sample(site_config_filename):
 
     assert len(dataset) == 410
     sample = dataset.get_sample(t0=pd.Timestamp("2023-01-01 12:00"), site_id=1)
+
+
+def test_convert_from_dataset_to_dict_datasets(site_config_filename):
+    # Create dataset object
+    dataset = SitesDataset(site_config_filename)
+
+    # Generate two samples
+    sample_xr = dataset[0]
+
+    sample = convert_from_dataset_to_dict_datasets(sample_xr)
+
+    assert isinstance(sample, dict)
+
+    print(sample.keys())
+
+    for key in ["nwp", "satellite", "sites"]:
+        assert key in sample
