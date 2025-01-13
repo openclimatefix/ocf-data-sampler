@@ -1,7 +1,7 @@
 # test_base.py
 
 """
-Base class testing - BatchBase
+Base class testing - SampleBase
 Logging included purely for non-suppressed execution
 """
 
@@ -14,14 +14,14 @@ import logging
 
 from pathlib import Path
 
-from ocf_data_sampler.sample.base import BatchBase
+from ocf_data_sampler.sample.base import SampleBase
 
 
 logger = logging.getLogger(__name__)
 
 
-class SimpleBatch(BatchBase):
-    """ Test implementation - BatchBase """
+class SimpleBatch(SampleBase):
+    """ Test implementation - SampleBase """
     
     # Replication to ensure inheritance
     @classmethod
