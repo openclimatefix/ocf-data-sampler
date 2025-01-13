@@ -139,8 +139,8 @@ class SitesDataset(Dataset):
         """
 
         # 1. Get valid time period for nwp and satellite
-        datasets_nwp_and_sat_dict = {"nwp": datasets_dict["nwp"], "sat": datasets_dict["sat"]}
-        valid_time_periods = find_valid_time_periods(datasets_nwp_and_sat_dict, self.config)
+        datasets_without_site = {k:v for k, v in datasets_dict.items() if k!="site"}
+        valid_time_periods = find_valid_time_periods(datasets_without_site, self.config)
 
         # 2. Now lets loop over each location in system id and find the valid periods
         # Should we have a different option if there are not nans
