@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ocf_data_sampler"
-version = "0.0.38"
+version = "0.0.39"
 license = { file = "LICENSE" }
 readme = "README.md"
 description = "Sample from weather data for renewable energy prediction"
@@ -22,7 +22,7 @@ dependencies = [ # Migration from requirements.txt
     "numpy",
     "pandas",
     "xarray",
-    "zarr",
+    "zarr==2.18.3",
     "dask",
     "ocf_blosc2",
     "pvlib",
