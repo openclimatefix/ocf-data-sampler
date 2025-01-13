@@ -8,8 +8,10 @@ from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.numpy_sample import NWPSampleKey, GSPSampleKey, SatelliteSampleKey
 from ocf_data_sampler.torch_datasets import PVNetUKRegionalDataset
 
+from ocf_data_sampler.torch_datasets.pvnet_uk_regional import process_and_combine_datasets
+
 from ocf_data_sampler.torch_datasets.process_and_combine import (
-    process_and_combine_datasets,
+    process_and_combine_site_sample_dict,
     merge_dicts,
     fill_nans_in_arrays,
     compute,
