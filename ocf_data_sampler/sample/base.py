@@ -18,8 +18,8 @@ from abc import ABC, abstractmethod
 logger = logging.getLogger(__name__)
 
 
-class BatchBase(ABC):
-    """ Base class for all considered batch types """
+class SampleBase(ABC):
+    """ Base class for all considered sample types """
 
     # Key constant definitions
     # Specific array types and formats
@@ -36,7 +36,7 @@ class BatchBase(ABC):
     def __getitem__(self, key: str) -> Any:
         """ Get item """
         if key not in self._data:
-            raise KeyError(f"Key {key} not in batch")
+            raise KeyError(f"Key {key} not in sample")
         return self._data[key]
     
     def __setitem__(self, key: str, value: Any) -> None:
@@ -93,8 +93,8 @@ class BatchBase(ABC):
                 )
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> 'BatchBase':
-        """ Load batch data """
+    def load(cls, path: Union[str, Path]) -> 'SampleBase':
+        """ Load sample data """
         path = Path(path)
         if path.suffix not in cls.SUPPORTED_FORMATS:
             raise ValueError(
@@ -135,7 +135,7 @@ class BatchBase(ABC):
         return instance
 
     # Type conversion operations
-    def to_torch(self) -> 'BatchBase':
+    def to_torch(self) -> 'SampleBase':
         def numpy_to_torch(x):
             if isinstance(x, torch.Tensor):
                 return x
@@ -147,7 +147,7 @@ class BatchBase(ABC):
         self._convert_arrays(numpy_to_torch)
         return self
 
-    def to_numpy(self) -> 'BatchBase':
+    def to_numpy(self) -> 'SampleBase':
         self._convert_arrays(lambda x: x.cpu().numpy() if isinstance(x, torch.Tensor) else x)
         return self
     
@@ -197,7 +197,7 @@ class BatchBase(ABC):
     
     # Major util function for array conversion
     def _convert_arrays(self, convert_fn: Callable[[Any], Any]) -> None:
-        """ Convert arrays in batch - for both flat and nested dicts """
+        """ Convert arrays in sample - for both flat and nested dicts """
         for key, value in self._data.items():
             if isinstance(value, self.VALID_ARRAY_TYPES):
                 try:
