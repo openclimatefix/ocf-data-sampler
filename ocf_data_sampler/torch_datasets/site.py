@@ -19,12 +19,12 @@ from ocf_data_sampler.select import (
 from ocf_data_sampler.utils import minutes
 from ocf_data_sampler.torch_datasets.valid_time_periods import find_valid_time_periods
 from ocf_data_sampler.torch_datasets.process_and_combine import merge_dicts, fill_nans_in_arrays
-from ocf_data_sampler.numpy_batch import (
-    convert_site_to_numpy_batch, 
-    convert_satellite_to_numpy_batch, 
-    convert_nwp_to_numpy_batch
+from ocf_data_sampler.numpy_sample import (
+    convert_site_to_numpy_sample, 
+    convert_satellite_to_numpy_sample, 
+    convert_nwp_to_numpy_sample
 )
-from ocf_data_sampler.numpy_batch.nwp import NWPBatchKey
+from ocf_data_sampler.numpy_sample import NWPSampleKey
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
 
 xr.set_options(keep_attrs=True)
@@ -353,16 +353,16 @@ def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
         sample_dict["sat"] = sample_dict.pop("satellite")
 
     # process and combine the datasets
-    sample = process_and_combine_datasets_sites(
+    sample = convert_to_numpy_and_combine(
         dataset_dict=sample_dict,
     )
 
-    # TODO think about normalization, maybe its done not in batch creation, maybe its done afterwards,
+    # TODO think about normalization, maybe its done not in sample creation, maybe its done afterwards,
     #  to allow it to be flexible
 
     return sample
 
-def process_and_combine_datasets_sites(
+def convert_to_numpy_and_combine(
     dataset_dict: dict,
 ) -> dict:
     """Convert input data in a dict to numpy arrays"""
@@ -373,25 +373,25 @@ def process_and_combine_datasets_sites(
 
         nwp_numpy_modalities = dict()
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
-            # Convert to NumpyBatch
-            nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
+            # Convert to NumpySample
+            nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
-        # Combine the NWPs into NumpyBatch
-        numpy_modalities.append({NWPBatchKey.nwp: nwp_numpy_modalities})
+        # Combine the NWPs into NumpySample
+        numpy_modalities.append({NWPSampleKey.nwp: nwp_numpy_modalities})
 
     if "sat" in dataset_dict:
         # Satellite is already in the range [0-1] so no need to standardise
         da_sat = dataset_dict["sat"]
 
-        # Convert to NumpyBatch
-        numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
+        # Convert to NumpySample
+        numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
     if "site" in dataset_dict:
         da_sites = dataset_dict["site"]
-        sites_sample = convert_site_to_numpy_batch(da_sites)
+        sites_sample = convert_site_to_numpy_sample(da_sites)
 
         numpy_modalities.append(
-            convert_site_to_numpy_batch(
+            convert_site_to_numpy_sample(
                 da_sites,
             )
         )
