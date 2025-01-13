@@ -1,14 +1,14 @@
 # __init__.py
 
-from .base import BatchBase
+from .base import SampleBaseBase
 
-__all__ = ['BatchBase']
+__all__ = ['SampleBase']
 
 # TO COMPLETE BELOW ONCE SCALED UP / ALTERED !!!
 
-# from .pvnet_batch import PVNetBatch
+# from .pvnet_sample import PVNetSample
 
 # __all__ = [
-#     'BatchBase',
-#     'PVNetBatch'
+#     'SampleBase',
+#     'PVNetSample'
 # ]
