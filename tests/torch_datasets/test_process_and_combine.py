@@ -1,20 +1,14 @@
-import pytest
-import tempfile
-
 import numpy as np
 import pandas as pd
 import xarray as xr
 import dask.array as da
 
-from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
-from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.select.location import Location
-from ocf_data_sampler.numpy_batch import NWPBatchKey, GSPBatchKey, SatelliteBatchKey
-from ocf_data_sampler.torch_datasets import PVNetUKRegionalDataset
+from ocf_data_sampler.numpy_batch import NWPBatchKey, SatelliteBatchKey
 
 from ocf_data_sampler.torch_datasets.process_and_combine import (
     process_and_combine_datasets,
-    process_and_combine_site_sample_dict,
     merge_dicts,
     fill_nans_in_arrays,
     compute,
@@ -129,37 +123,3 @@ def test_compute():
     # Ensure there no NaN values in computed data
     assert not np.isnan(result["array1"].data).any()
     assert not np.isnan(result["nested"]["array2"].data).any()
-
-
-def test_process_and_combine_site_sample_dict(pvnet_config_filename):
-    # Load config
-    config = load_yaml_configuration(pvnet_config_filename)
-
-    # Specify minimal structure for testing
-    raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
-    site_dict = {
-        "nwp": {
-            "ukv": xr.DataArray(
-                raw_nwp_values,
-                dims=["time_utc", "channel", "y", "x"],
-                coords={
-                    "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
-                    "channel": ["dswrf"],  # Single channel
-                },
-            )
-        }
-    }
-    print(f"Input site_dict: {site_dict}")
-
-    # Call function
-    result = process_and_combine_site_sample_dict(site_dict, config)
-
-    # Assert to validate output structure
-    assert isinstance(result, xr.Dataset), "Result should be an xarray.Dataset"
-    assert len(result.data_vars) > 0, "Dataset should contain data variables"
-
-    # Validate variable via assertion and shape of such
-    expected_variable = "nwp-ukv"
-    assert expected_variable in result.data_vars, f"Expected variable '{expected_variable}' not found"
-    nwp_result = result[expected_variable]
-    assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for '{expected_variable}': {nwp_result.shape}"

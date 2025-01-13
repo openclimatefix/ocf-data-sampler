@@ -44,15 +44,18 @@ class SitesDataset(Dataset):
             end_time: Limit the init-times to be before this
         """
 
-        config = load_yaml_configuration(config_filename)
-
+        config: Configuration = load_yaml_configuration(config_filename)
         datasets_dict = get_dataset_dict(config)
+
+        # Assign config and input data to self
+        self.datasets_dict = datasets_dict
+        self.config = config
 
         # get all locations
         self.locations = self.get_locations(datasets_dict['site'])
 
         # Get t0 times where all input data is available
-        valid_t0_and_site_ids = self.find_valid_t0_and_site_ids(datasets_dict, config)
+        valid_t0_and_site_ids = self.find_valid_t0_and_site_ids(datasets_dict)
 
         # Filter t0 times to given range
         if start_time is not None:
@@ -63,13 +66,8 @@ class SitesDataset(Dataset):
             valid_t0_and_site_ids \
                 = valid_t0_and_site_ids[valid_t0_and_site_ids['t0'] <= pd.Timestamp(end_time)]
 
-
         # Assign coords and indices to self
         self.valid_t0_and_site_ids = valid_t0_and_site_ids
-
-        # Assign config and input data to self
-        self.datasets_dict = datasets_dict
-        self.config = config
 
     def __len__(self):
         return len(self.valid_t0_and_site_ids)
@@ -95,7 +93,7 @@ class SitesDataset(Dataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
 
-        sample = self.process_and_combine_site_sample_dict(sample_dict, self.config)
+        sample = self.process_and_combine_site_sample_dict(sample_dict)
         sample = sample.compute()
         return sample
 
@@ -128,7 +126,6 @@ class SitesDataset(Dataset):
     def find_valid_t0_and_site_ids(
         self,
         datasets_dict: dict,
-        config: Configuration,
     ) -> pd.DataFrame:
         """Find the t0 times where all of the requested input data is available
 
@@ -143,13 +140,13 @@ class SitesDataset(Dataset):
 
         # 1. Get valid time period for nwp and satellite
         datasets_nwp_and_sat_dict = {"nwp": datasets_dict["nwp"], "sat": datasets_dict["sat"]}
-        valid_time_periods = find_valid_time_periods(datasets_nwp_and_sat_dict, config)
+        valid_time_periods = find_valid_time_periods(datasets_nwp_and_sat_dict, self.config)
 
         # 2. Now lets loop over each location in system id and find the valid periods
         # Should we have a different option if there are not nans
         sites = datasets_dict["site"]
         site_ids = sites.site_id.values
-        site_config = config.input_data.site
+        site_config = self.config.input_data.site
         valid_t0_and_site_ids = []
         for site_id in site_ids:
             site = sites.sel(site_id=site_id)
@@ -205,7 +202,6 @@ class SitesDataset(Dataset):
     def process_and_combine_site_sample_dict(
         self,
         dataset_dict: dict,
-        config: Configuration,
     ) -> xr.Dataset:
         """
         Normalize and combine data into a single xr Dataset
@@ -224,7 +220,7 @@ class SitesDataset(Dataset):
         if "nwp" in dataset_dict:
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
                 # Standardise
-                provider = config.input_data.nwp[nwp_key].provider
+                provider = self.config.input_data.nwp[nwp_key].provider
                 da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
                 data_arrays.append((f"nwp-{provider}", da_nwp))
             
@@ -237,7 +233,7 @@ class SitesDataset(Dataset):
             # site_config = config.input_data.site
             da_sites = dataset_dict["site"]
             da_sites = da_sites / da_sites.capacity_kwp
-            data_arrays.append(("sites", da_sites))
+            data_arrays.append(("site", da_sites))
         
         combined_sample_dataset = self.merge_data_arrays(data_arrays)
 
@@ -390,8 +386,8 @@ def process_and_combine_datasets_sites(
         # Convert to NumpyBatch
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
 
-    if "sites" in dataset_dict:
-        da_sites = dataset_dict["sites"]
+    if "site" in dataset_dict:
+        da_sites = dataset_dict["site"]
         sites_sample = convert_site_to_numpy_batch(da_sites)
 
         numpy_modalities.append(

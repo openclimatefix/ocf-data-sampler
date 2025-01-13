@@ -2,8 +2,8 @@ import pandas as pd
 
 from ocf_data_sampler.torch_datasets import SitesDataset
 from ocf_data_sampler.torch_datasets.site import convert_from_dataset_to_dict_datasets
-
-from xarray import Dataset
+import numpy as np
+from xarray import Dataset, DataArray
 
 
 def test_site(site_config_filename):
@@ -20,10 +20,10 @@ def test_site(site_config_filename):
     assert isinstance(sample, Dataset)
 
     # Expected dimensions and data variables
-    expected_dims = {'satellite__x_geostationary', 'sites__time_utc', 'nwp-ukv__target_time_utc',
+    expected_dims = {'satellite__x_geostationary', 'site__time_utc', 'nwp-ukv__target_time_utc',
                      'nwp-ukv__x_osgb', 'satellite__channel', 'satellite__y_geostationary',
                      'satellite__time_utc', 'nwp-ukv__channel', 'nwp-ukv__y_osgb'}
-    expected_data_vars = {"nwp-ukv", "satellite", "sites"}
+    expected_data_vars = {"nwp-ukv", "satellite", "site"}
 
     # Check dimensions
     assert set(sample.dims) == expected_dims, f"Missing or extra dimensions: {set(sample.dims) ^ expected_dims}"
@@ -36,7 +36,7 @@ def test_site(site_config_filename):
     # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
     assert sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
     # 1.5 hours of 30 minute data (inclusive)
-    assert sample["sites"].values.shape == (4,)
+    assert sample["site"].values.shape == (4,)
 
 def test_site_time_filter_start(site_config_filename):
 
@@ -76,5 +76,54 @@ def test_convert_from_dataset_to_dict_datasets(site_config_filename):
 
     print(sample.keys())
 
-    for key in ["nwp", "satellite", "sites"]:
+    for key in ["nwp", "satellite", "site"]:
         assert key in sample
+
+def test_process_and_combine_site_sample_dict(site_config_filename):
+    # Load config
+    # config = load_yaml_configuration(pvnet_config_filename)
+    site_ds = SitesDataset(site_config_filename)
+    # Specify minimal structure for testing
+    raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
+    fake_site_values = np.random.rand(197)
+    site_dict = {
+        "nwp": {
+            "ukv": DataArray(
+                raw_nwp_values,
+                dims=["time_utc", "channel", "y", "x"],
+                coords={
+                    "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
+                    "channel": ["dswrf"],  # Single channel
+                },
+            )
+        },
+        "site": DataArray(
+            fake_site_values,
+            dims=["time_utc"],
+            coords={
+                    "time_utc": pd.date_range("2024-01-01 00:00", periods=197, freq="15min"),
+                    "capacity_kwp": 1000,
+                    "site_id": 1,
+                    "longitude": -3.5,
+                    "latitude": 51.5
+                }
+        )
+    }
+    print(f"Input site_dict: {site_dict}")
+
+    # Call function
+    result = site_ds.process_and_combine_site_sample_dict(site_dict)
+
+    # Assert to validate output structure
+    assert isinstance(result, Dataset), "Result should be an xarray.Dataset"
+    assert len(result.data_vars) > 0, "Dataset should contain data variables"
+
+    # Validate variable via assertion and shape of such
+    expected_variables = ["nwp-ukv", "site"]
+    for expected_variable in expected_variables:
+        assert expected_variable in result.data_vars, f"Expected variable '{expected_variable}' not found"
+    
+    nwp_result = result["nwp-ukv"]
+    assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
+    site_result = result["site"]
+    assert site_result.shape == (197,), f"Unexpected shape for site: {site_result.shape}"
