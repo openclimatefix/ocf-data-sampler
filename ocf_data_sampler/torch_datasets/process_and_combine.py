@@ -4,7 +4,7 @@ import xarray as xr
 from typing import Optional
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
 from ocf_data_sampler.numpy_batch import (
     convert_nwp_to_numpy_batch,
     convert_satellite_to_numpy_batch,
@@ -25,8 +25,8 @@ def process_and_combine_datasets(
     location: Optional[Location] = None,
     target_key: str = 'gsp'
 ) -> dict:
-    """Normalize and convert data to numpy arrays"""
 
+    """Normalise and convert data to numpy arrays"""
     numpy_modalities = []
 
     if "nwp" in dataset_dict:
@@ -37,18 +37,22 @@ def process_and_combine_datasets(
             # Standardise
             provider = config.input_data.nwp[nwp_key].provider
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
+
             # Convert to NumpyBatch
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
 
         # Combine the NWPs into NumpyBatch
         numpy_modalities.append({NWPBatchKey.nwp: nwp_numpy_modalities})
 
+
     if "sat" in dataset_dict:
-        # Satellite is already in the range [0-1] so no need to standardise
+        # Standardise
         da_sat = dataset_dict["sat"]
+        da_sat = (da_sat - RSS_MEAN) / RSS_STD
 
         # Convert to NumpyBatch
         numpy_modalities.append(convert_satellite_to_numpy_batch(da_sat))
+
 
     gsp_config = config.input_data.gsp
 
