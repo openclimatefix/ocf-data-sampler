@@ -9,7 +9,7 @@ import dask.array as da
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.location import Location
-from ocf_data_sampler.numpy_batch import NWPBatchKey, GSPBatchKey, SatelliteBatchKey
+from ocf_data_sampler.numpy_sample import NWPSampleKey, GSPSampleKey, SatelliteSampleKey
 from ocf_data_sampler.torch_datasets import PVNetUKRegionalDataset
 
 from ocf_data_sampler.torch_datasets.process_and_combine import (
@@ -61,9 +61,9 @@ def test_process_and_combine_datasets(pvnet_config_filename):
 
     # Assert result is dict - check and validate
     assert isinstance(result, dict)
-    assert NWPBatchKey.nwp in result
-    assert result[SatelliteBatchKey.satellite_actual].shape == (7, 1, 2, 2)
-    assert result[NWPBatchKey.nwp]["ukv"][NWPBatchKey.nwp].shape == (4, 1, 2, 2)
+    assert NWPSampleKey.nwp in result
+    assert result[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
+    assert result[NWPSampleKey.nwp]["ukv"][NWPSampleKey.nwp].shape == (4, 1, 2, 2)
 
 
 def test_merge_dicts():
