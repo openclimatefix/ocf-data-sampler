@@ -215,7 +215,7 @@ def test_value_validation():
 
 
 def test_nested_value_validation():
-    """Test nested value validation."""
+    """ Test nested value validation """
     batch = SimpleBatch()
     batch["valid"] = {
         "a": np.array([1]),
