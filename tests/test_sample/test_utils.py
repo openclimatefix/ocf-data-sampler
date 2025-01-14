@@ -23,6 +23,7 @@ class TestSample(SampleBase):
 
 
 def create_test_sample(data: Dict[str, Any]) -> TestSample:
+    """ Create test sample with given data """
     sample = TestSample()
     for key, value in data.items():
         sample[key] = value
@@ -31,6 +32,7 @@ def create_test_sample(data: Dict[str, Any]) -> TestSample:
 
 @pytest.fixture
 def simple_samples():
+    """ Fixture - 'simple' test samples """
     sample1 = create_test_sample({
         'data1': np.array([1, 2, 3]),
         'data2': np.array([4, 5, 6])
@@ -44,6 +46,7 @@ def simple_samples():
 
 @pytest.fixture
 def nested_samples():
+    """ Fixture - nested test samples """
     sample1 = create_test_sample({
         'nwp': {
             'ukv': np.array([[1, 2], [3, 4]]),
@@ -101,11 +104,13 @@ def test_stack_samples_nested(nested_samples):
 
 
 def test_stack_samples_empty():
+    """ Test stacking empty sample list """
     with pytest.raises(ValueError, match="Cannot stack empty list of samples"):
         stack_samples([])
 
 
 def test_stack_samples_different_types():
+    """ Test stacking samples of different types """
     class OtherSample(SampleBase):
         def plot(self, **kwargs):
             pass
@@ -130,17 +135,20 @@ def test_merge_samples(simple_samples):
 
 
 def test_merge_samples_empty():
+    """ Test merging empty sample list """
     with pytest.raises(ValueError, match="Cannot merge empty list of samples"):
         merge_samples([])
 
 
 def test_merge_samples_warning(simple_samples, caplog):
+    """ Test warning when merging samples with duplicate keys """
     merged = merge_samples(simple_samples)
     assert any("Key data1 already exists in merged sample" in record.message 
               for record in caplog.records)
 
 
 def test_convert_batch_to_sample_simple():
+    """ Test converting simple batch dict to sample """
     batch_dict = {
         'data1': np.array([1, 2, 3]),
         'data2': np.array([4, 5, 6])
@@ -154,6 +162,7 @@ def test_convert_batch_to_sample_simple():
 
 
 def test_convert_batch_to_sample_nested():
+    """ Test converting nested batch dict to sample """
     batch_dict = {
         'nwp': {
             'ukv': np.array([[1, 2], [3, 4]]),
@@ -171,6 +180,7 @@ def test_convert_batch_to_sample_nested():
 
 
 def test_convert_batch_to_sample_empty():
+    """ Test converting empty batch dict to sample """
     sample = convert_batch_to_sample({}, TestSample)
     assert isinstance(sample, TestSample)
     assert len(sample.keys()) == 0

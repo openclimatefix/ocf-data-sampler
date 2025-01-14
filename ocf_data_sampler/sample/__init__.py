@@ -7,4 +7,4 @@ from ocf_data_sampler.sample.uk_regional import PVNetSample
 __all__ = [
     'SampleBase',
     'PVNetSample'
-]
+    ]
