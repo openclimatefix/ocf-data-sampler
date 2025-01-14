@@ -4,7 +4,7 @@ import xarray as xr
 import dask.array as da
 import tempfile
 
-from ocf_data_sampler.torch_datasets import PVNetUKRegionalDataset
+from ocf_data_sampler.torch_datasets.pvnet_uk_regional import PVNetUKRegionalDataset
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.numpy_sample import NWPSampleKey, GSPSampleKey, SatelliteSampleKey
 from ocf_data_sampler.torch_datasets.pvnet_uk_regional import process_and_combine_datasets, compute
