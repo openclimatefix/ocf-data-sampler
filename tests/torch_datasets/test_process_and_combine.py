@@ -1,13 +1,8 @@
 import numpy as np
-import pandas as pd
-import xarray as xr
-import dask.array as da
 
-from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.torch_datasets.process_and_combine import (
     merge_dicts,
     fill_nans_in_arrays,
-    compute,
 )
 
 def test_merge_dicts():
@@ -45,31 +40,3 @@ def test_fill_nans_in_arrays():
     assert result["string_key"] == "not_an_array"
 
 
-def test_compute():
-    """Test compute function with dask array"""
-    da_dask = xr.DataArray(da.random.random((5, 5)))
-
-    # Create a nested dictionary with dask array
-    nested_dict = {
-        "array1": da_dask,
-        "nested": {
-            "array2": da_dask
-        }
-    }
-
-    # Ensure initial data is lazy - i.e. not yet computed
-    assert not isinstance(nested_dict["array1"].data, np.ndarray)
-    assert not isinstance(nested_dict["nested"]["array2"].data, np.ndarray)
-
-    # Call the compute function
-    result = compute(nested_dict)
-
-    # Assert that the result is an xarray DataArray and no longer lazy
-    assert isinstance(result["array1"], xr.DataArray)
-    assert isinstance(result["nested"]["array2"], xr.DataArray)
-    assert isinstance(result["array1"].data, np.ndarray)
-    assert isinstance(result["nested"]["array2"].data, np.ndarray)
-
-    # Ensure there no NaN values in computed data
-    assert not np.isnan(result["array1"].data).any()
-    assert not np.isnan(result["nested"]["array2"].data).any()

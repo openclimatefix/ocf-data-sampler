@@ -1,15 +1,14 @@
 import numpy as np
 import pandas as pd
 import xarray as xr
-import pytest
+import dask.array as da
 import tempfile
 
 from ocf_data_sampler.torch_datasets import PVNetUKRegionalDataset
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.numpy_sample import NWPSampleKey, GSPSampleKey, SatelliteSampleKey
-from ocf_data_sampler.torch_datasets.pvnet_uk_regional import process_and_combine_datasets
+from ocf_data_sampler.torch_datasets.pvnet_uk_regional import process_and_combine_datasets, compute
 from ocf_data_sampler.select.location import Location
-
 
 def test_process_and_combine_datasets(pvnet_config_filename):
 
@@ -54,6 +53,35 @@ def test_process_and_combine_datasets(pvnet_config_filename):
     assert NWPSampleKey.nwp in result
     assert result[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
     assert result[NWPSampleKey.nwp]["ukv"][NWPSampleKey.nwp].shape == (4, 1, 2, 2)
+
+def test_compute():
+    """Test compute function with dask array"""
+    da_dask = xr.DataArray(da.random.random((5, 5)))
+
+    # Create a nested dictionary with dask array
+    nested_dict = {
+        "array1": da_dask,
+        "nested": {
+            "array2": da_dask
+        }
+    }
+
+    # Ensure initial data is lazy - i.e. not yet computed
+    assert not isinstance(nested_dict["array1"].data, np.ndarray)
+    assert not isinstance(nested_dict["nested"]["array2"].data, np.ndarray)
+
+    # Call the compute function
+    result = compute(nested_dict)
+
+    # Assert that the result is an xarray DataArray and no longer lazy
+    assert isinstance(result["array1"], xr.DataArray)
+    assert isinstance(result["nested"]["array2"], xr.DataArray)
+    assert isinstance(result["array1"].data, np.ndarray)
+    assert isinstance(result["nested"]["array2"].data, np.ndarray)
+
+    # Ensure there no NaN values in computed data
+    assert not np.isnan(result["array1"].data).any()
+    assert not np.isnan(result["nested"]["array2"].data).any()
 
 def test_pvnet(pvnet_config_filename):
 

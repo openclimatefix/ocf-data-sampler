@@ -1,10 +1,4 @@
 import numpy as np
-import pandas as pd
-import xarray as xr
-from typing import Optional
-
-from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS,RSS_MEAN,RSS_STD
 
 
 def process_and_combine_site_sample_dict(
@@ -73,13 +67,3 @@ def fill_nans_in_arrays(sample: dict) -> dict:
             fill_nans_in_arrays(v)
 
     return sample
-
-
-def compute(xarray_dict: dict) -> dict:
-    """Eagerly load a nested dictionary of xarray DataArrays"""
-    for k, v in xarray_dict.items():
-        if isinstance(v, dict):
-            xarray_dict[k] = compute(v)
-        else:
-            xarray_dict[k] = v.compute(scheduler="single-threaded")
-    return xarray_dict

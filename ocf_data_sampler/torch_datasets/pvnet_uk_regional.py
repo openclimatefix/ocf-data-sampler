@@ -107,6 +107,14 @@ def process_and_combine_datasets(
 
     return combined_sample
 
+def compute(xarray_dict: dict) -> dict:
+    """Eagerly load a nested dictionary of xarray DataArrays"""
+    for k, v in xarray_dict.items():
+        if isinstance(v, dict):
+            xarray_dict[k] = compute(v)
+        else:
+            xarray_dict[k] = v.compute(scheduler="single-threaded")
+    return xarray_dict
 
 def find_valid_t0_times(
     datasets_dict: dict,
