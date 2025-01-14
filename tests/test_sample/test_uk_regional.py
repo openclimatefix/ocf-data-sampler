@@ -8,6 +8,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from ocf_data_sampler.sample.uk_regional import PVNetSample, PVNetUKRegionalDataset
+
 from ocf_data_sampler.numpy_batch import (
     NWPBatchKey,
     GSPBatchKey,
@@ -67,24 +68,33 @@ def sample_config():
             'gsp': {
                 'time_resolution_minutes': 30,
                 'interval_start_minutes': 0,
-                'interval_end_minutes': 1440
+                'interval_end_minutes': 1440,
+                'zarr_path': 'dummy/path/gsp.zarr'  # Add required field
             },
             'nwp': {
                 'ukv': {
                     'time_resolution_minutes': 60,
                     'interval_start_minutes': 0,
                     'interval_end_minutes': 1440,
-                    'provider': 'ukv'
+                    'provider': 'ukv',
+                    'zarr_path': 'dummy/path/nwp.zarr',  # Add required fields
+                    'image_size_pixels_height': 64,
+                    'image_size_pixels_width': 64,
+                    'channels': ['temperature', 'precipitation']
                 }
             },
             'satellite': {
                 'time_resolution_minutes': 15,
                 'interval_start_minutes': 0,
-                'interval_end_minutes': 1440
+                'interval_end_minutes': 1440,
+                'zarr_path': 'dummy/path/sat.zarr',  # Add required fields
+                'image_size_pixels_height': 64,
+                'image_size_pixels_width': 64,
+                'channels': ['channel1', 'channel2']
             }
         }
     }
-    return Configuration(**config_dict)  # Use constructor directly
+    return Configuration(**config_dict)
 
 @pytest.fixture
 def config_file(tmp_path, sample_config):
@@ -148,9 +158,10 @@ def test_pvnet_sample_invalid_data():
         sample[GSPBatchKey.gsp] = [1, 2, 3]  # Should be numpy array
 
 def test_pvnet_sample_type_conversion(real_sample_data):
-    """Test type conversion methods"""
     sample = PVNetSample()
     for key, value in real_sample_data.items():
+        if isinstance(value, xr.DataArray):
+            value = value.values  # Convert xarray to numpy
         sample[key] = value
     
     # Test numpy conversion
@@ -163,9 +174,10 @@ def test_pvnet_sample_type_conversion(real_sample_data):
     assert isinstance(torch_sample['nwp']['ukv']['nwp'], torch.Tensor)
 
 def test_pvnet_sample_save_load(tmp_path, real_sample_data):
-    """Test save and load functionality"""
     sample = PVNetSample()
     for key, value in real_sample_data.items():
+        if isinstance(value, xr.DataArray):
+            value = value.values
         sample[key] = value
     
     # Test saving and loading with different formats

@@ -1,7 +1,7 @@
 # __init__.py
 
-from .base import SampleBase
-from .uk_regional import PVNetSample
+from ocf_data_sampler.sample.base import SampleBase
+from ocf_data_sampler.sample.uk_regional import PVNetSample
 
 
 __all__ = [

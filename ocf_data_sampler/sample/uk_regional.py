@@ -28,7 +28,7 @@ from ocf_data_sampler.numpy_batch import (
 from ocf_data_sampler.torch_datasets.pvnet_uk_regional import get_gsp_locations
 from ocf_data_sampler.utils import minutes
 
-from .base import SampleBase
+from ocf_data_sampler.sample.base import SampleBase
 
 
 class PVNetSample(SampleBase):
@@ -55,70 +55,26 @@ class PVNetSample(SampleBase):
         if 'nwp' in self._data and not isinstance(self._data['nwp'], dict):
             raise TypeError("NWP data must be nested dictionary")
 
-    # def plot(self, **kwargs) -> None:
-    #     import matplotlib.pyplot as plt
-
-    #     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-        
-    #     # GSP Plot
-    #     if GSPBatchKey.gsp in self._data:
-    #         axes[0, 0].plot(self._data[GSPBatchKey.gsp])
-    #         axes[0, 0].set_title('GSP Generation')
-        
-    #     # NWP Plot (first channel)
-    #     if 'nwp' in self._data:
-    #         first_nwp = list(self._data['nwp'].values())[0]
-    #         if 'nwp' in first_nwp:
-    #             axes[0, 1].imshow(first_nwp['nwp'][0])
-    #             axes[0, 1].set_title('NWP (First Channel)')
-        
-    #     # Satellite Plot
-    #     if SatelliteBatchKey.satellite_actual in self._data:
-    #         axes[1, 0].imshow(self._data[SatelliteBatchKey.satellite_actual])
-    #         axes[1, 0].set_title('Satellite Data')
-        
-    #     # Solar position
-    #     if GSPBatchKey.solar_azimuth in self._data and GSPBatchKey.solar_elevation in self._data:
-    #         axes[1, 1].plot(self._data[GSPBatchKey.solar_azimuth], label='Azimuth')
-    #         axes[1, 1].plot(self._data[GSPBatchKey.solar_elevation], label='Elevation')
-    #         axes[1, 1].set_title('Solar Position')
-    #         axes[1, 1].legend()
-        
-    #     plt.tight_layout()
-    #     plt.show()
-
-
     def plot(self, **kwargs) -> None:
-        """Plot PVNet sample data
-        
-        Implements abstract method from SampleBase to visualize:
-        - GSP generation
-        - NWP first channel
-        - Satellite data
-        - Solar position
-        """
+
         import matplotlib.pyplot as plt
 
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
         
-        # GSP Plot
         if GSPBatchKey.gsp in self._data:
             axes[0, 0].plot(self._data[GSPBatchKey.gsp])
             axes[0, 0].set_title('GSP Generation')
         
-        # NWP Plot (first channel)
         if 'nwp' in self._data:
             first_nwp = list(self._data['nwp'].values())[0]
             if 'nwp' in first_nwp:
                 axes[0, 1].imshow(first_nwp['nwp'][0])
                 axes[0, 1].set_title('NWP (First Channel)')
         
-        # Satellite Plot
         if SatelliteBatchKey.satellite_actual in self._data:
             axes[1, 0].imshow(self._data[SatelliteBatchKey.satellite_actual])
             axes[1, 0].set_title('Satellite Data')
         
-        # Solar position
         if GSPBatchKey.solar_azimuth in self._data and GSPBatchKey.solar_elevation in self._data:
             axes[1, 1].plot(self._data[GSPBatchKey.solar_azimuth], label='Azimuth')
             axes[1, 1].plot(self._data[GSPBatchKey.solar_elevation], label='Elevation')
