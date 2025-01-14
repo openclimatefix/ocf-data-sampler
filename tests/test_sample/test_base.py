@@ -227,3 +227,17 @@ def test_nested_value_validation():
             "a": np.array([1]),
             "b": [1, 2, 3]
         }
+
+############################
+
+class MockSample(SampleBase):
+    """Mock implementation of SampleBase for testing purposes."""
+    def plot(self, **kwargs) -> None:
+        pass  # No-op implementation for the abstract method
+
+def test_to_torch_nested():
+    """Test to_torch for nested structures."""
+    sample = MockSample()
+    sample['nwp'] = {'ukv': {'nwp': np.random.rand(5, 5)}}
+    sample.to_torch()
+    assert isinstance(sample['nwp']['ukv']['nwp'], torch.Tensor)

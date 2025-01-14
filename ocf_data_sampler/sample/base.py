@@ -195,12 +195,27 @@ class SampleBase(ABC):
         else:
             raise TypeError(f"Cannot convert {type(tensor)} to numpy array")
     
-    # Major util function for array conversion
+    # # Major util function for array conversion
+    # def _convert_arrays(self, convert_fn: Callable[[Any], Any]) -> None:
+    #     """ Convert arrays in sample - for both flat and nested dicts """
+    #     for key, value in self._data.items():
+    #         if isinstance(value, self.VALID_ARRAY_TYPES):
+    #             try:
+    #                 self._data[key] = convert_fn(value)
+    #             except Exception as e:
+    #                 logger.error(f"Error converting array at {key}: {e}")
+    #                 raise
+    #         elif isinstance(value, dict):
+    #             self._data[key] = {
+    #                 k: convert_fn(v) if isinstance(v, self.VALID_ARRAY_TYPES) else v
+    #                 for k, v in value.items()
+    #             }
+
     def _convert_arrays(self, convert_fn: Callable[[Any], Any]) -> None:
-        """ Convert arrays in sample - for both flat and nested dicts """
         for key, value in self._data.items():
             if isinstance(value, self.VALID_ARRAY_TYPES):
                 try:
+                    logger.debug(f"Converting key: {key}")
                     self._data[key] = convert_fn(value)
                 except Exception as e:
                     logger.error(f"Error converting array at {key}: {e}")
@@ -210,6 +225,8 @@ class SampleBase(ABC):
                     k: convert_fn(v) if isinstance(v, self.VALID_ARRAY_TYPES) else v
                     for k, v in value.items()
                 }
+                logger.debug(f"Converted nested dict for key: {key}")
+
 
     # Format conversion
     # Preserves nested structure
