@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 
-def stack_np_examples_into_sample(dict_list):
+def stack_np_examples_into_batch(dict_list):
 #     """
 #     Stacks Numpy examples into a sample
 
