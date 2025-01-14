@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def stack_np_examples_into_batch(dict_list):
 #     """
-#     Stacks Numpy examples into a sample
+#     Stacks Numpy examples into a batch
 
 #     See also: `unstack_np_sample_into_examples()` for opposite
 
@@ -18,7 +18,7 @@ def stack_np_examples_into_batch(dict_list):
 #         dict_list: A list of dict-like Numpy examples to stack
 
 #     Returns:
-#         The stacked NumpySample object
+#         The stacked NumpySample object, aka a batch
 #     """
 
     if not dict_list:
