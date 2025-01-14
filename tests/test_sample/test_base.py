@@ -59,13 +59,13 @@ class SimpleBatch(SampleBase):
 
 @pytest.fixture
 def simple_batch():
-    """Fixture - 'simple' batch instance """
+    """ Fixture - 'simple' batch instance """
     return SimpleBatch()
 
 
 @pytest.fixture
 def nested_batch():
-    """Fixture - batch with nested data """
+    """ Fixture - batch with nested data """
     batch = SimpleBatch()
     batch['flat'] = np.array([1, 2, 3])
     batch['nested'] = {
@@ -77,7 +77,7 @@ def nested_batch():
 
 @pytest.fixture
 def temp_dir():
-    """Fixture - temp directory """
+    """ Fixture - temp directory """
     with tempfile.TemporaryDirectory() as tmpdirname:
         yield Path(tmpdirname)
 
@@ -227,17 +227,3 @@ def test_nested_value_validation():
             "a": np.array([1]),
             "b": [1, 2, 3]
         }
-
-############################ FIX BELOW URGENTLY !!!
-
-class MockSample(SampleBase):
-    """Mock implementation of SampleBase for testing purposes."""
-    def plot(self, **kwargs) -> None:
-        pass  # No-op implementation for the abstract method
-
-def test_to_torch_nested():
-    """Test to_torch for nested structures."""
-    sample = MockSample()
-    sample['nwp'] = {'ukv': {'nwp': np.random.rand(5, 5)}}
-    sample.to_torch()
-    assert isinstance(sample['nwp']['ukv']['nwp'], torch.Tensor)

@@ -25,6 +25,7 @@ class SampleBase(ABC):
     # Specific array types and formats
     VALID_ARRAY_TYPES = (np.ndarray, torch.Tensor, xr.DataArray)
     SUPPORTED_FORMATS = {'.nc', '.zarr', '.npz'}
+    DEFAULT_NAN_FILL_VALUE: float = 0.0
 
     # Container
     # Dict for flat and nested arrays
@@ -95,7 +96,9 @@ class SampleBase(ABC):
     @classmethod
     def load(cls, path: Union[str, Path]) -> 'SampleBase':
         """ Load sample data """
+
         path = Path(path)
+
         if path.suffix not in cls.SUPPORTED_FORMATS:
             raise ValueError(
                 f"Unsupported format {path.suffix}"
@@ -133,101 +136,105 @@ class SampleBase(ABC):
             raise
                 
         return instance
-
+    
     # Type conversion operations
+    # To torch and to numpy
     def to_torch(self) -> 'SampleBase':
+
         def numpy_to_torch(x):
-            if isinstance(x, torch.Tensor):
-                return x
-            elif isinstance(x, xr.DataArray):
-                return torch.from_numpy(x.values)
-            else:
-                return torch.from_numpy(x)
+            try:
+                if isinstance(x, torch.Tensor):
+                    return x
+                elif isinstance(x, xr.DataArray):
+                    return torch.from_numpy(x.values)
+                elif isinstance(x, np.ndarray):
+                    # Skip conversion for non-numeric arrays
+                    if not np.issubdtype(x.dtype, np.number):
+                        return x
+                    try:
+                        return torch.from_numpy(x)
+                    except Exception as e:
+                        logger.error(f"Failed to convert NumPy array to tensor: {e}")
+                        raise TypeError(f"Cannot convert array of type {x.dtype} to tensor")
+                else:
+                    raise TypeError(f"Unsupported type for conversion: {type(x)}")
+            except Exception as e:
+                logger.error(f"Tensor conversion error: {e}")
+                raise
         
         self._convert_arrays(numpy_to_torch)
         return self
 
     def to_numpy(self) -> 'SampleBase':
-        self._convert_arrays(lambda x: x.cpu().numpy() if isinstance(x, torch.Tensor) else x)
+
+        def to_numpy_converter(x):
+            try:
+                if isinstance(x, torch.Tensor):
+                    return x.detach().cpu().numpy()
+                elif isinstance(x, xr.DataArray):
+                    return x.values
+                elif isinstance(x, np.ndarray):
+                    return x
+                else:
+                    raise TypeError(f"Unsupported type for NumPy conversion: {type(x)}")
+            except Exception as e:
+                logger.error(f"NumPy conversion error: {e}")
+                raise
+        
+        self._convert_arrays(to_numpy_converter)
         return self
-    
+
     @abstractmethod
-    def plot(self, **kwargs) -> None:
-        pass
+    def plot(self, ax=None, **kwargs) -> Optional[Any]:
+        """ Abstract method for plotting """
+        raise NotImplementedError("Plotting - not implemented by subclass")
 
-    def fill_nans(self, fill_value: float = 0.0) -> None:
+    def _process_nested_structure(self, data: Dict[str, Any], process_fn: Callable[[Any], Any]) -> Dict[str, Any]:
+        """ Recursively process nested dict """
+        processed = {}
+        for key, value in data.items():
+            try:
+                if isinstance(value, dict):
+                    processed[key] = self._process_nested_structure(value, process_fn)
+                elif isinstance(value, self.VALID_ARRAY_TYPES):
+                    processed[key] = process_fn(value)
+                else:
+                    processed[key] = value
+            except Exception as e:
+                logger.error(f"Error processing key {key}: {e}")
+                raise
+        
+        return processed
+
+    def fill_nans(self, fill_value: float = DEFAULT_NAN_FILL_VALUE) -> None:
         """ Fill NaN values """
-        def fill_array_nans(arr: Union[np.ndarray, torch.Tensor, xr.DataArray]) -> Union[np.ndarray, torch.Tensor]:
-            if isinstance(arr, np.ndarray) and np.issubdtype(arr.dtype, np.number):
-                return np.nan_to_num(arr, nan=fill_value)
-            elif isinstance(arr, torch.Tensor):
-                return torch.nan_to_num(arr, nan=fill_value)
-            elif isinstance(arr, xr.DataArray):
-                return arr.fillna(fill_value).values
-            return arr
-            
-        for key, value in self._data.items():
-            if isinstance(value, self.VALID_ARRAY_TYPES):
-                self._data[key] = fill_array_nans(value)
-            elif isinstance(value, dict):
-                self._data[key] = {
-                    k: fill_array_nans(v) if isinstance(v, self.VALID_ARRAY_TYPES) else v
-                    for k, v in value.items()
-                }
+        def fill_nans_fn(arr):
+            try:
+                if isinstance(arr, np.ndarray) and np.issubdtype(arr.dtype, np.number):
+                    return np.nan_to_num(arr, nan=fill_value)
+                elif isinstance(arr, torch.Tensor):
+                    return torch.nan_to_num(arr, nan=fill_value)
+                elif isinstance(arr, xr.DataArray):
+                    return arr.fillna(fill_value).values
+                return arr
+            except Exception as e:
+                logger.error(f"Error filling NaNs for {type(arr)}: {e}")
+                raise
+        
+        try:
+            self._data = self._process_nested_structure(self._data, fill_nans_fn)
+        except Exception as e:
+            logger.error(f"NaN filling failed: {e}")
+            raise
     
-    # def _numpy_to_torch(self, arr: Union[np.ndarray, xr.DataArray]) -> torch.Tensor:
-    #     if isinstance(arr, xr.DataArray):
-    #         logger.debug("Converting to torch tensor")
-    #         return torch.from_numpy(arr.values)
-    #     elif isinstance(arr, np.ndarray):
-    #         return torch.from_numpy(arr)
-    #     else:
-    #         raise TypeError(f"Cannot convert {type(arr)} to tensor")
-
-    def numpy_to_torch(x):
-        if isinstance(x, torch.Tensor):
-            return x
-        elif isinstance(x, xr.DataArray):
-            return torch.from_numpy(x.values)
-        elif isinstance(x, np.ndarray):
-            # Skip conversion for non-numeric arrays
-            if np.issubdtype(x.dtype, np.number):
-                return torch.from_numpy(x)
-            return x
-        return x
-    
-    def _torch_to_numpy(self, tensor: Union[torch.Tensor, np.ndarray, xr.DataArray]) -> np.ndarray:
-        if isinstance(tensor, torch.Tensor):
-            return tensor.cpu().numpy()
-        elif isinstance(tensor, xr.DataArray):
-            logger.debug("Converting to numpy array")
-            return tensor.values
-        elif isinstance(tensor, np.ndarray):
-            return tensor
-        else:
-            raise TypeError(f"Cannot convert {type(tensor)} to numpy array")
-    
-    # # Major util function for array conversion
-
-    # def _convert_arrays(self, convert_fn: Callable[[Any], Any]) -> None:
-    #     """ Convert arrays in sample - for both flat and nested dicts """
-    #     for key, value in self._data.items():
-    #         if isinstance(value, self.VALID_ARRAY_TYPES):
-    #             try:
-    #                 self._data[key] = convert_fn(value)
-    #             except Exception as e:
-    #                 logger.error(f"Error converting array at {key}: {e}")
-    #                 raise
-    #         elif isinstance(value, dict):
-    #             self._data[key] = {
-    #                 k: convert_fn(v) if isinstance(v, self.VALID_ARRAY_TYPES) else v
-    #                 for k, v in value.items()
-    #             }
-
+    # Major util function for array conversion
     def _convert_arrays(self, convert_fn: Callable[[Any], Any]) -> None:
+        """ Convert arrays in sample - for both flat and nested dicts """
+
         def recursive_convert(value):
             if isinstance(value, self.VALID_ARRAY_TYPES):
                 return convert_fn(value)
+
             elif isinstance(value, dict):
                 return {k: recursive_convert(v) for k, v in value.items()}
             return value
@@ -279,6 +286,7 @@ class SampleBase(ABC):
         return data_dict
     
     def _to_numpy(self, arr: Union[np.ndarray, torch.Tensor, xr.DataArray]) -> np.ndarray:
+        """ Util for singular array """
         if isinstance(arr, torch.Tensor):
             return arr.cpu().numpy()
         elif isinstance(arr, xr.DataArray):
