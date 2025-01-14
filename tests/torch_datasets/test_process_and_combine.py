@@ -4,10 +4,8 @@ import xarray as xr
 import dask.array as da
 
 from ocf_data_sampler.config import load_yaml_configuration
-
-
+from ocf_data_sampler.torch_datasets.site import process_and_combine_site_sample_dict
 from ocf_data_sampler.torch_datasets.process_and_combine import (
-    process_and_combine_site_sample_dict,
     merge_dicts,
     fill_nans_in_arrays,
     compute,
