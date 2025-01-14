@@ -1,7 +1,7 @@
 # uk_regional.py
 
 """ 
-PVNet Uk Regional sample / dataset 
+PVNet - UK Regional sample / dataset 
 """
 
 import numpy as np

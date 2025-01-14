@@ -175,14 +175,26 @@ class SampleBase(ABC):
                     for k, v in value.items()
                 }
     
-    def _numpy_to_torch(self, arr: Union[np.ndarray, xr.DataArray]) -> torch.Tensor:
-        if isinstance(arr, xr.DataArray):
-            logger.debug("Converting to torch tensor")
-            return torch.from_numpy(arr.values)
-        elif isinstance(arr, np.ndarray):
-            return torch.from_numpy(arr)
-        else:
-            raise TypeError(f"Cannot convert {type(arr)} to tensor")
+    # def _numpy_to_torch(self, arr: Union[np.ndarray, xr.DataArray]) -> torch.Tensor:
+    #     if isinstance(arr, xr.DataArray):
+    #         logger.debug("Converting to torch tensor")
+    #         return torch.from_numpy(arr.values)
+    #     elif isinstance(arr, np.ndarray):
+    #         return torch.from_numpy(arr)
+    #     else:
+    #         raise TypeError(f"Cannot convert {type(arr)} to tensor")
+
+    def numpy_to_torch(x):
+        if isinstance(x, torch.Tensor):
+            return x
+        elif isinstance(x, xr.DataArray):
+            return torch.from_numpy(x.values)
+        elif isinstance(x, np.ndarray):
+            # Skip conversion for non-numeric arrays
+            if np.issubdtype(x.dtype, np.number):
+                return torch.from_numpy(x)
+            return x
+        return x
     
     def _torch_to_numpy(self, tensor: Union[torch.Tensor, np.ndarray, xr.DataArray]) -> np.ndarray:
         if isinstance(tensor, torch.Tensor):
@@ -196,6 +208,7 @@ class SampleBase(ABC):
             raise TypeError(f"Cannot convert {type(tensor)} to numpy array")
     
     # # Major util function for array conversion
+
     # def _convert_arrays(self, convert_fn: Callable[[Any], Any]) -> None:
     #     """ Convert arrays in sample - for both flat and nested dicts """
     #     for key, value in self._data.items():
@@ -212,21 +225,19 @@ class SampleBase(ABC):
     #             }
 
     def _convert_arrays(self, convert_fn: Callable[[Any], Any]) -> None:
-        for key, value in self._data.items():
+        def recursive_convert(value):
             if isinstance(value, self.VALID_ARRAY_TYPES):
-                try:
-                    logger.debug(f"Converting key: {key}")
-                    self._data[key] = convert_fn(value)
-                except Exception as e:
-                    logger.error(f"Error converting array at {key}: {e}")
-                    raise
+                return convert_fn(value)
             elif isinstance(value, dict):
-                self._data[key] = {
-                    k: convert_fn(v) if isinstance(v, self.VALID_ARRAY_TYPES) else v
-                    for k, v in value.items()
-                }
-                logger.debug(f"Converted nested dict for key: {key}")
+                return {k: recursive_convert(v) for k, v in value.items()}
+            return value
 
+        for key, value in list(self._data.items()):
+            try:
+                self._data[key] = recursive_convert(value)
+            except Exception as e:
+                logger.error(f"Error converting value at {key}: {e}")
+                raise
 
     # Format conversion
     # Preserves nested structure
