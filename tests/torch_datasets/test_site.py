@@ -22,7 +22,9 @@ def test_site(site_config_filename):
     # Expected dimensions and data variables
     expected_dims = {'satellite__x_geostationary', 'site__time_utc', 'nwp-ukv__target_time_utc',
                      'nwp-ukv__x_osgb', 'satellite__channel', 'satellite__y_geostationary',
-                     'satellite__time_utc', 'nwp-ukv__channel', 'nwp-ukv__y_osgb'}
+                     'satellite__time_utc', 'nwp-ukv__channel', 'nwp-ukv__y_osgb', 'site_solar_azimuth',
+                     'site_solar_elevation', 'site_date_cos', 'site_time_cos', 'site_time_sin', 'site_date_sin'}
+
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
 
     # Check dimensions
