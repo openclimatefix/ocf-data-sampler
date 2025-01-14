@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from ocf_data_sampler.numpy_sample.datetime_features import make_datetime_numpy_dict
 
@@ -22,3 +23,15 @@ def test_calculate_azimuth_and_elevation():
     assert all(np.abs(datetime_features["wind_date_cos"]) <= 1)
     assert all(np.abs(datetime_features["wind_time_sin"]) <= 1)
     assert all(np.abs(datetime_features["wind_time_cos"]) <= 1)
+
+
+def test_make_datetime_numpy_batch_custom_key_prefix():
+    # Test function correctly applies custom prefix to dict keys
+    datetimes = pd.to_datetime(["2024-06-20 12:00", "2024-06-20 12:30", "2024-06-20 13:00"])
+    key_prefix = "solar"
+
+    datetime_features = make_datetime_numpy_dict(datetimes, key_prefix=key_prefix)
+
+    # Assert dict contains expected quantity of keys and verify starting with custom prefix
+    assert len(datetime_features) == 4
+    assert all(key.startswith(key_prefix) for key in datetime_features.keys())
