@@ -24,6 +24,10 @@ def _get_date_time_in_pi(
 
 def make_datetime_numpy_dict(datetimes: pd.DatetimeIndex, key_prefix: str = "wind") -> dict:
     """ Make dictionary of datetime features"""
+
+    if datetimes.empty:
+        raise ValueError("Input datetimes is empty for 'make_datetime_numpy_dict' function")
+
     time_numpy_sample = {}
 
     date_in_pi, time_in_pi = _get_date_time_in_pi(datetimes)

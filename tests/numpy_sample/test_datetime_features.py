@@ -35,3 +35,13 @@ def test_make_datetime_numpy_batch_custom_key_prefix():
     # Assert dict contains expected quantity of keys and verify starting with custom prefix
     assert len(datetime_features) == 4
     assert all(key.startswith(key_prefix) for key in datetime_features.keys())
+
+
+def test_make_datetime_numpy_batch_empty_input():
+    # Verification that function raises error for empty input
+    datetimes = pd.DatetimeIndex([])
+
+    with pytest.raises(
+        ValueError, match="Input datetimes is empty for 'make_datetime_numpy_dict' function"
+    ):
+        make_datetime_numpy_dict(datetimes)
