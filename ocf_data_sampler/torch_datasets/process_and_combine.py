@@ -4,7 +4,8 @@ import xarray as xr
 from typing import Optional
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS,RSS_MEAN,RSS_STD
+
 
 def process_and_combine_site_sample_dict(
     dataset_dict: dict,
