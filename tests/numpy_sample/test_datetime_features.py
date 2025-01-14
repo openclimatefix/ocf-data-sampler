@@ -1,9 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from ocf_data_sampler.numpy_batch.datetime_features import make_datetime_numpy_batch
-
-from ocf_data_sampler.numpy_batch import GSPBatchKey
+from ocf_data_sampler.numpy_sample.datetime_features import make_datetime_numpy_batch
 
 
 def test_calculate_azimuth_and_elevation():

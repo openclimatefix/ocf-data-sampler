@@ -32,13 +32,13 @@ def calculate_azimuth_and_elevation(
     return azimuth, elevation
 
 
-def make_sun_position_numpy_batch(
+def make_sun_position_numpy_sample(
         datetimes: pd.DatetimeIndex, 
         lon: float, 
         lat: float, 
         key_prefix: str = "gsp"
 ) -> dict:
-    """Creates NumpyBatch with standardized solar coordinates
+    """Creates NumpySample with standardized solar coordinates
 
     Args:
         datetimes: The datetimes to calculate solar angles for
@@ -56,10 +56,10 @@ def make_sun_position_numpy_batch(
     # Elevation is in range [-90, 90] degrees
     elevation = elevation / 180 + 0.5
     
-    # Make NumpyBatch
-    sun_numpy_batch = {
+    # Make NumpySample
+    sun_numpy_sample = {
         key_prefix + "_solar_azimuth": azimuth,
         key_prefix + "_solar_elevation": elevation,
     }
 
-    return sun_numpy_batch
+    return sun_numpy_sample

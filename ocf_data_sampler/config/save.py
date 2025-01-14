@@ -1,36 +1,73 @@
 """Save functions for the configuration model.
 
-Example:
+This module provides functionality to save configuration objects to YAML files,
+supporting local and cloud storage locations.
 
+Example:
     from ocf_data_sampler.config import save_yaml_configuration
-    configuration = save_yaml_configuration(config, filename)
+    saved_path = save_yaml_configuration(config, "config.yaml")
 """
 
 import json
 
+from pathlib import Path
+from typing import Union
+
 import fsspec
 import yaml
-from pathy import Pathy
 
 from ocf_data_sampler.config import Configuration
 
 
 def save_yaml_configuration(
-    configuration: Configuration, filename: str | Pathy
-):
-    """
-    Save a local yaml file which has the configuration in it.
+    configuration: Configuration,
+    filename: Union[str, Path],
+) -> Path:
+    """Save a configuration object to a YAML file.
 
-    If `filename` is None then saves to configuration.output_data.filepath / configuration.yaml.
+    Args:
+        configuration: Configuration object containing the settings to save
+        filename: Destination path for the YAML file. Can be a local path or
+                 cloud storage URL (e.g., 'gs://', 's3://'). For local paths,
+                 absolute paths are recommended.
 
-    Will save to GCP, AWS, or local, depending on the protocol suffix of filepath.
+    Returns:
+        Path: The path where the configuration was saved
+
+    Raises:
+        ValueError: If filename is None or if writing to the specified path fails
+        TypeError: If the configuration cannot be serialized
     """
-    # make a dictionary from the configuration,
-    # Note that we make the object json'able first, so that it can be saved to a yaml file
-    d = json.loads(configuration.model_dump_json())
     if filename is None:
-        filename = Pathy(configuration.output_data.filepath) / "configuration.yaml"
+        raise ValueError("filename cannot be None")
 
-    # save to a yaml file
-    with fsspec.open(filename, "w") as yaml_file:
-        yaml.safe_dump(d, yaml_file, default_flow_style=False)
+    try:
+        # Convert to absolute path if it's a relative path
+        if isinstance(filename, (str, Path)) and not any(
+            str(filename).startswith(prefix) for prefix in ('gs://', 's3://', '/')
+        ):
+            filename = Path.cwd() / filename
+
+        filepath = Path(filename)
+
+        # For local files, check if directory exists before proceeding
+        if filepath.is_absolute():
+            directory = filepath.parent
+            if not directory.exists():
+                raise ValueError("Directory does not exist")
+
+        # Serialize configuration to JSON-compatible dictionary
+        config_dict = json.loads(configuration.model_dump_json())
+
+        # Save to YAML file using fsspec
+        with fsspec.open(str(filepath), mode='w') as yaml_file:
+            yaml.safe_dump(config_dict, yaml_file, default_flow_style=False)
+
+        return filepath
+
+    except json.JSONDecodeError as e:
+        raise TypeError(f"Failed to serialize configuration: {str(e)}") from e
+    except PermissionError as e:
+        raise ValueError(f"Permission denied when writing to {filename}") from e
+    except (IOError, OSError) as e:
+        raise ValueError(f"Failed to write configuration to {filename}: {str(e)}") from e
