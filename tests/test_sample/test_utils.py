@@ -1,5 +1,9 @@
 # test_utils.py
 
+"""
+Utils testing
+"""
+
 import pytest
 import numpy as np
 from typing import Dict, Any
@@ -58,7 +62,7 @@ def nested_samples():
 
 
 def test_stack_samples_simple(simple_samples):
-    """Test stacking simple samples"""
+    """ Test stacking 'simple' samples """
     stacked = stack_samples(simple_samples)
     
     assert isinstance(stacked, TestSample)
@@ -76,6 +80,7 @@ def test_stack_samples_simple(simple_samples):
 
 
 def test_stack_samples_nested(nested_samples):
+    """ Test stacking nested samples """
     stacked = stack_samples(nested_samples)
     
     assert isinstance(stacked, TestSample)
@@ -135,7 +140,6 @@ def test_merge_samples_warning(simple_samples, caplog):
               for record in caplog.records)
 
 
-# Test convert_batch_to_sample
 def test_convert_batch_to_sample_simple():
     batch_dict = {
         'data1': np.array([1, 2, 3]),

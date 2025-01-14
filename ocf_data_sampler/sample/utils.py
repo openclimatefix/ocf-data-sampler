@@ -32,7 +32,7 @@ def stack_samples(samples: List[SampleBase]) -> SampleBase:
     keys = samples[0].keys()
     
     for key in keys:
-        # Handle nested dict (NWP)
+        # Handle nested dict - NWP
         if isinstance(samples[0][key], dict):
             stacked[key] = {}
             sub_keys = samples[0][key].keys()
