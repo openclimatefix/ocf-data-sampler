@@ -21,7 +21,7 @@ def convert_gsp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> 
     """Convert from Xarray to NumpySample"""
 
    # Extract values from the DataArray
-    example = {
+    sample = {
         GSPSampleKey.gsp: da.values,
         GSPSampleKey.nominal_capacity_mwp: da.isel(time_utc=0)["nominal_capacity_mwp"].values,
         GSPSampleKey.effective_capacity_mwp: da.isel(time_utc=0)["effective_capacity_mwp"].values,
@@ -29,6 +29,6 @@ def convert_gsp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> 
     }
 
     if t0_idx is not None:
-        example[GSPSampleKey.t0_idx] = t0_idx
+        sample[GSPSampleKey.t0_idx] = t0_idx
 
-    return example
+    return sample
