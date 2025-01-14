@@ -15,14 +15,14 @@ from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.select import Location, slice_datasets_by_space, slice_datasets_by_time
 
-from ocf_data_sampler.numpy_batch import (
-    NWPBatchKey, 
-    GSPBatchKey,
-    SatelliteBatchKey,
-    convert_nwp_to_numpy_batch,
-    convert_gsp_to_numpy_batch,
-    convert_satellite_to_numpy_batch,
-    make_sun_position_numpy_batch
+from ocf_data_sampler.numpy_sample import (
+    NWPSampleKey, 
+    GSPSampleKey,
+    SatelliteSampleKey,
+    convert_nwp_to_numpy_sample,
+    convert_gsp_to_numpy_sample,
+    convert_satellite_to_numpy_sample,
+    make_sun_position_numpy_sample
 )
 
 from ocf_data_sampler.torch_datasets.pvnet_uk_regional import get_gsp_locations
@@ -36,10 +36,10 @@ class PVNetSample(SampleBase):
     
     REQUIRED_KEYS = {
         'nwp',
-        GSPBatchKey.gsp,
-        SatelliteBatchKey.satellite_actual,
-        GSPBatchKey.solar_azimuth,
-        GSPBatchKey.solar_elevation
+        GSPSampleKey.gsp,
+        SatelliteSampleKey.satellite_actual,
+        GSPSampleKey.solar_azimuth,
+        GSPSampleKey.solar_elevation
     }
 
     def __init__(self):
@@ -61,8 +61,8 @@ class PVNetSample(SampleBase):
 
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
         
-        if GSPBatchKey.gsp in self._data:
-            axes[0, 0].plot(self._data[GSPBatchKey.gsp])
+        if GSPSampleKey.gsp in self._data:
+            axes[0, 0].plot(self._data[GSPSampleKey.gsp])
             axes[0, 0].set_title('GSP Generation')
         
         if 'nwp' in self._data:
@@ -71,13 +71,13 @@ class PVNetSample(SampleBase):
                 axes[0, 1].imshow(first_nwp['nwp'][0])
                 axes[0, 1].set_title('NWP (First Channel)')
         
-        if SatelliteBatchKey.satellite_actual in self._data:
-            axes[1, 0].imshow(self._data[SatelliteBatchKey.satellite_actual])
+        if SatelliteSampleKey.satellite_actual in self._data:
+            axes[1, 0].imshow(self._data[SatelliteSampleKey.satellite_actual])
             axes[1, 0].set_title('Satellite Data')
         
-        if GSPBatchKey.solar_azimuth in self._data and GSPBatchKey.solar_elevation in self._data:
-            axes[1, 1].plot(self._data[GSPBatchKey.solar_azimuth], label='Azimuth')
-            axes[1, 1].plot(self._data[GSPBatchKey.solar_elevation], label='Elevation')
+        if GSPSampleKey.solar_azimuth in self._data and GSPSampleKey.solar_elevation in self._data:
+            axes[1, 1].plot(self._data[GSPSampleKey.solar_azimuth], label='Azimuth')
+            axes[1, 1].plot(self._data[GSPSampleKey.solar_elevation], label='Elevation')
             axes[1, 1].set_title('Solar Position')
             axes[1, 1].legend()
         
@@ -146,16 +146,16 @@ class PVNetUKRegionalDataset(Dataset):
         if "nwp" in sample_dict:
             nwp_data = {}
             for nwp_key, da_nwp in sample_dict["nwp"].items():
-                nwp_data[nwp_key] = convert_nwp_to_numpy_batch(da_nwp)
+                nwp_data[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
             sample['nwp'] = nwp_data
             
         # Process satellite data
         if "sat" in sample_dict:
-            sample.update(convert_satellite_to_numpy_batch(sample_dict["sat"]))
+            sample.update(convert_satellite_to_numpy_sample(sample_dict["sat"]))
             
         # Process GSP data
         if "gsp" in sample_dict:
-            gsp_data = convert_gsp_to_numpy_batch(
+            gsp_data = convert_gsp_to_numpy_sample(
                 sample_dict["gsp"],
                 t0_idx=-self.config.input_data.gsp.interval_start_minutes 
                         / self.config.input_data.gsp.time_resolution_minutes
@@ -176,7 +176,7 @@ class PVNetUKRegionalDataset(Dataset):
         else:
             lon, lat = location.x, location.y
             
-        sun_data = make_sun_position_numpy_batch(datetimes, lon, lat)
+        sun_data = make_sun_position_numpy_sample(datetimes, lon, lat)
         sample.update(sun_data)
         
         # Fill any NaN values
