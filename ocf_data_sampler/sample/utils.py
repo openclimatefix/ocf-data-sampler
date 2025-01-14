@@ -2,7 +2,7 @@
 
 """ 
 Util functions for sample operations
-To refine and potentially integrate with SampleBase
+To refine and potentially integrate with SampleBase ???
 """
 
 import numpy as np

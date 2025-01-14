@@ -1,12 +1,11 @@
-# test_uk_regional.py
-
-"""Tests for PVNet sample and dataset implementations using real data"""
+"""Tests for PVNet sample and dataset implementations"""
 
 import pytest
 import numpy as np
 import pandas as pd
 import xarray as xr
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 from ocf_data_sampler.sample.uk_regional import PVNetSample, PVNetUKRegionalDataset
 from ocf_data_sampler.numpy_batch import (
@@ -18,6 +17,12 @@ from ocf_data_sampler.select import Location
 from ocf_data_sampler.config import Configuration
 
 
+# Fixtures
+@pytest.fixture(autouse=True)
+def setup_matplotlib():
+    """Configure matplotlib for testing"""
+    plt.switch_backend('Agg')  # Use non-interactive backend
+
 @pytest.fixture
 def real_sample_data():
     """Create realistic sample data for testing"""
@@ -26,7 +31,7 @@ def real_sample_data():
         np.random.rand(24, 64, 64),
         dims=['time', 'y', 'x'],
         coords={
-            'time': pd.date_range('2024-01-01', periods=24, freq='1H'),
+            'time': pd.date_range('2024-01-01', periods=24, freq='h'),
             'y': np.arange(64),
             'x': np.arange(64)
         }
@@ -45,7 +50,7 @@ def real_sample_data():
         'nwp': {
             'ukv': {
                 'nwp': nwp_data,
-                'channel_names': ['temperature', 'precipitation', 'radiation']
+                'channel_names': np.array(['temperature', 'precipitation', 'radiation'])  # Now a numpy array
             }
         },
         GSPBatchKey.gsp: gsp_data,
@@ -79,7 +84,14 @@ def sample_config():
             }
         }
     }
-    return Configuration.from_dict(config_dict)
+    return Configuration(**config_dict)  # Use constructor directly
+
+@pytest.fixture
+def config_file(tmp_path, sample_config):
+    """Create a temporary config file"""
+    config_path = tmp_path / "test_config.yaml"
+    sample_config.save(config_path)
+    return config_path
 
 # PVNetSample Tests
 def test_pvnet_sample_init():
@@ -122,6 +134,18 @@ def test_pvnet_sample_validation(real_sample_data):
         sample[key] = value
     with pytest.raises(ValueError, match="Missing required keys"):
         sample.validate()
+
+def test_pvnet_sample_invalid_data():
+    """Test handling of invalid data structures"""
+    sample = PVNetSample()
+    
+    # Test invalid NWP structure
+    with pytest.raises(TypeError):
+        sample['nwp'] = np.array([1, 2, 3])  # Should be dict
+        
+    # Test invalid array type
+    with pytest.raises(TypeError):
+        sample[GSPBatchKey.gsp] = [1, 2, 3]  # Should be numpy array
 
 def test_pvnet_sample_type_conversion(real_sample_data):
     """Test type conversion methods"""
@@ -170,16 +194,21 @@ def test_pvnet_sample_save_load(tmp_path, real_sample_data):
                     loaded_sample[key]
                 )
 
-# PVNetUKRegionalDataset Tests
-def test_dataset_initialization(tmp_path, sample_config):
-    """Test dataset initialization with real config"""
-    # Create a temporary config file
-    config_path = tmp_path / "test_config.yaml"
-    sample_config.save(config_path)
+def test_pvnet_sample_plot(real_sample_data):
+    """Test plot functionality"""
+    sample = PVNetSample()
+    for key, value in real_sample_data.items():
+        sample[key] = value
     
-    # Initialize dataset
+    # Test plot method doesn't raise errors
+    sample.plot()
+    plt.close('all')  # Cleanup
+
+# PVNetUKRegionalDataset Tests
+def test_dataset_initialization(config_file):
+    """Test dataset initialization with real config"""
     dataset = PVNetUKRegionalDataset(
-        config_filename=str(config_path),
+        config_filename=str(config_file),
         start_time="2024-01-01",
         end_time="2024-01-02"
     )
@@ -189,14 +218,10 @@ def test_dataset_initialization(tmp_path, sample_config):
     assert hasattr(dataset, 'valid_t0_times')
     assert hasattr(dataset, 'locations')
 
-def test_dataset_sample_creation(tmp_path, sample_config):
+def test_dataset_sample_creation(config_file):
     """Test sample creation in dataset"""
-    # Create config file
-    config_path = tmp_path / "test_config.yaml"
-    sample_config.save(config_path)
-    
     dataset = PVNetUKRegionalDataset(
-        config_filename=str(config_path),
+        config_filename=str(config_file),
         start_time="2024-01-01",
         end_time="2024-01-02"
     )
@@ -209,6 +234,16 @@ def test_dataset_sample_creation(tmp_path, sample_config):
         # Test sample validity
         sample.validate()
 
+def test_dataset_gsp_ids(config_file):
+    """Test dataset initialization with specific GSP IDs"""
+    test_gsp_ids = [1, 2, 3]
+    dataset = PVNetUKRegionalDataset(
+        config_filename=str(config_file),
+        gsp_ids=test_gsp_ids
+    )
+    
+    assert all(loc.id in test_gsp_ids for loc in dataset.locations)
+    assert all(gsp_id in dataset.location_lookup for gsp_id in test_gsp_ids)
+
 if __name__ == '__main__':
     pytest.main([__file__])
-    
