@@ -1,12 +1,14 @@
 # uk_regional.py
 
 """ 
-PVNet - UK Regional sample / dataset 
+PVNet - UK Regional sample / dataset implementation
 """
 
 import numpy as np
 import pandas as pd
 import torch
+import matplotlib.pyplot as plt
+
 from torch.utils.data import Dataset
 from typing import Optional, List, Dict, Any
 from pathlib import Path
@@ -14,6 +16,8 @@ from pathlib import Path
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.select import Location, slice_datasets_by_space, slice_datasets_by_time
+from ocf_data_sampler.torch_datasets.pvnet_uk_regional import get_gsp_locations
+from ocf_data_sampler.utils import minutes
 
 from ocf_data_sampler.numpy_sample import (
     NWPSampleKey, 
@@ -25,15 +29,13 @@ from ocf_data_sampler.numpy_sample import (
     make_sun_position_numpy_sample
 )
 
-from ocf_data_sampler.torch_datasets.pvnet_uk_regional import get_gsp_locations
-from ocf_data_sampler.utils import minutes
-
 from ocf_data_sampler.sample.base import SampleBase
 
 
 class PVNetSample(SampleBase):
     """ Sample class specific to PVNet """
     
+    # Feature space definitions
     REQUIRED_KEYS = {
         'nwp',
         GSPSampleKey.gsp,
@@ -46,7 +48,7 @@ class PVNetSample(SampleBase):
         super().__init__()
 
     def validate(self) -> None:
-        # Check required keys
+        # Check required keys - feature space validation
         missing_keys = self.REQUIRED_KEYS - set(self.keys())
         if missing_keys:
             raise ValueError(f"Missing required keys: {missing_keys}")
@@ -56,8 +58,6 @@ class PVNetSample(SampleBase):
             raise TypeError("NWP data must be nested dictionary")
 
     def plot(self, **kwargs) -> None:
-
-        import matplotlib.pyplot as plt
 
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
         
@@ -86,7 +86,7 @@ class PVNetSample(SampleBase):
 
 
 class PVNetUKRegionalDataset(Dataset):
-    """ PVNet UK Regional """
+    """ PVNet UK Regional specific """
     
     def __init__(
         self, 
@@ -96,21 +96,23 @@ class PVNetUKRegionalDataset(Dataset):
         gsp_ids: Optional[List[int]] = None,
     ):
 
+        # Config initialisation
         self.config = load_yaml_configuration(config_filename)
         self.datasets_dict = get_dataset_dict(self.config)
         
-        # Get valid time periods
+        # Temporal domain definition / validation
         from ocf_data_sampler.torch_datasets.valid_time_periods import find_valid_time_periods
         valid_time_periods = find_valid_time_periods(self.datasets_dict, self.config)
         
         # Convert to datetime index with proper frequency
+        # Temporal discretisation stage
         self.valid_t0_times = pd.date_range(
             valid_time_periods.index[0],
             valid_time_periods.index[-1],
             freq=minutes(self.config.input_data.gsp.time_resolution_minutes)
         )
         
-        # Apply time filters
+        # Temporal domain filtering
         if start_time is not None:
             self.valid_t0_times = self.valid_t0_times[
                 self.valid_t0_times >= pd.Timestamp(start_time)
@@ -125,6 +127,7 @@ class PVNetUKRegionalDataset(Dataset):
         self.location_lookup = {loc.id: loc for loc in self.locations}
         
         # Create sampling indices
+        # Cartesian product of temporal / location
         t_index, loc_index = np.meshgrid(
             np.arange(len(self.valid_t0_times)),
             np.arange(len(self.locations)),
@@ -135,13 +138,14 @@ class PVNetUKRegionalDataset(Dataset):
         return len(self.index_pairs)
 
     def _create_sample(self, t0: pd.Timestamp, location: Location) -> PVNetSample:
-
+        # Sample construction at point
         sample = PVNetSample()
         
         # Get sliced data
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         
+        # Feature extraction and processing
         # Process NWP data
         if "nwp" in sample_dict:
             nwp_data = {}
@@ -164,6 +168,7 @@ class PVNetUKRegionalDataset(Dataset):
             
         # Get sun position data
         gsp_config = self.config.input_data.gsp
+        
         datetimes = pd.date_range(
             t0 + minutes(gsp_config.interval_start_minutes),
             t0 + minutes(gsp_config.interval_end_minutes),
