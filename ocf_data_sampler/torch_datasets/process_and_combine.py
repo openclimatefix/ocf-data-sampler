@@ -10,6 +10,7 @@ from ocf_data_sampler.numpy_sample import (
     convert_satellite_to_numpy_sample,
     convert_gsp_to_numpy_sample,
     make_sun_position_numpy_sample,
+
 )
 from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey

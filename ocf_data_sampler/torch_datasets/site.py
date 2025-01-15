@@ -22,7 +22,9 @@ from ocf_data_sampler.torch_datasets.process_and_combine import merge_dicts, fil
 from ocf_data_sampler.numpy_sample import (
     convert_site_to_numpy_sample, 
     convert_satellite_to_numpy_sample, 
-    convert_nwp_to_numpy_sample
+    convert_nwp_to_numpy_sample,
+    make_datetime_numpy_dict,
+    make_sun_position_numpy_sample,
 )
 from ocf_data_sampler.numpy_sample import NWPSampleKey
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
@@ -234,10 +236,26 @@ class SitesDataset(Dataset):
             da_sites = dataset_dict["site"]
             da_sites = da_sites / da_sites.capacity_kwp
             data_arrays.append(("site", da_sites))
-        
+
         combined_sample_dataset = self.merge_data_arrays(data_arrays)
 
-        # TODO add solar + time features for sites
+        # add datetime features
+        datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
+        datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site")
+        datetime_features_xr = xr.Dataset(datetime_features, coords={"site__time_utc": datetimes})
+        combined_sample_dataset = xr.merge([combined_sample_dataset, datetime_features_xr])
+
+        # add sun features
+        sun_position_features = make_sun_position_numpy_sample(
+            datetimes=datetimes,
+            lon=combined_sample_dataset.site__longitude.values,
+            lat=combined_sample_dataset.site__latitude.values,
+            key_prefix="site",
+        )
+        sun_position_features_xr = xr.Dataset(
+            sun_position_features, coords={"site__time_utc": datetimes}
+        )
+        combined_sample_dataset = xr.merge([combined_sample_dataset, sun_position_features_xr])
 
         # Fill any nan values
         return combined_sample_dataset.fillna(0.0)
