@@ -1,4 +1,4 @@
-"""Datapipes to trigonometric date and time to NumpyBatch"""
+"""Functions to create trigonometric date and time inputs"""
 
 import numpy as np
 import pandas as pd
