@@ -8,17 +8,15 @@ logger = logging.getLogger(__name__)
 
 
 
-def stack_np_examples_into_sample(dict_list):
+def stack_np_samples_into_batch(dict_list):
 #     """
-#     Stacks Numpy examples into a sample
-
-#     See also: `unstack_np_sample_into_examples()` for opposite
+#     Stacks Numpy samples into a batch
 
 #     Args:
-#         dict_list: A list of dict-like Numpy examples to stack
+#         dict_list: A list of dict-like Numpy samples to stack
 
 #     Returns:
-#         The stacked NumpySample object
+#         The stacked NumpySample object, aka a batch
 #     """
 
     if not dict_list:

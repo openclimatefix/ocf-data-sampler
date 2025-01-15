@@ -13,7 +13,7 @@ class SatelliteSampleKey:
 
 def convert_satellite_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
     """Convert from Xarray to NumpySample"""
-    example = {
+    sample = {
         SatelliteSampleKey.satellite_actual: da.values,
         SatelliteSampleKey.time_utc: da.time_utc.values.astype(float),
     }
@@ -22,9 +22,9 @@ def convert_satellite_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = Non
          (SatelliteSampleKey.x_geostationary, "x_geostationary"),
         (SatelliteSampleKey.y_geostationary, "y_geostationary"),
     ):
-        example[sample_key] = da[dataset_key].values
+        sample[sample_key] = da[dataset_key].values
 
     if t0_idx is not None:
-        example[SatelliteSampleKey.t0_idx] = t0_idx
+        sample[SatelliteSampleKey.t0_idx] = t0_idx
 
-    return example
+    return sample
