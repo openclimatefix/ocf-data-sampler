@@ -1,49 +1,5 @@
 import numpy as np
 
-
-def process_and_combine_site_sample_dict(
-    dataset_dict: dict,
-    config: Configuration,
-) -> xr.Dataset:
-    """
-    Normalize and combine data into a single xr Dataset
-
-    Args:
-        dataset_dict: dict containing sliced xr DataArrays
-        config: Configuration for the model
-
-    Returns:
-        xr.Dataset: A merged Dataset with nans filled in.
-    
-    """
-
-    data_arrays = []
-
-    if "nwp" in dataset_dict:
-        for nwp_key, da_nwp in dataset_dict["nwp"].items():
-            # Standardise
-            provider = config.input_data.nwp[nwp_key].provider
-            da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
-            data_arrays.append((f"nwp-{provider}", da_nwp))
-          
-    if "sat" in dataset_dict:
-        # Standardise
-        da_sat = dataset_dict["sat"]
-        da_sat = (da_sat - RSS_MEAN) / RSS_STD
-        data_arrays.append(("satellite", da_sat))
-
-    if "site" in dataset_dict:
-        # site_config = config.input_data.site
-        da_sites = dataset_dict["site"]
-        da_sites = da_sites / da_sites.capacity_kwp
-        data_arrays.append(("sites", da_sites))
-    
-    combined_sample_dataset = merge_arrays(data_arrays)
-
-    # Fill any nan values
-    return combined_sample_dataset.fillna(0.0)
-
-
 def merge_dicts(list_of_dicts: list[dict]) -> dict:
     """Merge a list of dictionaries into a single dictionary"""
     # TODO: This doesn't account for duplicate keys, which will be overwritten
