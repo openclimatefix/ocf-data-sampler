@@ -2,16 +2,13 @@
 
 """
 Base class testing - SampleBase
-Logging included purely for non-suppressed execution
 """
 
 import pytest
 import numpy as np
 import torch
 import xarray as xr
-
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, Callable, ClassVar
 
 from ocf_data_sampler.sample.base import SampleBase
 

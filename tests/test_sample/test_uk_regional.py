@@ -6,25 +6,25 @@ UK Regional class testing - PVNetSample / PVNetUKRegionalDataset
 
 import pytest
 import numpy as np
-import pandas as pd
 import torch
 import tempfile
+
 from pathlib import Path
 
 from ocf_data_sampler.numpy_sample import (
-    NWPSampleKey,
     GSPSampleKey,
     SatelliteSampleKey
 )
-from ocf_data_sampler.select import Location
-from ocf_data_sampler.sample.uk_regional import PVNetSample, PVNetUKRegionalDataset
+
+from ocf_data_sampler.torch_datasets.pvnet_uk_regional import PVNetUKRegionalDataset
+
+from ocf_data_sampler.sample.uk_regional import PVNetSample
 
 
-# Config fixture definition
+# Fixture define
 @pytest.fixture
 def pvnet_config_filename(tmp_path):
-    """ Minimal config file for testing """
-
+    """ Minimal config file - testing """
     config_content = """
     input_data:
         gsp:
@@ -35,19 +35,31 @@ def pvnet_config_filename(tmp_path):
         nwp:
             ukv:
                 zarr_path: ""
+                image_size_pixels_height: 64
+                image_size_pixels_width: 64
+                time_resolution_minutes: 60
+                interval_start_minutes: -180
+                interval_end_minutes: 0
+                channels: ["t", "dswrf"]
+                provider: "ukv"
         satellite:
             zarr_path: ""
+            image_size_pixels_height: 64
+            image_size_pixels_width: 64
+            time_resolution_minutes: 30
+            interval_start_minutes: -180
+            interval_end_minutes: 0
+            channels: ["HRV"]
     """
     config_file = tmp_path / "test_config.yaml"
     config_file.write_text(config_content)
     return str(config_file)
 
 
-# Modified test data creation
 def create_test_data():
     """ Synthetic data generation """
 
-    # Field and spatial coordinates
+    # Field / spatial coordinates
     nwp_data = {
         'nwp': np.random.rand(4, 1, 2, 2),
         'x': np.array([1, 2]),
@@ -64,85 +76,126 @@ def create_test_data():
         GSPSampleKey.solar_elevation: np.random.rand(7)
     }
 
-
 # PVNetSample testing
 def test_pvnet_sample_init():
-    """ Initialisation and validation """
+    """ Initialisation / validation """
+
     sample = PVNetSample()
     
     # Validate empty feature space
     with pytest.raises(ValueError):
         sample.validate()
     
-    # Test non-empty feature space
+    # Test non empty feature space
     test_data = create_test_data()
     for key, value in test_data.items():
         sample[key] = value
     
-    # Validate non-empty feature space
+    # Validate non empty feature space
     sample.validate()
 
 
-def test_pvnet_sample_type_conversion():
-    """ Feature space type conversion """
+def test_pvnet_sample_invalid_nwp():
+    """ Test invalid NWP structure validation """
+
     sample = PVNetSample()
     test_data = create_test_data()
+    
+    test_data['nwp'] = np.random.rand(4, 1, 2, 2)
+    
     for key, value in test_data.items():
         sample[key] = value
         
-    # Test numpy conversion
-    numpy_sample = sample.to_numpy()
-    assert isinstance(numpy_sample['nwp']['ukv']['nwp'], np.ndarray)
-    
-    # Test torch conversion
-    torch_sample = sample.to_torch()
-    assert isinstance(torch_sample['nwp']['ukv']['nwp'], torch.Tensor)
+    with pytest.raises(TypeError, match="NWP data must be nested dictionary"):
+        sample.validate()
 
 
 def test_pvnet_sample_save_load():
     """ Save / load functionality """
+
     sample = PVNetSample()
     test_data = create_test_data()
     for key, value in test_data.items():
         sample[key] = value
     
-    # Persistence in npz format
-    with tempfile.NamedTemporaryFile(suffix='.npz') as tf:
+    # Persistence in .pt format
+    with tempfile.NamedTemporaryFile(suffix='.pt') as tf:
         sample.save(tf.name)
         loaded = PVNetSample.load(tf.name)
         
-       # Validate feature space topology
         assert set(loaded.keys()) == set(sample.keys())
         
         # Verify NWP structure
         assert isinstance(loaded['nwp'], dict)
         assert 'ukv' in loaded['nwp']
 
-        # Verify other key shapes (dimensional consistency)
+        # Verify other key shapes / consistency
         assert loaded[GSPSampleKey.gsp].shape == (7,)
         assert loaded[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
         assert loaded[GSPSampleKey.solar_azimuth].shape == (7,)
         assert loaded[GSPSampleKey.solar_elevation].shape == (7,)
 
-        # Test content equality for simple array first
-        # Numerical equivalence validation
         np.testing.assert_array_almost_equal(
             loaded[GSPSampleKey.gsp],
             sample[GSPSampleKey.gsp]
         )
 
 
+def test_save_unsupported_format():
+    """ Test saving - unsupported file format """
+
+    sample = PVNetSample()
+    test_data = create_test_data()
+    for key, value in test_data.items():
+        sample[key] = value
+    
+    with tempfile.NamedTemporaryFile(suffix='.npz') as tf:
+        with pytest.raises(ValueError, match="Only .pt format is supported"):
+            sample.save(tf.name)
+
+
+def test_load_unsupported_format():
+    """ Test loading - unsupported file format """
+
+    with tempfile.NamedTemporaryFile(suffix='.npz') as tf:
+        with pytest.raises(ValueError, match="Only .pt format is supported"):
+            PVNetSample.load(tf.name)
+
+
+def test_load_corrupted_file():
+    """ Test loading - corrupted / empty file """
+
+    with tempfile.NamedTemporaryFile(suffix='.pt') as tf:
+        with open(tf.name, 'wb') as f:
+            f.write(b'corrupted data')
+        
+        with pytest.raises(Exception):
+            PVNetSample.load(tf.name)
+
+
+def test_pvnet_sample_invalid_shapes():
+    """ Test validation of inconsistent array shapes """
+
+    sample = PVNetSample()
+    test_data = create_test_data()
+    
+    # Modify one array to have inconsistent time steps
+    test_data[GSPSampleKey.gsp] = np.random.rand(6)
+    
+    for key, value in test_data.items():
+        sample[key] = value
+    with pytest.raises(ValueError, match="Inconsistent number of timesteps"):
+        sample.validate()
+
+
 # PVNetUKRegionalDataset testing
 def test_pvnet_dataset(pvnet_config_filename):
     """ Dataset initialisation """
 
-    # Create dataset with temporal domain defined
+    # Temporal domain defined
     start_time = "2024-01-01 00:00:00"
     end_time = "2024-01-02 00:00:00"
     
-    # This might raise an error pending updates 
-    # Empty config currently considered
-    # Potentially further mock certain data loading functions ???
     with pytest.raises(Exception):
         dataset = PVNetUKRegionalDataset(
             pvnet_config_filename,
@@ -153,6 +206,7 @@ def test_pvnet_dataset(pvnet_config_filename):
 
 def test_pvnet_dataset_get_sample(pvnet_config_filename):
     """ Direct sample access - time and GSP ID """
-   # Empty spatial domain
+
+    # Empty spatial domain
     with pytest.raises(Exception):
         dataset = PVNetUKRegionalDataset(pvnet_config_filename)
