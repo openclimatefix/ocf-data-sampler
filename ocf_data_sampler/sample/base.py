@@ -1,7 +1,7 @@
 # base.py
 
 """
-Base class definition
+Base class definition - abstract
 Handling of both flat and nested structures - consideration for NWP
 """
 
@@ -11,7 +11,7 @@ import xarray as xr
 import logging
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, Callable
+from typing import Any, Dict, Optional, Union, Callable, ClassVar
 from abc import ABC, abstractmethod
 
 
@@ -19,280 +19,65 @@ logger = logging.getLogger(__name__)
 
 
 class SampleBase(ABC):
-    """ Base class for all considered sample types """
+    """ 
+    Abstract base class for all sample types 
+    Provides core data storage and type validation
+    """
 
-    # Key constant definitions
-    # Specific array types and formats
+    # Supported array types / format(s) definition
     VALID_ARRAY_TYPES = (np.ndarray, torch.Tensor, xr.DataArray)
-    SUPPORTED_FORMATS = {'.nc', '.zarr', '.npz'}
-    DEFAULT_NAN_FILL_VALUE: float = 0.0
+    SUPPORTED_FORMATS: ClassVar[set] = {'.pt'}
 
-    # Container
-    # Dict for flat and nested arrays
     def __init__(self):
-        """ Initialisation """
+        """ Initialise data container """
         self._data: Dict[str, Any] = {}
     
-    # Following two functions set dict with validation
     def __getitem__(self, key: str) -> Any:
-        """ Get item """
+        """ Retrieve item from sample """
         if key not in self._data:
             raise KeyError(f"Key {key} not in sample")
         return self._data[key]
     
     def __setitem__(self, key: str, value: Any) -> None:
-        """ Set item """
+        """ Set item with type validation """
         self._validate_value(value)
         self._data[key] = value
 
     def keys(self) -> list[str]:
-        """ Get keys """
-        return list(self._data.keys())    
-
-    # Main I / O function operation
-    def save(self, path: Union[str, Path]) -> None:
-        """ Save to disk standard function """
-        path = Path(path)
-        if path.suffix not in self.SUPPORTED_FORMATS:
-            raise ValueError(
-                f"Unsupported format {path.suffix}"
-                f"Supported formats: {self.SUPPORTED_FORMATS}"
-            )
-        
-        save_dict = self.prepare_for_save()
-        
-        # Format handling stage
-        if path.suffix == '.nc':
-            ds = self._dict_to_dataset(save_dict)
-            ds.to_netcdf(path)
-            ds.close()
-        elif path.suffix == '.zarr':
-            ds = self._dict_to_dataset(save_dict)
-            ds.to_zarr(path, mode='w')
-            ds.close()
-        else:
-
-            # Handle nested structures for npz
-            np_data = {}
-            for key, value in save_dict.items():
-                if isinstance(value, dict):
-                    for sub_key, sub_value in value.items():
-                        np_data[f"{key}/{sub_key}"] = sub_value
-                else:
-                    np_data[key] = value
-            np.savez_compressed(path, **np_data)
+        """ Return sample keys """
+        return list(self._data.keys())
 
     def _validate_value(self, value: Any) -> None:
-        """ Validation - value is valid array or nested dict of valid arrays """
+        """ 
+        Validate value is valid array type 
+        Supports both single arrays and nested dicts i.e. NWP
+        """
         if isinstance(value, dict):
             for k, v in value.items():
                 self._validate_value(v)
         elif not isinstance(value, self.VALID_ARRAY_TYPES) and value is not None:
             raise TypeError(
-                f"Value must be {self.VALID_ARRAY_TYPES} or nested dict"
+                f"Value must be {self.VALID_ARRAY_TYPES} or nested dict "
                 f"of these types - obtained {type(value)}"
-                )
-
-    @classmethod
-    def load(cls, path: Union[str, Path]) -> 'SampleBase':
-        """ Load sample data """
-
-        path = Path(path)
-
-        if path.suffix not in cls.SUPPORTED_FORMATS:
-            raise ValueError(
-                f"Unsupported format {path.suffix}"
-                f"Supported formats: {cls.SUPPORTED_FORMATS}"
             )
-        
-        instance = cls()
-
-        # Format handling stage
-        try:
-            if path.suffix == '.nc':
-                ds = xr.open_dataset(path)
-                instance._data = cls._dataset_to_dict(ds)
-                ds.close()
-            elif path.suffix == '.zarr':
-                ds = xr.open_zarr(path)
-                instance._data = cls._dataset_to_dict(ds)
-                ds.close()
-            else:
-                with np.load(path, allow_pickle=True) as data:
-                    loaded_data = {}
-                    for key in data.files:
-                        # Parse key - handle nested
-                        if '/' in key:
-                            main_key, sub_key = key.split('/')
-                            # Init nested dict
-                            if main_key not in loaded_data:
-                                loaded_data[main_key] = {}
-                            loaded_data[main_key][sub_key] = data[key]
-                        else:
-                            loaded_data[key] = data[key]
-                    instance._data = loaded_data
-        except Exception as e:
-            logger.error(f"Error loading {path}: {str(e)}")
-            raise
-                
-        return instance
-    
-    # Type conversion operations
-    # To torch and to numpy
-    def to_torch(self) -> 'SampleBase':
-
-        def numpy_to_torch(x):
-            try:
-                if isinstance(x, torch.Tensor):
-                    return x
-                elif isinstance(x, xr.DataArray):
-                    return torch.from_numpy(x.values)
-                elif isinstance(x, np.ndarray):
-                    # Skip conversion for non-numeric arrays
-                    if not np.issubdtype(x.dtype, np.number):
-                        return x
-                    try:
-                        return torch.from_numpy(x)
-                    except Exception as e:
-                        logger.error(f"Failed to convert NumPy array to tensor: {e}")
-                        raise TypeError(f"Cannot convert array of type {x.dtype} to tensor")
-                else:
-                    raise TypeError(f"Unsupported type for conversion: {type(x)}")
-            except Exception as e:
-                logger.error(f"Tensor conversion error: {e}")
-                raise
-        
-        self._convert_arrays(numpy_to_torch)
-        return self
-
-    def to_numpy(self) -> 'SampleBase':
-
-        def to_numpy_converter(x):
-            try:
-                if isinstance(x, torch.Tensor):
-                    return x.detach().cpu().numpy()
-                elif isinstance(x, xr.DataArray):
-                    return x.values
-                elif isinstance(x, np.ndarray):
-                    return x
-                else:
-                    raise TypeError(f"Unsupported type for NumPy conversion: {type(x)}")
-            except Exception as e:
-                logger.error(f"NumPy conversion error: {e}")
-                raise
-        
-        self._convert_arrays(to_numpy_converter)
-        return self
 
     @abstractmethod
-    def plot(self, ax=None, **kwargs) -> Optional[Any]:
+    def plot(self, **kwargs) -> Optional[Any]:
         """ Abstract method for plotting """
-        raise NotImplementedError("Plotting - not implemented by subclass")
+        raise NotImplementedError("Plotting method must be implemented by subclass")
 
-    def _process_nested_structure(self, data: Dict[str, Any], process_fn: Callable[[Any], Any]) -> Dict[str, Any]:
-        """ Recursively process nested dict """
-        processed = {}
-        for key, value in data.items():
-            try:
-                if isinstance(value, dict):
-                    processed[key] = self._process_nested_structure(value, process_fn)
-                elif isinstance(value, self.VALID_ARRAY_TYPES):
-                    processed[key] = process_fn(value)
-                else:
-                    processed[key] = value
-            except Exception as e:
-                logger.error(f"Error processing key {key}: {e}")
-                raise
-        
-        return processed
+    @abstractmethod
+    def validate(self) -> None:
+        """ Abstract method for sample specific validation """
+        raise NotImplementedError("Validation method must be implemented by subclass")
 
-    def fill_nans(self, fill_value: float = DEFAULT_NAN_FILL_VALUE) -> None:
-        """ Fill NaN values """
-        def fill_nans_fn(arr):
-            try:
-                if isinstance(arr, np.ndarray) and np.issubdtype(arr.dtype, np.number):
-                    return np.nan_to_num(arr, nan=fill_value)
-                elif isinstance(arr, torch.Tensor):
-                    return torch.nan_to_num(arr, nan=fill_value)
-                elif isinstance(arr, xr.DataArray):
-                    return arr.fillna(fill_value).values
-                return arr
-            except Exception as e:
-                logger.error(f"Error filling NaNs for {type(arr)}: {e}")
-                raise
-        
-        try:
-            self._data = self._process_nested_structure(self._data, fill_nans_fn)
-        except Exception as e:
-            logger.error(f"NaN filling failed: {e}")
-            raise
-    
-    # Major util function for array conversion
-    def _convert_arrays(self, convert_fn: Callable[[Any], Any]) -> None:
-        """ Convert arrays in sample - for both flat and nested dicts """
+    @abstractmethod
+    def save(self, path: Union[str, Path]) -> None:
+        """ Abstract method for saving sample data """
+        raise NotImplementedError("Save method must be implemented by subclass")
 
-        def recursive_convert(value):
-            if isinstance(value, self.VALID_ARRAY_TYPES):
-                return convert_fn(value)
-
-            elif isinstance(value, dict):
-                return {k: recursive_convert(v) for k, v in value.items()}
-            return value
-
-        for key, value in list(self._data.items()):
-            try:
-                self._data[key] = recursive_convert(value)
-            except Exception as e:
-                logger.error(f"Error converting value at {key}: {e}")
-                raise
-
-    # Format conversion
-    # Preserves nested structure
-    def _dict_to_dataset(self, data_dict: Dict[str, Any]) -> xr.Dataset:
-
-        arrays = {}
-        coords = {}
-        
-        for key, value in data_dict.items():
-            if isinstance(value, dict):
-                for sub_key, sub_value in value.items():
-                    if isinstance(sub_value, (np.ndarray, torch.Tensor)):
-                        var_name = f"{key}_{sub_key}"
-                        dims = [f"{var_name}_dim_{i}" for i in range(sub_value.ndim)]
-                        arrays[var_name] = (dims, self._to_numpy(sub_value))
-            else:
-                if isinstance(value, (np.ndarray, torch.Tensor)):
-                    dims = [f"{key}_dim_{i}" for i in range(value.ndim)]
-                    arrays[key] = (dims, self._to_numpy(value))
-        
-        return xr.Dataset(arrays, coords=coords)
-
-    # Reconstruction of nested structure
-    @staticmethod
-    def _dataset_to_dict(ds: xr.Dataset) -> Dict[str, Any]:
-
-        data_dict = {}
-        for var_name in ds.variables:
-            if var_name in ds.coords:
-                continue
-                
-            if '_' in var_name:
-                main_key, sub_key = var_name.split('_', 1)
-                if main_key not in data_dict:
-                    data_dict[main_key] = {}
-                data_dict[main_key][sub_key] = ds[var_name].values
-            else:
-                data_dict[var_name] = ds[var_name].values
-        return data_dict
-    
-    def _to_numpy(self, arr: Union[np.ndarray, torch.Tensor, xr.DataArray]) -> np.ndarray:
-        """ Util for singular array """
-        if isinstance(arr, torch.Tensor):
-            return arr.cpu().numpy()
-        elif isinstance(arr, xr.DataArray):
-            return arr.values
-        return arr
-    
-    def prepare_for_save(self) -> Dict[str, Any]:
-        self.to_numpy()
-        return self._data
+    @classmethod
+    @abstractmethod
+    def load(cls, path: Union[str, Path]) -> 'SampleBase':
+        """ Abstract class method for loading sample data """
+        raise NotImplementedError("Load method must be implemented by subclass")
