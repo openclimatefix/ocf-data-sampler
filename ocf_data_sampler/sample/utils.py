@@ -6,10 +6,7 @@ To refine and potentially integrate with SampleBase ???
 """
 
 import numpy as np
-import torch
-import xarray as xr
 import logging
-
 from typing import List, Dict, Any, Type
 
 from ocf_data_sampler.sample.base import SampleBase
@@ -20,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 def stack_samples(samples: List[SampleBase]) -> SampleBase:
     """ Stack multiple samples into single sample """
+    
     if not samples:
         raise ValueError("Cannot stack empty list of samples")
         
@@ -57,6 +55,7 @@ def stack_samples(samples: List[SampleBase]) -> SampleBase:
 
 def merge_samples(samples: List[SampleBase]) -> SampleBase:
    """ Merge multiple samples into single sample """
+
    if not samples:
        raise ValueError("Cannot merge empty list of samples")
        
@@ -70,7 +69,7 @@ def merge_samples(samples: List[SampleBase]) -> SampleBase:
        for key, value in sample._data.items():
            try:
                if key in merged._data:
-                   logger.warning(f"Key {key} already exists in merged sample. Overwriting existing value.")
+                   logger.warning(f"Key {key} already exists in merged sample")
                merged[key] = value
            except Exception as key_err:
                logger.error(f"Error merging key {key}: {key_err}")
@@ -81,6 +80,7 @@ def merge_samples(samples: List[SampleBase]) -> SampleBase:
 
 def convert_batch_to_sample(batch_dict: Dict[str, Any], sample_class: Type[SampleBase]) -> SampleBase:
    """ Convert batch dict to sample obj """
+
    sample = sample_class()
    
    for key, value in batch_dict.items():
