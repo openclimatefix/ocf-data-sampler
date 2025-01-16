@@ -81,7 +81,7 @@ class PVNetSample(SampleBase):
         
         try:
             self.validate()            
-            torch.save(self._data, path)  # Just save the _data dict directly
+            torch.save(self._data, path)
             logger.debug(f"Successfully saved PVNetSample to {path}")
         except Exception as e:
             logger.error(f"Error saving to {path}: {str(e)}")
@@ -98,7 +98,6 @@ class PVNetSample(SampleBase):
             raise ValueError(f"Only .pt format is supported: {path.suffix}")
         
         try:
-            # Create new instance and load data directly
             instance = cls()
             instance._data = torch.load(path)
             instance.validate()
