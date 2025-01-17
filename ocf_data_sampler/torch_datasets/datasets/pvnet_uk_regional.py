@@ -10,7 +10,7 @@ from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.select import fill_time_periods, Location, slice_datasets_by_space, slice_datasets_by_time
 from ocf_data_sampler.utils import minutes
-from ocf_data_sampler.torch_datasets.valid_time_periods import find_valid_time_periods
+from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
 from ocf_data_sampler.numpy_sample import (
     convert_nwp_to_numpy_sample,
@@ -18,7 +18,7 @@ from ocf_data_sampler.numpy_sample import (
     convert_gsp_to_numpy_sample,
     make_sun_position_numpy_sample,
 )
-from ocf_data_sampler.torch_datasets.merge_and_fill_utils import (
+from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     merge_dicts,
     fill_nans_in_arrays,
 )
