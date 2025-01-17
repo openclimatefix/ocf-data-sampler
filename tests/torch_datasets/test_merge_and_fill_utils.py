@@ -1,6 +1,6 @@
 import numpy as np
 
-from ocf_data_sampler.torch_datasets.merge_and_fill_utils import (
+from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     merge_dicts,
     fill_nans_in_arrays,
 )

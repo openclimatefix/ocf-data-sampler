@@ -1,6 +1,6 @@
 from ocf_data_sampler.numpy_sample import GSPSampleKey, SatelliteSampleKey
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
-from ocf_data_sampler.torch_datasets.pvnet_uk_regional import PVNetUKRegionalDataset
+from ocf_data_sampler.torch_datasets.datasets.pvnet_uk_regional import PVNetUKRegionalDataset
 
 
 def test_pvnet(pvnet_config_filename):

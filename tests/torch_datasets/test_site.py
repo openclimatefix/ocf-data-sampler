@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from ocf_data_sampler.torch_datasets.site import SitesDataset, convert_from_dataset_to_dict_datasets
+from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset, convert_from_dataset_to_dict_datasets
 from xarray import Dataset, DataArray
 
 
