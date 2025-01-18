@@ -5,7 +5,6 @@ import pandas as pd
 import pkg_resources
 import xarray as xr
 from torch.utils.data import Dataset
-
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.select import fill_time_periods, Location, slice_datasets_by_space, slice_datasets_by_time
@@ -147,7 +146,7 @@ def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
 
     # Load UK GSP locations
     df_gsp_loc = pd.read_csv(
-        pkg_resources.resource_filename(__name__, "../data/uk_gsp_locations.csv"),
+        pkg_resources.resource_filename(__name__, "../../data/uk_gsp_locations.csv"),
         index_col="gsp_id",
     )
 
