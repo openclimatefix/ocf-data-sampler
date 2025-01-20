@@ -37,20 +37,9 @@ class PVNetSample(SampleBase):
         GSPSampleKey.solar_elevation
     }
 
-    # REFERENCE
-
-    # def __init__(self):
-    #     logger.debug("Initialise PVNetSample instance")
-    #     super().__init__()
-
-    def __init__(self, save_dir: Union[str, Path] = None):
+    def __init__(self):
         logger.debug("Initialise PVNetSample instance")
         super().__init__()
-        self.save_dir = Path(save_dir) if save_dir else None
-        self.sample_paths: List[Path] = []
-        if self.save_dir:
-            self.save_dir.mkdir(parents=True, exist_ok=True)
-            self.sample_paths = sorted(self.save_dir.glob("*.pt"))
 
     def validate(self) -> None:
         logger.debug("Validating PVNetSample")
@@ -81,61 +70,6 @@ class PVNetSample(SampleBase):
                 
         logger.debug("PVNetSample validation successful")
 
-    def __call__(self, sample: Dict[str, Any], sample_num: int) -> None:
-        """ Save sample to disk - standardised """
-        if self.save_dir is None:
-            logger.error("Save directory not set")
-            raise ValueError("Save directory must be set to use __call__")
-            
-        logger.debug(f"Saving sample {sample_num}")
-        self._data = sample
-        save_path = self.save_dir / f"{sample_num:08}.pt"
-        self.save(save_path)
-
-    def __getitem__(self, key: Union[str, int]) -> Any:
-        """ Get item from sample - dict key and index access """
-
-        if isinstance(key, str):
-            if key not in self._data:
-                logger.error(f"Failed to retrieve key '{key}'")
-                raise KeyError(f"Key {key} not in sample")
-            logger.debug(f"Retrieved value for key '{key}'")
-            return self._data[key]
-
-        elif isinstance(key, int):
-            if not self.sample_paths:
-                logger.error("No samples available")
-                raise IndexError("No samples available")
-                
-            if key >= len(self.sample_paths):
-                logger.error(f"Index {key} out of range")
-                raise IndexError(f"Index {key} out of range")
-                
-            logger.debug(f"Loading sample at index {key}")
-            return self.load(self.sample_paths[key])._data
-        else:
-            logger.error(f"Invalid key type: {type(key)}")
-            raise TypeError(f"Key must be str or int, got {type(key)}")
-
-    # REFERENCE
-
-    # def save(self, path: Union[str, Path]) -> None:
-    #     """ Save PVNet sample as .pt """
-    #     logger.debug(f"Saving PVNetSample to {path}")
-    #     path = Path(path)
-        
-    #     if path.suffix != '.pt':
-    #         logger.error(f"Invalid file format: {path.suffix}")
-    #         raise ValueError(f"Only .pt format is supported: {path.suffix}")
-        
-    #     try:
-    #         self.validate()            
-    #         torch.save(self._data, path)
-    #         logger.debug(f"Successfully saved PVNetSample to {path}")
-    #     except Exception as e:
-    #         logger.error(f"Error saving to {path}: {str(e)}")
-    #         raise
-
     def save(self, path: Union[str, Path]) -> None:
         """ Save PVNet sample as .pt """
         logger.debug(f"Saving PVNetSample to {path}")
@@ -148,8 +82,6 @@ class PVNetSample(SampleBase):
         try:
             self.validate()            
             torch.save(self._data, path)
-            if path not in self.sample_paths:
-                self.sample_paths.append(path)
             logger.debug(f"Successfully saved PVNetSample to {path}")
         except Exception as e:
             logger.error(f"Error saving to {path}: {str(e)}")
