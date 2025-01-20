@@ -210,3 +210,95 @@ def test_pvnet_dataset_get_sample(pvnet_config_filename):
     # Empty spatial domain
     with pytest.raises(Exception):
         dataset = PVNetUKRegionalDataset(pvnet_config_filename)
+
+
+def test_pvnet_sample_to_numpy():
+    """ Test conversion of sample data to numpy arrays """
+    
+    sample = PVNetSample()
+    
+    # Create mixed data types for testing
+    mixed_data = {
+        'nwp': {
+            'ukv': {
+                'nwp': torch.rand(4, 1, 2, 2),  # torch tensor
+                'x': np.array([1, 2]),          # already numpy
+                'y': np.array([1, 2])           # already numpy
+            }
+        },
+        GSPSampleKey.gsp: torch.rand(7),
+        SatelliteSampleKey.satellite_actual: torch.rand(7, 1, 2, 2),
+        GSPSampleKey.solar_azimuth: np.random.rand(7),
+        GSPSampleKey.solar_elevation: np.random.rand(7)
+    }
+    
+    for key, value in mixed_data.items():
+        sample[key] = value
+    
+    # Convert to numpy
+    numpy_data = sample.to_numpy()
+    
+    # Verify all data is numpy arrays
+    assert isinstance(numpy_data[GSPSampleKey.gsp], np.ndarray)
+    assert isinstance(numpy_data[SatelliteSampleKey.satellite_actual], np.ndarray)
+    assert isinstance(numpy_data[GSPSampleKey.solar_azimuth], np.ndarray)
+    assert isinstance(numpy_data[GSPSampleKey.solar_elevation], np.ndarray)
+    
+    # Verify nested NWP structure
+    assert isinstance(numpy_data['nwp']['ukv']['nwp'], np.ndarray)
+    assert isinstance(numpy_data['nwp']['ukv']['x'], np.ndarray)
+    assert isinstance(numpy_data['nwp']['ukv']['y'], np.ndarray)
+    
+    # Verify shapes are preserved
+    assert numpy_data[GSPSampleKey.gsp].shape == (7,)
+    assert numpy_data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
+    assert numpy_data['nwp']['ukv']['nwp'].shape == (4, 1, 2, 2)
+
+
+def test_pvnet_sample_to_model():
+    """ Test conversion of sample data to PyTorch tensors """
+    
+    sample = PVNetSample()
+    
+    # Create mixed data types for testing
+    mixed_data = {
+        'nwp': {
+            'ukv': {
+                'nwp': np.random.rand(4, 1, 2, 2),  # numpy array
+                'x': torch.tensor([1., 2.]),        # already torch
+                'y': np.array([1, 2])               # numpy array
+            }
+        },
+        GSPSampleKey.gsp: np.random.rand(7),
+        SatelliteSampleKey.satellite_actual: np.random.rand(7, 1, 2, 2),
+        GSPSampleKey.solar_azimuth: torch.rand(7),
+        GSPSampleKey.solar_elevation: np.random.rand(7)
+    }
+    
+    for key, value in mixed_data.items():
+        sample[key] = value
+    
+    # Convert to torch
+    torch_data = sample.to_model()
+    
+    # Verify all data is torch tensors
+    assert isinstance(torch_data[GSPSampleKey.gsp], torch.Tensor)
+    assert isinstance(torch_data[SatelliteSampleKey.satellite_actual], torch.Tensor)
+    assert isinstance(torch_data[GSPSampleKey.solar_azimuth], torch.Tensor)
+    assert isinstance(torch_data[GSPSampleKey.solar_elevation], torch.Tensor)
+    
+    # Verify nested NWP structure
+    assert isinstance(torch_data['nwp']['ukv']['nwp'], torch.Tensor)
+    assert isinstance(torch_data['nwp']['ukv']['x'], torch.Tensor)
+    assert isinstance(torch_data['nwp']['ukv']['y'], torch.Tensor)
+    
+    # Verify shapes are preserved
+    assert torch_data[GSPSampleKey.gsp].shape == (7,)
+    assert torch_data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
+    assert torch_data['nwp']['ukv']['nwp'].shape == (4, 1, 2, 2)
+    
+    # Verify data values are preserved (within float precision)
+    np.testing.assert_array_almost_equal(
+        torch_data[GSPSampleKey.gsp].numpy(),
+        mixed_data[GSPSampleKey.gsp]
+    )

@@ -29,12 +29,15 @@ class PVNetSample(SampleBase):
     """ Sample class specific to PVNet """
     
     # Feature space definitions
-    REQUIRED_KEYS = {
+    CORE_KEYS = {
         'nwp',
         GSPSampleKey.gsp,
-        SatelliteSampleKey.satellite_actual,
         GSPSampleKey.solar_azimuth,
         GSPSampleKey.solar_elevation
+    }
+    
+    OPTIONAL_KEYS = {
+        SatelliteSampleKey.satellite_actual
     }
 
     def __init__(self):
@@ -45,7 +48,7 @@ class PVNetSample(SampleBase):
         logger.debug("Validating PVNetSample")
         
         # Check required keys - feature space validation
-        missing_keys = self.REQUIRED_KEYS - set(self.keys())
+        missing_keys = self.CORE_KEYS - set(self.keys())
         if missing_keys:
             logger.error(f"Validation failed: {missing_keys}")
             raise ValueError(f"Missing required keys: {missing_keys}")
@@ -58,10 +61,13 @@ class PVNetSample(SampleBase):
         # Validate timestep consistency
         gsp_timesteps = len(self._data[GSPSampleKey.gsp])
         time_dependent_keys = [
-            SatelliteSampleKey.satellite_actual,
             GSPSampleKey.solar_azimuth,
             GSPSampleKey.solar_elevation
         ]
+        
+        # Add satellite to validation if present
+        if SatelliteSampleKey.satellite_actual in self._data:
+            time_dependent_keys.append(SatelliteSampleKey.satellite_actual)
         
         for key in time_dependent_keys:
             if len(self._data[key]) != gsp_timesteps:
@@ -69,6 +75,52 @@ class PVNetSample(SampleBase):
                 raise ValueError("Inconsistent number of timesteps")
                 
         logger.debug("PVNetSample validation successful")
+
+    def to_numpy(self) -> Dict[str, np.ndarray]:
+        """ Convert sample to numpy arrays - nested handling """
+        logger.debug("Converting sample to numpy format")
+        
+        def convert_to_numpy(data):
+            if isinstance(data, torch.Tensor):
+                return data.numpy()
+            elif isinstance(data, np.ndarray):
+                return data
+            elif isinstance(data, dict):
+                return {k: convert_to_numpy(v) for k, v in data.items()}
+            else:
+                return data
+
+        try:
+            numpy_data = {k: convert_to_numpy(v) for k, v in self._data.items()}
+            logger.debug("Successfully converted to numpy format")
+            return numpy_data
+            
+        except Exception as e:
+            logger.error(f"Error converting to numpy: {str(e)}")
+            raise
+
+    def to_model(self) -> Dict[str, torch.Tensor]:
+        """ Convert sample to tensors - nested handling """
+        logger.debug("Converting sample to PyTorch format")
+        
+        def convert_to_torch(data):
+            if isinstance(data, np.ndarray):
+                return torch.from_numpy(data)
+            elif isinstance(data, torch.Tensor):
+                return data
+            elif isinstance(data, dict):
+                return {k: convert_to_torch(v) for k, v in data.items()}
+            else:
+                return data
+
+        try:
+            torch_data = {k: convert_to_torch(v) for k, v in self._data.items()}
+            logger.debug("Successfully converted to PyTorch format")
+            return torch_data
+            
+        except Exception as e:
+            logger.error(f"Error converting to PyTorch: {str(e)}")
+            raise
 
     def save(self, path: Union[str, Path]) -> None:
         """ Save PVNet sample as .pt """
