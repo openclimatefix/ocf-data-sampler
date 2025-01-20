@@ -13,7 +13,7 @@ class SiteSampleKey:
     solar_elevation = "site_solar_elevation"
     id = "site_id"
 
-# TODO update to trig datetime coords
+# TODO update to include trig datetime + solar coords
 def convert_site_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
     """Convert from Xarray to NumpySample"""
 
@@ -23,8 +23,6 @@ def convert_site_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) ->
         SiteSampleKey.capacity_kwp: da.isel(time_utc=0)["capacity_kwp"].values,
         SiteSampleKey.time_utc: da["time_utc"].values.astype(float),
         SiteSampleKey.id: da["site_id"].values,
-        SiteSampleKey.solar_azimuth: da["solar_azimuth"].values,
-        SiteSampleKey.solar_elevation: da["solar_elevation"].values,
     }
 
     if t0_idx is not None:
