@@ -51,7 +51,6 @@ def slice_datasets_by_time(
             sample_period_duration=minutes(sat_config.time_resolution_minutes),
             interval_start=minutes(sat_config.interval_start_minutes),
             interval_end=minutes(sat_config.interval_end_minutes),
-            max_steps_gap=2,
         )
 
         # Randomly sample dropout
