@@ -114,3 +114,20 @@ def test_data_operations():
         
     # Test keys match expected
     assert set(sample.keys()) == set(test_data.keys())
+
+
+def test_sample_base_initialisation_with_data():
+    """ Test initialisation of SampleBase with data """
+
+    test_data = {
+        'int_data': 42,
+        'list_data': [1, 2, 3],
+        'nested_data': {'a': 1, 'b': 2}
+    }
+    
+    sample = TestSample(data=test_data)
+    assert sample._data == test_data, "Sample initialised with provided data"
+    
+    # Assert that individual key access functions
+    for key, value in test_data.items():
+        assert sample[key] == value
