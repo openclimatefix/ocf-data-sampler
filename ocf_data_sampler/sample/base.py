@@ -23,14 +23,6 @@ class SampleBase(ABC):
         logger.debug("Initialising SampleBase instance")
         self._data: Dict[str, Any] = data or {}
 
-    def __getitem__(self, key: str) -> Any:
-        """ Basic dictionary-like access """
-        return self._data[key]
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        """ Basic dictionary-like setting """
-        self._data[key] = value
-
     def keys(self):
         """ Return available keys """
         return self._data.keys()
