@@ -257,6 +257,8 @@ class SitesDataset(Dataset):
         )
         combined_sample_dataset = xr.merge([combined_sample_dataset, sun_position_features_xr])
 
+        # TODO include t0_index in xr dataset? 
+
         # Fill any nan values
         return combined_sample_dataset.fillna(0.0)
 
@@ -317,6 +319,26 @@ class SitesDataset(Dataset):
 
 # ----- functions to load presaved samples ------
 
+def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
+    """Convert a netcdf dataset to a numpy sample"""
+
+    # convert the single dataset to a dict of arrays
+    sample_dict = convert_from_dataset_to_dict_datasets(ds) 
+
+    if "satellite" in sample_dict:
+        # rename satellite to satellite actual # TODO this could be improves
+        sample_dict["sat"] = sample_dict.pop("satellite")
+
+    # process and combine the datasets
+    sample = convert_to_numpy_and_combine(
+        dataset_dict=sample_dict,
+    )
+
+    # TODO think about normalization, maybe its done not in sample creation, maybe its done afterwards,
+    #  to allow it to be flexible
+
+    return sample
+
 def convert_from_dataset_to_dict_datasets(combined_dataset: xr.Dataset) -> dict[str, xr.DataArray]:
     """
     Convert a combined sample dataset to a dict of datasets for each input
@@ -360,26 +382,6 @@ def nest_nwp_source_dict(d: dict, sep: str = "/") -> dict:
         new_dict["nwp"] = nwp_subdict
     return new_dict
 
-def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
-    """Convert a netcdf dataset to a numpy sample"""
-
-    # convert the single dataset to a dict of arrays
-    sample_dict = convert_from_dataset_to_dict_datasets(ds) 
-
-    if "satellite" in sample_dict:
-        # rename satellite to satellite actual # TODO this could be improves
-        sample_dict["sat"] = sample_dict.pop("satellite")
-
-    # process and combine the datasets
-    sample = convert_to_numpy_and_combine(
-        dataset_dict=sample_dict,
-    )
-
-    # TODO think about normalization, maybe its done not in sample creation, maybe its done afterwards,
-    #  to allow it to be flexible
-
-    return sample
-
 def convert_to_numpy_and_combine(
     dataset_dict: dict,
 ) -> dict:
@@ -406,15 +408,12 @@ def convert_to_numpy_and_combine(
 
     if "site" in dataset_dict:
         da_sites = dataset_dict["site"]
-        sites_sample = convert_site_to_numpy_sample(da_sites)
 
         numpy_modalities.append(
             convert_site_to_numpy_sample(
                 da_sites,
             )
         )
-
-        numpy_modalities.append(sites_sample)
 
     # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
