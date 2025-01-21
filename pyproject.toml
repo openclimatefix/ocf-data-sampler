@@ -30,7 +30,8 @@ dependencies = [ # Migration from requirements.txt
     "pyproj",
     "pathy",
     "pyaml_env",
-    "pyresample"
+    "pyresample",
+    "matplotlib",
 ]
 
 keywords = [ # I've added some keywords, but please provide feedback if you'd like them changed!
