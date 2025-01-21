@@ -7,10 +7,10 @@ PVNet - UK Regional sample / dataset implementation
 import numpy as np
 import pandas as pd
 import torch
-import matplotlib.pyplot as plt
 import logging
+import matplotlib.pyplot as plt
 
-from typing import Dict, Any, Union, List
+from typing import Dict, Any, Union, List, Optional
 from pathlib import Path
 
 from ocf_data_sampler.numpy_sample import (
@@ -41,9 +41,9 @@ class PVNetSample(SampleBase):
         SatelliteSampleKey.satellite_actual
     }
 
-    def __init__(self):
+    def __init__(self, data: Optional[Dict[str, Any]] = None):
         logger.debug("Initialise PVNetSample instance")
-        super().__init__()
+        super().__init__(data)
 
     def validate(self) -> None:
         logger.debug("Validating PVNetSample")
@@ -60,37 +60,62 @@ class PVNetSample(SampleBase):
                 logger.error("Validation failed")
                 raise TypeError("NWP data must be nested dictionary")
             
-            # Additional NWP-specific validations
+            # Additional NWP validations
             nwp_sources = self._data[NWPSampleKey.nwp].keys()
             for source in nwp_sources:
                 if not all(key in self._data[NWPSampleKey.nwp][source] 
                            for key in ['nwp', NWPSampleKey.channel_names]):
                     logger.error(f"Incomplete NWP data for source {source}")
                     raise ValueError(f"Missing keys in NWP source {source}")
+
+                # NaN check - NWP
+                nwp_data = self._data[NWPSampleKey.nwp][source]['nwp']
+                if isinstance(nwp_data, (np.ndarray, list)) and np.any(np.isnan(nwp_data)):
+                    logger.error(f"NaN values in NWP data for {source}")
+                    raise ValueError(f"NaN values in NWP data for {source}")
+
+        # Validate GSP structure
+        if GSPSampleKey.gsp in self._data:
+            if not isinstance(self._data[GSPSampleKey.gsp], (list, np.ndarray)):
+                logger.error("Validation failed")
+                raise TypeError("GSP data must be a list or numpy array")
+
+            # NaN check - GSP
+            if np.any(np.isnan(self._data[GSPSampleKey.gsp])):
+                logger.error("NaN values in GSP data")
+                raise ValueError("NaN values in GSP data")
+
+            # Validate timestep consistency
+            gsp_timesteps = len(self._data[GSPSampleKey.gsp])
+            time_dependent_keys = [
+                GSPSampleKey.solar_azimuth,
+                GSPSampleKey.solar_elevation
+            ]
         
-        # Validate timestep consistency
-        gsp_timesteps = len(self._data[GSPSampleKey.gsp])
-        time_dependent_keys = [
-            GSPSampleKey.solar_azimuth,
-            GSPSampleKey.solar_elevation
-        ]
-        
-        # Add satellite to validation if present
-        if SatelliteSampleKey.satellite_actual in self._data:
-            time_dependent_keys.append(SatelliteSampleKey.satellite_actual)
-        
-        for key in time_dependent_keys:
-            if len(self._data[key]) != gsp_timesteps:
-                logger.error(f"Validation failed - inconsistent timesteps for {key}")
-                raise ValueError("Inconsistent number of timesteps")
-                
+            # Add satellite to validation if present
+            if SatelliteSampleKey.satellite_actual in self._data:
+                time_dependent_keys.append(SatelliteSampleKey.satellite_actual)
+
+            # Additional NaN / time step check
+            for key in time_dependent_keys:
+                if key in self._data:
+                    if len(self._data[key]) != gsp_timesteps:
+                        logger.error(f"Validation failed - inconsistent timesteps for {key}")
+                        raise ValueError("Inconsistent number of timesteps")
+                        
+                    if np.any(np.isnan(self._data[key])):
+                        logger.error(f"NaN values in {key}")
+                        raise ValueError(f"NaN values in {key}")
+
         logger.debug("PVNetSample validation successful")
 
     def to_numpy(self) -> Dict[str, np.ndarray]:
         """ Convert sample to numpy arrays - nested handling """
+
         logger.debug("Converting sample to numpy format")
         
         def convert_to_numpy(data):
+
             if isinstance(data, torch.Tensor):
                 return data.numpy()
             elif isinstance(data, np.ndarray):
@@ -168,17 +193,17 @@ class PVNetSample(SampleBase):
                 axes[0, 0].plot(self._data[GSPSampleKey.gsp])
                 axes[0, 0].set_title('GSP Generation')
             
-            if SatelliteSampleKey.satellite_actual in self._data:
-                logger.debug("Plotting satellite data")
-                axes[1, 0].imshow(self._data[SatelliteSampleKey.satellite_actual])
-                axes[1, 0].set_title('Satellite Data')
-            
             if GSPSampleKey.solar_azimuth in self._data and GSPSampleKey.solar_elevation in self._data:
                 logger.debug("Plotting solar position data")
                 axes[1, 1].plot(self._data[GSPSampleKey.solar_azimuth], label='Azimuth')
                 axes[1, 1].plot(self._data[GSPSampleKey.solar_elevation], label='Elevation')
                 axes[1, 1].set_title('Solar Position')
                 axes[1, 1].legend()
+
+            if SatelliteSampleKey.satellite_actual in self._data:
+                logger.debug("Plotting satellite data")
+                axes[1, 0].imshow(self._data[SatelliteSampleKey.satellite_actual])
+                axes[1, 0].set_title('Satellite Data')
             
             plt.tight_layout()
             plt.show()

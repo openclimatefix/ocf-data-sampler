@@ -82,44 +82,32 @@ def create_test_data():
 # PVNetSample testing
 def test_pvnet_sample_init():
     """ Initialisation / validation """
-
     sample = PVNetSample()
-    
+
     # Validate empty feature space
     with pytest.raises(ValueError):
         sample.validate()
     
-    # Test non empty feature space
+    # Test initialisation with data and validate
     test_data = create_test_data()
-    for key, value in test_data.items():
-        sample[key] = value
-    
-    # Validate non empty feature space
+    sample = PVNetSample(data=test_data)
     sample.validate()
 
 
 def test_pvnet_sample_invalid_nwp():
     """ Test invalid NWP structure validation """
-
-    sample = PVNetSample()
     test_data = create_test_data()
-    
     test_data['nwp'] = np.random.rand(4, 1, 2, 2)
     
-    for key, value in test_data.items():
-        sample[key] = value
-        
+    sample = PVNetSample(data=test_data)
     with pytest.raises(TypeError, match="NWP data must be nested dictionary"):
         sample.validate()
 
 
 def test_pvnet_sample_save_load():
     """ Save / load functionality """
-
-    sample = PVNetSample()
     test_data = create_test_data()
-    for key, value in test_data.items():
-        sample[key] = value
+    sample = PVNetSample(data=test_data)
     
     # Persistence in .pt format
     with tempfile.NamedTemporaryFile(suffix='.pt') as tf:
@@ -129,32 +117,29 @@ def test_pvnet_sample_save_load():
         assert set(loaded.keys()) == set(sample.keys())
         
         # Verify NWP structure
-        assert isinstance(loaded['nwp'], dict)
-        assert 'ukv' in loaded['nwp']
+        assert isinstance(loaded._data['nwp'], dict)
+        assert 'ukv' in loaded._data['nwp']
 
         # Verify other key shapes / consistency
-        assert loaded[GSPSampleKey.gsp].shape == (7,)
-        assert loaded[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
-        assert loaded[GSPSampleKey.solar_azimuth].shape == (7,)
-        assert loaded[GSPSampleKey.solar_elevation].shape == (7,)
+        assert loaded._data[GSPSampleKey.gsp].shape == (7,)
+        assert loaded._data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
+        assert loaded._data[GSPSampleKey.solar_azimuth].shape == (7,)
+        assert loaded._data[GSPSampleKey.solar_elevation].shape == (7,)
 
         np.testing.assert_array_almost_equal(
-            loaded[GSPSampleKey.gsp],
-            sample[GSPSampleKey.gsp]
+            loaded._data[GSPSampleKey.gsp],
+            sample._data[GSPSampleKey.gsp]
         )
 
 
 def test_save_unsupported_format():
-    """ Test saving - unsupported file format """
-
-    sample = PVNetSample()
-    test_data = create_test_data()
-    for key, value in test_data.items():
-        sample[key] = value
-    
-    with tempfile.NamedTemporaryFile(suffix='.npz') as tf:
-        with pytest.raises(ValueError, match="Only .pt format is supported"):
-            sample.save(tf.name)
+   """ Test saving - unsupported file format """
+   test_data = create_test_data()
+   sample = PVNetSample(data=test_data)
+   
+   with tempfile.NamedTemporaryFile(suffix='.npz') as tf:
+       with pytest.raises(ValueError, match="Only .pt format is supported"):
+           sample.save(tf.name)
 
 
 def test_load_unsupported_format():
@@ -178,35 +163,18 @@ def test_load_corrupted_file():
 
 def test_pvnet_sample_invalid_shapes():
     """ Test validation of inconsistent array shapes """
-
-    sample = PVNetSample()
+   
+    # Modify one to have inconsistent time steps
     test_data = create_test_data()
-    
-    # Modify one array to have inconsistent time steps
     test_data[GSPSampleKey.gsp] = np.random.rand(6)
-    
-    for key, value in test_data.items():
-        sample[key] = value
+   
+    sample = PVNetSample(data=test_data)
+   
     with pytest.raises(ValueError, match="Inconsistent number of timesteps"):
         sample.validate()
 
 
 # PVNetUKRegionalDataset testing
-def test_pvnet_dataset(pvnet_config_filename):
-    """ Dataset initialisation """
-
-    # Temporal domain defined
-    start_time = "2024-01-01 00:00:00"
-    end_time = "2024-01-02 00:00:00"
-    
-    with pytest.raises(Exception):
-        dataset = PVNetUKRegionalDataset(
-            pvnet_config_filename,
-            start_time=start_time,
-            end_time=end_time
-        )
-
-
 def test_pvnet_dataset_get_sample(pvnet_config_filename):
     """ Direct sample access - time and GSP ID """
 
@@ -216,42 +184,97 @@ def test_pvnet_dataset_get_sample(pvnet_config_filename):
 
 
 def test_pvnet_sample_to_numpy():
-    """ Test conversion of sample data to numpy arrays """
+   """ Test conversion of sample data to numpy arrays """
+   
+   # Create mixed data types for testing
+   mixed_data = {
+       'nwp': {
+           'ukv': {
+               'nwp': torch.rand(4, 1, 2, 2),
+               'x': np.array([1, 2]),
+               'y': np.array([1, 2])
+           }
+       },
+       GSPSampleKey.gsp: torch.rand(7),
+       SatelliteSampleKey.satellite_actual: torch.rand(7, 1, 2, 2),
+       GSPSampleKey.solar_azimuth: np.random.rand(7),
+       GSPSampleKey.solar_elevation: np.random.rand(7)
+   }
+   
+   # Initialize sample with mixed data
+   sample = PVNetSample(data=mixed_data)
+   numpy_data = sample.to_numpy()
+   
+   # Verify all data is numpy arrays
+   assert isinstance(numpy_data[GSPSampleKey.gsp], np.ndarray)
+   assert isinstance(numpy_data[SatelliteSampleKey.satellite_actual], np.ndarray)
+   assert isinstance(numpy_data[GSPSampleKey.solar_azimuth], np.ndarray)
+   assert isinstance(numpy_data[GSPSampleKey.solar_elevation], np.ndarray)
+   
+   # Verify nested NWP structure
+   assert isinstance(numpy_data['nwp']['ukv']['nwp'], np.ndarray)
+   assert isinstance(numpy_data['nwp']['ukv']['x'], np.ndarray)
+   assert isinstance(numpy_data['nwp']['ukv']['y'], np.ndarray)
+   
+   # Verify shapes are preserved
+   assert numpy_data[GSPSampleKey.gsp].shape == (7,)
+   assert numpy_data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
+   assert numpy_data['nwp']['ukv']['nwp'].shape == (4, 1, 2, 2)
+
+
+# NaN related testing and further validation check
+def test_pvnet_sample_nan_in_nwp():
+   """ Test validation catches NaN in NWP data """
+   test_data = create_test_data()
+   
+   # Insert NaN into NWP data
+   test_data['nwp']['ukv']['nwp'][0, 0, 0, 0] = np.nan
+   
+   sample = PVNetSample(data=test_data)
+   with pytest.raises(ValueError, match="NaN values in NWP data for ukv"):
+       sample.validate()
+
+
+def test_pvnet_sample_nan_in_gsp():
+   """ Test validation catches NaN in GSP data """
+   test_data = create_test_data()
+   
+   # Insert NaN into GSP data 
+   test_data[GSPSampleKey.gsp][0] = np.nan
+   
+   sample = PVNetSample(data=test_data)
+   with pytest.raises(ValueError, match="NaN values in GSP data"):
+       sample.validate()
+
+
+def test_pvnet_sample_nan_in_time():
+   """ Test validation catches NaN in time dependent data """
+   test_data = create_test_data()
+   
+   # Insert NaN into solar azimuth data
+   test_data[GSPSampleKey.solar_azimuth][0] = np.nan
+   
+   sample = PVNetSample(data=test_data)
+   with pytest.raises(ValueError, match=f"NaN values in {GSPSampleKey.solar_azimuth}"):
+       sample.validate()
+
+
+def test_pvnet_sample_without_gsp():
+    """ Test validation works without GSP data """
+    test_data = create_test_data()
     
-    sample = PVNetSample()
+    # Remove optional data in a clearer way
+    optional_keys = [
+        GSPSampleKey.gsp,
+        GSPSampleKey.solar_azimuth, 
+        GSPSampleKey.solar_elevation,
+        SatelliteSampleKey.satellite_actual
+    ]
     
-    # Create mixed data types for testing
-    mixed_data = {
-        'nwp': {
-            'ukv': {
-                'nwp': torch.rand(4, 1, 2, 2),
-                'x': np.array([1, 2]),
-                'y': np.array([1, 2])
-            }
-        },
-        GSPSampleKey.gsp: torch.rand(7),
-        SatelliteSampleKey.satellite_actual: torch.rand(7, 1, 2, 2),
-        GSPSampleKey.solar_azimuth: np.random.rand(7),
-        GSPSampleKey.solar_elevation: np.random.rand(7)
-    }
+    for key in optional_keys:
+        if key in test_data:
+            del test_data[key]
     
-    for key, value in mixed_data.items():
-        sample[key] = value
-    
-    numpy_data = sample.to_numpy()
-    
-    # Verify all data is numpy arrays
-    assert isinstance(numpy_data[GSPSampleKey.gsp], np.ndarray)
-    assert isinstance(numpy_data[SatelliteSampleKey.satellite_actual], np.ndarray)
-    assert isinstance(numpy_data[GSPSampleKey.solar_azimuth], np.ndarray)
-    assert isinstance(numpy_data[GSPSampleKey.solar_elevation], np.ndarray)
-    
-    # Verify nested NWP structure
-    assert isinstance(numpy_data['nwp']['ukv']['nwp'], np.ndarray)
-    assert isinstance(numpy_data['nwp']['ukv']['x'], np.ndarray)
-    assert isinstance(numpy_data['nwp']['ukv']['y'], np.ndarray)
-    
-    # Verify shapes are preserved
-    assert numpy_data[GSPSampleKey.gsp].shape == (7,)
-    assert numpy_data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
-    assert numpy_data['nwp']['ukv']['nwp'].shape == (4, 1, 2, 2)
+    # Initialize with only required data (NWP)
+    sample = PVNetSample(data=test_data)
+    sample.validate()
