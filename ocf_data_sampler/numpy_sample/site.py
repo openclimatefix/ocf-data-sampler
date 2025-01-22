@@ -26,6 +26,8 @@ def convert_site_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) ->
         SiteSampleKey.capacity_kwp: da.isel(time_utc=0)["capacity_kwp"].values,
         SiteSampleKey.time_utc: da["time_utc"].values.astype(float),
         SiteSampleKey.id: da["site_id"].values,
+        SiteSampleKey.solar_azimuth: da["solar_azimuth"].values,
+        SiteSampleKey.solar_elevation: da["solar_elevation"].values,
         SiteSampleKey.date_sin: da["date_sin"].values,
         SiteSampleKey.date_cos: da["date_cos"].values,
         SiteSampleKey.time_sin: da["time_sin"].values,
