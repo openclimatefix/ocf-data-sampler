@@ -1,10 +1,10 @@
 import os
-
 import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
 import tempfile
+from typing import Generator
 
 from ocf_data_sampler.config.model import Site
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
@@ -201,7 +201,7 @@ def ds_uk_gsp():
 
 
 @pytest.fixture(scope="session")
-def data_sites() -> Site:
+def data_sites() -> Generator[Site, None, None]:
     """
     Make fake data for sites
     Returns: filename for netcdf file, and csv metadata
