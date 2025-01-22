@@ -1,7 +1,7 @@
 # test_uk_regional.py
 
 """
-UK Regional class testing - PVNetSample / PVNetUKRegionalDataset
+UK Regional class testing - PVNetSample
 """
 
 import pytest
@@ -17,7 +17,6 @@ from ocf_data_sampler.numpy_sample import (
     NWPSampleKey
 )
 
-from ocf_data_sampler.torch_datasets.pvnet_uk_regional import PVNetUKRegionalDataset
 from ocf_data_sampler.sample.uk_regional import PVNetSample
 
 
@@ -136,15 +135,6 @@ def test_load_corrupted_file():
         
         with pytest.raises(Exception):
             PVNetSample.load(tf.name)
-
-
-# PVNetUKRegionalDataset testing
-def test_dataset_get_sample(pvnet_config_filename):
-    """ Direct sample access - time and GSP ID """
-
-    # Empty spatial domain - error handle for invalid init
-    with pytest.raises(Exception):
-        dataset = PVNetUKRegionalDataset(pvnet_config_filename)
 
 
 def test_sample_to_numpy():
