@@ -5,6 +5,8 @@ Base class testing - SampleBase
 """
 
 import pytest
+import numpy as np
+
 from pathlib import Path
 from ocf_data_sampler.sample.base import SampleBase
 
@@ -19,9 +21,9 @@ class TestSample(SampleBase):
         """ Minimal plot implementation """
         return None
 
-    def validate(self) -> None:
-        """ Minimal validation implementation """
-        pass
+    def to_numpy(self) -> None:
+        """ Standard implementation """
+        return {key: np.array(value) for key, value in self._data.items()}
 
     def save(self, path):
         """ Minimal save implementation """
@@ -42,15 +44,6 @@ def test_sample_base_initialisation():
 
     sample = TestSample()
     assert sample._data == {}, "Sample should start with empty dict"
-
-
-def test_sample_base_keys():
-    """ Test keys method """
-
-    sample = TestSample()
-    sample._data['data1'] = 1
-    sample._data['data2'] = 2
-    assert set(sample.keys()) == {'data1', 'data2'}
 
 
 def test_sample_base_save_load(tmp_path):
@@ -85,3 +78,20 @@ def test_sample_base_initialisation_with_data():
     
     sample = TestSample(data=test_data)
     assert sample._data == test_data, "Sample initialised with provided data"
+
+
+def test_sample_base_to_numpy():
+    """ Test the to_numpy functionality """
+    import numpy as np
+
+    test_data = {
+        'int_data': 42,
+        'list_data': [1, 2, 3]
+    }
+
+    sample = TestSample(data=test_data)
+    numpy_data = sample.to_numpy()
+
+    assert isinstance(numpy_data, dict), "Output should be a dictionary"
+    assert all(isinstance(value, np.ndarray) for value in numpy_data.values()), "All values should be numpy arrays"
+    assert np.array_equal(numpy_data['list_data'], np.array([1, 2, 3])), "list_data should match the numpy array"

@@ -6,6 +6,8 @@ Handling of both flat and nested structures - consideration for NWP
 """
 
 import logging
+import numpy as np
+
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 from abc import ABC, abstractmethod
@@ -23,13 +25,9 @@ class SampleBase(ABC):
         logger.debug("Initialising SampleBase instance")
         self._data: Dict[str, Any] = data or {}
 
-    def keys(self):
-        """ Return available keys """
-        return self._data.keys()
-
     @abstractmethod
-    def validate(self) -> None:
-        """ Abstract method for sample specific validation """
+    def to_numpy(self) -> Dict[str, Any]:
+        """ Convert data to a numpy array representation """
         raise NotImplementedError
 
     @abstractmethod
