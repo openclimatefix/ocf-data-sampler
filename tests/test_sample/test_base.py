@@ -67,31 +67,17 @@ def test_sample_base_abstract_methods():
         SampleBase()
 
 
-def test_sample_base_initialisation_with_data():
-    """ Test initialisation of SampleBase with data """
-
-    test_data = {
-        'int_data': 42,
-        'list_data': [1, 2, 3],
-        'nested_data': {'a': 1, 'b': 2}
-    }
-    
-    sample = TestSample(data=test_data)
-    assert sample._data == test_data, "Sample initialised with provided data"
-
-
 def test_sample_base_to_numpy():
     """ Test the to_numpy functionality """
     import numpy as np
-
-    test_data = {
+    
+    sample = TestSample()
+    sample._data = {
         'int_data': 42,
         'list_data': [1, 2, 3]
     }
-
-    sample = TestSample(data=test_data)
     numpy_data = sample.to_numpy()
 
-    assert isinstance(numpy_data, dict), "Output should be a dictionary"
-    assert all(isinstance(value, np.ndarray) for value in numpy_data.values()), "All values should be numpy arrays"
-    assert np.array_equal(numpy_data['list_data'], np.array([1, 2, 3])), "list_data should match the numpy array"
+    assert isinstance(numpy_data, dict)
+    assert all(isinstance(value, np.ndarray) for value in numpy_data.values())
+    assert np.array_equal(numpy_data['list_data'], np.array([1, 2, 3]))
