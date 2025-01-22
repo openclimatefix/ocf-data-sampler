@@ -33,12 +33,12 @@ def test_site(site_config_filename):
     }
 
     expected_coords_subset = {
-        "site_solar_azimuth",
-        "site_solar_elevation",
-        "site_date_cos",
-        "site_time_cos",
-        "site_time_sin",
-        "site_date_sin",
+        "site__solar_azimuth",
+        "site__solar_elevation",
+        "site__date_cos",
+        "site__time_cos",
+        "site__time_sin",
+        "site__date_sin",
     }
 
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
@@ -114,12 +114,12 @@ def test_site_dataset_with_dataloader(site_config_filename):
     dataset = SitesDataset(site_config_filename)
 
     expected_coods = {
-        "site_solar_azimuth",
-        "site_solar_elevation",
-        "site_date_cos",
-        "site_time_cos",
-        "site_time_sin",
-        "site_date_sin",
+        "site__solar_azimuth",
+        "site__solar_elevation",
+        "site__date_cos",
+        "site__time_cos",
+        "site__time_sin",
+        "site__date_sin",
     }
 
     sample = dataset[0]
