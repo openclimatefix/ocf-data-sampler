@@ -242,8 +242,9 @@ class SitesDataset(Dataset):
         # add datetime features
         datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
         datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site")
-        datetime_features_xr = xr.Dataset(datetime_features, coords={"site__time_utc": datetimes})
-        combined_sample_dataset = xr.merge([combined_sample_dataset, datetime_features_xr])
+        combined_sample_dataset = combined_sample_dataset.assign_coords(
+            {k: ("site__time_utc", v) for k, v in datetime_features.items()}
+        )
 
         # add sun features
         sun_position_features = make_sun_position_numpy_sample(
@@ -252,16 +253,16 @@ class SitesDataset(Dataset):
             lat=combined_sample_dataset.site__latitude.values,
             key_prefix="site",
         )
-        sun_position_features_xr = xr.Dataset(
-            sun_position_features, coords={"site__time_utc": datetimes}
+        combined_sample_dataset = combined_sample_dataset.assign_coords(
+            {k: ("site__time_utc", v) for k, v in sun_position_features.items()}
         )
-        combined_sample_dataset = xr.merge([combined_sample_dataset, sun_position_features_xr])
 
         # Fill any nan values
         return combined_sample_dataset.fillna(0.0)
 
-
-    def merge_data_arrays(self, normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
+    def merge_data_arrays(
+        self, normalised_data_arrays: list[Tuple[str, xr.DataArray]]
+    ) -> xr.Dataset:
         """
         Combine a list of DataArrays into a single Dataset with unique naming conventions.
 
