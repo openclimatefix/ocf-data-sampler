@@ -105,8 +105,8 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
         sample_period_duration=freq,
     )
 
-    # Validate the returned timestamps match the available range
-    assert list(sat_sample.time_utc.values) == list(expected_datetimes)
+    # Check the returned times are as expected
+    assert (sat_sample.time_utc == expected_datetimes).all()
 
     
     # Check all the values before the first timestamp available in the data are NaN

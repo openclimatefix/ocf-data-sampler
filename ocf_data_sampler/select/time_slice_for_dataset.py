@@ -1,3 +1,4 @@
+""" Slice datasets by time"""
 import pandas as pd
 
 from ocf_data_sampler.config import Configuration
