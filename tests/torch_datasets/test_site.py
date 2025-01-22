@@ -81,6 +81,48 @@ def test_convert_from_dataset_to_dict_datasets(site_config_filename):
     for key in ["nwp", "satellite", "site"]:
         assert key in sample
 
+
+def test_site_dataset_with_dataloader(site_config_filename):
+    # Create dataset object
+    dataset = SitesDataset(site_config_filename)
+
+    expected_dims = {
+        "site_solar_azimuth",
+        "site_solar_elevation",
+        "site_date_cos",
+        "site_time_cos",
+        "site_time_sin",
+        "site_date_sin",
+    }
+
+    sample = dataset[0]
+    for key in expected_dims:
+        assert key in sample
+
+    dataloader_kwargs = dict(
+        shuffle=False,
+        batch_size=None,
+        sampler=None,
+        batch_sampler=None,
+        num_workers=1,
+        collate_fn=None,
+        pin_memory=False,  # Only using CPU to prepare samples so pinning is not beneficial
+        drop_last=False,
+        timeout=0,
+        worker_init_fn=None,
+        prefetch_factor=1,
+        persistent_workers=False,  # Not needed since we only enter the dataloader loop once
+    )
+
+    dataloader = DataLoader(dataset, **dataloader_kwargs)
+
+    for i, sample in zip(range(1), dataloader):
+
+        # check that expected_dims is in the sample
+        for key in expected_dims:
+            assert key in sample
+
+
 def test_process_and_combine_site_sample_dict(site_config_filename):
     # Load config
     # config = load_yaml_configuration(pvnet_config_filename)
