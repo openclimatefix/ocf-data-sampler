@@ -41,9 +41,9 @@ class PVNetSample(SampleBase):
         SatelliteSampleKey.satellite_actual
     }
 
-    def __init__(self, data: Optional[Dict[str, Any]] = None):
+    def __init__(self):
         logger.debug("Initialise PVNetSample instance")
-        super().__init__(data)
+        super().__init__()
 
     def to_numpy(self) -> Dict[str, np.ndarray]:
         """ Convert sample to numpy arrays - nested handling """
