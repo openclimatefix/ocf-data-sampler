@@ -66,7 +66,7 @@ def select_time_slice_nwp(
     # Find the most recent available init times for all target times
     selected_init_times = available_init_times.sel(
         init_time_utc=target_times,
-        method="ffill",
+        method="ffill",  # forward fill from init times to target times
     ).values
 
     # Find the required steps for all target times
