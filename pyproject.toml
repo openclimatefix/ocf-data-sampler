@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ocf_data_sampler"
-version = "0.0.43"
+version = "0.0.49"
 license = { file = "LICENSE" }
 readme = "README.md"
 description = "Sample from weather data for renewable energy prediction"
