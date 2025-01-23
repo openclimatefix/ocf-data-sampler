@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 
 
-
 def _sel_fillnan(
         da: xr.DataArray, 
         start_dt: pd.Timestamp, 
@@ -25,17 +24,6 @@ def _sel_default(
     return da.sel(time_utc=slice(start_dt, end_dt))
 
 
-# TODO either implement this or remove it, which would tidy up the code
-def _sel_fillinterp(
-        da: xr.DataArray, 
-        start_dt: pd.Timestamp, 
-        end_dt: pd.Timestamp, 
-        sample_period_duration: pd.Timedelta,
-    ) -> xr.DataArray:
-    """Select a time slice from a DataArray, filling missing times with linear interpolation."""
-    return NotImplemented
-
-
 def select_time_slice(
     ds: xr.DataArray,
     t0: pd.Timestamp,
@@ -43,17 +31,10 @@ def select_time_slice(
     interval_end: pd.Timedelta,
     sample_period_duration: pd.Timedelta,
     fill_selection: bool = False,
-    max_steps_gap: int = 0,
 ):
     """Select a time slice from a Dataset or DataArray."""
-    assert max_steps_gap >= 0, "max_steps_gap must be >= 0 "
     
-    if fill_selection and max_steps_gap == 0:
-        _sel = _sel_fillnan
-    elif fill_selection and max_steps_gap > 0:
-        _sel = _sel_fillinterp
-    else:
-        _sel = _sel_default
+    _sel = _sel_fillnan if fill_selection else _sel_default
 
     t0_datetime_utc = pd.Timestamp(t0)
     start_dt = t0_datetime_utc + interval_start
