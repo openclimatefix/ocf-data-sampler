@@ -1,6 +1,5 @@
 import xarray as xr
 import pandas as pd
-import numpy as np
 
 def check_time_unique_increasing(datetimes) -> None:
     """Check that the time dimension is unique and increasing"""
