@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
-from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset, convert_from_dataset_to_dict_datasets
+from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset, convert_from_dataset_to_dict_datasets, coarsen_data
 from xarray import Dataset, DataArray
+import xarray as xr
 
 from torch.utils.data import DataLoader
 
@@ -43,7 +44,6 @@ def test_site(site_config_filename):
 
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
 
-    import xarray as xr
 
     sample.to_netcdf("sample.nc")
     sample = xr.open_dataset("sample.nc")
@@ -198,3 +198,18 @@ def test_process_and_combine_site_sample_dict(site_config_filename):
     assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
     site_result = result["site"]
     assert site_result.shape == (197,), f"Unexpected shape for site: {site_result.shape}"
+
+
+def test_potentially_coarsen(ds_nwp_ecmwf):
+    """Test potentially_coarsen function with ECMWF_UK data."""
+    nwp_data = ds_nwp_ecmwf
+    assert nwp_data.ECMWF_UK.shape[3:] == (15, 12)  # Check initial shape (lon, lat)
+
+    data = coarsen_data(xr_data=nwp_data, coarsen_to_deg=2)
+    assert data.ECMWF_UK.shape[3:] == (8, 6)  # Coarsen to every 2 degrees
+
+    data = coarsen_data(xr_data=nwp_data, coarsen_to_deg=3)
+    assert data.ECMWF_UK.shape[3:] == (5, 4)  # Coarsen to every 3 degrees
+
+    data = coarsen_data(xr_data=nwp_data, coarsen_to_deg=1)
+    assert data.ECMWF_UK.shape[3:] == (15, 12)  # No coarsening (same shape)
