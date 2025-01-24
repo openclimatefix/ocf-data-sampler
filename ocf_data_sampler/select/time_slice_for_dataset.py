@@ -6,7 +6,6 @@ from ocf_data_sampler.select.dropout import draw_dropout_time, apply_dropout_tim
 from ocf_data_sampler.select.select_time_slice import select_time_slice_nwp, select_time_slice
 from ocf_data_sampler.utils import minutes
 
-
 def slice_datasets_by_time(
     datasets_dict: dict,
     t0: pd.Timestamp,
@@ -23,11 +22,9 @@ def slice_datasets_by_time(
     sliced_datasets_dict = {}
 
     if "nwp" in datasets_dict:
-        
         sliced_datasets_dict["nwp"] = {}
-        
+
         for nwp_key, da_nwp in datasets_dict["nwp"].items():
-                            
             nwp_config = config.input_data.nwp[nwp_key]
 
             sliced_datasets_dict["nwp"][nwp_key] = select_time_slice_nwp(
@@ -42,7 +39,6 @@ def slice_datasets_by_time(
             )
 
     if "sat" in datasets_dict:
-
         sat_config = config.input_data.satellite
 
         sliced_datasets_dict["sat"] = select_time_slice(
@@ -76,7 +72,7 @@ def slice_datasets_by_time(
             interval_start=minutes(gsp_config.time_resolution_minutes),
             interval_end=minutes(gsp_config.interval_end_minutes),
         )
-    
+
         sliced_datasets_dict["gsp"] = select_time_slice(
             datasets_dict["gsp"],
             t0,
@@ -96,7 +92,7 @@ def slice_datasets_by_time(
             sliced_datasets_dict["gsp"], 
             gsp_dropout_time
         )
-    
+
     if "site" in datasets_dict:
         site_config = config.input_data.site
 
