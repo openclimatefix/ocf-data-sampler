@@ -25,7 +25,7 @@ from ocf_data_sampler.sample.base import SampleBase
 logger = logging.getLogger(__name__)
 
 
-class PVNetSample(SampleBase):
+class UKRegionalSample(SampleBase):
     """ Sample class specific to PVNet """
     
     # Feature space definitions - core
@@ -42,7 +42,7 @@ class PVNetSample(SampleBase):
     }
 
     def __init__(self):
-        logger.debug("Initialise PVNetSample instance")
+        logger.debug("Initialise UKRegionalSample instance")
         super().__init__()
 
     def to_numpy(self) -> Dict[str, np.ndarray]:
@@ -65,7 +65,7 @@ class PVNetSample(SampleBase):
 
     def save(self, path: Union[str, Path]) -> None:
         """ Save PVNet sample as .pt """
-        logger.debug(f"Saving PVNetSample to {path}")
+        logger.debug(f"Saving UKRegionalSample to {path}")
         path = Path(path)
         
         if path.suffix != '.pt':
@@ -74,15 +74,15 @@ class PVNetSample(SampleBase):
         
         try:
             torch.save(self._data, path)
-            logger.debug(f"Successfully saved PVNetSample to {path}")
+            logger.debug(f"Successfully saved UKRegionalSample to {path}")
         except Exception as e:
             logger.error(f"Error saving to {path}: {str(e)}")
             raise
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> 'PVNetSample':
+    def load(cls, path: Union[str, Path]) -> 'UKRegionalSample':
         """ Load PVNet sample data from .pt """
-        logger.debug(f"Attempting to load PVNetSample from {path}")
+        logger.debug(f"Attempting to load UKRegionalSample from {path}")
         path = Path(path)
         
         if path.suffix != '.pt':
@@ -92,7 +92,7 @@ class PVNetSample(SampleBase):
         try:
             instance = cls()
             instance._data = torch.load(path)
-            logger.debug(f"Successfully loaded PVNetSample from {path}")
+            logger.debug(f"Successfully loaded UKRegionalSample from {path}")
             return instance
         except Exception as e:
             logger.error(f"Error loading from {path}: {str(e)}")
@@ -100,7 +100,7 @@ class PVNetSample(SampleBase):
 
     def plot(self, **kwargs) -> None:
         """ Sample visualisation definition """
-        logger.debug("Creating PVNetSample visualisation")
+        logger.debug("Creating UKRegionalSample visualisation")
         try:
             fig, axes = plt.subplots(2, 2, figsize=(12, 8))
             
@@ -142,7 +142,7 @@ class PVNetSample(SampleBase):
 
 # Currently depreciated
 def validate(data: Dict[str, Any], core_keys: set, optional_keys: set) -> None:
-    logger.debug("Validating PVNetSample")
+    logger.debug("Validating UKRegionalSample")
     
     # Check required keys - feature space validation
     missing_keys = core_keys - set(data.keys())
@@ -203,4 +203,4 @@ def validate(data: Dict[str, Any], core_keys: set, optional_keys: set) -> None:
                     logger.error(f"NaN values in {key}")
                     raise ValueError(f"NaN values in {key}")
 
-    logger.debug("PVNetSample validation successful")
+    logger.debug("UKRegionalSample validation successful")

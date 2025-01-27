@@ -1,7 +1,7 @@
 # test_uk_regional.py
 
 """
-UK Regional class testing - PVNetSample
+UK Regional class testing - UKRegionalSample
 """
 
 import pytest
@@ -17,7 +17,7 @@ from ocf_data_sampler.numpy_sample import (
     NWPSampleKey
 )
 
-from ocf_data_sampler.sample.uk_regional import PVNetSample
+from ocf_data_sampler.sample.uk_regional import UKRegionalSample
 
 
 # Fixture define
@@ -77,21 +77,21 @@ def create_test_data():
     }
 
 
-# PVNetSample testing
+# UKRegionalSample testing
 def test_sample_init():
     """ Initialisation """
-    sample = PVNetSample()
+    sample = UKRegionalSample()
     assert isinstance(sample._data, dict)
     assert len(sample._data) == 0
 
 
 def test_sample_save_load():
-   sample = PVNetSample()
+   sample = UKRegionalSample()
    sample._data = create_test_data()
    
    with tempfile.NamedTemporaryFile(suffix='.pt') as tf:
        sample.save(tf.name)
-       loaded = PVNetSample.load(tf.name)
+       loaded = UKRegionalSample.load(tf.name)
        
        assert set(loaded._data.keys()) == set(sample._data.keys())
        assert isinstance(loaded._data['nwp'], dict)
@@ -110,7 +110,7 @@ def test_sample_save_load():
 
 def test_save_unsupported_format():
    """ Test saving - unsupported file format """
-   sample = PVNetSample()
+   sample = UKRegionalSample()
    sample._data = create_test_data()
   
    with tempfile.NamedTemporaryFile(suffix='.npz') as tf:
@@ -123,7 +123,7 @@ def test_load_unsupported_format():
 
     with tempfile.NamedTemporaryFile(suffix='.npz') as tf:
         with pytest.raises(ValueError, match="Only .pt format is supported"):
-            PVNetSample.load(tf.name)
+            UKRegionalSample.load(tf.name)
 
 
 def test_load_corrupted_file():
@@ -134,11 +134,11 @@ def test_load_corrupted_file():
             f.write(b'corrupted data')
         
         with pytest.raises(Exception):
-            PVNetSample.load(tf.name)
+            UKRegionalSample.load(tf.name)
 
 
 def test_sample_to_numpy():
-   sample = PVNetSample()
+   sample = UKRegionalSample()
    sample._data = {
        'nwp': {
            'ukv': {
