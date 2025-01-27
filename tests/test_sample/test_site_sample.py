@@ -1,4 +1,4 @@
-# test_site.py
+# test_site_sample.py
 
 """
 Site class testing - SiteSample

@@ -1,4 +1,4 @@
-# test_uk_regional.py
+# test_uk_regional_sample.py
 
 """
 UK Regional class testing - UKRegionalSample
