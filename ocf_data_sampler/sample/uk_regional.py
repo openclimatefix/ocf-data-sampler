@@ -4,13 +4,6 @@
 PVNet - UK Regional sample / dataset implementation
 """
 
-try:
-    import matplotlib.pyplot as plt
-    MATPLOTLIB_AVAILABLE = True
-except ImportError:
-    MATPLOTLIB_AVAILABLE = False
-    plt = None
-
 import numpy as np
 import pandas as pd
 import torch
@@ -26,6 +19,13 @@ from ocf_data_sampler.numpy_sample import (
 )
 
 from ocf_data_sampler.sample.base import SampleBase
+
+try:
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    plt = None
 
 
 logger = logging.getLogger(__name__)
