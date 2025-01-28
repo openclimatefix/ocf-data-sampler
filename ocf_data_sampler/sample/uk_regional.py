@@ -34,19 +34,6 @@ logger = logging.getLogger(__name__)
 
 class UKRegionalSample(SampleBase):
     """ Sample class specific to UK Regional PVNet """
-    
-    # Feature space definitions - core
-    CORE_KEYS = {
-        NWPSampleKey.nwp
-    }
-
-    # Feature space definitions - optional
-    OPTIONAL_KEYS = {
-        GSPSampleKey.gsp,
-        GSPSampleKey.solar_azimuth,
-        GSPSampleKey.solar_elevation,
-        SatelliteSampleKey.satellite_actual
-    }
 
     def __init__(self):
         logger.debug("Initialise UKRegionalSample instance")
@@ -154,7 +141,9 @@ class UKRegionalSample(SampleBase):
             raise
 
 
-# Currently depreciated
+# TO DO - requirement to specify core and optional keys
+# Feature space definition required for validation implementation
+# Currently depreciated as of the moment
 def validate(data: Dict[str, Any], core_keys: set, optional_keys: set) -> None:
     logger.debug("Validating UKRegionalSample")
     

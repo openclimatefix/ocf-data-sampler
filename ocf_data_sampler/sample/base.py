@@ -20,11 +20,6 @@ class SampleBase(ABC):
     Provides core data storage functionality
     """
 
-    # def __init__(self, data: Optional[Dict[str, Any]] = None):
-    #     """ Initialise data container """
-    #     logger.debug("Initialising SampleBase instance")
-    #     self._data: Dict[str, Any] = data or {}
-
     def __init__(self):
         """ Initialise data container """
         logger.debug("Initialising SampleBase instance")
