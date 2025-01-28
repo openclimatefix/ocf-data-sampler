@@ -31,7 +31,6 @@ dependencies = [ # Migration from requirements.txt
     "pathy",
     "pyaml_env",
     "pyresample",
-    "matplotlib",
     "h5netcdf",
 ]
 
@@ -52,6 +51,9 @@ requires-python = ">=3.8"
 docs = [
     "mkdocs>=1.2",
     "mkdocs-material>=8.0"
+]
+plot = [
+    "matplotlib"
 ]
 
 [project.urls]
