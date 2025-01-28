@@ -2,59 +2,14 @@ import xarray as xr
 import pandas as pd
 import numpy as np
 
-
-
-def _sel_fillnan(
-        da: xr.DataArray, 
-        start_dt: pd.Timestamp, 
-        end_dt: pd.Timestamp, 
-        sample_period_duration: pd.Timedelta,
-    ) -> xr.DataArray:
-    """Select a time slice from a DataArray, filling missing times with NaNs."""
-    requested_times = pd.date_range(start_dt, end_dt, freq=sample_period_duration)
-    return da.reindex(time_utc=requested_times)
-
-
-def _sel_default(
-        da: xr.DataArray, 
-        start_dt: pd.Timestamp, 
-        end_dt: pd.Timestamp, 
-        sample_period_duration: pd.Timedelta,
-    ) -> xr.DataArray:
-    """Select a time slice from a DataArray, without filling missing times."""
-    return da.sel(time_utc=slice(start_dt, end_dt))
-
-
-# TODO either implement this or remove it, which would tidy up the code
-def _sel_fillinterp(
-        da: xr.DataArray, 
-        start_dt: pd.Timestamp, 
-        end_dt: pd.Timestamp, 
-        sample_period_duration: pd.Timedelta,
-    ) -> xr.DataArray:
-    """Select a time slice from a DataArray, filling missing times with linear interpolation."""
-    return NotImplemented
-
-
 def select_time_slice(
     ds: xr.DataArray,
     t0: pd.Timestamp,
     interval_start: pd.Timedelta,
     interval_end: pd.Timedelta,
     sample_period_duration: pd.Timedelta,
-    fill_selection: bool = False,
-    max_steps_gap: int = 0,
 ):
     """Select a time slice from a Dataset or DataArray."""
-    assert max_steps_gap >= 0, "max_steps_gap must be >= 0 "
-    
-    if fill_selection and max_steps_gap == 0:
-        _sel = _sel_fillnan
-    elif fill_selection and max_steps_gap > 0:
-        _sel = _sel_fillinterp
-    else:
-        _sel = _sel_default
-
     t0_datetime_utc = pd.Timestamp(t0)
     start_dt = t0_datetime_utc + interval_start
     end_dt = t0_datetime_utc + interval_end
@@ -62,8 +17,7 @@ def select_time_slice(
     start_dt = start_dt.ceil(sample_period_duration)
     end_dt = end_dt.ceil(sample_period_duration)
 
-    return _sel(ds, start_dt, end_dt, sample_period_duration)
-
+    return ds.sel(time_utc=slice(start_dt, end_dt))
 
 def select_time_slice_nwp(
     da: xr.DataArray,
@@ -76,7 +30,6 @@ def select_time_slice_nwp(
     accum_channels: list[str] = [],
     channel_dim_name: str = "channel",
 ):
-
     if dropout_timedeltas is not None:
         assert all(
             [t < pd.Timedelta(0) for t in dropout_timedeltas]
@@ -85,8 +38,7 @@ def select_time_slice_nwp(
     assert 0 <= dropout_frac <= 1
     consider_dropout = (dropout_timedeltas is not None) and dropout_frac > 0
 
-
-    # The accumatation and non-accumulation channels
+     # The accumatation and non-accumulation channels
     accum_channels = np.intersect1d(
         da[channel_dim_name].values, accum_channels
     )
@@ -119,19 +71,19 @@ def select_time_slice_nwp(
 
     # Find the required steps for all target times
     steps = target_times - selected_init_times
-    
+
     # We want one timestep for each target_time_hourly (obviously!) If we simply do
     # nwp.sel(init_time=init_times, step=steps) then we'll get the *product* of
     # init_times and steps, which is not what # we want! Instead, we use xarray's
     # vectorized-indexing mode by using a DataArray indexer.  See the last example here:
     # https://docs.xarray.dev/en/latest/user-guide/indexing.html#more-advanced-indexing
+    
     coords = {"target_time_utc": target_times}
     init_time_indexer = xr.DataArray(selected_init_times, coords=coords)
     step_indexer = xr.DataArray(steps, coords=coords)
 
     if len(accum_channels) == 0:
         da_sel = da.sel(step=step_indexer, init_time_utc=init_time_indexer)
-
     else:
         # First minimise the size of the dataset we are diffing
         # - find the init times we are slicing from
@@ -155,14 +107,14 @@ def select_time_slice_nwp(
 
         # Slice out the channels which need to be diffed
         da_accum = da_min.sel({channel_dim_name: accum_channels})
-
+        
         # Take the diff and slice requested data
         da_accum = da_accum.diff(dim="step", label="lower")
         da_sel_accum = da_accum.sel(step=step_indexer, init_time_utc=init_time_indexer)
 
         # Join diffed and non-diffed variables
         da_sel = xr.concat([da_sel_non_accum, da_sel_accum], dim=channel_dim_name)
-
+        
         # Reorder the variable back to the original order
         da_sel = da_sel.sel({channel_dim_name: da[channel_dim_name].values})
 

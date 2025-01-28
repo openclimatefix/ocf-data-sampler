@@ -1,6 +1,6 @@
 """Torch dataset for sites"""
 import logging
-
+import numpy as np
 import pandas as pd
 import xarray as xr
 from typing import Tuple
@@ -17,12 +17,14 @@ from ocf_data_sampler.select import (
     slice_datasets_by_time, slice_datasets_by_space
 )
 from ocf_data_sampler.utils import minutes
-from ocf_data_sampler.torch_datasets.valid_time_periods import find_valid_time_periods
-from ocf_data_sampler.torch_datasets.process_and_combine import merge_dicts, fill_nans_in_arrays
+from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
+from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import merge_dicts, fill_nans_in_arrays
 from ocf_data_sampler.numpy_sample import (
     convert_site_to_numpy_sample, 
     convert_satellite_to_numpy_sample, 
-    convert_nwp_to_numpy_sample
+    convert_nwp_to_numpy_sample,
+    make_datetime_numpy_dict,
+    make_sun_position_numpy_sample,
 )
 from ocf_data_sampler.numpy_sample import NWPSampleKey
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
@@ -234,16 +236,35 @@ class SitesDataset(Dataset):
             da_sites = dataset_dict["site"]
             da_sites = da_sites / da_sites.capacity_kwp
             data_arrays.append(("site", da_sites))
-        
+
         combined_sample_dataset = self.merge_data_arrays(data_arrays)
 
-        # TODO add solar + time features for sites
+        # add datetime features
+        datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
+        datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site_")
+        combined_sample_dataset = combined_sample_dataset.assign_coords(
+            {k: ("site__time_utc", v) for k, v in datetime_features.items()}
+        )
+
+        # add sun features
+        sun_position_features = make_sun_position_numpy_sample(
+            datetimes=datetimes,
+            lon=combined_sample_dataset.site__longitude.values,
+            lat=combined_sample_dataset.site__latitude.values,
+            key_prefix="site_",
+        )
+        combined_sample_dataset = combined_sample_dataset.assign_coords(
+            {k: ("site__time_utc", v) for k, v in sun_position_features.items()}
+        )
+
+        # TODO include t0_index in xr dataset? 
 
         # Fill any nan values
         return combined_sample_dataset.fillna(0.0)
 
-
-    def merge_data_arrays(self, normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
+    def merge_data_arrays(
+        self, normalised_data_arrays: list[Tuple[str, xr.DataArray]]
+    ) -> xr.Dataset:
         """
         Combine a list of DataArrays into a single Dataset with unique naming conventions.
 
@@ -299,6 +320,26 @@ class SitesDataset(Dataset):
 
 # ----- functions to load presaved samples ------
 
+def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
+    """Convert a netcdf dataset to a numpy sample"""
+
+    # convert the single dataset to a dict of arrays
+    sample_dict = convert_from_dataset_to_dict_datasets(ds) 
+
+    if "satellite" in sample_dict:
+        # rename satellite to satellite actual # TODO this could be improves
+        sample_dict["sat"] = sample_dict.pop("satellite")
+
+    # process and combine the datasets
+    sample = convert_to_numpy_and_combine(
+        dataset_dict=sample_dict,
+    )
+
+    # TODO think about normalization, maybe its done not in sample creation, maybe its done afterwards,
+    #  to allow it to be flexible
+
+    return sample
+
 def convert_from_dataset_to_dict_datasets(combined_dataset: xr.Dataset) -> dict[str, xr.DataArray]:
     """
     Convert a combined sample dataset to a dict of datasets for each input
@@ -342,26 +383,6 @@ def nest_nwp_source_dict(d: dict, sep: str = "/") -> dict:
         new_dict["nwp"] = nwp_subdict
     return new_dict
 
-def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
-    """Convert a netcdf dataset to a numpy sample"""
-
-    # convert the single dataset to a dict of arrays
-    sample_dict = convert_from_dataset_to_dict_datasets(ds) 
-
-    if "satellite" in sample_dict:
-        # rename satellite to satellite actual # TODO this could be improves
-        sample_dict["sat"] = sample_dict.pop("satellite")
-
-    # process and combine the datasets
-    sample = convert_to_numpy_and_combine(
-        dataset_dict=sample_dict,
-    )
-
-    # TODO think about normalization, maybe its done not in sample creation, maybe its done afterwards,
-    #  to allow it to be flexible
-
-    return sample
-
 def convert_to_numpy_and_combine(
     dataset_dict: dict,
 ) -> dict:
@@ -388,7 +409,6 @@ def convert_to_numpy_and_combine(
 
     if "site" in dataset_dict:
         da_sites = dataset_dict["site"]
-        sites_sample = convert_site_to_numpy_sample(da_sites)
 
         numpy_modalities.append(
             convert_site_to_numpy_sample(
@@ -396,10 +416,32 @@ def convert_to_numpy_and_combine(
             )
         )
 
-        numpy_modalities.append(sites_sample)
-
     # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
     combined_sample = fill_nans_in_arrays(combined_sample)
 
     return combined_sample
+
+
+def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float=0.1):
+    """
+    Coarsen the data to a specified resolution in degrees.
+    
+    Args:
+        xr_data: xarray dataset to coarsen
+        coarsen_to_deg: resolution to coarsen to in degrees
+    """
+
+    if "latitude" in xr_data.coords and "longitude" in xr_data.coords:
+        step = np.abs(xr_data.latitude.values[1]-xr_data.latitude.values[0])
+        step = np.round(step,4)
+        coarsen_factor = int(coarsen_to_deg/step)
+        if coarsen_factor > 1:
+            xr_data = xr_data.coarsen(
+                latitude=coarsen_factor,
+                longitude=coarsen_factor,
+                boundary="pad",
+                coord_func="min"
+            ).mean()
+        
+    return xr_data
