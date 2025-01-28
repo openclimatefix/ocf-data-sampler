@@ -12,10 +12,7 @@ from typing import Dict, Any, Union
 
 from ocf_data_sampler.sample.base import SampleBase
 
-from ocf_data_sampler.torch_datasets.site import (
-    convert_netcdf_to_numpy_sample,
-    convert_from_dataset_to_dict_datasets
-)
+from ocf_data_sampler.torch_datasets.site import convert_netcdf_to_numpy_sample
 
 
 logger = logging.getLogger(__name__)
