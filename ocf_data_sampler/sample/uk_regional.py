@@ -4,6 +4,13 @@
 PVNet - UK Regional sample / dataset implementation
 """
 
+try:
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    plt = None
+
 import numpy as np
 import pandas as pd
 import torch
@@ -101,6 +108,13 @@ class UKRegionalSample(SampleBase):
     def plot(self, **kwargs) -> None:
         """ Sample visualisation definition """
         logger.debug("Creating UKRegionalSample visualisation")
+
+        if not MATPLOTLIB_AVAILABLE:
+            raise ImportError(
+                "Matplotlib required for plotting"
+                "Install via 'ocf_data_sampler[plot]'"
+            )
+
         try:
             fig, axes = plt.subplots(2, 2, figsize=(12, 8))
             
