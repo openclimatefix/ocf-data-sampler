@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 import torch
 import logging
-import matplotlib.pyplot as plt
 
 from typing import Dict, Any, Union, List, Optional
 from pathlib import Path
