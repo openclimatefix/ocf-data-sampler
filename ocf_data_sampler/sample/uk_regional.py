@@ -46,23 +46,11 @@ class UKRegionalSample(SampleBase):
         super().__init__()
         self._data = {}
 
-    def to_numpy(self) -> Dict[str, np.ndarray]:
-        """ Convert sample to numpy arrays - nested handling """
-
-        logger.debug("Converting sample to numpy format")
-        
-        def convert_to_numpy(data):
-            if isinstance(data, np.ndarray):
-                return data
-
-        try:
-            numpy_data = {k: convert_to_numpy(v) for k, v in self._data.items()}
-            logger.debug("Successfully converted to numpy format")
-            return numpy_data
-            
-        except Exception as e:
-            logger.error(f"Error converting to numpy: {str(e)}")
-            raise
+    # TO DO - complete
+    def to_numpy(self) -> Dict[str, Any]:
+        """ Placeholder for numpy conversion """
+        logger.debug("to_numpy method not yet implemented")
+        raise NotImplementedError("Numpy conversion method is not yet implemented")
 
     def save(self, path: Union[str, Path]) -> None:
         """ Save PVNet sample as .pt """

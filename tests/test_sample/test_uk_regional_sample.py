@@ -138,25 +138,23 @@ def test_load_corrupted_file():
             UKRegionalSample.load(tf.name)
 
 
-def test_sample_to_numpy():
-   sample = UKRegionalSample()
-   sample._data = {
-       'nwp': {
-           'ukv': {
-               'nwp': np.random.rand(4, 1, 2, 2),
-               'x': np.array([1, 2]),
-               'y': np.array([1, 2])
-           }
-       },
-       GSPSampleKey.gsp: np.random.rand(7),
-       SatelliteSampleKey.satellite_actual: np.random.rand(7, 1, 2, 2),
-       GSPSampleKey.solar_azimuth: np.random.rand(7),
-       GSPSampleKey.solar_elevation: np.random.rand(7)
-   }
-   
-   numpy_data = sample.to_numpy()
-   
-   assert isinstance(numpy_data[GSPSampleKey.gsp], np.ndarray)
-   assert isinstance(numpy_data[SatelliteSampleKey.satellite_actual], np.ndarray)
-   assert isinstance(numpy_data[GSPSampleKey.solar_azimuth], np.ndarray)
-   assert isinstance(numpy_data[GSPSampleKey.solar_elevation], np.ndarray)
+def test_to_nump():
+    """ Test for NotImplementedError """
+    sample = UKRegionalSample()
+    sample._data = {
+        'nwp': {
+            'ukv': {
+                'nwp': np.random.rand(4, 1, 2, 2),
+                'x': np.array([1, 2]),
+                'y': np.array([1, 2])
+            }
+        },
+        GSPSampleKey.gsp: np.random.rand(7),
+        SatelliteSampleKey.satellite_actual: np.random.rand(7, 1, 2, 2),
+        GSPSampleKey.solar_azimuth: np.random.rand(7),
+        GSPSampleKey.solar_elevation: np.random.rand(7)
+    }
+    
+    with pytest.raises(NotImplementedError, match="Numpy conversion method is not yet implemented"):
+        sample.to_numpy()
+
