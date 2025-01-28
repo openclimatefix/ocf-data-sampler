@@ -16,7 +16,11 @@ class TestSample(SampleBase):
     SampleBase for testing purposes
     Minimal implementations - abstract methods
     """
-    
+
+    def __init__(self):
+        super().__init__()
+        self._data = {}
+
     def plot(self, **kwargs):
         """ Minimal plot implementation """
         return None
@@ -43,6 +47,7 @@ def test_sample_base_initialisation():
     """ Initialisation of SampleBase subclass """
 
     sample = TestSample()
+    assert hasattr(sample, '_data'), "Sample should have _data attribute"
     assert sample._data == {}, "Sample should start with empty dict"
 
 

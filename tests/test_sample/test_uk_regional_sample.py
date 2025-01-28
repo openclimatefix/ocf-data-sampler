@@ -81,6 +81,7 @@ def create_test_data():
 def test_sample_init():
     """ Initialisation """
     sample = UKRegionalSample()
+    assert hasattr(sample, '_data'), "Sample should have _data attribute"
     assert isinstance(sample._data, dict)
     assert len(sample._data) == 0
 

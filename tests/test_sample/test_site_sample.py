@@ -92,6 +92,7 @@ def sample_with_data():
 def test_site_sample_init():
     """ Basic initialisation """
     sample = SiteSample()
+    assert hasattr(sample, '_data'), "Sample should have _data attribute"
     assert isinstance(sample._data, dict)
     assert len(sample._data) == 0
 

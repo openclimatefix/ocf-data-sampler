@@ -24,6 +24,7 @@ class SiteSample(SampleBase):
     def __init__(self):
         logger.debug("Initialise SiteSample instance")
         super().__init__()
+        self._data = {}
 
     def to_numpy(self) -> Dict[str, Any]:
         """ Convert sample numpy arrays - netCDF conversion """

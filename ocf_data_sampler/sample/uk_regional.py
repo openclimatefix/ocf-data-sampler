@@ -44,6 +44,7 @@ class UKRegionalSample(SampleBase):
     def __init__(self):
         logger.debug("Initialise UKRegionalSample instance")
         super().__init__()
+        self._data = {}
 
     def to_numpy(self) -> Dict[str, np.ndarray]:
         """ Convert sample to numpy arrays - nested handling """

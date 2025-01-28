@@ -23,7 +23,6 @@ class SampleBase(ABC):
     def __init__(self):
         """ Initialise data container """
         logger.debug("Initialising SampleBase instance")
-        self._data: Dict[str, Any] = {}
 
     @abstractmethod
     def to_numpy(self) -> Dict[str, Any]:
