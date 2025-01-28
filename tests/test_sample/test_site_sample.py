@@ -60,7 +60,7 @@ def sample_with_data():
             'nwp-ukv__y_osgb': [0, 1],
             'nwp-ukv__x_osgb': [0, 1],
             'nwp-ukv__init_time_utc': init_time,
-            'nwp-ukv__step': ('nwp-ukv__target_time_utc', steps),  # Add step coordinate
+            'nwp-ukv__step': ('nwp-ukv__target_time_utc', steps),
             
             # Sat coords
             'satellite__time_utc': sat_times,
