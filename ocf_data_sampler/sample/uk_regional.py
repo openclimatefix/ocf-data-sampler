@@ -51,12 +51,8 @@ class UKRegionalSample(SampleBase):
             logger.error(f"Invalid file format: {path.suffix}")
             raise ValueError(f"Only .pt format is supported: {path.suffix}")
         
-        try:
-            torch.save(self._data, path)
-            logger.debug(f"Successfully saved UKRegionalSample to {path}")
-        except Exception as e:
-            logger.error(f"Error saving to {path}: {str(e)}")
-            raise
+        torch.save(self._data, path)
+        logger.debug(f"Successfully saved UKRegionalSample to {path}")
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> 'UKRegionalSample':
@@ -68,14 +64,10 @@ class UKRegionalSample(SampleBase):
             logger.error(f"Invalid file format: {path.suffix}")
             raise ValueError(f"Only .pt format is supported: {path.suffix}")
         
-        try:
-            instance = cls()
-            instance._data = torch.load(path)
-            logger.debug(f"Successfully loaded UKRegionalSample from {path}")
-            return instance
-        except Exception as e:
-            logger.error(f"Error loading from {path}: {str(e)}")
-            raise
+        instance = cls()
+        instance._data = torch.load(path)
+        logger.debug(f"Successfully loaded UKRegionalSample from {path}")
+        return instance
 
     def plot(self, **kwargs) -> None:
         """ Sample visualisation definition """
