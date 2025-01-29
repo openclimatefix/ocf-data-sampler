@@ -7,6 +7,7 @@ NWP_PROVIDERS = [
     "ecmwf",
     "gfs"
 ]
+# TODO add ICON
 
 
 def _to_data_array(d):
