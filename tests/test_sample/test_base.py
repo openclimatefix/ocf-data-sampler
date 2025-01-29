@@ -1,5 +1,3 @@
-# test_base.py
-
 """
 Base class testing - SampleBase
 """

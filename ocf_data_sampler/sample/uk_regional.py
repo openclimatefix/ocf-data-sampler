@@ -1,15 +1,6 @@
-# uk_regional.py
-
 """ 
 PVNet - UK Regional sample / dataset implementation
 """
-
-try:
-    import matplotlib.pyplot as plt
-    MATPLOTLIB_AVAILABLE = True
-except ImportError:
-    MATPLOTLIB_AVAILABLE = False
-    plt = None
 
 import numpy as np
 import pandas as pd
@@ -46,11 +37,10 @@ class UKRegionalSample(SampleBase):
         super().__init__()
         self._data = {}
 
-    # TO DO - complete
     def to_numpy(self) -> Dict[str, Any]:
-        """ Placeholder for numpy conversion """
-        logger.debug("to_numpy method not yet implemented")
-        raise NotImplementedError("Numpy conversion method is not yet implemented")
+        """ Convert sample data to numpy format """
+        logger.debug("Converting sample data to numpy format")
+        return self._data
 
     def save(self, path: Union[str, Path]) -> None:
         """ Save PVNet sample as .pt """
@@ -134,71 +124,3 @@ class UKRegionalSample(SampleBase):
         except Exception as e:
             logger.error(f"Error creating visualisation: {str(e)}")
             raise
-
-
-# TO DO - requirement to specify core and optional keys
-# Feature space definition required for validation implementation
-# Currently depreciated as of the moment
-def validate(data: Dict[str, Any], core_keys: set, optional_keys: set) -> None:
-    logger.debug("Validating UKRegionalSample")
-    
-    # Check required keys - feature space validation
-    missing_keys = core_keys - set(data.keys())
-    if missing_keys:
-        logger.error(f"Validation failed: {missing_keys}")
-        raise ValueError(f"Missing required keys: {missing_keys}")
-
-    # Validate NWP structure
-    if NWPSampleKey.nwp in data:
-        if not isinstance(data[NWPSampleKey.nwp], dict):
-            logger.error("Validation failed")
-            raise TypeError("NWP data must be nested dictionary")
-        
-        # Additional NWP validations
-        nwp_sources = data[NWPSampleKey.nwp].keys()
-        for source in nwp_sources:
-            if not all(key in data[NWPSampleKey.nwp][source] 
-                        for key in ['nwp', NWPSampleKey.channel_names]):
-                logger.error(f"Incomplete NWP data for source {source}")
-                raise ValueError(f"Missing keys in NWP source {source}")
-
-            # NaN check - NWP
-            nwp_data = data[NWPSampleKey.nwp][source]['nwp']
-            if isinstance(nwp_data, (np.ndarray, list)) and np.any(np.isnan(nwp_data)):
-                logger.error(f"NaN values in NWP data for {source}")
-                raise ValueError(f"NaN values in NWP data for {source}")
-
-    # Validate GSP structure
-    if GSPSampleKey.gsp in data:
-        if not isinstance(data[GSPSampleKey.gsp], (list, np.ndarray)):
-            logger.error("Validation failed")
-            raise TypeError("GSP data must be a list or numpy array")
-
-        # NaN check - GSP
-        if np.any(np.isnan(data[GSPSampleKey.gsp])):
-            logger.error("NaN values in GSP data")
-            raise ValueError("NaN values in GSP data")
-
-        # Validate timestep consistency
-        gsp_timesteps = len(data[GSPSampleKey.gsp])
-        time_dependent_keys = [
-            GSPSampleKey.solar_azimuth,
-            GSPSampleKey.solar_elevation
-        ]
-    
-        # Add satellite to validation if present
-        if SatelliteSampleKey.satellite_actual in data:
-            time_dependent_keys.append(SatelliteSampleKey.satellite_actual)
-
-        # Additional NaN / time step check
-        for key in time_dependent_keys:
-            if key in data:
-                if len(data[key]) != gsp_timesteps:
-                    logger.error(f"Validation failed - inconsistent timesteps for {key}")
-                    raise ValueError("Inconsistent number of timesteps")
-                    
-                if np.any(np.isnan(data[key])):
-                    logger.error(f"NaN values in {key}")
-                    raise ValueError(f"NaN values in {key}")
-
-    logger.debug("UKRegionalSample validation successful")

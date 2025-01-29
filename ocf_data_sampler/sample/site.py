@@ -1,5 +1,3 @@
-# site.py
-
 """ 
 PVNet - Site sample / dataset implementation
 """
@@ -7,11 +5,11 @@ PVNet - Site sample / dataset implementation
 import logging
 import xarray as xr
 import numpy as np
+
 from pathlib import Path
 from typing import Dict, Any, Union
 
 from ocf_data_sampler.sample.base import SampleBase
-
 from ocf_data_sampler.torch_datasets.datasets.site import convert_netcdf_to_numpy_sample
 
 
@@ -35,11 +33,6 @@ class SiteSample(SampleBase):
                 raise TypeError("Data must be xarray Dataset")
             
             numpy_data = convert_netcdf_to_numpy_sample(self._data)
-            
-            # Work around addition - to be checked!
-            # Wrap site data in dict
-            if 'site' in numpy_data and not isinstance(numpy_data['site'], dict):
-                numpy_data['site'] = {'site': numpy_data['site']}
 
             logger.debug("Successfully converted to numpy format")
             return numpy_data
@@ -57,23 +50,18 @@ class SiteSample(SampleBase):
             logger.error(f"Invalid file format - {path.suffix}")
             raise ValueError("Only .nc format is supported")
         
-        try:
-            if not isinstance(self._data, xr.Dataset):
-                raise TypeError("Data must be xarray Dataset for saving")
+        if not isinstance(self._data, xr.Dataset):
+            raise TypeError("Data must be xarray Dataset for saving")
                 
-            self._data.to_netcdf(
-                path, 
-                mode="w", 
-                engine="h5netcdf"
-            )
-            logger.debug(f"Successfully saved SiteSample - {path}")
-            
-        except Exception as e:
-            logger.error(f"Error saving - {path}: {str(e)}")
-            raise
+        self._data.to_netcdf(
+            path, 
+            mode="w", 
+            engine="h5netcdf"
+        )
+        logger.debug(f"Successfully saved SiteSample - {path}")
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> 'SiteSample':
+    def load(cls, path: str) -> None:
         """ Load site sample from netCDF """
         logger.debug(f"Loading SiteSample from {path}")
         path = Path(path)
@@ -82,15 +70,10 @@ class SiteSample(SampleBase):
             logger.error(f"Invalid file format - {path.suffix}")
             raise ValueError("Only .nc format is supported")
         
-        try:
-            instance = cls()
-            instance._data = xr.open_dataset(path)
-            logger.debug(f"Successfully loaded SiteSample - {path}")
-            return instance
-            
-        except Exception as e:
-            logger.error(f"Error loading - {path}: {str(e)}")
-            raise
+        instance = cls()
+        instance._data = xr.open_dataset(path)
+        logger.debug(f"Loaded SiteSample from {path}")
+        return instance
 
     # TO DO - placeholder for now
     def plot(self, **kwargs) -> None:

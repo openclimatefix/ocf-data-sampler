@@ -1,5 +1,3 @@
-# test_uk_regional_sample.py
-
 """
 UK Regional class testing - UKRegionalSample
 """
@@ -8,8 +6,6 @@ import pytest
 import numpy as np
 import torch
 import tempfile
-
-from pathlib import Path
 
 from ocf_data_sampler.numpy_sample import (
     GSPSampleKey,
@@ -138,8 +134,8 @@ def test_load_corrupted_file():
             UKRegionalSample.load(tf.name)
 
 
-def test_to_nump():
-    """ Test for NotImplementedError """
+def test_to_numpy():
+    """ To numpy conversion check """
     sample = UKRegionalSample()
     sample._data = {
         'nwp': {
@@ -155,6 +151,13 @@ def test_to_nump():
         GSPSampleKey.solar_elevation: np.random.rand(7)
     }
     
-    with pytest.raises(NotImplementedError, match="Numpy conversion method is not yet implemented"):
-        sample.to_numpy()
-
+    numpy_data = sample.to_numpy()
+    
+    # Check returned data matches
+    assert numpy_data == sample._data
+    assert len(numpy_data) == len(sample._data)
+    
+    # Assert specific keys and types
+    assert 'nwp' in numpy_data
+    assert isinstance(numpy_data['nwp']['ukv']['nwp'], np.ndarray)
+    assert numpy_data[GSPSampleKey.gsp].shape == (7,)

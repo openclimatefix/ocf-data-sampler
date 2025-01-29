@@ -1,5 +1,3 @@
-# base.py
-
 """
 Base class definition - abstract
 Handling of both flat and nested structures - consideration for NWP
