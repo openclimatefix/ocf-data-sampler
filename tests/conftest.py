@@ -6,9 +6,6 @@ import pandas as pd
 import xarray as xr
 import dask.array
 
-import tempfile
-from typing import Generator
-
 from ocf_data_sampler.config.model import Site
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 
@@ -22,11 +19,16 @@ def test_config_filename():
 
 @pytest.fixture(scope="session")
 def config_filename():
-    return f"{os.path.dirname(os.path.abspath(__file__))}/test_data/configs/pvnet_test_config.yaml"
+    return f"{_top_test_directory}/test_data/configs/pvnet_test_config.yaml"
 
 
 @pytest.fixture(scope="session")
-def sat_zarr_path():
+def session_tmp_path(tmp_path_factory):
+    return tmp_path_factory.mktemp("data")
+
+
+@pytest.fixture(scope="session")
+def sat_zarr_path(session_tmp_path):
 
     # Define coords for satellite-like dataset
     variables = [
@@ -79,13 +81,11 @@ def sat_zarr_path():
         attrs=dict(area=area_string),
     ).to_dataset(name="data")
 
-
     # Save temporarily as a zarr
-    with tempfile.TemporaryDirectory() as tmpdir:
-        zarr_path = f"{tmpdir}/test_sat.zarr"
-        ds.to_zarr(zarr_path)
+    zarr_path = session_tmp_path / "test_sat.zarr"
+    ds.to_zarr(zarr_path)
 
-        yield zarr_path
+    yield zarr_path
 
 
 @pytest.fixture(scope="session")
@@ -115,7 +115,7 @@ def ds_nwp_ukv():
 
 
 @pytest.fixture(scope="session")
-def nwp_ukv_zarr_path(ds_nwp_ukv):
+def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
     ds = ds_nwp_ukv.chunk(
         {
             "init_time": 1, 
@@ -125,10 +125,9 @@ def nwp_ukv_zarr_path(ds_nwp_ukv):
             "y": 50,
         }
     )
-    with tempfile.TemporaryDirectory() as tmpdir:
-        filename = tmpdir + "/ukv_nwp.zarr"
-        ds.to_zarr(filename)
-        yield filename
+    zarr_path = session_tmp_path / "ukv_nwp.zarr"
+    ds.to_zarr(zarr_path)
+    yield zarr_path
 
 
 @pytest.fixture(scope="session")
@@ -158,7 +157,7 @@ def ds_nwp_ecmwf():
 
 
 @pytest.fixture(scope="session")
-def nwp_ecmwf_zarr_path(ds_nwp_ecmwf):
+def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
     ds = ds_nwp_ecmwf.chunk(
         {
             "init_time": 1, 
@@ -168,10 +167,10 @@ def nwp_ecmwf_zarr_path(ds_nwp_ecmwf):
             "latitude": 50,
         }
     )
-    with tempfile.TemporaryDirectory() as tmpdir:
-        filename = tmpdir + "/ukv_ecmwf.zarr"
-        ds.to_zarr(filename)
-        yield filename
+
+    zarr_path = session_tmp_path / "ukv_ecmwf.zarr"
+    ds.to_zarr(zarr_path)
+    yield zarr_path
 
 
 @pytest.fixture(scope="session")
@@ -204,7 +203,7 @@ def ds_uk_gsp():
 
 
 @pytest.fixture(scope="session")
-def data_sites() -> Generator[Site, None, None]:
+def data_sites(session_tmp_path) -> Site:
     """
     Make fake data for sites
     Returns: filename for netcdf file, and csv metadata
@@ -248,30 +247,27 @@ def data_sites() -> Generator[Site, None, None]:
         "generation_kw": da_gen,
     })
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        filename = tmpdir + "/sites.netcdf"
-        filename_csv = tmpdir + "/sites_metadata.csv"
-        generation.to_netcdf(filename)
-        meta_df.to_csv(filename_csv)
+    filename = f"{session_tmp_path}/sites.netcdf"
+    filename_csv = f"{session_tmp_path}/sites_metadata.csv"
+    generation.to_netcdf(filename)
+    meta_df.to_csv(filename_csv)
 
-        site = Site(
-            file_path=filename,
-            metadata_file_path=filename_csv,
-            interval_start_minutes=-30,
-            interval_end_minutes=60,
-            time_resolution_minutes=30,
-        )
+    site = Site(
+        file_path=filename,
+        metadata_file_path=filename_csv,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
+        time_resolution_minutes=30,
+    )
 
-        yield site
+    yield site
 
 
 @pytest.fixture(scope="session")
-def uk_gsp_zarr_path(ds_uk_gsp):
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        filename = tmpdir + "/uk_gsp.zarr"
-        ds_uk_gsp.to_zarr(filename)
-        yield filename
+def uk_gsp_zarr_path(session_tmp_path, ds_uk_gsp):
+    zarr_path = session_tmp_path / "uk_gsp.zarr"
+    ds_uk_gsp.to_zarr(zarr_path)
+    yield zarr_path
 
 
 @pytest.fixture()
