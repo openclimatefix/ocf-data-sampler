@@ -1,12 +1,13 @@
 import os
-
 import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
 import tempfile
+from typing import Generator
 
 from ocf_data_sampler.config.model import Site
+from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -200,7 +201,7 @@ def ds_uk_gsp():
 
 
 @pytest.fixture(scope="session")
-def data_sites() -> Site:
+def data_sites() -> Generator[Site, None, None]:
     """
     Make fake data for sites
     Returns: filename for netcdf file, and csv metadata
@@ -269,3 +270,18 @@ def uk_gsp_zarr_path(ds_uk_gsp):
         ds_uk_gsp.to_zarr(filename)
         yield filename
 
+
+@pytest.fixture()
+def pvnet_config_filename(
+    tmp_path, config_filename, nwp_ukv_zarr_path, uk_gsp_zarr_path, sat_zarr_path
+):
+
+    # adjust config to point to the zarr file
+    config = load_yaml_configuration(config_filename)
+    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.input_data.satellite.zarr_path = sat_zarr_path
+    config.input_data.gsp.zarr_path = uk_gsp_zarr_path
+
+    filename = f"{tmp_path}/configuration.yaml"
+    save_yaml_configuration(config, filename)
+    return filename

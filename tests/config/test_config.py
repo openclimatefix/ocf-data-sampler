@@ -2,7 +2,7 @@ import tempfile
 
 import pytest
 from pydantic import ValidationError
-
+from pathlib import Path
 from ocf_data_sampler.config import (
     load_yaml_configuration,
     Configuration,
@@ -21,39 +21,37 @@ def test_load_yaml_configuration(test_config_filename):
     Test that yaml loading works for 'test_config.yaml'
     and fails for an empty .yaml file
     """
-
-    # check we get an error if loading a file with no config
-    with tempfile.NamedTemporaryFile(suffix=".yaml") as fp:
-        filename = fp.name
-
-        # check that temp file can't be loaded
+    # Create temporary directory instead of file
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create path for empty file
+        empty_file = Path(temp_dir) / "empty.yaml"
+        
+        # Create an empty file
+        empty_file.touch()
+        
+        # Test loading empty file
         with pytest.raises(TypeError):
-            _ = load_yaml_configuration(filename)
-
-    # test can load test_config.yaml
-    config = load_yaml_configuration(test_config_filename)
-
-    assert isinstance(config, Configuration)
-
+            _ = load_yaml_configuration(str(empty_file))
 
 def test_yaml_save(test_config_filename):
     """
     Check configuration can be saved to a .yaml file
     """
-
     test_config = load_yaml_configuration(test_config_filename)
-
-    with tempfile.NamedTemporaryFile(suffix=".yaml") as fp:
-        filename = fp.name
-
-        # save default config to file
-        save_yaml_configuration(test_config, filename)
-
-        # check the file can be loaded back
-        tmp_config = load_yaml_configuration(filename)
-
-        # check loaded configuration is the same as the one passed to save
-        assert test_config == tmp_config
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create path for config file
+        config_path = Path(temp_dir) / "test_config.yaml"
+        
+        # Save configuration
+        saved_path = save_yaml_configuration(test_config, config_path)
+        
+        # Verify file exists
+        assert saved_path.exists()
+        
+        # Test loading saved configuration
+        loaded_config = load_yaml_configuration(str(saved_path))
+        assert loaded_config == test_config
 
 
 def test_extra_field_error():

@@ -5,7 +5,9 @@ import numpy as np
 NWP_PROVIDERS = [
     "ukv",
     "ecmwf",
+    "gfs"
 ]
+# TODO add ICON
 
 
 def _to_data_array(d):
@@ -28,6 +30,7 @@ class NWPStatDict(dict):
                 f"Values for {key} not yet available in ocf-data-sampler {list(self.keys())}"
             )
 
+
 # ------ UKV
 # Means and std computed WITH version_7 and higher, MetOffice values
 UKV_STD = {
@@ -49,6 +52,7 @@ UKV_STD = {
     "prmsl": 1252.71790539,
     "prate": 0.00021497,
 }
+
 UKV_MEAN = {
     "cdcb": 1412.26599062,
     "lcc": 50.08362643,
@@ -97,6 +101,7 @@ ECMWF_STD = {
     "diff_duvrs": 81605.25,
     "diff_sr": 818950.6875,
 }
+
 ECMWF_MEAN = {
     "dlwrf": 27187026.0,
     "dswrf": 11458988.0,
@@ -124,12 +129,94 @@ ECMWF_MEAN = {
 ECMWF_STD = _to_data_array(ECMWF_STD)
 ECMWF_MEAN = _to_data_array(ECMWF_MEAN)
 
+# ------ GFS
+GFS_STD = {
+    "dlwrf": 96.305916,
+    "dswrf": 246.18533,
+    "hcc": 42.525383,
+    "lcc": 44.3732,
+    "mcc": 43.150745,
+    "prate": 0.00010159573,
+    "r": 25.440672,
+    "sde": 0.43345627,
+    "t": 22.825893,
+    "tcc": 41.030598,
+    "u10": 5.470838,
+    "u100": 6.8899174,
+    "v10": 4.7401133,
+    "v100": 6.076132,
+    "vis": 8294.022,
+    "u": 10.614556,
+    "v": 7.176398,
+}
+
+GFS_MEAN = {
+    "dlwrf": 298.342,
+    "dswrf": 168.12321,
+    "hcc": 35.272,
+    "lcc": 43.578342,
+    "mcc": 33.738823,
+    "prate": 2.8190969e-05,
+    "r": 18.359747,
+    "sde": 0.36937004,
+    "t": 278.5223,
+    "tcc": 66.841606,
+    "u10": -0.0022310058,
+    "u100": 0.0823025,
+    "v10": 0.06219831,
+    "v100": 0.0797807,
+    "vis": 19628.32,
+    "u": 11.645444,
+    "v": 0.12330122,
+}
+
+GFS_STD = _to_data_array(GFS_STD)
+GFS_MEAN = _to_data_array(GFS_MEAN)
+
+
 NWP_STDS = NWPStatDict(
     ukv=UKV_STD,
     ecmwf=ECMWF_STD,
+    gfs=GFS_STD
 )
 NWP_MEANS = NWPStatDict(
     ukv=UKV_MEAN,
     ecmwf=ECMWF_MEAN,
+    gfs=GFS_MEAN
 )
 
+# ------ Satellite
+# RSS Mean and std values from randomised 20% of 2020 imagery
+
+RSS_STD = {
+    "HRV": 0.11405209,
+    "IR_016": 0.21462157,
+    "IR_039": 0.04618041,
+    "IR_087": 0.06687243,
+    "IR_097": 0.0468558,
+    "IR_108": 0.17482725,
+    "IR_120": 0.06115861,
+    "IR_134": 0.04492306,
+    "VIS006": 0.12184761,
+    "VIS008": 0.13090034,
+    "WV_062": 0.16111417,
+    "WV_073": 0.12924142,
+}
+
+RSS_MEAN = {
+    "HRV": 0.09298719,
+    "IR_016": 0.17594202,
+    "IR_039": 0.86167645,
+    "IR_087": 0.7719318,
+    "IR_097": 0.8014212,
+    "IR_108": 0.71254843,
+    "IR_120": 0.89058584,
+    "IR_134": 0.944365,
+    "VIS006": 0.09633306,
+    "VIS008": 0.11426069,
+    "WV_062": 0.7359355,
+    "WV_073": 0.62479186,
+}
+
+RSS_STD = _to_data_array(RSS_STD)
+RSS_MEAN = _to_data_array(RSS_MEAN)

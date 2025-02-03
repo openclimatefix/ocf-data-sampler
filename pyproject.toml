@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ocf_data_sampler"
-version = "0.0.29"
+version = "0.1.0"
 license = { file = "LICENSE" }
 readme = "README.md"
 description = "Sample from weather data for renewable energy prediction"
@@ -22,7 +22,7 @@ dependencies = [ # Migration from requirements.txt
     "numpy",
     "pandas",
     "xarray",
-    "zarr",
+    "zarr==2.18.3",
     "dask",
     "ocf_blosc2",
     "pvlib",
@@ -30,7 +30,8 @@ dependencies = [ # Migration from requirements.txt
     "pyproj",
     "pathy",
     "pyaml_env",
-    "pyresample"
+    "pyresample",
+    "h5netcdf",
 ]
 
 keywords = [ # I've added some keywords, but please provide feedback if you'd like them changed!
@@ -50,6 +51,9 @@ requires-python = ">=3.8"
 docs = [
     "mkdocs>=1.2",
     "mkdocs-material>=8.0"
+]
+plot = [
+    "matplotlib"
 ]
 
 [project.urls]

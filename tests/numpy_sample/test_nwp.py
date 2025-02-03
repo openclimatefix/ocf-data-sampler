@@ -4,7 +4,7 @@ import xarray as xr
 
 import pytest
 
-from ocf_data_sampler.numpy_batch import convert_nwp_to_numpy_batch, NWPBatchKey
+from ocf_data_sampler.numpy_sample import convert_nwp_to_numpy_sample, NWPSampleKey
 
 @pytest.fixture(scope="module")
 def da_nwp_like():
@@ -40,13 +40,13 @@ def da_nwp_like():
     return da_nwp
 
 
-def test_convert_nwp_to_numpy_batch(da_nwp_like):
+def test_convert_nwp_to_numpy_sample(da_nwp_like):
 
     # Call the function
-    numpy_batch = convert_nwp_to_numpy_batch(da_nwp_like)
+    numpy_sample = convert_nwp_to_numpy_sample(da_nwp_like)
 
     # Assert the output type
-    assert isinstance(numpy_batch, dict)
+    assert isinstance(numpy_sample, dict)
 
-    # Assert the shape of the numpy batch
-    assert (numpy_batch[NWPBatchKey.nwp] == da_nwp_like.values).all()
+    # Assert the shape of the numpy sample
+    assert (numpy_sample[NWPSampleKey.nwp] == da_nwp_like.values).all()
