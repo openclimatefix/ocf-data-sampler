@@ -65,7 +65,9 @@ class UKRegionalSample(SampleBase):
             raise ValueError(f"Only .pt format is supported: {path.suffix}")
         
         instance = cls()
-        instance._data = torch.load(path)
+        # TODO: We should move away from using torch.load(..., weights_only=False)
+        # This is not recommended
+        instance._data = torch.load(path, weights_only=False)
         logger.debug(f"Successfully loaded UKRegionalSample from {path}")
         return instance
 
