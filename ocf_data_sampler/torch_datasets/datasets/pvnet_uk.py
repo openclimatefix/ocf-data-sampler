@@ -1,15 +1,20 @@
-"""Torch dataset for PVNet"""
+"""Torch dataset for UK PVNet"""
+
+import pkg_resources
 
 import numpy as np
 import pandas as pd
-import pkg_resources
 import xarray as xr
 from torch.utils.data import Dataset
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
-from ocf_data_sampler.select import fill_time_periods, Location, slice_datasets_by_space, slice_datasets_by_time
+from ocf_data_sampler.select import (
+    fill_time_periods, 
+    Location, 
+    slice_datasets_by_space, 
+    slice_datasets_by_time,
+)
 from ocf_data_sampler.utils import minutes
-from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
 from ocf_data_sampler.numpy_sample import (
     convert_nwp_to_numpy_sample,
@@ -17,13 +22,16 @@ from ocf_data_sampler.numpy_sample import (
     convert_gsp_to_numpy_sample,
     make_sun_position_numpy_sample,
 )
+from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
+from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
+from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
+from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
+from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     merge_dicts,
     fill_nans_in_arrays,
 )
-from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
-from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
-from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
+
 
 xr.set_options(keep_attrs=True)
 
@@ -65,9 +73,10 @@ def process_and_combine_datasets(
     gsp_config = config.input_data.gsp
 
     if "gsp" in dataset_dict:
-        da_gsp = xr.concat([dataset_dict["gsp"], dataset_dict["gsp_future"]], dim="time_utc")
+        da_gsp = dataset_dict["gsp"]
         da_gsp = da_gsp / da_gsp.effective_capacity_mwp
-
+        
+        # Convert to NumpyBatch
         numpy_modalities.append(
             convert_gsp_to_numpy_sample(
                 da_gsp, 
@@ -105,6 +114,7 @@ def process_and_combine_datasets(
 
     return combined_sample
 
+
 def compute(xarray_dict: dict) -> dict:
     """Eagerly load a nested dictionary of xarray DataArrays"""
     for k, v in xarray_dict.items():
@@ -114,10 +124,8 @@ def compute(xarray_dict: dict) -> dict:
             xarray_dict[k] = v.compute(scheduler="single-threaded")
     return xarray_dict
 
-def find_valid_t0_times(
-    datasets_dict: dict,
-    config: Configuration,
-):
+
+def find_valid_t0_times(datasets_dict: dict, config: Configuration) -> pd.DatetimeIndex:
     """Find the t0 times where all of the requested input data is available
 
     Args:
@@ -167,7 +175,7 @@ class PVNetUKRegionalDataset(Dataset):
         self, 
         config_filename: str, 
         start_time: str | None = None,
-        end_time: str| None = None,
+        end_time: str | None = None,
         gsp_ids: list[int] | None = None,
     ):
         """A torch Dataset for creating PVNet UK GSP samples
@@ -253,7 +261,7 @@ class PVNetUKRegionalDataset(Dataset):
     def get_sample(self, t0: pd.Timestamp, gsp_id: int) -> dict:
         """Generate a sample for the given coordinates. 
         
-        Useful for users to generate samples by GSP ID.
+        Useful for users to generate specific samples.
         
         Args:
             t0: init-time for sample
@@ -266,3 +274,93 @@ class PVNetUKRegionalDataset(Dataset):
         location = self.location_lookup[gsp_id]
         
         return self._get_sample(t0, location)
+    
+    
+class PVNetUKConcurrentDataset(Dataset):
+    def __init__(
+        self, 
+        config_filename: str, 
+        start_time: str | None = None,
+        end_time: str| None = None,
+        gsp_ids: list[int] | None = None,
+    ):
+        """A torch Dataset for creating concurrent samples of PVNet UK regional data
+        
+        Each concurrent sample includes the data form all GSPs for a single t0 time
+
+        Args:
+            config_filename: Path to the configuration file
+            start_time: Limit the init-times to be after this
+            end_time: Limit the init-times to be before this
+            gsp_ids: List of all GSP IDs included in each sample. Defaults to all
+        """
+        
+        config = load_yaml_configuration(config_filename)
+        
+        datasets_dict = get_dataset_dict(config)
+        
+        # Get t0 times where all input data is available
+        valid_t0_times = find_valid_t0_times(datasets_dict, config)
+
+        # Filter t0 times to given range
+        if start_time is not None:
+            valid_t0_times = valid_t0_times[valid_t0_times>=pd.Timestamp(start_time)]
+            
+        if end_time is not None:
+            valid_t0_times = valid_t0_times[valid_t0_times<=pd.Timestamp(end_time)]
+
+        # Construct list of locations to sample from
+        locations = get_gsp_locations(gsp_ids)
+                        
+        # Assign coords and indices to self
+        self.valid_t0_times = valid_t0_times
+        self.locations = locations
+
+        # Assign config and input data to self
+        self.datasets_dict = datasets_dict
+        self.config = config
+        
+        
+    def __len__(self):
+        return len(self.valid_t0_times)
+    
+    
+    def _get_sample(self, t0: pd.Timestamp) -> dict:
+        """Generate a concurrent PVNet sample for given init-time
+        
+        Args:
+            t0: init-time for sample
+        """
+        # Slice by time then load to avoid loading the data multiple times from disk
+        sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
+        sample_dict = compute(sample_dict)
+        
+        gsp_samples = []
+        
+        # Prepare sample for each GSP
+        for location in self.locations:
+            gsp_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
+            gsp_numpy_sample = process_and_combine_datasets(
+                gsp_sample_dict, self.config, t0, location
+            )
+            gsp_samples.append(gsp_numpy_sample)
+        
+        # Stack GSP samples
+        return stack_np_samples_into_batch(gsp_samples)
+    
+        
+    def __getitem__(self, idx):
+        return self._get_sample(self.valid_t0_times[idx])
+    
+
+    def get_sample(self, t0: pd.Timestamp) -> dict:
+        """Generate a sample for the given init-time. 
+        
+        Useful for users to generate specific samples.
+        
+        Args:
+            t0: init-time for sample
+        """
+        # Check data is availablle for init-time t0
+        assert t0 in self.valid_t0_times        
+        return self._get_sample(t0)

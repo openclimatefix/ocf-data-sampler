@@ -1,10 +1,36 @@
-import pandas as pd
+import pytest
+
 import numpy as np
-from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset, convert_from_dataset_to_dict_datasets, coarsen_data
-from xarray import Dataset, DataArray
+import pandas as pd
 import xarray as xr
 
 from torch.utils.data import DataLoader
+
+from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
+from ocf_data_sampler.torch_datasets.datasets.site import (
+    SitesDataset, convert_from_dataset_to_dict_datasets, coarsen_data
+)
+
+
+
+@pytest.fixture()
+def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites):
+
+    # adjust config to point to the zarr file
+    config = load_yaml_configuration(config_filename)
+    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.input_data.satellite.zarr_path = sat_zarr_path
+    config.input_data.site = data_sites
+    config.input_data.gsp = None
+
+    filename = f"{tmp_path}/configuration.yaml"
+    save_yaml_configuration(config, filename)
+    yield filename
+
+
+@pytest.fixture()
+def sites_dataset(site_config_filename):
+    return SitesDataset(site_config_filename)
 
 
 def test_site(site_config_filename):
@@ -18,7 +44,7 @@ def test_site(site_config_filename):
     # Generate a sample
     sample = dataset[0]
 
-    assert isinstance(sample, Dataset)
+    assert isinstance(sample, xr.Dataset)
 
     # Expected dimensions and data variables
     expected_dims = {
@@ -85,21 +111,14 @@ def test_site_time_filter_end(site_config_filename):
     assert len(dataset) == 0
 
 
-def test_site_get_sample(site_config_filename):
-
-    # Create dataset object
-    dataset = SitesDataset(site_config_filename)
-
-    assert len(dataset) == 410
-    sample = dataset.get_sample(t0=pd.Timestamp("2023-01-01 12:00"), site_id=1)
+def test_site_get_sample(sites_dataset):
+    sample = sites_dataset.get_sample(t0=pd.Timestamp("2023-01-01 12:00"), site_id=1)
 
 
-def test_convert_from_dataset_to_dict_datasets(site_config_filename):
-    # Create dataset object
-    dataset = SitesDataset(site_config_filename)
+def test_convert_from_dataset_to_dict_datasets(sites_dataset):
 
-    # Generate two samples
-    sample_xr = dataset[0]
+    # Generate sample
+    sample_xr = sites_dataset[0]
 
     sample = convert_from_dataset_to_dict_datasets(sample_xr)
 
@@ -109,9 +128,7 @@ def test_convert_from_dataset_to_dict_datasets(site_config_filename):
         assert key in sample
 
 
-def test_site_dataset_with_dataloader(site_config_filename):
-    # Create dataset object
-    dataset = SitesDataset(site_config_filename)
+def test_site_dataset_with_dataloader(sites_dataset):
 
     expected_coods = {
         "site__solar_azimuth",
@@ -121,10 +138,6 @@ def test_site_dataset_with_dataloader(site_config_filename):
         "site__time_sin",
         "site__date_sin",
     }
-
-    sample = dataset[0]
-    for key in expected_coods:
-        assert key in sample
 
     dataloader_kwargs = dict(
         shuffle=False,
@@ -141,25 +154,23 @@ def test_site_dataset_with_dataloader(site_config_filename):
         persistent_workers=False,  # Not needed since we only enter the dataloader loop once
     )
 
-    dataloader = DataLoader(dataset, collate_fn=None, batch_size=None)
+    dataloader = DataLoader(sites_dataset, collate_fn=None, batch_size=None)
 
-    for i, sample in zip(range(1), dataloader):
+    sample = next(iter(dataloader))
 
-        # check that expected_dims is in the sample
-        for key in expected_coods:
-            assert key in sample
+    # check that expected_dims is in the sample
+    for key in expected_coods:
+        assert key in sample
 
 
-def test_process_and_combine_site_sample_dict(site_config_filename):
-    # Load config
-    # config = load_yaml_configuration(pvnet_config_filename)
-    site_ds = SitesDataset(site_config_filename)
+def test_process_and_combine_site_sample_dict(sites_dataset):
+
     # Specify minimal structure for testing
     raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
     fake_site_values = np.random.rand(197)
     site_dict = {
         "nwp": {
-            "ukv": DataArray(
+            "ukv": xr.DataArray(
                 raw_nwp_values,
                 dims=["time_utc", "channel", "y", "x"],
                 coords={
@@ -168,7 +179,7 @@ def test_process_and_combine_site_sample_dict(site_config_filename):
                 },
             )
         },
-        "site": DataArray(
+        "site": xr.DataArray(
             fake_site_values,
             dims=["time_utc"],
             coords={
@@ -183,10 +194,10 @@ def test_process_and_combine_site_sample_dict(site_config_filename):
     print(f"Input site_dict: {site_dict}")
 
     # Call function
-    result = site_ds.process_and_combine_site_sample_dict(site_dict)
+    result = sites_dataset.process_and_combine_site_sample_dict(site_dict)
 
     # Assert to validate output structure
-    assert isinstance(result, Dataset), "Result should be an xarray.Dataset"
+    assert isinstance(result, xr.Dataset), "Result should be an xarray.Dataset"
     assert len(result.data_vars) > 0, "Dataset should contain data variables"
 
     # Validate variable via assertion and shape of such

@@ -1,13 +1,17 @@
+import pytest
+
 import os
 import numpy as np
 import pandas as pd
-import pytest
 import xarray as xr
+import dask.array
+
 import tempfile
 from typing import Generator
 
 from ocf_data_sampler.config.model import Site
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
+
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -24,34 +28,16 @@ def config_filename():
 @pytest.fixture(scope="session")
 def sat_zarr_path():
 
-    # Load dataset which only contains coordinates, but no data
-    ds = xr.open_zarr(
-        f"{os.path.dirname(os.path.abspath(__file__))}/test_data/non_hrv_shell.zarr.zip"
-    ).compute()
-
-    # Add time coord
-    ds = ds.assign_coords(time=pd.date_range("2023-01-01 00:00", "2023-01-02 23:55", freq="5min"))
-
-    # Add data to dataset
-    ds["data"] = xr.DataArray(
-        np.zeros([len(ds[c]) for c in ds.coords], dtype=np.float32),
-        coords=ds.coords,
-    )
-
-    # Transpose to variables, time, y, x (just in case)
-    ds = ds.transpose("variable", "time", "y_geostationary", "x_geostationary")
-
-    # add 100,000 to x_geostationary, this to make sure the fix index is within the satellite image
-    ds["x_geostationary"] = ds["x_geostationary"] - 200_000
-
-    # Add some NaNs
-    ds["data"].values[:, :, 0, 0] = np.nan
-
-    # make sure channel values are strings
-    ds["variable"] = ds["variable"].astype(str)
-
-    # add data attrs area
-    ds["data"].attrs["area"] = (
+    # Define coords for satellite-like dataset
+    variables = [
+        'IR_016', 'IR_039', 'IR_087', 'IR_097', 'IR_108', 'IR_120', 
+        'IR_134', 'VIS006', 'VIS008', 'WV_062', 'WV_073',
+    ]
+    x = np.linspace(start=15002, stop=-1824245, num=100)
+    y = np.linspace(start=4191563, stop=5304712, num=100)
+    times = pd.date_range("2023-01-01 00:00", "2023-01-01 23:55", freq="5min")
+    
+    area_string = (
         """msg_seviri_rss_3km:
         description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
         projection:
@@ -73,9 +59,26 @@ def sat_zarr_path():
             units: m
         """
     )
+    
+    # Create satellite-like data with some NaNs
+    data = dask.array.zeros(
+        shape=(len(variables), len(times), len(y), len(x)), 
+        chunks=(-1, 10, -1, -1),
+        dtype=np.float32
+    )
+    data [:, 10, :, :] = np.nan
+    
+    ds = xr.DataArray(
+        data=data,
+        coords=dict(
+            variable=variables,
+            time=times,
+            y_geostationary=y,
+            x_geostationary=x,
+        ),
+        attrs=dict(area=area_string),
+    ).to_dataset(name="data")
 
-    # Specifiy chunking
-    ds = ds.chunk({"time": 10, "variable": -1, "y_geostationary": -1, "x_geostationary": -1})
 
     # Save temporarily as a zarr
     with tempfile.TemporaryDirectory() as tmpdir:
