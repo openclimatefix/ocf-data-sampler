@@ -281,7 +281,7 @@ class PVNetUKConcurrentDataset(Dataset):
         self, 
         config_filename: str, 
         start_time: str | None = None,
-        end_time: str| None = None,
+        end_time: str | None = None,
         gsp_ids: list[int] | None = None,
     ):
         """A torch Dataset for creating concurrent samples of PVNet UK regional data
