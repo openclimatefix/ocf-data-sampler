@@ -286,7 +286,7 @@ class PVNetUKConcurrentDataset(Dataset):
     ):
         """A torch Dataset for creating concurrent samples of PVNet UK regional data
         
-        Each concurrent sample includes the data form all GSPs for a single t0 time
+        Each concurrent sample includes the data from all GSPs for a single t0 time
 
         Args:
             config_filename: Path to the configuration file
