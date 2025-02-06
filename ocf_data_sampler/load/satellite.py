@@ -1,5 +1,3 @@
-"""Satellite loader"""
-
 import subprocess
 from pathlib import Path
 
@@ -12,13 +10,19 @@ from ocf_data_sampler.load.utils import (
 
 
 def _get_single_sat_data(zarr_path: Path | str) -> xr.Dataset:
-    """Helper function to open a zarr from either local or GCP path.
+    """Helper function to open a zarr from either a local or GCP path.
 
     Args:
-        zarr_path: Path to zarr file
+        zarr_path: Path to Zarr file. Supports wildcard (*) only for local paths, not for GCP URLs (gs://).
+
+    Returns:
+        An xarray Dataset containing satellite data.
+
+    Raises:
+        ValueError: If wildcard (*) is used in a GCP (gs://) path.
     """
 
-    # These kwargs are used if zarr path contains "*"
+    # These kwargs are used if the path contains "*"
     openmf_kwargs = dict(
         engine="zarr",
         concat_dim="time",
@@ -27,19 +31,17 @@ def _get_single_sat_data(zarr_path: Path | str) -> xr.Dataset:
         join="override",
     )
 
-    # Need to generate list of files if using GCP bucket storage
+    # Raise an error if a wildcard is used in a GCP path
     if "gs://" in str(zarr_path) and "*" in str(zarr_path):
-        result_string = subprocess.run(
-            f"gsutil ls -d {zarr_path}".split(" "), stdout=subprocess.PIPE
-        ).stdout.decode("utf-8")
-        files = result_string.splitlines()
+        raise ValueError("Wildcard (*) paths are not supported for GCP (gs://) URLs.")
 
-        ds = xr.open_mfdataset(files, **openmf_kwargs)
-
-    elif "*" in str(zarr_path):  # Multi-file dataset
+    # Handle multi-file dataset for local paths
+    if "*" in str(zarr_path):
         ds = xr.open_mfdataset(zarr_path, **openmf_kwargs)
     else:
         ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto")
+
+    # Ensure time is unique and sorted
     ds = ds.drop_duplicates("time").sortby("time")
 
     return ds
@@ -49,17 +51,17 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
     """Lazily opens the Zarr store.
 
     Args:
-      zarr_path: Cloud URL or local path pattern, or list of these. If GCS URL, it must start with
-          'gs://'.
+      zarr_path: Cloud URL or local path pattern, or list of these.
+                 If GCS URL, it must start with 'gs://'.
+                 Wildcard (*) is only supported for local paths.
+
+    Returns:
+      An xarray DataArray containing satellite data.
 
     Example:
-        Without wild cards and with local path:
+        Opening multiple local paths with wildcards:
         ```
-        zarr_paths = [
-            "/data/2020_nonhrv.zarr",
-            "/data/2019_nonhrv.zarr",
-        ]
-        ds = open_sat_data(zarr_paths)
+        ds = open_sat_data("/data/*.zarr")
         ```
     """
 
@@ -74,7 +76,7 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
     else:
         ds = _get_single_sat_data(zarr_path)
 
-    # Rename
+    # Rename dimensions
     ds = ds.rename(
         {
             "variable": "channel",
@@ -82,13 +84,12 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
         }
     )
 
-    # Check the timestamps are unique and increasing
+    # Check timestamps
     check_time_unique_increasing(ds.time_utc)
 
-    # Make sure the spatial coords are in increasing order
+    # Ensure spatial coordinates are sorted
     ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
 
     ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
 
-    # TODO: should we control the dtype of the DataArray?
     return get_xr_data_array_from_xr_dataset(ds)
