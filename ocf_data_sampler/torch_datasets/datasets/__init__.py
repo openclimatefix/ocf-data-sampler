@@ -1,11 +1,6 @@
-from .pvnet_uk_regional import PVNetUKRegionalDataset
+from .pvnet_uk import PVNetUKRegionalDataset, PVNetUKConcurrentDataset
 
 from .site import (
     convert_netcdf_to_numpy_sample,
     SitesDataset
 )
-
-__all__ = [
-    'convert_netcdf_to_numpy_sample',
-    'SitesDataset'
-]
