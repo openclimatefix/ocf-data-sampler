@@ -1,6 +1,6 @@
+import numpy as np
 import pandas as pd
 from typing import Optional
-import numpy as np
 from pydantic import BaseModel, Field, validator
 
 
@@ -14,7 +14,7 @@ def minutes(minutes: int | list[float]) -> pd.Timedelta | pd.TimedeltaIndex:
 
 
 class Location(BaseModel):
-    """Represent a spatial location."""
+    """Represent a spatial location"""
 
     coordinate_system: Optional[str] = "osgb"  # ["osgb", "lon_lat", "geostationary", "idx"]
     x: float
