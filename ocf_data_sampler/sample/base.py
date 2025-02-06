@@ -14,8 +14,8 @@ from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
-NumpyBatch: TypeAlias = Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
-TensorBatch: TypeAlias = Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
+NumpySample: TypeAlias = Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
+TensorSample: TypeAlias = Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
 
 
 class SampleBase(ABC):
@@ -115,32 +115,32 @@ class TensorSample(SampleBase):
         raise NotImplementedError
 
 
-def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
+def sample_to_tensor(sample: NumpySample) -> TensorSample:
     """
-    Moves data in a NumpyBatch to a TensorBatch
+    Moves data in a NumpySample to a TensorSample
 
     Args:
-        batch: NumpyBatch with data in numpy arrays
+        sample: NumpySample with data in numpy arrays
 
     Returns:
-        TensorBatch with data in torch tensors
+        TensorSample with data in torch tensors
     """
-    return _batch_to_tensor(batch)
+    return _sample_to_tensor(sample)
     
 
-def _batch_to_tensor(batch: dict) -> dict:
+def _sample_to_tensor(sample: dict) -> dict:
     """
-    Moves ndarrays in a nested dict to torch tensors
+    Moves arrays in a nested dict to torch tensors
 
     Args:
-        batch: nested dict with data in numpy arrays
+        sample: nested dict with data in numpy arrays
 
     Returns:
         Nested dict with data in torch tensors
     """
-    for k, v in batch.items():
+    for k, v in sample.items():
         if isinstance(v, dict):
-            batch[k] = _batch_to_tensor(v)
+            sample[k] = _sample_to_tensor(v)
         elif isinstance(v, np.ndarray) and np.issubdtype(v.dtype, np.number):
-            batch[k] = torch.as_tensor(v)
-    return batch
+            sample[k] = torch.as_tensor(v)
+    return sample
