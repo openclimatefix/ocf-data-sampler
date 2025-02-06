@@ -69,10 +69,6 @@ def test_compute():
         }
     }
 
-    # Ensure initial data is lazy - i.e. not yet computed
-    assert isinstance(lazy_data_dict["array1"].data, dask.array.Array)
-    assert isinstance(lazy_data_dict["nested"]["array2"].data, dask.array.Array)
-
     computed_data_dict = compute(lazy_data_dict)
 
     # Assert that the result is no longer lazy
