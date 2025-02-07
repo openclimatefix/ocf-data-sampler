@@ -57,14 +57,6 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
           'gs://'.
 
     Example:
-        With wild cards and GCS path:
-        ```
-        zarr_paths = [
-            "gs://bucket/2020_nonhrv_split_*.zarr",
-            "gs://bucket/2019_nonhrv_split_*.zarr",
-        ]
-        ds = open_sat_data(zarr_paths)
-        ```
         Without wild cards and with local path:
         ```
         zarr_paths = [
