@@ -8,9 +8,8 @@ import numpy as np
 
 from pathlib import Path
 from ocf_data_sampler.sample.base import (
-    SampleBase, 
-    NumpySample, 
-    TensorSample
+    SampleBase,
+    batch_to_tensor
 )
 
 class TestSample(SampleBase):
@@ -90,93 +89,67 @@ def test_sample_base_to_numpy():
     assert np.array_equal(numpy_data['list_data'], np.array([1, 2, 3]))
 
 
-def test_numpy_sample_initialisation():
-    """ NumpySample init with / without data """
-    sample = NumpySample()
-    assert hasattr(sample, '_data')
-    assert sample._data == {}
-    data = {'test': np.array([1, 2, 3])}
-    sample = NumpySample(data)
-    assert sample._data == data
-
-
-def test_numpy_sample_nested_structure():
-    """ NumpySample with nested structure """
-    nested_data = {
-        'simple': np.array([1, 2, 3]),
-        'nested': {
-            'sub1': np.array([[1, 2], [3, 4]]),
-            'sub2': np.array([5, 6])
+def test_batch_to_tensor_nested():
+    """ Test nested dictionary conversion """
+    batch = {
+        'outer': {
+            'inner': np.array([1, 2, 3])
         }
     }
-    sample = NumpySample(nested_data)
+    tensor_batch = batch_to_tensor(batch)
     
-    # Assert retrieval and setting
-    assert np.array_equal(sample['simple'], nested_data['simple'])
-    assert np.array_equal(sample['nested']['sub1'], nested_data['nested']['sub1'])    
-    new_data = np.array([7, 8, 9])
-    sample['simple'] = new_data
-    assert np.array_equal(sample['simple'], new_data)
+    assert isinstance(tensor_batch['outer']['inner'], torch.Tensor)
+    assert torch.equal(tensor_batch['outer']['inner'], torch.tensor([1, 2, 3]))
 
 
-def test_numpy_sample_to_numpy():
-    """ Test NumpySample to_numpy conversion """
-    data = {
-        'array1': np.array([1, 2, 3]),
-        'array2': np.array([[4, 5], [6, 7]])
-    }
-    sample = NumpySample(data)
-
-    numpy_data = sample.to_numpy()
-    assert numpy_data == data
-    assert all(isinstance(v, np.ndarray) for v in numpy_data.values())
-
-
-def test_tensor_sample_initialisation():
-    """ Test TensorSample init with / without data """
-    sample = TensorSample()
-    assert hasattr(sample, '_data')
-    assert sample._data == {}
-    data = {'test': torch.tensor([1, 2, 3])}
-    sample = TensorSample(data)
-    assert torch.equal(sample._data['test'], data['test'])
-
-
-def test_tensor_sample_nested_structure():
-    """ Test TensorSample with nested structure """
-    nested_data = {
-        'simple': torch.tensor([1, 2, 3]),
+def test_batch_to_tensor_mixed_types():
+    """ Test handling of mixed data types """
+    batch = {
+        'tensor_data': np.array([1, 2, 3]),
+        'string_data': 'not_a_tensor',
         'nested': {
-            'sub1': torch.tensor([[1, 2], [3, 4]]),
-            'sub2': torch.tensor([5, 6])
+            'numbers': np.array([4, 5, 6]),
+            'text': 'still_not_a_tensor'
         }
     }
-    sample = TensorSample(nested_data)
+    tensor_batch = batch_to_tensor(batch)
     
-    # Assert retrieval and setting
-    assert torch.equal(sample['simple'], nested_data['simple'])
-    assert torch.equal(sample['nested']['sub1'], nested_data['nested']['sub1'])    
-    new_data = torch.tensor([7, 8, 9])
-    sample['simple'] = new_data
-    assert torch.equal(sample['simple'], new_data)
+    assert isinstance(tensor_batch['tensor_data'], torch.Tensor)
+    assert isinstance(tensor_batch['string_data'], str)
+    assert isinstance(tensor_batch['nested']['numbers'], torch.Tensor)
+    assert isinstance(tensor_batch['nested']['text'], str)
 
 
-def test_tensor_sample_to_numpy():
-    """ Test TensorSample to_numpy conversion """
-    data = {
-        'tensor1': torch.tensor([1, 2, 3]),
-        'tensor2': torch.tensor([[4, 5], [6, 7]]),
-        'nested': {
-            'sub': torch.tensor([8, 9])
-        }
+def test_batch_to_tensor_empty():
+    """ Test handling of empty dictionary """
+    batch = {}
+    tensor_batch = batch_to_tensor(batch)
+    assert tensor_batch == {}
+
+
+def test_batch_to_tensor_different_dtypes():
+    """ Test conversion of arrays with different dtypes """
+    batch = {
+        'float_data': np.array([1.0, 2.0, 3.0], dtype=np.float32),
+        'int_data': np.array([1, 2, 3], dtype=np.int64),
+        'bool_data': np.array([True, False, True], dtype=np.bool_)
     }
-    sample = TensorSample(data)
-    numpy_data = sample.to_numpy()
+    tensor_batch = batch_to_tensor(batch)
     
-    # Assert conversion to numpy and check values
-    assert isinstance(numpy_data['tensor1'], np.ndarray)
-    assert isinstance(numpy_data['tensor2'], np.ndarray)
-    assert isinstance(numpy_data['nested']['sub'], np.ndarray)    
-    assert np.array_equal(numpy_data['tensor1'], data['tensor1'].numpy())
-    assert np.array_equal(numpy_data['tensor2'], data['tensor2'].numpy())
-    assert np.array_equal(numpy_data['nested']['sub'], data['nested']['sub'].numpy())
+    assert isinstance(tensor_batch['bool_data'], torch.Tensor)
+    assert tensor_batch['float_data'].dtype == torch.float32
+    assert tensor_batch['int_data'].dtype == torch.int64
+    assert tensor_batch['bool_data'].dtype == torch.bool
+
+
+def test_batch_to_tensor_multidimensional():
+    """ Test conversion of multidimensional arrays """
+    batch = {
+        'matrix': np.array([[1, 2], [3, 4]]),
+        'tensor': np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    }
+    tensor_batch = batch_to_tensor(batch)
+    
+    assert tensor_batch['matrix'].shape == (2, 2)
+    assert tensor_batch['tensor'].shape == (2, 2, 2)
+    assert torch.equal(tensor_batch['matrix'], torch.tensor([[1, 2], [3, 4]]))

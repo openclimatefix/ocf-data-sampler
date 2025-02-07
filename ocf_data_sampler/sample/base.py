@@ -6,6 +6,7 @@ Handling of both flat and nested structures - consideration for NWP
 import logging
 import numpy as np
 import torch
+import xarray as xr
 
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, TypeAlias
@@ -14,8 +15,8 @@ from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
-NumpySample: TypeAlias = Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
-TensorSample: TypeAlias = Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
+NumpyBatch: TypeAlias = Dict[str, Any]
+TensorBatch: TypeAlias = Dict[str, Any]
 
 
 class SampleBase(ABC):
@@ -24,13 +25,10 @@ class SampleBase(ABC):
     Provides core data storage functionality
     """
 
-    def __init__(self, data: Optional[Dict[str, Any]] = None):
+    def __init__(self, data: Optional[Dict[str, Any] | xr.Dataset] = None):
         """ Initialise data container """
         logger.debug("Initialising SampleBase instance")
-        self._data = data if data is not None else {}
-
-    def __getitem__(self, key: str) -> Any:
-        return self._data[key]
+        self._data = data
     
     def __setitem__(self, key: str, value: Any) -> None:
         self._data[key] = value
@@ -57,90 +55,20 @@ class SampleBase(ABC):
         raise NotImplementedError
 
 
-class NumpySample(SampleBase):
+def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
     """
-    Sample implementation 
-    Numpy arrays - nested support
-    """
-
-    def __getitem__(self, key: str) -> Union[np.ndarray, Dict[str, np.ndarray]]:
-        return self._data[key]
-    
-    def __setitem__(self, key: str, value: Union[np.ndarray, Dict[str, np.ndarray]]) -> None:
-        self._data[key] = value
-
-    def to_numpy(self) -> Dict[str, Any]:
-        return self._data
-    
-    def plot(self, **kwargs) -> None:
-        raise NotImplementedError
-
-    def save(self, path: Union[str, Path]) -> None:
-        raise NotImplementedError
-
-    @classmethod
-    def load(cls, path: Union[str, Path]) -> 'NumpySample':
-        raise NotImplementedError
-
-
-class TensorSample(SampleBase):
-    """
-    Sample implementation
-    PyTorch tensors - nested support
-    """
-
-    def __getitem__(self, key: str) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
-        return self._data[key]
-    
-    def __setitem__(self, key: str, value: Union[torch.Tensor, Dict[str, torch.Tensor]]) -> None:
-        self._data[key] = value
-
-    def to_numpy(self) -> Dict[str, Any]:
-        numpy_data = {}
-        for key, value in self._data.items():
-            if isinstance(value, dict):
-                numpy_data[key] = {k: v.cpu().numpy() for k, v in value.items()}
-            else:
-                numpy_data[key] = value.cpu().numpy()
-        return numpy_data
-    
-    def plot(self, **kwargs) -> None:
-        raise NotImplementedError
-
-    def save(self, path: Union[str, Path]) -> None:
-        raise NotImplementedError
-
-    @classmethod
-    def load(cls, path: Union[str, Path]) -> 'TensorSample':
-        raise NotImplementedError
-
-
-def sample_to_tensor(sample: NumpySample) -> TensorSample:
-    """
-    Moves data in a NumpySample to a TensorSample
-
+    Moves ndarrays in a nested dict to torch tensors
     Args:
-        sample: NumpySample with data in numpy arrays
-
+        batch: NumpyBatch with data in numpy arrays
     Returns:
-        TensorSample with data in torch tensors
+        TensorBatch with data in torch tensors
     """
-    return _sample_to_tensor(sample)
-    
-
-def _sample_to_tensor(sample: dict) -> dict:
-    """
-    Moves arrays in a nested dict to torch tensors
-
-    Args:
-        sample: nested dict with data in numpy arrays
-
-    Returns:
-        Nested dict with data in torch tensors
-    """
-    for k, v in sample.items():
+    for k, v in batch.items():
         if isinstance(v, dict):
-            sample[k] = _sample_to_tensor(v)
-        elif isinstance(v, np.ndarray) and np.issubdtype(v.dtype, np.number):
-            sample[k] = torch.as_tensor(v)
-    return sample
+            batch[k] = batch_to_tensor(v)
+        elif isinstance(v, np.ndarray):
+            if v.dtype == np.bool_:
+                batch[k] = torch.tensor(v, dtype=torch.bool)
+            elif np.issubdtype(v.dtype, np.number):
+                batch[k] = torch.as_tensor(v)
+    return batch
