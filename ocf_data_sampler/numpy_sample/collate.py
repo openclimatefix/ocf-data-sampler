@@ -1,75 +1,64 @@
-from ocf_data_sampler.numpy_sample import NWPSampleKey
-
 import numpy as np
-import logging
-from typing import Union
-
-logger = logging.getLogger(__name__)
 
 
+def stack_np_samples_into_batch(dict_list: list[dict]) -> dict:
+    """Stacks list of dict samples into a dict where all samples are joined along a new axis
 
-def stack_np_samples_into_batch(dict_list):
-#     """
-#     Stacks Numpy samples into a batch
+    Args:
+        dict_list: A list of dict-like samples to stack
 
-#     Args:
-#         dict_list: A list of dict-like Numpy samples to stack
-
-#     Returns:
-#         The stacked NumpySample object, aka a batch
-#     """
-
-    if not dict_list:
-        raise ValueError("Input is empty")
-
-    # Extract keys from first dict - structure
-    sample = {}
-    sample_keys = list(dict_list[0].keys())
-
-    # Process - handle NWP separately due to nested structure
-    for sample_key in sample_keys:
-        if sample_key == "nwp":
-            sample["nwp"] = process_nwp_data(dict_list)
-        else:
-            # Stack arrays for the given key across all dicts
-            sample[sample_key] = stack_data_list([d[sample_key] for d in dict_list], sample_key)
-    return sample
-
-
-def process_nwp_data(dict_list):
-    """Stacks data for NWP, handling nested structure"""
+    Returns:
+        Dict of the samples stacked with new batch dimension on axis 0
+    """
     
-    nwp_sample = {}
-    nwp_sources = dict_list[0]["nwp"].keys()
+    batch = {}
 
-    # Stack data for each NWP source independently
-    for nwp_source in nwp_sources:
-        nested_keys = dict_list[0]["nwp"][nwp_source].keys()
-        nwp_sample[nwp_source] = {
-            key: stack_data_list([d["nwp"][nwp_source][key] for d in dict_list], key)
-            for key in nested_keys
-        }
-    return nwp_sample
+    keys = list(dict_list[0].keys())
 
-def _key_is_constant(sample_key):
-    return sample_key.endswith("t0_idx") or sample_key == NWPSampleKey.channel_names
+    for key in keys:
+        # NWP is nested so treat separately
+        if key == "nwp":
+            batch["nwp"] = {}
+
+            # Unpack NWP provider keys
+            nwp_providers = list(dict_list[0]["nwp"].keys())
+
+            for nwp_provider in nwp_providers:
+                # Keys can be different for different NWPs
+                nwp_keys = list(dict_list[0]["nwp"][nwp_provider].keys())
+                
+                # Create dict to store NWP batch for this provider
+                nwp_provider_batch = {}
+                
+                for nwp_key in nwp_keys:
+                    # Stack values under each NWP key for this provider
+                    nwp_provider_batch[nwp_key] = stack_data_list(
+                        [d["nwp"][nwp_provider][nwp_key] for d in dict_list],
+                        nwp_key,
+                    )
+
+                batch["nwp"][nwp_provider] = nwp_provider_batch
+
+        else:
+            batch[key] = stack_data_list([d[key] for d in dict_list], key)
+
+    return batch
 
 
-def stack_data_list(data_list: list,sample_key: Union[str, NWPSampleKey],):
-    """How to combine data entries for each key
+def _key_is_constant(key: str):
+    return key.endswith("t0_idx") or key.endswith("channel_names")
+
+
+def stack_data_list(data_list: list, key: str):
+    """Stack a sequence of data elements along a new axis
 
      Args:
-        data_list: List of data entries to combine
-        sample_key: Key identifying the data type
+        data_list: List of data elements to combine
+        key: string identifying the data type
     """
-    if _key_is_constant(sample_key):
+    if _key_is_constant(key):
         # These are always the same for all examples.
         return data_list[0]
-    try:
+    else:
         return np.stack(data_list)
-    except Exception as e:
-        logger.debug(f"Could not stack the following shapes together, ({sample_key})")
-        shapes = [example.shape for example in data_list]
-        logger.debug(shapes)
-        logger.error(e)
-        raise e
+

@@ -1,6 +1,6 @@
 """Torch dataset for sites"""
 import logging
-
+import numpy as np
 import pandas as pd
 import xarray as xr
 from typing import Tuple
@@ -241,29 +241,30 @@ class SitesDataset(Dataset):
 
         # add datetime features
         datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
-        datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site")
-        datetime_features_xr = xr.Dataset(datetime_features, coords={"site__time_utc": datetimes})
-        combined_sample_dataset = xr.merge([combined_sample_dataset, datetime_features_xr])
+        datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site_")
+        combined_sample_dataset = combined_sample_dataset.assign_coords(
+            {k: ("site__time_utc", v) for k, v in datetime_features.items()}
+        )
 
         # add sun features
         sun_position_features = make_sun_position_numpy_sample(
             datetimes=datetimes,
             lon=combined_sample_dataset.site__longitude.values,
             lat=combined_sample_dataset.site__latitude.values,
-            key_prefix="site",
+            key_prefix="site_",
         )
-        sun_position_features_xr = xr.Dataset(
-            sun_position_features, coords={"site__time_utc": datetimes}
+        combined_sample_dataset = combined_sample_dataset.assign_coords(
+            {k: ("site__time_utc", v) for k, v in sun_position_features.items()}
         )
-        combined_sample_dataset = xr.merge([combined_sample_dataset, sun_position_features_xr])
 
         # TODO include t0_index in xr dataset? 
 
         # Fill any nan values
         return combined_sample_dataset.fillna(0.0)
 
-
-    def merge_data_arrays(self, normalised_data_arrays: list[Tuple[str, xr.DataArray]]) -> xr.Dataset:
+    def merge_data_arrays(
+        self, normalised_data_arrays: list[Tuple[str, xr.DataArray]]
+    ) -> xr.Dataset:
         """
         Combine a list of DataArrays into a single Dataset with unique naming conventions.
 
@@ -420,3 +421,27 @@ def convert_to_numpy_and_combine(
     combined_sample = fill_nans_in_arrays(combined_sample)
 
     return combined_sample
+
+
+def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float=0.1):
+    """
+    Coarsen the data to a specified resolution in degrees.
+    
+    Args:
+        xr_data: xarray dataset to coarsen
+        coarsen_to_deg: resolution to coarsen to in degrees
+    """
+
+    if "latitude" in xr_data.coords and "longitude" in xr_data.coords:
+        step = np.abs(xr_data.latitude.values[1]-xr_data.latitude.values[0])
+        step = np.round(step,4)
+        coarsen_factor = int(coarsen_to_deg/step)
+        if coarsen_factor > 1:
+            xr_data = xr_data.coarsen(
+                latitude=coarsen_factor,
+                longitude=coarsen_factor,
+                boundary="pad",
+                coord_func="min"
+            ).mean()
+        
+    return xr_data
