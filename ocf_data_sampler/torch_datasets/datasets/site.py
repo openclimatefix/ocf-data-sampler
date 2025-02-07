@@ -47,7 +47,7 @@ class SitesDataset(Dataset):
         """
 
         config: Configuration = load_yaml_configuration(config_filename)
-        datasets_dict = get_dataset_dict(config)
+        datasets_dict = get_dataset_dict(config.input_data)
 
         # Assign config and input data to self
         self.datasets_dict = datasets_dict

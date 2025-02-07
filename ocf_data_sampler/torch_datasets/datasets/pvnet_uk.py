@@ -189,7 +189,7 @@ class PVNetUKRegionalDataset(Dataset):
         
         config = load_yaml_configuration(config_filename)
         
-        datasets_dict = get_dataset_dict(config)
+        datasets_dict = get_dataset_dict(config.input_data)
         
         # Get t0 times where all input data is available
         valid_t0_times = find_valid_t0_times(datasets_dict, config)
@@ -297,7 +297,7 @@ class PVNetUKConcurrentDataset(Dataset):
         
         config = load_yaml_configuration(config_filename)
         
-        datasets_dict = get_dataset_dict(config)
+        datasets_dict = get_dataset_dict(config.input_data)
         
         # Get t0 times where all input data is available
         valid_t0_times = find_valid_t0_times(datasets_dict, config)

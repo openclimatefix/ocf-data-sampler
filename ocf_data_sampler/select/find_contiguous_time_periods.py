@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from ocf_data_sampler.load.utils import check_time_unique_increasing
 
 
 
@@ -28,8 +29,7 @@ def find_contiguous_time_periods(
     # Sanity checks.
     assert len(datetimes) > 0
     assert min_seq_length > 1
-    assert datetimes.is_monotonic_increasing
-    assert datetimes.is_unique
+    check_time_unique_increasing(datetimes)
 
     # Find indices of gaps larger than max_gap:
     gap_mask = pd.TimedeltaIndex(np.diff(datetimes)) > max_gap_duration

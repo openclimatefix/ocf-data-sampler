@@ -33,7 +33,7 @@ def sites_dataset(site_config_filename):
     return SitesDataset(site_config_filename)
 
 
-def test_site(site_config_filename):
+def test_site(tmp_path, site_config_filename):
 
     # Create dataset object
     dataset = SitesDataset(site_config_filename)
@@ -71,8 +71,8 @@ def test_site(site_config_filename):
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
 
 
-    sample.to_netcdf("sample.nc")
-    sample = xr.open_dataset("sample.nc")
+    sample.to_netcdf(f"{tmp_path}/sample.nc")
+    sample = xr.open_dataset(f"{tmp_path}/sample.nc")
 
     # Check dimensions
     assert (

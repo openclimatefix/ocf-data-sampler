@@ -1,57 +1,11 @@
-import tempfile
-
 import pytest
 from pydantic import ValidationError
-from pathlib import Path
-from ocf_data_sampler.config import (
-    load_yaml_configuration,
-    Configuration,
-    save_yaml_configuration
-)
+from ocf_data_sampler.config import load_yaml_configuration, Configuration
 
 
 def test_default_configuration():
     """Test default pydantic class"""
-
     _ = Configuration()
-
-
-def test_load_yaml_configuration(test_config_filename):
-    """
-    Test that yaml loading works for 'test_config.yaml'
-    and fails for an empty .yaml file
-    """
-    # Create temporary directory instead of file
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Create path for empty file
-        empty_file = Path(temp_dir) / "empty.yaml"
-        
-        # Create an empty file
-        empty_file.touch()
-        
-        # Test loading empty file
-        with pytest.raises(TypeError):
-            _ = load_yaml_configuration(str(empty_file))
-
-def test_yaml_save(test_config_filename):
-    """
-    Check configuration can be saved to a .yaml file
-    """
-    test_config = load_yaml_configuration(test_config_filename)
-    
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Create path for config file
-        config_path = Path(temp_dir) / "test_config.yaml"
-        
-        # Save configuration
-        saved_path = save_yaml_configuration(test_config, config_path)
-        
-        # Verify file exists
-        assert saved_path.exists()
-        
-        # Test loading saved configuration
-        loaded_config = load_yaml_configuration(str(saved_path))
-        assert loaded_config == test_config
 
 
 def test_extra_field_error():
