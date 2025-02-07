@@ -86,11 +86,15 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
     freq = pd.Timedelta("5min")
 
     # The data is available between these times
-    min_time = da_sat_like.time_utc.min()
-    max_time = da_sat_like.time_utc.max()
+    min_time = pd.Timestamp(da_sat_like.time_utc.min().item())
+    max_time = pd.Timestamp(da_sat_like.time_utc.max().item())
 
-    # Expect to return these timestamps from the selection
-    expected_datetimes = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
+    # Expect to return these timestamps within the requested range
+    expected_datetimes = pd.date_range(
+        max(t0 + interval_start, min_time),
+        min(t0 + interval_end, max_time),
+        freq=freq,
+    )
 
     # Make the partially out of bounds selection
     sat_sample = select_time_slice(
@@ -99,7 +103,6 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
         interval_start=interval_start,
         interval_end=interval_end,
         sample_period_duration=freq,
-        fill_selection=True
     )
 
     # Check the returned times are as expected
