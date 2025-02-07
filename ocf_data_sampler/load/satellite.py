@@ -53,24 +53,27 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
     """Lazily opens the Zarr store.
 
     Args:
-      zarr_path: Cloud URL or local path pattern, or list of these.
-                 If GCS URL, it must start with 'gs://'.
-                 Wildcard (*) is only supported for local paths.
-
-    Returns:
-      An xarray DataArray containing satellite data.
+      zarr_path: Cloud URL or local path pattern, or list of these. If GCS URL, it must start with
+          'gs://'.
 
     Example:
-        Opening multiple local paths with wildcards:
+        With wild cards and GCS path:
         ```
-        ds = open_sat_data("/data/*.zarr")
+        zarr_paths = [
+            "gs://bucket/2020_nonhrv_split_*.zarr",
+            "gs://bucket/2019_nonhrv_split_*.zarr",
+        ]
+        ds = open_sat_data(zarr_paths)
         ```
-        Opening GCP paths without wildcards:
+        Without wild cards and with local path:
         ```
-        ds = open_sat_data("gs://bucket/2020_nonhrv.zarr")
+        zarr_paths = [
+            "/data/2020_nonhrv.zarr",
+            "/data/2019_nonhrv.zarr",
+        ]
+        ds = open_sat_data(zarr_paths)
         ```
     """
-
     # Open the data
     if isinstance(zarr_path, (list, tuple)):
         ds = xr.combine_nested(
@@ -97,5 +100,6 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
     ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
 
     ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
+    # TODO: should we control the dtype of the DataArray?
 
     return get_xr_data_array_from_xr_dataset(ds)
