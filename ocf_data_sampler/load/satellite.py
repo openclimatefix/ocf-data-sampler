@@ -15,13 +15,14 @@ def _get_single_sat_data(zarr_path: Path | str) -> xr.Dataset:
     """Helper function to open a Zarr from either a local or GCP path.
 
     Args:
-        zarr_path: Path to Zarr file. Supports wildcard (*) only for local paths, not for GCP URLs (gs://).
+        zarr_path: Path to a Zarr file. Wildcards (*) are supported **only** for local paths. 
+                   GCS paths (gs://) **do not support** wildcards.
 
     Returns:
         An xarray Dataset containing satellite data.
 
     Raises:
-        ValueError: If wildcard (*) is used in a GCP (gs://) path.
+        ValueError: If a wildcard (*) is used in a GCS (gs://) path.
     """
 
     # These kwargs are used if the path contains "*"
@@ -55,17 +56,8 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
     Args:
       zarr_path: Cloud URL or local path pattern, or list of these. If GCS URL, it must start with
           'gs://'.
-
-    Example:
-        Without wild cards and with local path:
-        ```
-        zarr_paths = [
-            "/data/2020_nonhrv.zarr",
-            "/data/2019_nonhrv.zarr",
-        ]
-        ds = open_sat_data(zarr_paths)
-        ```
     """
+
     # Open the data
     if isinstance(zarr_path, (list, tuple)):
         ds = xr.combine_nested(
