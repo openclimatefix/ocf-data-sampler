@@ -1,3 +1,5 @@
+"""Satellite loader"""
+
 import subprocess
 from pathlib import Path
 
@@ -10,7 +12,7 @@ from ocf_data_sampler.load.utils import (
 
 
 def _get_single_sat_data(zarr_path: Path | str) -> xr.Dataset:
-    """Helper function to open a zarr from either a local or GCP path.
+    """Helper function to open a Zarr from either a local or GCP path.
 
     Args:
         zarr_path: Path to Zarr file. Supports wildcard (*) only for local paths, not for GCP URLs (gs://).
@@ -62,6 +64,10 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
         Opening multiple local paths with wildcards:
         ```
         ds = open_sat_data("/data/*.zarr")
+        ```
+        Opening GCP paths without wildcards:
+        ```
+        ds = open_sat_data("gs://bucket/2020_nonhrv.zarr")
         ```
     """
 
