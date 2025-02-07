@@ -1,6 +1,7 @@
 """DWD ICON Loading"""
 
 import pandas as pd
+from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
 import xarray as xr
 import fsspec
 
@@ -37,14 +38,14 @@ def open_icon_eu(zarr_path) -> xr.Dataset:
     nwp = open_zarr_paths(zarr_path, time_dim="time")
     nwp = nwp.rename({"time": "init_time_utc"})
     # Sanity checks.
-    time = pd.DatetimeIndex(nwp.init_time_utc)
-    assert time.is_unique
-    assert time.is_monotonic_increasing
+    check_time_unique_increasing(nwp.init_time_utc)
     # 0–78 one hour steps, rest 3 hour steps
     nwp = nwp.isel(step=slice(0, 78))
     nwp = remove_isobaric_lelvels_from_coords(nwp)
     nwp = nwp.to_array().rename({"variable": "channel"})
-    return nwp.transpose('init_time_utc', 'step', 'channel', 'latitude', 'longitude')
+    nwp = nwp.transpose('init_time_utc', 'step', 'channel', 'latitude', 'longitude')
+    nwp = make_spatial_coords_increasing(nwp, x_coord="longitude", y_coord="latitude")
+    return nwp
 
 
 def open_icon_global(zarr_path) -> xr.Dataset:
