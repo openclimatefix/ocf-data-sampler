@@ -22,7 +22,7 @@ def _get_date_time_in_pi(
     return date_in_pi, time_in_pi
 
 
-def make_datetime_numpy_dict(datetimes: pd.DatetimeIndex, key_prefix: str = "wind") -> dict:
+def make_datetime_numpy_dict(datetimes: pd.DatetimeIndex) -> dict:
     """ Make dictionary of datetime features"""
 
     if datetimes.empty:
@@ -33,14 +33,9 @@ def make_datetime_numpy_dict(datetimes: pd.DatetimeIndex, key_prefix: str = "win
     date_in_pi, time_in_pi = _get_date_time_in_pi(datetimes)
 
     # Store
-    date_sin_batch_key = key_prefix + "_date_sin"
-    date_cos_batch_key = key_prefix + "_date_cos"
-    time_sin_batch_key = key_prefix + "_time_sin"
-    time_cos_batch_key = key_prefix + "_time_cos"
-
-    time_numpy_sample[date_sin_batch_key] = np.sin(date_in_pi)
-    time_numpy_sample[date_cos_batch_key] = np.cos(date_in_pi)
-    time_numpy_sample[time_sin_batch_key] = np.sin(time_in_pi)
-    time_numpy_sample[time_cos_batch_key] = np.cos(time_in_pi)
+    time_numpy_sample["date_sin"] = np.sin(date_in_pi)
+    time_numpy_sample["date_cos"] = np.cos(date_in_pi)
+    time_numpy_sample["time_sin"] = np.sin(time_in_pi)
+    time_numpy_sample["time_cos"] = np.cos(time_in_pi)
 
     return time_numpy_sample
