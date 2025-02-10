@@ -84,16 +84,6 @@ def process_and_combine_datasets(
             )
         )
 
-        # Add coordinate data
-        # TODO: Do we need all of these?
-        numpy_modalities.append(
-            {
-                GSPSampleKey.gsp_id: location.id,
-                GSPSampleKey.x_osgb: location.x,
-                GSPSampleKey.y_osgb: location.y,
-            }
-        )
-
     if target_key == 'gsp':
         # Make sun coords NumpySample
         datetimes = pd.date_range(
@@ -103,6 +93,14 @@ def process_and_combine_datasets(
         )
 
         lon, lat = osgb_to_lon_lat(location.x, location.y)
+
+        numpy_modalities.append(
+            {
+                GSPSampleKey.gsp_id: location.id,
+                GSPSampleKey.x_osgb: location.x,
+                GSPSampleKey.y_osgb: location.y,
+            }
+        )
 
     numpy_modalities.append(
         make_sun_position_numpy_sample(datetimes, lon, lat, key_prefix=target_key)
