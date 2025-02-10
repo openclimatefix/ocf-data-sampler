@@ -55,6 +55,7 @@ def test_process_and_combine_datasets(pvnet_config_filename):
     assert "nwp" in sample
     assert sample["satellite_actual"].shape == (7, 1, 2, 2)
     assert sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
+    assert "gsp_id" in sample
 
 
 def test_compute():
