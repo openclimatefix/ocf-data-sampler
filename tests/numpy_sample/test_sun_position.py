@@ -69,7 +69,7 @@ def test_make_sun_position_numpy_sample():
     datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min")
     lon, lat = 0, 51.5
 
-    sample = make_sun_position_numpy_sample(datetimes, lon, lat, key_prefix="gsp")
+    sample = make_sun_position_numpy_sample(datetimes, lon, lat)
 
     assert GSPSampleKey.solar_elevation in sample
     assert GSPSampleKey.solar_azimuth in sample
