@@ -241,7 +241,7 @@ class SitesDataset(Dataset):
 
         # add datetime features
         datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
-        datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site_")
+        datetime_features = make_datetime_numpy_dict(datetimes=datetimes)
         combined_sample_dataset = combined_sample_dataset.assign_coords(
             {k: ("site__time_utc", v) for k, v in datetime_features.items()}
         )
