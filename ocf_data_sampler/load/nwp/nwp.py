@@ -1,15 +1,14 @@
-from pathlib import Path
 import xarray as xr
 
 from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
 from ocf_data_sampler.load.nwp.providers.ecmwf import open_ifs
 
 
-def open_nwp(zarr_path: Path | str | list[Path] | list[str], provider: str) -> xr.DataArray:
-    """Opens NWP Zarr
+def open_nwp(zarr_path: str | list[str], provider: str) -> xr.DataArray:
+    """Opens NWP zarr
 
     Args:
-        zarr_path: Path to the Zarr file
+        zarr_path: path to the zarr file
         provider: NWP provider
     """
 

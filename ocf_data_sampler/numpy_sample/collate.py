@@ -45,11 +45,12 @@ def stack_np_samples_into_batch(dict_list: list[dict]) -> dict:
     return batch
 
 
-def _key_is_constant(key: str):
+def _key_is_constant(key: str) -> bool:
+    """Check if a key is for value which is constant for all samples"""
     return key.endswith("t0_idx") or key.endswith("channel_names")
 
 
-def stack_data_list(data_list: list, key: str):
+def stack_data_list(data_list: list, key: str) -> np.ndarray:
     """Stack a sequence of data elements along a new axis
 
      Args:
@@ -57,8 +58,6 @@ def stack_data_list(data_list: list, key: str):
         key: string identifying the data type
     """
     if _key_is_constant(key):
-        # These are always the same for all examples.
         return data_list[0]
     else:
         return np.stack(data_list)
-

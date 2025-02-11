@@ -1,11 +1,7 @@
-from pathlib import Path
 import xarray as xr
 
 
-def open_zarr_paths(
-        zarr_path: Path | str | list[Path] | list[str], 
-        time_dim: str = "init_time"
-    ) -> xr.Dataset:
+def open_zarr_paths(zarr_path: str | list[str], time_dim: str = "init_time") -> xr.Dataset:
     """Opens the NWP data
 
     Args:

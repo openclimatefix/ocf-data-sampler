@@ -1,26 +1,16 @@
 """Configuration model for the dataset.
 
-All paths must include the protocol prefix.  For local files,
-it's sufficient to just start with a '/'.  For aws, start with 's3://',
-for gcp start with 'gs://'.
 
-Example:
+Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// to read from alternative filesystems. 
 
-    from ocf_data_sampler.config import Configuration
-    config = Configuration(**config_dict)
 """
 
-import logging
 from typing import Dict, List, Optional
 from typing_extensions import Self
 
 from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo, model_validator
 
 from ocf_data_sampler.constants import NWP_PROVIDERS
-
-logger = logging.getLogger(__name__)
-
-providers = ["pvoutput.org", "solar_sheffield_passiv"]
 
 
 class Base(BaseModel):
@@ -79,8 +69,6 @@ class TimeWindowMixin(Base):
         return v
 
 
-
-# noinspection PyMethodParameters
 class DropoutMixin(Base):
     """Mixin class, to add dropout minutes"""
 
@@ -137,7 +125,8 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     
     zarr_path: str | tuple[str] | list[str] = Field(
         ...,
-        description="The path or list of paths which hold the data zarr",
+        description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
+        "to read from alternative filesystems.",
     )
 
     channels: list[str] = Field(
@@ -145,13 +134,13 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     )
 
 
-# noinspection PyMethodParameters
 class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     """NWP configuration model"""
     
     zarr_path: str | tuple[str] | list[str] = Field(
         ...,
-        description="The path or list of paths which hold the data zarr",
+        description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
+        "to read from alternative filesystems.",
     )
     
     channels: list[str] = Field(
@@ -175,7 +164,6 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         """Validate 'provider'"""
         if v.lower() not in NWP_PROVIDERS:
             message = f"NWP provider {v} is not in {NWP_PROVIDERS}"
-            logger.warning(message)
             raise Exception(message)
         return v
 
@@ -209,7 +197,11 @@ class MultiNWP(RootModel):
 class GSP(TimeWindowMixin, DropoutMixin):
     """GSP configuration model"""
 
-    zarr_path: str = Field(..., description="The path which holds the GSP zarr")
+    zarr_path: str = Field(
+        ..., 
+        description="Absolute or relative zarr filepath. Prefix with a protocol like s3:// "
+        "to read from alternative filesystems.",
+    )
 
 
 class Site(TimeWindowMixin, DropoutMixin):
@@ -228,8 +220,6 @@ class Site(TimeWindowMixin, DropoutMixin):
     # TODO validate the csv for metadata
 
 
-
-# noinspection PyPep8Naming
 class InputData(Base):
     """Input data model"""
 

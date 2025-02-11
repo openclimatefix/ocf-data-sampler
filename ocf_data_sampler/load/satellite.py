@@ -1,7 +1,6 @@
 """Satellite loader"""
 
 import subprocess
-from pathlib import Path
 
 import xarray as xr
 from ocf_data_sampler.load.utils import (
@@ -11,7 +10,7 @@ from ocf_data_sampler.load.utils import (
 )
 
 
-def _get_single_sat_data(zarr_path: Path | str) -> xr.Dataset:
+def _get_single_sat_data(zarr_path: str) -> xr.Dataset:
     """Helper function to open a Zarr from either a local or GCP path.
 
     Args:
@@ -50,7 +49,7 @@ def _get_single_sat_data(zarr_path: Path | str) -> xr.Dataset:
     return ds
 
 
-def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
+def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
     """Lazily opens the Zarr store.
 
     Args:
@@ -69,7 +68,6 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
     else:
         ds = _get_single_sat_data(zarr_path)
 
-    # Rename dimensions
     ds = ds.rename(
         {
             "variable": "channel",
@@ -77,13 +75,11 @@ def open_sat_data(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArra
         }
     )
 
-    # Check timestamps
     check_time_unique_increasing(ds.time_utc)
 
-    # Ensure spatial coordinates are sorted
     ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
-
+    
     ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
+    
     # TODO: should we control the dtype of the DataArray?
-
     return get_xr_data_array_from_xr_dataset(ds)
