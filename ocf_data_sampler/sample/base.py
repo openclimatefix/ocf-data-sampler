@@ -15,8 +15,8 @@ from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
-NumpySample: TypeAlias = Dict[str, np.ndarray]
-NumpyBatch: TypeAlias = Dict[str, np.ndarray]
+NumpySample: TypeAlias = Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
+NumpyBatch: TypeAlias = Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
 TensorBatch: TypeAlias = Dict[str, torch.Tensor]
 
 
