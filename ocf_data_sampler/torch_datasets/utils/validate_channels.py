@@ -1,9 +1,9 @@
 import xarray as xr
 
 def validate_channels(
-    data_channels: set,
-    means_channels: set,
-    stds_channels: set,
+    data_channels: list,
+    means_channels: list,
+    stds_channels: list,
     source_name: str | None = None
 ) -> None:
     """
@@ -18,8 +18,13 @@ def validate_channels(
     Raises:
         ValueError: If there's a mismatch between data channels and normalisation constants
     """
+
+    data_set = set(data_channels)
+    means_set = set(means_channels)
+    stds_set = set(stds_channels)
+
     # Find missing channels in means
-    missing_in_means = data_channels - means_channels
+    missing_in_means = data_set - means_set
     if missing_in_means:
         raise ValueError(
             f"The following channels for {source_name} are missing in normalisation means: "
@@ -27,7 +32,7 @@ def validate_channels(
         )
             
     # Find missing channels in stds
-    missing_in_stds = data_channels - stds_channels
+    missing_in_stds = data_set - stds_set
     if missing_in_stds:
         raise ValueError(
             f"The following channels for {source_name} are missing in normalisation stds: "

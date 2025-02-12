@@ -1,16 +1,7 @@
 """Tests - channel validation utility function"""
 
 import pytest
-import xarray as xr
-
 from ocf_data_sampler.torch_datasets.utils.validate_channels import validate_channels
-
-
-@pytest.fixture
-def create_mock_xr_array():
-    def _create(channels):
-        return xr.DataArray([1.0 for _ in channels], coords={"channel": channels})
-    return _create
 
 
 class TestChannelValidation:
@@ -28,7 +19,7 @@ class TestChannelValidation:
             "norm_channels": ["t2m"],
             "source_name": "ecmwf",
             "expect_error": True,
-            "error_match": "following channels for ecmwf are missing in normalisation means"  # Updated to match actual error
+            "error_match": "following channels for ecmwf are missing in normalisation means"
         },
         # Satellite case
         {
@@ -43,14 +34,13 @@ class TestChannelValidation:
             "norm_channels": ["IR_016"],
             "source_name": "satellite",
             "expect_error": True,
-            "error_match": "following channels for satellite are missing in normalisation means"  # Updated to match actual error
+            "error_match": "following channels for satellite are missing in normalisation means"
         }
     ])
-    def test_channel_validation(self, test_case, create_mock_xr_array):
+    def test_channel_validation(self, test_case):
         """Test channel validation for both NWP and satellite data"""
-        data_channels = set(test_case["data_channels"])
-        norm_array = create_mock_xr_array(test_case["norm_channels"])
-        norm_channels = set(norm_array.channel.values)
+        data_channels = test_case["data_channels"]
+        norm_channels = test_case["norm_channels"]
 
         if test_case["expect_error"]:
             with pytest.raises(ValueError, match=test_case["error_match"]):
