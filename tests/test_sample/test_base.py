@@ -3,11 +3,14 @@ Base class testing - SampleBase
 """
 
 import pytest
+import torch
 import numpy as np
 
 from pathlib import Path
-from ocf_data_sampler.sample.base import SampleBase
-
+from ocf_data_sampler.sample.base import (
+    SampleBase,
+    batch_to_tensor
+)
 
 class TestSample(SampleBase):
     """
@@ -84,3 +87,61 @@ def test_sample_base_to_numpy():
     assert isinstance(numpy_data, dict)
     assert all(isinstance(value, np.ndarray) for value in numpy_data.values())
     assert np.array_equal(numpy_data['list_data'], np.array([1, 2, 3]))
+
+
+def test_batch_to_tensor_nested():
+    """ Test nested dictionary conversion """
+    batch = {
+        'outer': {
+            'inner': np.array([1, 2, 3])
+        }
+    }
+    tensor_batch = batch_to_tensor(batch)
+    
+    assert torch.equal(tensor_batch['outer']['inner'], torch.tensor([1, 2, 3]))
+
+
+def test_batch_to_tensor_mixed_types():
+    """ Test handling of mixed data types """
+    batch = {
+        'tensor_data': np.array([1, 2, 3]),
+        'string_data': 'not_a_tensor',
+        'nested': {
+            'numbers': np.array([4, 5, 6]),
+            'text': 'still_not_a_tensor'
+        }
+    }
+    tensor_batch = batch_to_tensor(batch)
+    
+    assert isinstance(tensor_batch['tensor_data'], torch.Tensor)
+    assert isinstance(tensor_batch['string_data'], str)
+    assert isinstance(tensor_batch['nested']['numbers'], torch.Tensor)
+    assert isinstance(tensor_batch['nested']['text'], str)
+
+
+def test_batch_to_tensor_different_dtypes():
+    """ Test conversion of arrays with different dtypes """
+    batch = {
+        'float_data': np.array([1.0, 2.0, 3.0], dtype=np.float32),
+        'int_data': np.array([1, 2, 3], dtype=np.int64),
+        'bool_data': np.array([True, False, True], dtype=np.bool_)
+    }
+    tensor_batch = batch_to_tensor(batch)
+    
+    assert isinstance(tensor_batch['bool_data'], torch.Tensor)
+    assert tensor_batch['float_data'].dtype == torch.float32
+    assert tensor_batch['int_data'].dtype == torch.int64
+    assert tensor_batch['bool_data'].dtype == torch.bool
+
+
+def test_batch_to_tensor_multidimensional():
+    """ Test conversion of multidimensional arrays """
+    batch = {
+        'matrix': np.array([[1, 2], [3, 4]]),
+        'tensor': np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    }
+    tensor_batch = batch_to_tensor(batch)
+    
+    assert tensor_batch['matrix'].shape == (2, 2)
+    assert tensor_batch['tensor'].shape == (2, 2, 2)
+    assert torch.equal(tensor_batch['matrix'], torch.tensor([[1, 2], [3, 4]]))
