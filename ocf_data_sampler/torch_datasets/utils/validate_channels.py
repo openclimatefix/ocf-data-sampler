@@ -1,4 +1,3 @@
-import logging
 import xarray as xr
 
 def validate_channels(
@@ -33,14 +32,4 @@ def validate_channels(
         raise ValueError(
             f"The following channels for {source_name} are missing in normalisation stds: "
             f"{missing_in_stds}"
-        )
-            
-    # Check if any extra channels in constants that are not in data
-    extra_in_means = means_channels - data_channels
-    extra_in_stds = stds_channels - data_channels
-    
-    if extra_in_means or extra_in_stds:
-        logging.warning(
-            f"The following channels exist in normalisation constants but are not used "
-            f"for {source_name}: In means: {extra_in_means}, In stds: {extra_in_stds}"
         )
