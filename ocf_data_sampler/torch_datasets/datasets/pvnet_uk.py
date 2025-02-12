@@ -31,7 +31,10 @@ from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     merge_dicts,
     fill_nans_in_arrays,
 )
-
+from ocf_data_sampler.torch_datasets.utils.validate_channels import (
+    validate_nwp_channels,
+    validate_sat_channels
+)
 
 xr.set_options(keep_attrs=True)
 
@@ -47,7 +50,7 @@ def process_and_combine_datasets(
     numpy_modalities = []
 
     if "nwp" in dataset_dict:
-
+        validate_nwp_channels(config, NWP_MEANS, NWP_STDS)
         nwp_numpy_modalities = dict()
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
@@ -63,6 +66,8 @@ def process_and_combine_datasets(
 
 
     if "sat" in dataset_dict:
+        validate_sat_channels(config, RSS_MEAN, RSS_STD)
+
         # Standardise
         da_sat = dataset_dict["sat"]
         da_sat = (da_sat - RSS_MEAN) / RSS_STD
