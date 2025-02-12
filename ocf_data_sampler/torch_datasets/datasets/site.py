@@ -19,10 +19,7 @@ from ocf_data_sampler.select import (
 from ocf_data_sampler.utils import minutes
 from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import merge_dicts, fill_nans_in_arrays
-from ocf_data_sampler.torch_datasets.utils.validate_channels import (
-    validate_nwp_channels,
-    validate_sat_channels
-)
+from ocf_data_sampler.torch_datasets.utils.validate_channels import validate_channels
 from ocf_data_sampler.numpy_sample import (
     convert_site_to_numpy_sample, 
     convert_satellite_to_numpy_sample, 
@@ -224,11 +221,18 @@ class SitesDataset(Dataset):
         data_arrays = []
 
         if "nwp" in dataset_dict:
-            validate_nwp_channels(self.config, NWP_MEANS, NWP_STDS)
-
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
-                # Standardise
                 provider = self.config.input_data.nwp[nwp_key].provider
+                
+                # Validate channels
+                validate_channels(
+                    data_channels=set(da_nwp.channel.values),
+                    means_channels=set(NWP_MEANS[provider].channel.values),
+                    stds_channels=set(NWP_STDS[provider].channel.values),
+                    source_name=provider
+                )
+                
+                # Standardise
                 da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
                 data_arrays.append((f"nwp-{provider}", da_nwp))
             

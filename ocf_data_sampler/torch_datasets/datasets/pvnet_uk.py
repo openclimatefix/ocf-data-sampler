@@ -31,10 +31,7 @@ from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     merge_dicts,
     fill_nans_in_arrays,
 )
-from ocf_data_sampler.torch_datasets.utils.validate_channels import (
-    validate_nwp_channels,
-    validate_sat_channels
-)
+from ocf_data_sampler.torch_datasets.utils.validate_channels import validate_channels
 
 xr.set_options(keep_attrs=True)
 
@@ -50,15 +47,21 @@ def process_and_combine_datasets(
     numpy_modalities = []
 
     if "nwp" in dataset_dict:
-        validate_nwp_channels(config, NWP_MEANS, NWP_STDS)
         nwp_numpy_modalities = dict()
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
-            # Standardise
             provider = config.input_data.nwp[nwp_key].provider
-            da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
 
-            # Convert to NumpyBatch
+            # Validate channels
+            validate_channels(
+                data_channels=set(da_nwp.channel.values),
+                means_channels=set(NWP_MEANS[provider].channel.values),
+                stds_channels=set(NWP_STDS[provider].channel.values),
+                source_name=provider
+            )
+
+            # Standardise and convert to NumpyBatch
+            da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
         # Combine the NWPs into NumpyBatch
@@ -66,13 +69,18 @@ def process_and_combine_datasets(
 
 
     if "sat" in dataset_dict:
-        validate_sat_channels(config, RSS_MEAN, RSS_STD)
-
-        # Standardise
         da_sat = dataset_dict["sat"]
-        da_sat = (da_sat - RSS_MEAN) / RSS_STD
 
-        # Convert to NumpyBatch
+        # Validate channels
+        validate_channels(
+            data_channels=set(da_sat.channel.values),
+            means_channels=set(RSS_MEAN.channel.values),
+            stds_channels=set(RSS_STD.channel.values),
+            source_name="satellite"
+        )
+
+        # Standardise and convert to NumpyBatch
+        da_sat = (da_sat - RSS_MEAN) / RSS_STD
         numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
     gsp_config = config.input_data.gsp
