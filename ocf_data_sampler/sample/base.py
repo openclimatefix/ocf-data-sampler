@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 NumpySample: TypeAlias = Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
 NumpyBatch: TypeAlias = Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
-TensorBatch: TypeAlias = Dict[str, torch.Tensor]
+TensorBatch: TypeAlias = Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
 
 
 class SampleBase(ABC):
