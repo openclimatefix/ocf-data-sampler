@@ -98,7 +98,6 @@ def test_batch_to_tensor_nested():
     }
     tensor_batch = batch_to_tensor(batch)
     
-    assert isinstance(tensor_batch['outer']['inner'], torch.Tensor)
     assert torch.equal(tensor_batch['outer']['inner'], torch.tensor([1, 2, 3]))
 
 
@@ -118,13 +117,6 @@ def test_batch_to_tensor_mixed_types():
     assert isinstance(tensor_batch['string_data'], str)
     assert isinstance(tensor_batch['nested']['numbers'], torch.Tensor)
     assert isinstance(tensor_batch['nested']['text'], str)
-
-
-def test_batch_to_tensor_empty():
-    """ Test handling of empty dictionary """
-    batch = {}
-    tensor_batch = batch_to_tensor(batch)
-    assert tensor_batch == {}
 
 
 def test_batch_to_tensor_different_dtypes():

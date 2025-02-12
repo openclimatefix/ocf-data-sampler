@@ -15,8 +15,9 @@ from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
-NumpyBatch: TypeAlias = Dict[str, Any]
-TensorBatch: TypeAlias = Dict[str, Any]
+NumpySample: TypeAlias = Dict[str, np.ndarray]
+NumpyBatch: TypeAlias = Dict[str, np.ndarray]
+TensorBatch: TypeAlias = Dict[str, torch.Tensor]
 
 
 class SampleBase(ABC):
@@ -25,16 +26,13 @@ class SampleBase(ABC):
     Provides core data storage functionality
     """
 
-    def __init__(self, data: Optional[Dict[str, Any] | xr.Dataset] = None):
+    def __init__(self, data: Optional[Union[NumpySample, xr.Dataset]] = None):
         """ Initialise data container """
         logger.debug("Initialising SampleBase instance")
         self._data = data
-    
-    def __setitem__(self, key: str, value: Any) -> None:
-        self._data[key] = value
 
     @abstractmethod
-    def to_numpy(self) -> Dict[str, Any]:
+    def to_numpy(self) -> NumpySample:
         """ Convert data to a numpy array representation """
         raise NotImplementedError
 
@@ -63,6 +61,9 @@ def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
     Returns:
         TensorBatch with data in torch tensors
     """
+    if not batch:
+        raise ValueError("Cannot convert empty batch to tensors")
+
     for k, v in batch.items():
         if isinstance(v, dict):
             batch[k] = batch_to_tensor(v)
