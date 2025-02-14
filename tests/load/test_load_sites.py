@@ -3,7 +3,7 @@ import xarray as xr
 
 
 def test_open_site(data_sites):
-    da = open_site(data_sites)
+    da = open_site(data_sites.file_path, data_sites.metadata_file_path)
 
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "site_id")

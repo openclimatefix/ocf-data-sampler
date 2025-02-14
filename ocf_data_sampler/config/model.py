@@ -1,16 +1,11 @@
 """Configuration model for the dataset.
 
-All paths must include the protocol prefix.  For local files,
-it's sufficient to just start with a '/'.  For aws, start with 's3://',
-for gcp start with 'gs://'.
 
-Example:
+Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// to read from alternative filesystems. 
 
-    from ocf_data_sampler.config import Configuration
-    config = Configuration(**config_dict)
 """
 
-from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo, model_validator
+import logging
 from typing import Dict, List, Optional
 from typing_extensions import Self
 import logging
@@ -19,6 +14,7 @@ from ocf_data_sampler.constants import NWP_PROVIDERS
 logger = logging.getLogger(__name__)
 
 providers = ["pvoutput.org", "solar_sheffield_passiv"]
+
 
 class Base(BaseModel):
     """Base Pydantic model that forbids extra fields."""
@@ -50,6 +46,9 @@ class TimeWindowMixin(Base):
             raise ValueError(f"{info.field_name} must be divisible by time_resolution_minutes")
         return v
 
+
+
+# noinspection PyMethodParameters
 class DropoutMixin(Base):
     """Mixin class to add dropout configuration."""
     dropout_timedeltas_minutes: Optional[List[int]] = Field(default=None, description="List of possible minutes before t0 where data availability may start. Must be negative or zero.")
@@ -80,14 +79,31 @@ class SpatialWindowMixin(Base):
     image_size_pixels_width: int = Field(..., ge=0, description="The number of pixels of the width of the region of interest")
 
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
-    """Satellite configuration model."""
-    zarr_path: str | tuple[str] | list[str] = Field(..., description="The path or list of paths which hold the data zarr")
-    channels: list[str] = Field(..., description="The satellite channels that are used")
+    """Satellite configuration model"""
+    
+    zarr_path: str | tuple[str] | list[str] = Field(
+        ...,
+        description="The path or list of paths which hold the data zarr",
+    )
 
+    channels: list[str] = Field(
+        ..., description="the satellite channels that are used"
+    )
+
+
+# noinspection PyMethodParameters
 class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
-    """NWP configuration model."""
-    zarr_path: str | tuple[str] | list[str] = Field(..., description="The path or list of paths which hold the data zarr")
-    channels: list[str] = Field(..., description="The channels used in the NWP data")
+    """NWP configuration model"""
+    
+    zarr_path: str | tuple[str] | list[str] = Field(
+        ...,
+        description="The path or list of paths which hold the data zarr",
+    )
+    
+    channels: list[str] = Field(
+        ..., description="the channels used in the nwp data"
+    )
+
     provider: str = Field(..., description="The provider of the NWP data")
     accum_channels: list[str] = Field([], description="The NWP channels which need to be diffed")
     max_staleness_minutes: Optional[int] = Field(None, description="Sets a limit on how stale an NWP init time is allowed to be whilst still being used to construct an example. If set to None, then the max staleness is set according to the maximum forecast horizon of the NWP and the requested forecast length.")
@@ -97,7 +113,6 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         """Ensures the provider is in the predefined NWP_PROVIDERS list."""
         if v.lower() not in NWP_PROVIDERS:
             message = f"NWP provider {v} is not in {NWP_PROVIDERS}"
-            logger.warning(message)
             raise Exception(message)
         return v
 
@@ -106,7 +121,8 @@ class MultiNWP(RootModel):
     root: Dict[str, NWP]
 
 class GSP(TimeWindowMixin, DropoutMixin):
-    """GSP configuration model."""
+    """GSP configuration model"""
+
     zarr_path: str = Field(..., description="The path which holds the GSP zarr")
 
 class Site(TimeWindowMixin, DropoutMixin):
@@ -114,6 +130,12 @@ class Site(TimeWindowMixin, DropoutMixin):
     file_path: str = Field(..., description="The NetCDF files holding the power timeseries.")
     metadata_file_path: str = Field(..., description="The CSV files describing power system")
 
+    # TODO validate the netcdf for sites
+    # TODO validate the csv for metadata
+
+
+
+# noinspection PyPep8Naming
 class InputData(Base):
     """Input data model."""
     satellite: Optional[Satellite] = None

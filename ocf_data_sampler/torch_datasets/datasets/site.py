@@ -1,4 +1,5 @@
 """Torch dataset for sites"""
+
 import logging
 import numpy as np
 import pandas as pd
@@ -19,6 +20,8 @@ from ocf_data_sampler.select import (
 from ocf_data_sampler.utils import minutes
 from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import merge_dicts, fill_nans_in_arrays
+from ocf_data_sampler.torch_datasets.utils.validate_channels import validate_nwp_channels
+
 from ocf_data_sampler.numpy_sample import (
     convert_site_to_numpy_sample, 
     convert_satellite_to_numpy_sample, 
@@ -29,7 +32,9 @@ from ocf_data_sampler.numpy_sample import (
 from ocf_data_sampler.numpy_sample import NWPSampleKey
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
 
+
 xr.set_options(keep_attrs=True)
+
 
 class SitesDataset(Dataset):
     def __init__(
@@ -47,7 +52,11 @@ class SitesDataset(Dataset):
         """
 
         config: Configuration = load_yaml_configuration(config_filename)
-        datasets_dict = get_dataset_dict(config)
+
+        # Validate NWP channels 
+        validate_nwp_channels(config)
+
+        datasets_dict = get_dataset_dict(config.input_data)
 
         # Assign config and input data to self
         self.datasets_dict = datasets_dict
@@ -221,8 +230,9 @@ class SitesDataset(Dataset):
 
         if "nwp" in dataset_dict:
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
-                # Standardise
                 provider = self.config.input_data.nwp[nwp_key].provider
+                
+                # Standardise
                 da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
                 data_arrays.append((f"nwp-{provider}", da_nwp))
             
