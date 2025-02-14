@@ -20,10 +20,8 @@ from ocf_data_sampler.select import (
 from ocf_data_sampler.utils import minutes
 from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import merge_dicts, fill_nans_in_arrays
-from ocf_data_sampler.torch_datasets.utils.validate_channels import (
-    validate_channels,
-    validate_nwp_channels,
-)
+from ocf_data_sampler.torch_datasets.utils.validate_channels import validate_nwp_channels
+
 from ocf_data_sampler.numpy_sample import (
     convert_site_to_numpy_sample, 
     convert_satellite_to_numpy_sample, 

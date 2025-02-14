@@ -32,7 +32,6 @@ from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
 )
 from ocf_data_sampler.torch_datasets.utils.validate_channels import (
-    validate_channels,
     validate_nwp_channels,
     validate_satellite_channels,
 )
