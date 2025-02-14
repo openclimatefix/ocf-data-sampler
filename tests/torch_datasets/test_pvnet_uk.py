@@ -24,7 +24,7 @@ def test_process_and_combine_datasets(pvnet_config_filename):
         dims=["time_utc", "channel", "y", "x"],
         coords={
             "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
-            "channel": ["t2m", "dswrf"],
+            "channel": ["t", "dswrf"],
             "step": ("time_utc", pd.timedelta_range(start='0h', periods=4, freq='h')),
             "init_time_utc": pd.Timestamp("2024-01-01 00:00")
         }
@@ -54,7 +54,7 @@ def test_process_and_combine_datasets(pvnet_config_filename):
     assert isinstance(sample, dict)
     assert "nwp" in sample
     assert sample["satellite_actual"].shape == (7, 1, 2, 2)
-    assert sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
+    assert sample["nwp"]["ukv"]["nwp"].shape == (4, 2, 2, 2)
     assert "gsp_id" in sample
 
 
