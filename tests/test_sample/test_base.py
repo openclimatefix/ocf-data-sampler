@@ -9,7 +9,8 @@ import numpy as np
 from pathlib import Path
 from ocf_data_sampler.sample.base import (
     SampleBase,
-    batch_to_tensor
+    batch_to_tensor,
+    copy_batch_to_device
 )
 
 class TestSample(SampleBase):
@@ -145,3 +146,103 @@ def test_batch_to_tensor_multidimensional():
     assert tensor_batch['matrix'].shape == (2, 2)
     assert tensor_batch['tensor'].shape == (2, 2, 2)
     assert torch.equal(tensor_batch['matrix'], torch.tensor([[1, 2], [3, 4]]))
+
+
+def test_copy_batch_to_device_nested():
+    """ Test nested dictionary device transfer """
+    batch = {
+        'outer': {
+            'inner': torch.tensor([1, 2, 3])
+        }
+    }
+    device = torch.device('cpu')  # Using CPU as it's always available
+    device_batch = copy_batch_to_device(batch, device)
+    
+    assert device_batch['outer']['inner'].device == device
+    assert torch.equal(device_batch['outer']['inner'], torch.tensor([1, 2, 3]))
+
+
+def test_copy_batch_to_device_mixed_types():
+    """ Test handling of mixed data types """
+    batch = {
+        'tensor_data': torch.tensor([1, 2, 3]),
+        'string_data': 'not_a_tensor',
+        'nested': {
+            'numbers': torch.tensor([4, 5, 6]),
+            'text': 'still_not_a_tensor'
+        }
+    }
+    device = torch.device('cpu')
+    device_batch = copy_batch_to_device(batch, device)
+    
+    assert device_batch['tensor_data'].device == device
+    assert isinstance(device_batch['string_data'], str)
+    assert device_batch['nested']['numbers'].device == device
+    assert isinstance(device_batch['nested']['text'], str)
+
+
+def test_copy_batch_to_device_different_dtypes():
+    """ Test transfer of tensors with different dtypes """
+    batch = {
+        'float_data': torch.tensor([1.0, 2.0, 3.0], dtype=torch.float32),
+        'int_data': torch.tensor([1, 2, 3], dtype=torch.int64),
+        'bool_data': torch.tensor([True, False, True], dtype=torch.bool)
+    }
+    device = torch.device('cpu')
+    device_batch = copy_batch_to_device(batch, device)
+    
+    assert device_batch['float_data'].device == device
+    assert device_batch['float_data'].dtype == torch.float32
+    assert device_batch['int_data'].device == device
+    assert device_batch['int_data'].dtype == torch.int64
+    assert device_batch['bool_data'].device == device
+    assert device_batch['bool_data'].dtype == torch.bool
+
+
+def test_copy_batch_to_device_multidimensional():
+    """ Test transfer of multidimensional tensors """
+    batch = {
+        'matrix': torch.tensor([[1, 2], [3, 4]]),
+        'tensor': torch.tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    }
+    device = torch.device('cpu')
+    device_batch = copy_batch_to_device(batch, device)
+    
+    assert device_batch['matrix'].device == device
+    assert device_batch['matrix'].shape == (2, 2)
+    assert device_batch['tensor'].device == device
+    assert device_batch['tensor'].shape == (2, 2, 2)
+    assert torch.equal(device_batch['matrix'], torch.tensor([[1, 2], [3, 4]]))
+
+
+def test_copy_batch_to_device_empty_dict():
+    """ Test handling of empty dictionary """
+    batch = {}
+    device = torch.device('cpu')
+    device_batch = copy_batch_to_device(batch, device)
+    
+    assert device_batch == {}
+
+
+def test_copy_batch_to_device_preserves_structure():
+    """ Test that the function preserves the original dictionary structure """
+    batch = {
+        'level1': {
+            'level2': {
+                'tensor': torch.tensor([1, 2, 3]),
+                'string': 'text'
+            },
+            'other_tensor': torch.tensor([4, 5, 6])
+        },
+        'top_level_tensor': torch.tensor([7, 8, 9])
+    }
+    device = torch.device('cpu')
+    device_batch = copy_batch_to_device(batch, device)
+    
+    assert isinstance(device_batch['level1'], dict)
+    assert isinstance(device_batch['level1']['level2'], dict)
+    assert device_batch['level1']['level2']['tensor'].device == device
+    assert isinstance(device_batch['level1']['level2']['string'], str)
+    assert device_batch['level1']['other_tensor'].device == device
+    assert device_batch['top_level_tensor'].device == device
+
