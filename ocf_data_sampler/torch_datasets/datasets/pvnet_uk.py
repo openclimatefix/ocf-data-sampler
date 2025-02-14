@@ -31,7 +31,11 @@ from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     merge_dicts,
     fill_nans_in_arrays,
 )
-from ocf_data_sampler.torch_datasets.utils.validate_channels import validate_channels
+from ocf_data_sampler.torch_datasets.utils.validate_channels import (
+    validate_channels,
+    validate_nwp_channels,
+    validate_satellite_channels,
+)
 
 
 xr.set_options(keep_attrs=True)
@@ -166,36 +170,6 @@ def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
     return locations
 
 
-def validate_channels_from_config(config: Configuration) -> None:
-    """Validate that channels in config have corresponding normalisation constants.
-    
-    Args:
-        config: Configuration object containing NWP and satellite channel information
-        
-    Raises:
-        ValueError: If there's a mismatch between configured channels and normalisation constants
-    """
-    # Validate NWP channels if NWP is configured
-    if hasattr(config.input_data, "nwp"):
-        for nwp_key, nwp_config in config.input_data.nwp.items():
-            provider = nwp_config.provider
-            validate_channels(
-                data_channels=nwp_config.channels,
-                means_channels=NWP_MEANS[provider].channel.values,
-                stds_channels=NWP_STDS[provider].channel.values,
-                source_name=provider
-            )
-
-    # Validate satellite channels if satellite is configured
-    if hasattr(config.input_data, "satellite"):
-        validate_channels(
-            data_channels=config.input_data.satellite.channels,
-            means_channels=RSS_MEAN.channel.values,
-            stds_channels=RSS_STD.channel.values,
-            source_name="satellite"
-        )
-
-
 class PVNetUKRegionalDataset(Dataset):
     def __init__(
         self, 
@@ -216,7 +190,8 @@ class PVNetUKRegionalDataset(Dataset):
         config = load_yaml_configuration(config_filename)
 
         # Validate channels for NWP and satellite data
-        validate_channels_from_config(config)
+        validate_nwp_channels(config)
+        validate_satellite_channels(config)
 
         datasets_dict = get_dataset_dict(config.input_data)
     
@@ -327,7 +302,8 @@ class PVNetUKConcurrentDataset(Dataset):
         config = load_yaml_configuration(config_filename)
 
         # Validate channels for NWP and satellite data
-        validate_channels_from_config(config)
+        validate_nwp_channels(config)
+        validate_satellite_channels(config)
 
         datasets_dict = get_dataset_dict(config.input_data)
         

@@ -1,5 +1,9 @@
 import xarray as xr
 
+from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
+
+
 def validate_channels(
     data_channels: list,
     means_channels: list,
@@ -37,4 +41,42 @@ def validate_channels(
         raise ValueError(
             f"The following channels for {source_name} are missing in normalisation stds: "
             f"{missing_in_stds}"
+        )
+
+
+def validate_nwp_channels(config: Configuration) -> None:
+    """Validate that NWP channels in config have corresponding normalisation constants.
+    
+    Args:
+        config: Configuration object containing NWP channel information
+        
+    Raises:
+        ValueError: If there's a mismatch between configured NWP channels and normalisation constants
+    """
+    if hasattr(config.input_data, "nwp"):
+        for nwp_key, nwp_config in config.input_data.nwp.items():
+            provider = nwp_config.provider
+            validate_channels(
+                data_channels=nwp_config.channels,
+                means_channels=NWP_MEANS[provider].channel.values,
+                stds_channels=NWP_STDS[provider].channel.values,
+                source_name=provider
+            )
+
+
+def validate_satellite_channels(config: Configuration) -> None:
+    """Validate that satellite channels in config have corresponding normalisation constants.
+    
+    Args:
+        config: Configuration object containing satellite channel information
+        
+    Raises:
+        ValueError: If there's a mismatch between configured satellite channels and normalisation constants
+    """
+    if hasattr(config.input_data, "satellite"):
+        validate_channels(
+            data_channels=config.input_data.satellite.channels,
+            means_channels=RSS_MEAN.channel.values,
+            stds_channels=RSS_STD.channel.values,
+            source_name="satellite"
         )

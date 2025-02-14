@@ -20,7 +20,10 @@ from ocf_data_sampler.select import (
 from ocf_data_sampler.utils import minutes
 from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import merge_dicts, fill_nans_in_arrays
-from ocf_data_sampler.torch_datasets.utils.validate_channels import validate_channels
+from ocf_data_sampler.torch_datasets.utils.validate_channels import (
+    validate_channels,
+    validate_nwp_channels,
+)
 from ocf_data_sampler.numpy_sample import (
     convert_site_to_numpy_sample, 
     convert_satellite_to_numpy_sample, 
@@ -52,16 +55,8 @@ class SitesDataset(Dataset):
 
         config: Configuration = load_yaml_configuration(config_filename)
 
-        # Validate NWP channels if NWP is configured
-        if hasattr(config.input_data, "nwp"):
-            for nwp_key, nwp_config in config.input_data.nwp.items():
-                provider = nwp_config.provider
-                validate_channels(
-                    data_channels=nwp_config.channels,
-                    means_channels=NWP_MEANS[provider].channel.values,
-                    stds_channels=NWP_STDS[provider].channel.values,
-                    source_name=provider
-                )
+        # Validate NWP channels 
+        validate_nwp_channels(config)
 
         datasets_dict = get_dataset_dict(config.input_data)
 
