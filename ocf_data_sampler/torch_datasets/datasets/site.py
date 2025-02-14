@@ -1,4 +1,5 @@
 """Torch dataset for sites"""
+
 import logging
 import numpy as np
 import pandas as pd
@@ -30,7 +31,9 @@ from ocf_data_sampler.numpy_sample import (
 from ocf_data_sampler.numpy_sample import NWPSampleKey
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS
 
+
 xr.set_options(keep_attrs=True)
+
 
 class SitesDataset(Dataset):
     def __init__(
@@ -49,6 +52,17 @@ class SitesDataset(Dataset):
 
         config: Configuration = load_yaml_configuration(config_filename)
         datasets_dict = get_dataset_dict(config.input_data)
+
+        # Validate channels for NWP data
+        if "nwp" in datasets_dict:
+            for nwp_key, da_nwp in datasets_dict["nwp"].items():
+                provider = config.input_data.nwp[nwp_key].provider
+                validate_channels(
+                    data_channels=set(da_nwp.channel.values),
+                    means_channels=set(NWP_MEANS[provider].channel.values),
+                    stds_channels=set(NWP_STDS[provider].channel.values),
+                    source_name=provider
+                )
 
         # Assign config and input data to self
         self.datasets_dict = datasets_dict
@@ -223,14 +237,6 @@ class SitesDataset(Dataset):
         if "nwp" in dataset_dict:
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
                 provider = self.config.input_data.nwp[nwp_key].provider
-                
-                # Validate channels
-                validate_channels(
-                    data_channels=set(da_nwp.channel.values),
-                    means_channels=set(NWP_MEANS[provider].channel.values),
-                    stds_channels=set(NWP_STDS[provider].channel.values),
-                    source_name=provider
-                )
                 
                 # Standardise
                 da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
