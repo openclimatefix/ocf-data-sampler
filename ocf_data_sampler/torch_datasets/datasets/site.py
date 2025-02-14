@@ -51,18 +51,19 @@ class SitesDataset(Dataset):
         """
 
         config: Configuration = load_yaml_configuration(config_filename)
-        datasets_dict = get_dataset_dict(config.input_data)
 
-        # Validate channels for NWP data
-        if "nwp" in datasets_dict:
-            for nwp_key, da_nwp in datasets_dict["nwp"].items():
-                provider = config.input_data.nwp[nwp_key].provider
+        # Validate NWP channels if NWP is configured
+        if hasattr(config.input_data, "nwp"):
+            for nwp_key, nwp_config in config.input_data.nwp.items():
+                provider = nwp_config.provider
                 validate_channels(
-                    data_channels=da_nwp.channel.values,
+                    data_channels=nwp_config.channels,
                     means_channels=NWP_MEANS[provider].channel.values,
                     stds_channels=NWP_STDS[provider].channel.values,
                     source_name=provider
                 )
+
+        datasets_dict = get_dataset_dict(config.input_data)
 
         # Assign config and input data to self
         self.datasets_dict = datasets_dict

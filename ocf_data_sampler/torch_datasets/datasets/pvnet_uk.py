@@ -166,30 +166,30 @@ def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
     return locations
 
 
-def validate_dataset_channels(datasets_dict: dict, config: Configuration) -> None:
-    """Validate channels for NWP and satellite data in the dataset.
+def validate_channels_from_config(config: Configuration) -> None:
+    """Validate that channels in config have corresponding normalisation constants.
     
     Args:
-        datasets_dict: Dictionary containing the datasets to validate
-        config: Configuration object containing provider information
+        config: Configuration object containing NWP and satellite channel information
         
     Raises:
-        ValueError: If there's a mismatch between data channels and normalisation constants
+        ValueError: If there's a mismatch between configured channels and normalisation constants
     """
-    if "nwp" in datasets_dict:
-        for nwp_key, da_nwp in datasets_dict["nwp"].items():
-            provider = config.input_data.nwp[nwp_key].provider
+    # Validate NWP channels if NWP is configured
+    if hasattr(config.input_data, "nwp"):
+        for nwp_key, nwp_config in config.input_data.nwp.items():
+            provider = nwp_config.provider
             validate_channels(
-                data_channels=da_nwp.channel.values,
+                data_channels=nwp_config.channels,
                 means_channels=NWP_MEANS[provider].channel.values,
                 stds_channels=NWP_STDS[provider].channel.values,
                 source_name=provider
             )
 
-    if "sat" in datasets_dict:
-        da_sat = datasets_dict["sat"]
+    # Validate satellite channels if satellite is configured
+    if hasattr(config.input_data, "satellite"):
         validate_channels(
-            data_channels=da_sat.channel.values,
+            data_channels=config.input_data.satellite.channels,
             means_channels=RSS_MEAN.channel.values,
             stds_channels=RSS_STD.channel.values,
             source_name="satellite"
@@ -214,10 +214,11 @@ class PVNetUKRegionalDataset(Dataset):
         """
         
         config = load_yaml_configuration(config_filename)
-        datasets_dict = get_dataset_dict(config.input_data)
 
         # Validate channels for NWP and satellite data
-        validate_dataset_channels(datasets_dict, config)
+        validate_channels_from_config(config)
+
+        datasets_dict = get_dataset_dict(config.input_data)
     
         # Get t0 times where all input data is available
         valid_t0_times = find_valid_t0_times(datasets_dict, config)
@@ -324,10 +325,11 @@ class PVNetUKConcurrentDataset(Dataset):
         """
         
         config = load_yaml_configuration(config_filename)
-        datasets_dict = get_dataset_dict(config.input_data)
 
         # Validate channels for NWP and satellite data
-        validate_dataset_channels(datasets_dict, config)
+        validate_channels_from_config(config)
+
+        datasets_dict = get_dataset_dict(config.input_data)
         
         # Get t0 times where all input data is available
         valid_t0_times = find_valid_t0_times(datasets_dict, config)
