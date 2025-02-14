@@ -4,7 +4,7 @@
 Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// to read from alternative filesystems. 
 
 """
-
+from pydantic import BaseModel,Field, model_validator, field_validator, ValidationInfo, RootModel
 import logging
 from typing import Dict, List, Optional
 from typing_extensions import Self
