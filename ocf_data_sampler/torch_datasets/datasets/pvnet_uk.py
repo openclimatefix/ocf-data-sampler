@@ -33,7 +33,9 @@ from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
 )
 from ocf_data_sampler.torch_datasets.utils.validate_channels import validate_channels
 
+
 xr.set_options(keep_attrs=True)
+
 
 def process_and_combine_datasets(
     dataset_dict: dict,
@@ -52,14 +54,6 @@ def process_and_combine_datasets(
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
             provider = config.input_data.nwp[nwp_key].provider
 
-            # Validate channels
-            validate_channels(
-                data_channels=set(da_nwp.channel.values),
-                means_channels=set(NWP_MEANS[provider].channel.values),
-                stds_channels=set(NWP_STDS[provider].channel.values),
-                source_name=provider
-            )
-
             # Standardise and convert to NumpyBatch
             da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
@@ -67,17 +61,8 @@ def process_and_combine_datasets(
         # Combine the NWPs into NumpyBatch
         numpy_modalities.append({NWPSampleKey.nwp: nwp_numpy_modalities})
 
-
     if "sat" in dataset_dict:
         da_sat = dataset_dict["sat"]
-
-        # Validate channels
-        validate_channels(
-            data_channels=set(da_sat.channel.values),
-            means_channels=set(RSS_MEAN.channel.values),
-            stds_channels=set(RSS_STD.channel.values),
-            source_name="satellite"
-        )
 
         # Standardise and convert to NumpyBatch
         da_sat = (da_sat - RSS_MEAN) / RSS_STD
@@ -181,6 +166,36 @@ def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
     return locations
 
 
+def validate_dataset_channels(datasets_dict: dict, config: Configuration) -> None:
+    """Validate channels for NWP and satellite data in the dataset.
+    
+    Args:
+        datasets_dict: Dictionary containing the datasets to validate
+        config: Configuration object containing provider information
+        
+    Raises:
+        ValueError: If there's a mismatch between data channels and normalisation constants
+    """
+    if "nwp" in datasets_dict:
+        for nwp_key, da_nwp in datasets_dict["nwp"].items():
+            provider = config.input_data.nwp[nwp_key].provider
+            validate_channels(
+                data_channels=set(da_nwp.channel.values),
+                means_channels=set(NWP_MEANS[provider].channel.values),
+                stds_channels=set(NWP_STDS[provider].channel.values),
+                source_name=provider
+            )
+
+    if "sat" in datasets_dict:
+        da_sat = datasets_dict["sat"]
+        validate_channels(
+            data_channels=set(da_sat.channel.values),
+            means_channels=set(RSS_MEAN.channel.values),
+            stds_channels=set(RSS_STD.channel.values),
+            source_name="satellite"
+        )
+
+
 class PVNetUKRegionalDataset(Dataset):
     def __init__(
         self, 
@@ -199,9 +214,11 @@ class PVNetUKRegionalDataset(Dataset):
         """
         
         config = load_yaml_configuration(config_filename)
-        
         datasets_dict = get_dataset_dict(config.input_data)
-        
+
+        # Validate channels for NWP and satellite data
+        validate_dataset_channels(datasets_dict, config)
+    
         # Get t0 times where all input data is available
         valid_t0_times = find_valid_t0_times(datasets_dict, config)
 
@@ -307,8 +324,10 @@ class PVNetUKConcurrentDataset(Dataset):
         """
         
         config = load_yaml_configuration(config_filename)
-        
         datasets_dict = get_dataset_dict(config.input_data)
+
+        # Validate channels for NWP and satellite data
+        validate_dataset_channels(datasets_dict, config)
         
         # Get t0 times where all input data is available
         valid_t0_times = find_valid_t0_times(datasets_dict, config)
