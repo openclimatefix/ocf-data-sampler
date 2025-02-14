@@ -58,9 +58,9 @@ class SitesDataset(Dataset):
             for nwp_key, da_nwp in datasets_dict["nwp"].items():
                 provider = config.input_data.nwp[nwp_key].provider
                 validate_channels(
-                    data_channels=set(da_nwp.channel.values),
-                    means_channels=set(NWP_MEANS[provider].channel.values),
-                    stds_channels=set(NWP_STDS[provider].channel.values),
+                    data_channels=da_nwp.channel.values,
+                    means_channels=NWP_MEANS[provider].channel.values,
+                    stds_channels=NWP_STDS[provider].channel.values,
                     source_name=provider
                 )
 
