@@ -7,39 +7,28 @@ Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// to read
 
 from typing import Dict, List, Optional
 from typing_extensions import Self
-
-from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo, model_validator
-
 from ocf_data_sampler.constants import NWP_PROVIDERS
 
+from pydantic import BaseModel, Field, field_validator, model_validator, ValidationInfo,RootModel
 
 class Base(BaseModel):
     """Pydantic Base model where no extras can be added"""
 
     class Config:
-        """config class"""
+        """Config class"""
 
         extra = "forbid"  # forbid use of extra kwargs
 
 
-class General(Base):
-    """General pydantic model"""
-
-    name: str = Field("example", description="The name of this configuration file")
-    description: str = Field(
-        "example configuration", description="Description of this configuration file"
-    )
-
-
 class TimeWindowMixin(Base):
-    """Mixin class, to add interval start, end and resolution minutes"""
+    """Mixin class, to add interval start, end, and resolution minutes"""
 
     time_resolution_minutes: int = Field(
         ...,
         gt=0,
         description="The temporal resolution of the data in minutes",
     )
-    
+
     interval_start_minutes: int = Field(
         ...,
         description="Data interval starts at `t0 + interval_start_minutes`",
@@ -49,12 +38,23 @@ class TimeWindowMixin(Base):
         ...,
         description="Data interval ends at `t0 + interval_end_minutes`",
     )
-    
-    @model_validator(mode='after')
+
+    @field_validator("interval_start_minutes", "interval_end_minutes")
+    def validate_intervals(cls, v: int, info: ValidationInfo) -> int:
+        """Ensure interval values are divisible by time resolution"""
+        if v % info.data["time_resolution_minutes"] != 0:
+            raise ValueError(f"{info.field_name} must be divisible by time_resolution_minutes")
+        return v
+
+    @model_validator(mode="after")
     def check_interval_range(cls, values):
+        """Ensure interval_start_minutes is <= interval_end_minutes"""
         if values.interval_start_minutes > values.interval_end_minutes:
-            raise ValueError('interval_start_minutes must be <= interval_end_minutes')
+            raise ValueError("interval_start_minutes must be <= interval_end_minutes")
         return values
+
+
+# Other classes remain unchanged...
 
     @field_validator("interval_start_minutes")
     def interval_start_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
@@ -227,6 +227,14 @@ class InputData(Base):
     nwp: Optional[MultiNWP] = None
     gsp: Optional[GSP] = None
     site: Optional[Site] = None
+
+class General(Base):
+    """General pydantic model"""
+
+    name: str = Field("example", description="The name of this configuration file")
+    description: str = Field(
+        "example configuration", description="Description of this configuration file"
+    )
 
 
 class Configuration(Base):
