@@ -74,7 +74,6 @@ def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
                 batch[k] = torch.as_tensor(v)
     return batch
 
-import torch
 
 def copy_batch_to_device(batch: dict, device: torch.device) -> dict:
     """
