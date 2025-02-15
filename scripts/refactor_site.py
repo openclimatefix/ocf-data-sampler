@@ -1,5 +1,5 @@
 """ Helper functions for refactoring legacy site data """
-
+import xarray as xr
 
 def legacy_format(data_ds, metadata_df):
     """This formats old legacy data to the new format.
