@@ -9,7 +9,8 @@ import numpy as np
 from pathlib import Path
 from ocf_data_sampler.sample.base import (
     SampleBase,
-    batch_to_tensor
+    batch_to_tensor,
+    copy_batch_to_device
 )
 
 class TestSample(SampleBase):
@@ -145,3 +146,19 @@ def test_batch_to_tensor_multidimensional():
     assert tensor_batch['matrix'].shape == (2, 2)
     assert tensor_batch['tensor'].shape == (2, 2, 2)
     assert torch.equal(tensor_batch['matrix'], torch.tensor([[1, 2], [3, 4]]))
+
+
+def test_copy_batch_to_device():
+    """ Test moving tensors to a different device """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    batch = {
+        'tensor_data': torch.tensor([1, 2, 3]),
+        'nested': {
+            'matrix': torch.tensor([[1, 2], [3, 4]])
+        },
+        'non_tensor': 'unchanged'
+    }
+    moved_batch = copy_batch_to_device(batch, device)
+    assert moved_batch['tensor_data'].device == device
+    assert moved_batch['nested']['matrix'].device == device
+    assert moved_batch['non_tensor'] == 'unchanged'  # Non-tensors should remain unchanged
