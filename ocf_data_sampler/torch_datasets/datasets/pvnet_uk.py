@@ -186,9 +186,8 @@ class PVNetUKRegionalDataset(Dataset):
             gsp_ids: List of GSP IDs to create samples for. Defaults to all
         """
         
-        config = load_yaml_configuration(config_filename)
-
-        # Validate channels for NWP and satellite data
+        # config = load_yaml_configuration(config_filename)
+        config: Configuration = load_yaml_configuration(config_filename)
         validate_nwp_channels(config)
         validate_satellite_channels(config)
 

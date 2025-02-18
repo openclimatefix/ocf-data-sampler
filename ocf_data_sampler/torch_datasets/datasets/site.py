@@ -55,8 +55,6 @@ class SitesDataset(Dataset):
         """
 
         config: Configuration = load_yaml_configuration(config_filename)
-
-        # Validate channels for NWP and satellite data
         validate_nwp_channels(config)
         validate_satellite_channels(config)
 
@@ -242,7 +240,7 @@ class SitesDataset(Dataset):
             
         if "sat" in dataset_dict:
             da_sat = dataset_dict["sat"]
-            
+
             # Standardise
             da_sat = (da_sat - RSS_MEAN) / RSS_STD
             data_arrays.append(("satellite", da_sat))
