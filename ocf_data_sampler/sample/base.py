@@ -73,3 +73,26 @@ def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
             elif np.issubdtype(v.dtype, np.number):
                 batch[k] = torch.as_tensor(v)
     return batch
+
+
+def copy_batch_to_device(batch: dict, device: torch.device) -> dict:
+    """
+    Moves tensor leaves in a nested dict to a new device.
+
+    Args:
+        batch: Nested dict with tensors to move.
+        device: Device to move tensors to.
+
+    Returns:
+        A dict with tensors moved to the new device.
+    """
+    batch_copy = {}
+
+    for k, v in batch.items():
+        if isinstance(v, dict):
+            batch_copy[k] = copy_batch_to_device(v, device)  
+        elif isinstance(v, torch.Tensor):
+            batch_copy[k] = v.to(device)
+        else:
+            batch_copy[k] = v
+    return batch_copy
