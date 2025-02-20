@@ -20,7 +20,7 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
 
     assert metadata_df.index.is_unique
 
-    # Ensure metadata aligns with the site_id dimension in data_ds
+    # Ensure metadata aligns with the site_id dimension in generation_ds
     metadata_df = metadata_df.reindex(generation_ds.site_id.values)
 
     # Assign coordinates to the Dataset using the aligned metadata

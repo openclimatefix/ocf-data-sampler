@@ -49,24 +49,27 @@ class TimeWindowMixin(Base):
         ...,
         description="Data interval ends at `t0 + interval_end_minutes`",
     )
-    
+
     @model_validator(mode='after')
-    def check_interval_range(cls, values):
-        if values.interval_start_minutes > values.interval_end_minutes:
-            raise ValueError('interval_start_minutes must be <= interval_end_minutes')
+    def validate_intervals(cls, values):
+        start = values.interval_start_minutes
+        end = values.interval_end_minutes
+        resolution = values.time_resolution_minutes
+        if start > end:
+            raise ValueError(
+                f"interval_start_minutes ({start}) must be <= interval_end_minutes ({end})"
+            )
+        if (start % resolution != 0):
+            raise ValueError(
+                f"interval_start_minutes ({start}) must be divisible "
+                f"by time_resolution_minutes ({resolution})"
+            )
+        if (end % resolution != 0):
+            raise ValueError(
+                f"interval_end_minutes ({end}) must be divisible "
+                f"by time_resolution_minutes ({resolution})"
+            )
         return values
-
-    @field_validator("interval_start_minutes")
-    def interval_start_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
-        if v % info.data["time_resolution_minutes"] != 0:
-            raise ValueError("interval_start_minutes must be divisible by time_resolution_minutes")
-        return v
-
-    @field_validator("interval_end_minutes")
-    def interval_end_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
-        if v % info.data["time_resolution_minutes"] != 0:
-            raise ValueError("interval_end_minutes must be divisible by time_resolution_minutes")
-        return v
 
 
 class DropoutMixin(Base):

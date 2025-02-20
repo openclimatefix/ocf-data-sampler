@@ -1,23 +1,15 @@
-"""
-Base class definition - abstract
-Handling of both flat and nested structures - consideration for NWP
-"""
+""" Base class for handling flat/nested data structures with NWP consideration """
 
-import logging
 import numpy as np
 import torch
-import xarray as xr
 
-from pathlib import Path
-from typing import Any, Dict, Optional, Union, TypeAlias
+from typing import TypeAlias
 from abc import ABC, abstractmethod
 
 
-logger = logging.getLogger(__name__)
-
-NumpySample: TypeAlias = Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
-NumpyBatch: TypeAlias = Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
-TensorBatch: TypeAlias = Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
+NumpySample: TypeAlias = dict[str, np.ndarray | dict[str, np.ndarray]]
+NumpyBatch: TypeAlias = dict[str, np.ndarray | dict[str, np.ndarray]]
+TensorBatch: TypeAlias = dict[str, torch.Tensor | dict[str, torch.Tensor]]
 
 
 class SampleBase(ABC):
@@ -26,43 +18,33 @@ class SampleBase(ABC):
     Provides core data storage functionality
     """
 
-    def __init__(self, data: Optional[Union[NumpySample, xr.Dataset]] = None):
-        """ Initialise data container """
-        logger.debug("Initialising SampleBase instance")
-        self._data = data
-
     @abstractmethod
     def to_numpy(self) -> NumpySample:
-        """ Convert data to a numpy array representation """
+        """Convert sample data to numpy format"""
         raise NotImplementedError
 
     @abstractmethod
-    def plot(self, **kwargs) -> None:
-        """ Abstract method for plotting """
+    def plot(self) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def save(self, path: Union[str, Path]) -> None:
-        """ Abstract method for saving sample data """
+    def save(self, path: str) -> None:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def load(cls, path: Union[str, Path]) -> 'SampleBase':
-        """ Abstract class method for loading sample data """
+    def load(cls, path: str) -> 'SampleBase':
         raise NotImplementedError
 
 
 def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
     """
-    Moves ndarrays in a nested dict to torch tensors
+    Recursively converts numpy arrays in nested dict to torch tensors
     Args:
         batch: NumpyBatch with data in numpy arrays
     Returns:
         TensorBatch with data in torch tensors
     """
-    if not batch:
-        raise ValueError("Cannot convert empty batch to tensors")
 
     for k, v in batch.items():
         if isinstance(v, dict):
@@ -75,16 +57,15 @@ def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
     return batch
 
 
-def copy_batch_to_device(batch: dict, device: torch.device) -> dict:
-    """
-    Moves tensor leaves in a nested dict to a new device.
+def copy_batch_to_device(batch: TensorBatch, device: torch.device) -> TensorBatch:
+    """Recursively copies tensors in nested dict to specified device
 
     Args:
-        batch: Nested dict with tensors to move.
-        device: Device to move tensors to.
-
+        batch: Nested dict with tensors to move
+        device: Device to move tensors to
+    
     Returns:
-        A dict with tensors moved to the new device.
+        A dict with tensors moved to the new device
     """
     batch_copy = {}
 
