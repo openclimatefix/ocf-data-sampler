@@ -7,14 +7,15 @@ from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configura
 from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
     PVNetUKRegionalDataset,
     PVNetUKConcurrentDataset,
-    process_and_combine_datasets, 
+    process_and_combine_datasets,
     compute,
 )
 from ocf_data_sampler.select.location import Location
 
+
 def test_process_and_combine_datasets(pvnet_config_filename):
 
-    # Load in config for function and define location 
+    # Load in config for function and define location
     config = load_yaml_configuration(pvnet_config_filename)
     t0 = pd.Timestamp("2024-01-01 00:00")
     location = Location(coordinate_system="osgb", x=1234, y=5678, id=1)
@@ -25,9 +26,9 @@ def test_process_and_combine_datasets(pvnet_config_filename):
         coords={
             "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
             "channel": ["t", "dswrf"],
-            "step": ("time_utc", pd.timedelta_range(start='0h', periods=4, freq='h')),
-            "init_time_utc": pd.Timestamp("2024-01-01 00:00")
-        }
+            "step": ("time_utc", pd.timedelta_range(start="0h", periods=4, freq="h")),
+            "init_time_utc": pd.Timestamp("2024-01-01 00:00"),
+        },
     )
 
     sat_data = xr.DataArray(
@@ -37,15 +38,12 @@ def test_process_and_combine_datasets(pvnet_config_filename):
             "time_utc": pd.date_range("2024-01-01 00:00", periods=7, freq="5min"),
             "channel": ["HRV"],
             "x_geostationary": (["y", "x"], np.array([[1, 2], [1, 2]])),
-            "y_geostationary": (["y", "x"], np.array([[1, 1], [2, 2]]))
-        }
+            "y_geostationary": (["y", "x"], np.array([[1, 1], [2, 2]])),
+        },
     )
 
     # Combine as dict
-    dataset_dict = {
-        "nwp": {"ukv": nwp_data},
-        "sat": sat_data
-    }
+    dataset_dict = {"nwp": {"ukv": nwp_data}, "sat": sat_data}
 
     # Call relevant function
     sample = process_and_combine_datasets(dataset_dict, config, t0, location)
@@ -63,12 +61,7 @@ def test_compute():
     da_dask = xr.DataArray(dask.array.random.random((5, 5)))
 
     # Create a nested dictionary with dask array
-    lazy_data_dict = {
-        "array1": da_dask,
-        "nested": {
-            "array2": da_dask
-        }
-    }
+    lazy_data_dict = {"array1": da_dask, "nested": {"array2": da_dask}}
 
     computed_data_dict = compute(lazy_data_dict)
 
@@ -76,16 +69,16 @@ def test_compute():
     assert isinstance(computed_data_dict["array1"].data, np.ndarray)
     assert isinstance(computed_data_dict["nested"]["array2"].data, np.ndarray)
 
-    
+
 def test_pvnet_uk_regional_dataset(pvnet_config_filename):
 
     # Create dataset object
     dataset = PVNetUKRegionalDataset(pvnet_config_filename)
 
-    assert len(dataset.locations) == 317 # Number of regional GSPs
+    assert len(dataset.locations) == 317  # Number of regional GSPs
     # NB. I have not checked the value (39 below) is in fact correct
     assert len(dataset.valid_t0_times) == 39
-    assert len(dataset) == 317*39
+    assert len(dataset) == 317 * 39
 
     # Generate a sample
     sample = dataset[0]
@@ -93,11 +86,14 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
     assert isinstance(sample, dict)
 
     for key in [
-        "nwp", "satellite_actual", "gsp",
-        "gsp_solar_azimuth", "gsp_solar_elevation",
+        "nwp",
+        "satellite_actual",
+        "gsp",
+        "gsp_solar_azimuth",
+        "gsp_solar_elevation",
     ]:
         assert key in sample
-    
+
     for nwp_source in ["ukv"]:
         assert nwp_source in sample["nwp"]
 
@@ -117,26 +113,26 @@ def test_pvnet_no_gsp(tmp_path, pvnet_config_filename):
 
     # Create new config without GSP inputs
     config = load_yaml_configuration(pvnet_config_filename)
-    config.input_data.gsp.zarr_path = ''
+    config.input_data.gsp.zarr_path = ""
     new_config_path = tmp_path / "pvnet_config_no_gsp.yaml"
     save_yaml_configuration(config, new_config_path)
-    
+
     # Create dataset object
     dataset = PVNetUKRegionalDataset(new_config_path)
 
     # Generate a sample
     _ = dataset[0]
 
-    
+
 def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
 
     # Create dataset object using a limited set of GSPs for test
-    gsp_ids = [1,2,3]
+    gsp_ids = [1, 2, 3]
     num_gsps = len(gsp_ids)
-    
+
     dataset = PVNetUKConcurrentDataset(pvnet_config_filename, gsp_ids=gsp_ids)
 
-    assert len(dataset.locations) == num_gsps # Number of regional GSPs
+    assert len(dataset.locations) == num_gsps  # Number of regional GSPs
     # NB. I have not checked the value (39 below) is in fact correct
     assert len(dataset.valid_t0_times) == 39
     assert len(dataset) == 39
@@ -147,11 +143,14 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     assert isinstance(sample, dict)
 
     for key in [
-        "nwp", "satellite_actual", "gsp",
-        "gsp_solar_azimuth", "gsp_solar_elevation",
+        "nwp",
+        "satellite_actual",
+        "gsp",
+        "gsp_solar_azimuth",
+        "gsp_solar_elevation",
     ]:
         assert key in sample
-    
+
     for nwp_source in ["ukv"]:
         assert nwp_source in sample["nwp"]
 
@@ -161,7 +160,16 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
     assert sample["nwp"]["ukv"]["nwp"].shape == (num_gsps, 4, 1, 2, 2)
     # 3 hours of 30 minute data (inclusive)
-    assert sample["gsp"].shape == (num_gsps, 7,)
+    assert sample["gsp"].shape == (
+        num_gsps,
+        7,
+    )
     # Solar angles have same shape as GSP data
-    assert sample["gsp_solar_azimuth"].shape == (num_gsps, 7,)
-    assert sample["gsp_solar_elevation"].shape == (num_gsps, 7,)
+    assert sample["gsp_solar_azimuth"].shape == (
+        num_gsps,
+        7,
+    )
+    assert sample["gsp_solar_elevation"].shape == (
+        num_gsps,
+        7,
+    )

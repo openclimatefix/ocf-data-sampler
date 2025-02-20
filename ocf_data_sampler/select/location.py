@@ -5,25 +5,29 @@ from typing import Optional
 import numpy as np
 from pydantic import BaseModel, Field, model_validator
 
+allowed_coordinate_systems = ["osgb", "lon_lat", "geostationary", "idx"]
 
-allowed_coordinate_systems =["osgb", "lon_lat", "geostationary", "idx"]
 
 class Location(BaseModel):
     """Represent a spatial location."""
 
-    coordinate_system: Optional[str] = "osgb"  # ["osgb", "lon_lat", "geostationary", "idx"]
+    coordinate_system: Optional[str] = (
+        "osgb"  # ["osgb", "lon_lat", "geostationary", "idx"]
+    )
     x: float
     y: float
     id: Optional[int] = Field(None)
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_coordinate_system(self):
         """Validate 'coordinate_system'"""
         if self.coordinate_system not in allowed_coordinate_systems:
-            raise ValueError(f"coordinate_system = {self.coordinate_system} is not in {allowed_coordinate_systems}")
+            raise ValueError(
+                f"coordinate_system = {self.coordinate_system} is not in {allowed_coordinate_systems}"
+            )
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_x(self):
         """Validate 'x'"""
         min_x: float
@@ -39,10 +43,12 @@ class Location(BaseModel):
         if co == "idx":
             min_x, max_x = 0, np.inf
         if self.x < min_x or self.x > max_x:
-            raise ValueError(f"x = {self.x} must be within {[min_x, max_x]} for {co} coordinate system")
+            raise ValueError(
+                f"x = {self.x} must be within {[min_x, max_x]} for {co} coordinate system"
+            )
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_y(self):
         """Validate 'y'"""
         min_y: float
@@ -58,5 +64,7 @@ class Location(BaseModel):
         if co == "idx":
             min_y, max_y = 0, np.inf
         if self.y < min_y or self.y > max_y:
-            raise ValueError(f"y = {self.y} must be within {[min_y, max_y]} for {co} coordinate system")
+            raise ValueError(
+                f"y = {self.y} must be within {[min_y, max_y]} for {co} coordinate system"
+            )
         return self

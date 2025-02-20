@@ -5,7 +5,7 @@ import xarray as xr
 
 def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArray:
     """Open a site's generation data and metadata.
-    
+
     Args:
         generation_file_path: Path to the site generation netcdf data
         metadata_file_path: Path to the site csv metadata
@@ -33,5 +33,5 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     # Sanity checks
     assert np.isfinite(generation_ds.capacity_kwp.values).all()
     assert (generation_ds.capacity_kwp.values > 0).all()
-    
+
     return generation_ds.generation_kw

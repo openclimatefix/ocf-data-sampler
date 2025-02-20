@@ -5,15 +5,14 @@ import logging
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.geospatial import (
-    lon_lat_to_osgb,
     lon_lat_to_geostationary_area_coords,
+    lon_lat_to_osgb,
     osgb_to_geostationary_area_coords,
     osgb_to_lon_lat,
     spatial_coord_type,
 )
-
+from ocf_data_sampler.select.location import Location
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 def convert_coords_to_match_xarray(
-        x: float | np.ndarray, 
-        y: float | np.ndarray, 
-        from_coords: str, 
-        da: xr.DataArray
-    ):
+    x: float | np.ndarray, y: float | np.ndarray, from_coords: str, da: xr.DataArray
+):
     """Convert x and y coords to cooridnate system matching xarray data
 
     Args:
@@ -59,7 +55,8 @@ def convert_coords_to_match_xarray(
 
     return x, y
 
-# TODO: This function and _get_idx_of_pixel_closest_to_poi_geostationary() should not be separate
+
+# TODO: This function and _get_idx_of_pixel_closest_to_poi_geostationary() should not be separate
 # We should combine them, and consider making a Coord class to help with this
 def _get_idx_of_pixel_closest_to_poi(
     da: xr.DataArray,
@@ -77,7 +74,9 @@ def _get_idx_of_pixel_closest_to_poi(
     xr_coords, x_dim, y_dim = spatial_coord_type(da)
 
     if xr_coords not in ["osgb", "lon_lat"]:
-        raise NotImplementedError(f"Only 'osgb' and 'lon_lat' are supported - not '{xr_coords}'")
+        raise NotImplementedError(
+            f"Only 'osgb' and 'lon_lat' are supported - not '{xr_coords}'"
+        )
 
     # Convert location coords to match xarray data
     x, y = convert_coords_to_match_xarray(
@@ -117,19 +116,23 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
 
     _, x_dim, y_dim = spatial_coord_type(da)
 
-    if center.coordinate_system == 'osgb':
+    if center.coordinate_system == "osgb":
         x, y = osgb_to_geostationary_area_coords(x=center.x, y=center.y, xr_data=da)
-    elif center.coordinate_system == 'lon_lat':
-        x, y = lon_lat_to_geostationary_area_coords(longitude=center.x, latitude=center.y, xr_data=da)
+    elif center.coordinate_system == "lon_lat":
+        x, y = lon_lat_to_geostationary_area_coords(
+            longitude=center.x, latitude=center.y, xr_data=da
+        )
     else:
-        x,y = center.x, center.y
+        x, y = center.x, center.y
     center_geostationary = Location(x=x, y=y, coordinate_system="geostationary")
 
     # Check that the requested point lies within the data
-    assert da[x_dim].min() < x < da[x_dim].max(), \
-        f"{x} is not in the interval {da[x_dim].min().values}: {da[x_dim].max().values}"
-    assert da[y_dim].min() < y < da[y_dim].max(), \
-        f"{y} is not in the interval {da[y_dim].min().values}: {da[y_dim].max().values}"
+    assert (
+        da[x_dim].min() < x < da[x_dim].max()
+    ), f"{x} is not in the interval {da[x_dim].min().values}: {da[x_dim].max().values}"
+    assert (
+        da[y_dim].min() < y < da[y_dim].max()
+    ), f"{y} is not in the interval {da[y_dim].min().values}: {da[y_dim].max().values}"
 
     # Get the index into x and y nearest to x_center_geostationary and y_center_geostationary:
     x_index_at_center = np.searchsorted(da[x_dim].values, center_geostationary.x)
@@ -156,10 +159,10 @@ def _select_partial_spatial_slice_pixels(
 ):
     """Return spatial window of given pixel size when window partially overlaps input data"""
 
-    # We should never be padding on both sides of a window. This would mean our desired window is 
+    # We should never be padding on both sides of a window. This would mean our desired window is
     # larger than the size of the input data
-    assert left_pad_pixels==0 or right_pad_pixels==0
-    assert bottom_pad_pixels==0 or top_pad_pixels==0
+    assert left_pad_pixels == 0 or right_pad_pixels == 0
+    assert bottom_pad_pixels == 0 or top_pad_pixels == 0
 
     dx = np.median(np.diff(da[x_dim].values))
     dy = np.median(np.diff(da[y_dim].values))
@@ -216,12 +219,12 @@ def _select_partial_spatial_slice_pixels(
 
 
 def _select_spatial_slice_pixels(
-    da: xr.DataArray, 
-    center_idx: Location, 
-    width_pixels: int, 
-    height_pixels: int, 
-    x_dim: str, 
-    y_dim: str, 
+    da: xr.DataArray,
+    center_idx: Location,
+    width_pixels: int,
+    height_pixels: int,
+    x_dim: str,
+    y_dim: str,
     allow_partial_slice: bool,
 ):
     """Select a spatial slice from an xarray object
@@ -238,8 +241,8 @@ def _select_spatial_slice_pixels(
 
     assert center_idx.coordinate_system == "idx"
     # TODO: It shouldn't take much effort to allow height and width to be odd
-    assert (width_pixels % 2)==0, "Width must be an even number"
-    assert (height_pixels % 2)==0, "Height must be an even number"
+    assert (width_pixels % 2) == 0, "Width must be an even number"
+    assert (height_pixels % 2) == 0, "Height must be an even number"
 
     half_width = width_pixels // 2
     half_height = height_pixels // 2
@@ -257,17 +260,20 @@ def _select_spatial_slice_pixels(
     bottom_pad_required = bottom_idx < 0
     top_pad_required = top_idx > data_height_pixels
 
-    pad_required = left_pad_required | right_pad_required | bottom_pad_required | top_pad_required
+    pad_required = (
+        left_pad_required | right_pad_required | bottom_pad_required | top_pad_required
+    )
 
     if pad_required:
         if allow_partial_slice:
 
             left_pad_pixels = (-left_idx) if left_pad_required else 0
-            right_pad_pixels = (right_idx - data_width_pixels) if right_pad_required else 0
+            right_pad_pixels = (
+                (right_idx - data_width_pixels) if right_pad_required else 0
+            )
 
             bottom_pad_pixels = (-bottom_idx) if bottom_pad_required else 0
             top_pad_pixels = (top_idx - data_height_pixels) if top_pad_required else 0
-
 
             da = _select_partial_spatial_slice_pixels(
                 da,
@@ -340,7 +346,9 @@ def select_spatial_slice_pixels(
     xr_coords, x_dim, y_dim = spatial_coord_type(da)
 
     if xr_coords == "geostationary":
-        center_idx: Location = _get_idx_of_pixel_closest_to_poi_geostationary(da, location)
+        center_idx: Location = _get_idx_of_pixel_closest_to_poi_geostationary(
+            da, location
+        )
     else:
         center_idx: Location = _get_idx_of_pixel_closest_to_poi(da, location)
 

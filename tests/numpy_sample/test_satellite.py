@@ -1,11 +1,13 @@
-
 import numpy as np
 import pandas as pd
 import xarray as xr
 
 import pytest
 
-from ocf_data_sampler.numpy_sample import convert_satellite_to_numpy_sample, SatelliteSampleKey
+from ocf_data_sampler.numpy_sample import (
+    convert_satellite_to_numpy_sample,
+    SatelliteSampleKey,
+)
 
 
 @pytest.fixture(scope="module")
@@ -23,7 +25,7 @@ def da_sat_like():
             channel=(["channel"], channels),
             x_geostationary=(["x_geostationary"], x),
             y_geostationary=(["y_geostationary"], y),
-        )
+        ),
     )
     return da_sat
 
@@ -37,4 +39,6 @@ def test_convert_satellite_to_numpy_sample(da_sat_like):
     assert isinstance(numpy_sample, dict)
 
     # Assert the shape of the numpy sample
-    assert (numpy_sample[SatelliteSampleKey.satellite_actual] == da_sat_like.values).all()
+    assert (
+        numpy_sample[SatelliteSampleKey.satellite_actual] == da_sat_like.values
+    ).all()

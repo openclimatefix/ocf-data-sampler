@@ -1,11 +1,14 @@
 """ Loads all data sources """
+
 import xarray as xr
 
 from ocf_data_sampler.config import InputData
-from ocf_data_sampler.load import open_nwp, open_gsp, open_sat_data, open_site
+from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
 
 
-def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
+def get_dataset_dict(
+    input_config: InputData,
+) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
     """Construct dictionary of all of the input data sources
 
     Args:

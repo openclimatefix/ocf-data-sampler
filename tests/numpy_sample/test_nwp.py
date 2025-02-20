@@ -6,6 +6,7 @@ import pytest
 
 from ocf_data_sampler.numpy_sample import convert_nwp_to_numpy_sample, NWPSampleKey
 
+
 @pytest.fixture(scope="module")
 def da_nwp_like():
     """Create dummy data which looks like time-sliced NWP data"""
@@ -18,8 +19,8 @@ def da_nwp_like():
     target_times = t0 + steps
 
     channels = ["t", "dswrf"]
-    init_times = pd.to_datetime([t0]*len(steps))
-    
+    init_times = pd.to_datetime([t0] * len(steps))
+
     # Create dummy time-sliced NWP data
     da_nwp = xr.DataArray(
         np.random.normal(size=(len(target_times), len(channels), len(x), len(y))),
@@ -28,7 +29,7 @@ def da_nwp_like():
             channel=(["channel"], channels),
             x_osgb=(["x_osgb"], x),
             y_osgb=(["y_osgb"], y),
-        )
+        ),
     )
 
     # Add extra non-coordinate dimensions

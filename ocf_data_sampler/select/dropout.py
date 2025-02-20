@@ -1,17 +1,20 @@
 """ Functions for simulating dropout in time series data """
+
 import numpy as np
 import pandas as pd
 import xarray as xr
 
 
 def draw_dropout_time(
-        t0: pd.Timestamp,
-        dropout_timedeltas: list[pd.Timedelta] | pd.Timedelta | None,
-        dropout_frac: float = 0,
-    ):
+    t0: pd.Timestamp,
+    dropout_timedeltas: list[pd.Timedelta] | pd.Timedelta | None,
+    dropout_frac: float = 0,
+):
 
     if dropout_timedeltas is not None:
-        assert len(dropout_timedeltas) >= 1, "Must include list of relative dropout timedeltas"
+        assert (
+            len(dropout_timedeltas) >= 1
+        ), "Must include list of relative dropout timedeltas"
         assert all(
             [t <= pd.Timedelta("0min") for t in dropout_timedeltas]
         ), "dropout timedeltas must be negative"
@@ -28,9 +31,9 @@ def draw_dropout_time(
 
 
 def apply_dropout_time(
-        ds: xr.DataArray,
-        dropout_time: pd.Timestamp | None,
-    ):
+    ds: xr.DataArray,
+    dropout_time: pd.Timestamp | None,
+):
 
     if dropout_time is None:
         return ds

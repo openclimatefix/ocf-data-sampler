@@ -1,11 +1,12 @@
 """ECMWF provider loaders"""
 
 import xarray as xr
+
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
+    get_xr_data_array_from_xr_dataset,
     make_spatial_coords_increasing,
-    get_xr_data_array_from_xr_dataset
 )
 
 
@@ -21,7 +22,7 @@ def open_ifs(zarr_path: str | list[str]) -> xr.DataArray:
     """
 
     ds = open_zarr_paths(zarr_path)
-    
+
     # LEGACY SUPPORT - rename variable to channel if it exists
     ds = ds.rename({"init_time": "init_time_utc", "variable": "channel"})
 
@@ -30,6 +31,6 @@ def open_ifs(zarr_path: str | list[str]) -> xr.DataArray:
     ds = make_spatial_coords_increasing(ds, x_coord="longitude", y_coord="latitude")
 
     ds = ds.transpose("init_time_utc", "step", "channel", "longitude", "latitude")
-    
+
     # TODO: should we control the dtype of the DataArray?
     return get_xr_data_array_from_xr_dataset(ds)

@@ -2,6 +2,7 @@
 
 import fsspec
 from pyaml_env import parse_config
+
 from ocf_data_sampler.config import Configuration
 
 

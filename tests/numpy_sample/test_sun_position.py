@@ -3,7 +3,8 @@ import pandas as pd
 import pytest
 
 from ocf_data_sampler.numpy_sample.sun_position import (
-    calculate_azimuth_and_elevation, make_sun_position_numpy_sample
+    calculate_azimuth_and_elevation,
+    make_sun_position_numpy_sample,
 )
 
 from ocf_data_sampler.numpy_sample import GSPSampleKey
@@ -18,11 +19,11 @@ def test_calculate_azimuth_and_elevation(lat):
     # Calculate sun angles
     azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon=0, lat=lat)
 
-    assert len(azimuth)==len(datetimes)
-    assert len(elevation)==len(datetimes)
+    assert len(azimuth) == len(datetimes)
+    assert len(elevation) == len(datetimes)
 
     # elevation should be close to (90 - (23.5-lat) degrees
-    assert np.abs(elevation - (90-23.5+lat)) < 1
+    assert np.abs(elevation - (90 - 23.5 + lat)) < 1
 
 
 def test_calculate_azimuth_and_elevation_random():
@@ -44,7 +45,9 @@ def test_calculate_azimuth_and_elevation_random():
         lat = np.random.uniform(low=-90, high=90)
 
         # Calculate sun angles
-        azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon=lon, lat=lat)
+        azimuth, elevation = calculate_azimuth_and_elevation(
+            datetimes, lon=lon, lat=lat
+        )
 
         azimuths.append(azimuth.item())
         elevations.append(elevation.item())
@@ -52,8 +55,8 @@ def test_calculate_azimuth_and_elevation_random():
     azimuths = np.array(azimuths)
     elevations = np.array(elevations)
 
-    assert (0<=azimuths).all() and (azimuths<=360).all()
-    assert (-90<=elevations).all() and (elevations<=90).all()
+    assert (0 <= azimuths).all() and (azimuths <= 360).all()
+    assert (-90 <= elevations).all() and (elevations <= 90).all()
 
     # Azimuth range is [0, 360]
     assert azimuths.min() < 30
@@ -75,7 +78,7 @@ def test_make_sun_position_numpy_sample():
     assert GSPSampleKey.solar_azimuth in sample
 
     # The solar coords are normalised in the function
-    assert (sample[GSPSampleKey.solar_elevation]>=0).all()
-    assert (sample[GSPSampleKey.solar_elevation]<=1).all()
-    assert (sample[GSPSampleKey.solar_azimuth]>=0).all()
-    assert (sample[GSPSampleKey.solar_azimuth]<=1).all()
+    assert (sample[GSPSampleKey.solar_elevation] >= 0).all()
+    assert (sample[GSPSampleKey.solar_elevation] <= 1).all()
+    assert (sample[GSPSampleKey.solar_azimuth] >= 0).all()
+    assert (sample[GSPSampleKey.solar_azimuth] <= 1).all()
