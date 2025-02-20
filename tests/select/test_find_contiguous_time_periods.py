@@ -1,10 +1,10 @@
 import pandas as pd
 
 from ocf_data_sampler.select.find_contiguous_time_periods import (
-    find_contiguous_t0_periods,
-    find_contiguous_t0_periods_nwp,
+    find_contiguous_t0_periods, find_contiguous_t0_periods_nwp, 
     intersection_of_multiple_dataframes_of_periods,
 )
+
 
 
 def test_find_contiguous_t0_periods():
@@ -14,8 +14,9 @@ def test_find_contiguous_t0_periods():
     interval_start = pd.Timedelta(-60, "min")
     interval_end = pd.Timedelta(15, "min")
 
-    datetimes = pd.date_range("2023-01-01 12:00", "2023-01-01 17:00", freq=freq).delete(
-        [5, 6, 30]
+    datetimes = (
+        pd.date_range("2023-01-01 12:00", "2023-01-01 17:00", freq=freq)
+        .delete([5, 6, 30])
     )
 
     periods = find_contiguous_t0_periods(
@@ -134,9 +135,10 @@ def test_find_contiguous_t0_periods_nwp():
     # Create 3-hourly init times with a few time stamps missing
     freq = pd.Timedelta(3, "h")
 
-    init_times = pd.date_range(
-        "2023-01-01 03:00", "2023-01-02 21:00", freq=freq
-    ).delete([1, 4, 5, 6, 7, 9, 10])
+    init_times = (
+        pd.date_range("2023-01-01 03:00", "2023-01-02 21:00", freq=freq)
+        .delete([1, 4, 5, 6, 7, 9, 10])
+    )
 
     # Choose some history durations and max stalenesses
     history_durations_hr = [0, 2, 2, 2, 2]
@@ -186,15 +188,15 @@ def test_intersection_of_multiple_dataframes_of_periods():
             "start_dt": pd.to_datetime(
                 ["2023-01-01 12:00", "2023-01-01 13:00", "2023-01-01 14:10"]
             ),
-            "end_dt": pd.to_datetime(
-                ["2023-01-01 12:30", "2023-01-01 13:35", "2023-01-01 18:00"]
+            "end_dt": pd.to_datetime([
+                "2023-01-01 12:30", "2023-01-01 13:35", "2023-01-01 18:00"]
             ),
         },
     )
 
     overlaping_periods = intersection_of_multiple_dataframes_of_periods(
         [periods_1, periods_2, periods_3]
-    )
+    )   
 
     # Check if results are as expected
     assert overlaping_periods.equals(expected_result)

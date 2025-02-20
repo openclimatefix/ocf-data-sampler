@@ -1,12 +1,12 @@
 """Satellite loader"""
 
+import subprocess
 
 import xarray as xr
-
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
-    get_xr_data_array_from_xr_dataset,
     make_spatial_coords_increasing,
+    get_xr_data_array_from_xr_dataset
 )
 
 
@@ -14,7 +14,7 @@ def _get_single_sat_data(zarr_path: str) -> xr.Dataset:
     """Helper function to open a Zarr from either a local or GCP path.
 
     Args:
-        zarr_path: Path to a Zarr file. Wildcards (*) are supported **only** for local paths.
+        zarr_path: Path to a Zarr file. Wildcards (*) are supported **only** for local paths. 
                    GCS paths (gs://) **do not support** wildcards.
 
     Returns:
@@ -77,11 +77,9 @@ def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
 
     check_time_unique_increasing(ds.time_utc)
 
-    ds = make_spatial_coords_increasing(
-        ds, x_coord="x_geostationary", y_coord="y_geostationary"
-    )
-
+    ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
+    
     ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
-
+    
     # TODO: should we control the dtype of the DataArray?
     return get_xr_data_array_from_xr_dataset(ds)

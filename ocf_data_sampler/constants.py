@@ -1,7 +1,12 @@
-import numpy as np
 import xarray as xr
+import numpy as np
 
-NWP_PROVIDERS = ["ukv", "ecmwf", "gfs"]
+
+NWP_PROVIDERS = [
+    "ukv",
+    "ecmwf",
+    "gfs"
+]
 # TODO add ICON
 
 
@@ -169,8 +174,16 @@ GFS_STD = _to_data_array(GFS_STD)
 GFS_MEAN = _to_data_array(GFS_MEAN)
 
 
-NWP_STDS = NWPStatDict(ukv=UKV_STD, ecmwf=ECMWF_STD, gfs=GFS_STD)
-NWP_MEANS = NWPStatDict(ukv=UKV_MEAN, ecmwf=ECMWF_MEAN, gfs=GFS_MEAN)
+NWP_STDS = NWPStatDict(
+    ukv=UKV_STD,
+    ecmwf=ECMWF_STD,
+    gfs=GFS_STD
+)
+NWP_MEANS = NWPStatDict(
+    ukv=UKV_MEAN,
+    ecmwf=ECMWF_MEAN,
+    gfs=GFS_MEAN
+)
 
 # ------ Satellite
 # RSS Mean and std values from randomised 20% of 2020 imagery

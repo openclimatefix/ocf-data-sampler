@@ -72,7 +72,6 @@ def lon_lat_to_geostationary_area_coords(
     """
     return coordinates_to_geostationary_area_coords(longitude, latitude, xr_data, WGS84)
 
-
 def osgb_to_geostationary_area_coords(
     x: Union[Number, np.ndarray],
     y: Union[Number, np.ndarray],
@@ -92,23 +91,24 @@ def osgb_to_geostationary_area_coords(
     return coordinates_to_geostationary_area_coords(x, y, xr_data, OSGB36)
 
 
+
 def coordinates_to_geostationary_area_coords(
     x: Union[Number, np.ndarray],
     y: Union[Number, np.ndarray],
     xr_data: xr.DataArray,
-    crs_from: int,
+    crs_from: int
 ) -> tuple[Union[Number, np.ndarray], Union[Number, np.ndarray]]:
     """Loads geostationary area and transformation from respective coordiates to geostationary coords
 
-    Args:
-        x: osgb east-west, or latitude
-        y: osgb north-south, or longitude
-        xr_data: xarray object with geostationary area
-        crs_from: the cordiates system of x,y
+        Args:
+            x: osgb east-west, or latitude
+            y: osgb north-south, or longitude
+            xr_data: xarray object with geostationary area
+            crs_from: the cordiates system of x,y
 
-    Returns:
-        Geostationary coords: x, y
-    """
+        Returns:
+            Geostationary coords: x, y
+        """
 
     assert crs_from in [OSGB36, WGS84], f"Unrecognized coordinate system: {crs_from}"
 

@@ -1,16 +1,11 @@
 """ Slice datasets by time"""
-
 import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.select.dropout import apply_dropout_time, draw_dropout_time
-from ocf_data_sampler.select.select_time_slice import (
-    select_time_slice,
-    select_time_slice_nwp,
-)
+from ocf_data_sampler.select.dropout import draw_dropout_time, apply_dropout_time
+from ocf_data_sampler.select.select_time_slice import select_time_slice_nwp, select_time_slice
 from ocf_data_sampler.utils import minutes
-
 
 def slice_datasets_by_time(
     datasets_dict: dict,
@@ -70,7 +65,7 @@ def slice_datasets_by_time(
 
     if "gsp" in datasets_dict:
         gsp_config = config.input_data.gsp
-
+        
         da_gsp_past = select_time_slice(
             datasets_dict["gsp"],
             t0,
@@ -86,8 +81,11 @@ def slice_datasets_by_time(
             dropout_frac=gsp_config.dropout_fraction,
         )
 
-        da_gsp_past = apply_dropout_time(da_gsp_past, gsp_dropout_time)
-
+        da_gsp_past = apply_dropout_time(
+            da_gsp_past, 
+            gsp_dropout_time
+        )
+        
         da_gsp_future = select_time_slice(
             datasets_dict["gsp"],
             t0,
@@ -95,10 +93,8 @@ def slice_datasets_by_time(
             interval_start=minutes(gsp_config.time_resolution_minutes),
             interval_end=minutes(gsp_config.interval_end_minutes),
         )
-
-        sliced_datasets_dict["gsp"] = xr.concat(
-            [da_gsp_past, da_gsp_future], dim="time_utc"
-        )
+        
+        sliced_datasets_dict["gsp"] = xr.concat([da_gsp_past, da_gsp_future], dim="time_utc")
 
     if "site" in datasets_dict:
         site_config = config.input_data.site

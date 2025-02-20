@@ -1,11 +1,12 @@
-import pandas as pd
 import pkg_resources
+
+import pandas as pd
 import xarray as xr
 
 
 def open_gsp(zarr_path: str) -> xr.DataArray:
     """Open the GSP data
-
+    
     Args:
         zarr_path: Path to the GSP zarr data
 

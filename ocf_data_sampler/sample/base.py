@@ -4,13 +4,14 @@ Handling of both flat and nested structures - consideration for NWP
 """
 
 import logging
-from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Dict, Optional, TypeAlias, Union
-
 import numpy as np
 import torch
 import xarray as xr
+
+from pathlib import Path
+from typing import Any, Dict, Optional, Union, TypeAlias
+from abc import ABC, abstractmethod
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,35 +21,35 @@ TensorBatch: TypeAlias = Dict[str, Union[torch.Tensor, Dict[str, torch.Tensor]]]
 
 
 class SampleBase(ABC):
-    """
-    Abstract base class for all sample types
+    """ 
+    Abstract base class for all sample types 
     Provides core data storage functionality
     """
 
     def __init__(self, data: Optional[Union[NumpySample, xr.Dataset]] = None):
-        """Initialise data container"""
+        """ Initialise data container """
         logger.debug("Initialising SampleBase instance")
         self._data = data
 
     @abstractmethod
     def to_numpy(self) -> NumpySample:
-        """Convert data to a numpy array representation"""
+        """ Convert data to a numpy array representation """
         raise NotImplementedError
 
     @abstractmethod
     def plot(self, **kwargs) -> None:
-        """Abstract method for plotting"""
+        """ Abstract method for plotting """
         raise NotImplementedError
 
     @abstractmethod
     def save(self, path: Union[str, Path]) -> None:
-        """Abstract method for saving sample data"""
+        """ Abstract method for saving sample data """
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def load(cls, path: Union[str, Path]) -> "SampleBase":
-        """Abstract class method for loading sample data"""
+    def load(cls, path: Union[str, Path]) -> 'SampleBase':
+        """ Abstract class method for loading sample data """
         raise NotImplementedError
 
 
@@ -89,7 +90,7 @@ def copy_batch_to_device(batch: dict, device: torch.device) -> dict:
 
     for k, v in batch.items():
         if isinstance(v, dict):
-            batch_copy[k] = copy_batch_to_device(v, device)
+            batch_copy[k] = copy_batch_to_device(v, device)  
         elif isinstance(v, torch.Tensor):
             batch_copy[k] = v.to(device)
         else:

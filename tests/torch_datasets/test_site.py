@@ -8,16 +8,13 @@ from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.torch_datasets.datasets.site import (
-    SitesDataset,
-    convert_from_dataset_to_dict_datasets,
-    coarsen_data,
+    SitesDataset, convert_from_dataset_to_dict_datasets, coarsen_data
 )
 
 
+
 @pytest.fixture()
-def site_config_filename(
-    tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites
-):
+def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites):
 
     # adjust config to point to the zarr file
     config = load_yaml_configuration(config_filename)
@@ -72,6 +69,7 @@ def test_site(tmp_path, site_config_filename):
     }
 
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
+
 
     sample.to_netcdf(f"{tmp_path}/sample.nc")
     sample = xr.open_dataset(f"{tmp_path}/sample.nc")
@@ -185,15 +183,13 @@ def test_process_and_combine_site_sample_dict(sites_dataset):
             fake_site_values,
             dims=["time_utc"],
             coords={
-                "time_utc": pd.date_range(
-                    "2024-01-01 00:00", periods=197, freq="15min"
-                ),
-                "capacity_kwp": 1000,
-                "site_id": 1,
-                "longitude": -3.5,
-                "latitude": 51.5,
-            },
-        ),
+                    "time_utc": pd.date_range("2024-01-01 00:00", periods=197, freq="15min"),
+                    "capacity_kwp": 1000,
+                    "site_id": 1,
+                    "longitude": -3.5,
+                    "latitude": 51.5
+                }
+        )
     }
     print(f"Input site_dict: {site_dict}")
 
@@ -207,21 +203,12 @@ def test_process_and_combine_site_sample_dict(sites_dataset):
     # Validate variable via assertion and shape of such
     expected_variables = ["nwp-ukv", "site"]
     for expected_variable in expected_variables:
-        assert (
-            expected_variable in result.data_vars
-        ), f"Expected variable '{expected_variable}' not found"
-
+        assert expected_variable in result.data_vars, f"Expected variable '{expected_variable}' not found"
+    
     nwp_result = result["nwp-ukv"]
-    assert nwp_result.shape == (
-        4,
-        1,
-        2,
-        2,
-    ), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
+    assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
     site_result = result["site"]
-    assert site_result.shape == (
-        197,
-    ), f"Unexpected shape for site: {site_result.shape}"
+    assert site_result.shape == (197,), f"Unexpected shape for site: {site_result.shape}"
 
 
 def test_potentially_coarsen(ds_nwp_ecmwf):

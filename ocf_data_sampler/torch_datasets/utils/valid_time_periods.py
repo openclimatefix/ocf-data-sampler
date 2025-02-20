@@ -3,11 +3,12 @@ import pandas as pd
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.find_contiguous_time_periods import (
-    find_contiguous_t0_periods,
     find_contiguous_t0_periods_nwp,
+    find_contiguous_t0_periods, 
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.utils import minutes
+
 
 
 def find_valid_time_periods(
@@ -23,9 +24,7 @@ def find_valid_time_periods(
 
     assert set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp"})
 
-    contiguous_time_periods: dict[str : pd.DataFrame] = (
-        {}
-    )  # Used to store contiguous time periods from each data source
+    contiguous_time_periods: dict[str: pd.DataFrame] = {}  # Used to store contiguous time periods from each data source
 
     if "nwp" in datasets_dict:
         for nwp_key, nwp_config in config.input_data.nwp.items():
@@ -35,9 +34,7 @@ def find_valid_time_periods(
             if nwp_config.dropout_timedeltas_minutes is None:
                 max_dropout = minutes(0)
             else:
-                max_dropout = minutes(
-                    np.max(np.abs(nwp_config.dropout_timedeltas_minutes))
-                )
+                max_dropout = minutes(np.max(np.abs(nwp_config.dropout_timedeltas_minutes)))
 
             if nwp_config.max_staleness_minutes is None:
                 max_staleness = None
@@ -63,7 +60,7 @@ def find_valid_time_periods(
             else:
                 # Make sure the max acceptable staleness isn't longer than the max possible
                 assert max_staleness <= max_possible_staleness
-
+                
             # Find the first forecast step
             first_forecast_step = pd.Timedelta(da["step"].min().item())
 
@@ -72,10 +69,10 @@ def find_valid_time_periods(
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 max_staleness=max_staleness,
                 max_dropout=max_dropout,
-                first_forecast_step=first_forecast_step,
+                first_forecast_step = first_forecast_step,
             )
 
-            contiguous_time_periods[f"nwp_{nwp_key}"] = time_periods
+            contiguous_time_periods[f'nwp_{nwp_key}'] = time_periods
 
     if "sat" in datasets_dict:
         sat_config = config.input_data.satellite
@@ -87,7 +84,7 @@ def find_valid_time_periods(
             interval_end=minutes(sat_config.interval_end_minutes),
         )
 
-        contiguous_time_periods["sat"] = time_periods
+        contiguous_time_periods['sat'] = time_periods
 
     if "gsp" in datasets_dict:
         gsp_config = config.input_data.gsp
@@ -99,7 +96,7 @@ def find_valid_time_periods(
             interval_end=minutes(gsp_config.interval_end_minutes),
         )
 
-        contiguous_time_periods["gsp"] = time_periods
+        contiguous_time_periods['gsp'] = time_periods
 
     # just get the values (not the keys)
     contiguous_time_periods_values = list(contiguous_time_periods.values())

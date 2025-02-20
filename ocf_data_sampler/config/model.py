@@ -1,20 +1,14 @@
 """Configuration model for the dataset.
 
+
 Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// to read from alternative filesystems. 
 
 """
 
 from typing import Dict, List, Optional
-
-from pydantic import (
-    BaseModel,
-    Field,
-    RootModel,
-    ValidationInfo,
-    field_validator,
-    model_validator,
-)
 from typing_extensions import Self
+
+from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo, model_validator
 
 from ocf_data_sampler.constants import NWP_PROVIDERS
 
@@ -45,7 +39,7 @@ class TimeWindowMixin(Base):
         gt=0,
         description="The temporal resolution of the data in minutes",
     )
-
+    
     interval_start_minutes: int = Field(
         ...,
         description="Data interval starts at `t0 + interval_start_minutes`",
@@ -55,31 +49,23 @@ class TimeWindowMixin(Base):
         ...,
         description="Data interval ends at `t0 + interval_end_minutes`",
     )
-
-    @model_validator(mode="after")
+    
+    @model_validator(mode='after')
     def check_interval_range(cls, values):
         if values.interval_start_minutes > values.interval_end_minutes:
-            raise ValueError("interval_start_minutes must be <= interval_end_minutes")
+            raise ValueError('interval_start_minutes must be <= interval_end_minutes')
         return values
 
     @field_validator("interval_start_minutes")
-    def interval_start_minutes_divide_by_time_resolution(
-        cls, v: int, info: ValidationInfo
-    ) -> int:
+    def interval_start_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
         if v % info.data["time_resolution_minutes"] != 0:
-            raise ValueError(
-                "interval_start_minutes must be divisible by time_resolution_minutes"
-            )
+            raise ValueError("interval_start_minutes must be divisible by time_resolution_minutes")
         return v
 
     @field_validator("interval_end_minutes")
-    def interval_end_minutes_divide_by_time_resolution(
-        cls, v: int, info: ValidationInfo
-    ) -> int:
+    def interval_end_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
         if v % info.data["time_resolution_minutes"] != 0:
-            raise ValueError(
-                "interval_end_minutes must be divisible by time_resolution_minutes"
-            )
+            raise ValueError("interval_end_minutes must be divisible by time_resolution_minutes")
         return v
 
 
@@ -111,14 +97,10 @@ class DropoutMixin(Base):
     def dropout_instructions_consistent(self) -> Self:
         if self.dropout_fraction == 0:
             if self.dropout_timedeltas_minutes is not None:
-                raise ValueError(
-                    "To use dropout timedeltas dropout fraction should be > 0"
-                )
+                raise ValueError("To use dropout timedeltas dropout fraction should be > 0")
         else:
             if self.dropout_timedeltas_minutes is None:
-                raise ValueError(
-                    "To dropout fraction > 0 requires a list of dropout timedeltas"
-                )
+                raise ValueError("To dropout fraction > 0 requires a list of dropout timedeltas")
         return self
 
 
@@ -140,32 +122,34 @@ class SpatialWindowMixin(Base):
 
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     """Satellite configuration model"""
-
+    
     zarr_path: str | tuple[str] | list[str] = Field(
         ...,
         description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
     )
 
-    channels: list[str] = Field(..., description="the satellite channels that are used")
+    channels: list[str] = Field(
+        ..., description="the satellite channels that are used"
+    )
 
 
 class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     """NWP configuration model"""
-
+    
     zarr_path: str | tuple[str] | list[str] = Field(
         ...,
         description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
     )
-
-    channels: list[str] = Field(..., description="the channels used in the nwp data")
+    
+    channels: list[str] = Field(
+        ..., description="the channels used in the nwp data"
+    )
 
     provider: str = Field(..., description="The provider of the NWP data")
 
-    accum_channels: list[str] = Field(
-        [], description="the nwp channels which need to be diffed"
-    )
+    accum_channels: list[str] = Field([], description="the nwp channels which need to be diffed")
 
     max_staleness_minutes: Optional[int] = Field(
         None,
@@ -173,6 +157,7 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         " used to construct an example. If set to None, then the max staleness is set according to"
         " the maximum forecast horizon of the NWP and the requested forecast length.",
     )
+
 
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:
@@ -213,7 +198,7 @@ class GSP(TimeWindowMixin, DropoutMixin):
     """GSP configuration model"""
 
     zarr_path: str = Field(
-        ...,
+        ..., 
         description="Absolute or relative zarr filepath. Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
     )

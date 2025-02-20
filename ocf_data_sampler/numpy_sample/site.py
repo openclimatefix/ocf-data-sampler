@@ -17,7 +17,6 @@ class SiteSampleKey:
     time_sin = "site_time_sin"
     time_cos = "site_time_cos"
 
-
 def convert_site_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
     """Convert from Xarray to NumpySample"""
 
