@@ -11,6 +11,7 @@ def merge_dicts(list_of_dicts: list[dict]) -> dict:
         combined_dict.update(d)
     return combined_dict
 
+
 def fill_nans_in_arrays(sample: dict) -> dict:
     """Fills all NaN values in each np.ndarray in the sample dictionary with zeros.
 

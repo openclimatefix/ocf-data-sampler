@@ -14,4 +14,3 @@ def fill_time_periods(time_periods: pd.DataFrame, freq: pd.Timedelta) -> pd.Date
         for start_dt, end_dt in zip(start_dts, end_dts, strict=False)
     ]
     return pd.DatetimeIndex(np.concatenate(date_ranges))
-

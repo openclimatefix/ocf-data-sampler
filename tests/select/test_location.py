@@ -8,9 +8,9 @@ def test_make_valid_location_object_with_default_coordinate_system():
     location = Location(x=x, y=y)
     assert location.x == x, "location.x value not set correctly"
     assert location.y == y, "location.x value not set correctly"
-    assert (
-        location.coordinate_system == "osgb"
-    ), "location.coordinate_system value not set correctly"
+    assert location.coordinate_system == "osgb", (
+        "location.coordinate_system value not set correctly"
+    )
 
 
 def test_make_valid_location_object_with_osgb_coordinate_system():
@@ -18,9 +18,9 @@ def test_make_valid_location_object_with_osgb_coordinate_system():
     location = Location(x=x, y=y, coordinate_system=coordinate_system)
     assert location.x == x, "location.x value not set correctly"
     assert location.y == y, "location.x value not set correctly"
-    assert (
-        location.coordinate_system == coordinate_system
-    ), "location.coordinate_system value not set correctly"
+    assert location.coordinate_system == coordinate_system, (
+        "location.coordinate_system value not set correctly"
+    )
 
 
 def test_make_valid_location_object_with_lon_lat_coordinate_system():
@@ -28,9 +28,9 @@ def test_make_valid_location_object_with_lon_lat_coordinate_system():
     location = Location(x=x, y=y, coordinate_system=coordinate_system)
     assert location.x == x, "location.x value not set correctly"
     assert location.y == y, "location.x value not set correctly"
-    assert (
-        location.coordinate_system == coordinate_system
-    ), "location.coordinate_system value not set correctly"
+    assert location.coordinate_system == coordinate_system, (
+        "location.coordinate_system value not set correctly"
+    )
 
 
 def test_make_invalid_location_object_with_invalid_osgb_x():

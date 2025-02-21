@@ -23,10 +23,9 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         raise ValueError(f"Invalid keys in datasets_dict: {datasets_dict.keys()}")
 
     # Used to store contiguous time periods from each data source
-    contiguous_time_periods: dict[str: pd.DataFrame] = {}
+    contiguous_time_periods: dict[str : pd.DataFrame] = {}
     if "nwp" in datasets_dict:
         for nwp_key, nwp_config in config.input_data.nwp.items():
-
             da = datasets_dict["nwp"][nwp_key]
 
             if nwp_config.dropout_timedeltas_minutes is None:
@@ -71,7 +70,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 max_staleness=max_staleness,
                 max_dropout=max_dropout,
-                first_forecast_step = first_forecast_step,
+                first_forecast_step=first_forecast_step,
             )
 
             contiguous_time_periods[f"nwp_{nwp_key}"] = time_periods

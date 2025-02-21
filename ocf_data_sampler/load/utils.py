@@ -21,9 +21,9 @@ def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -
     """
     # Make sure the coords are in increasing order
     if ds[x_coord][0] > ds[x_coord][-1]:
-        ds = ds.isel({x_coord:slice(None, None, -1)})
+        ds = ds.isel({x_coord: slice(None, None, -1)})
     if ds[y_coord][0] > ds[y_coord][-1]:
-       ds = ds.isel({y_coord:slice(None, None, -1)})
+        ds = ds.isel({y_coord: slice(None, None, -1)})
 
     # Check the coords are all increasing now
     if not (ds[x_coord].diff(dim=x_coord) > 0).all():
@@ -46,4 +46,3 @@ def get_xr_data_array_from_xr_dataset(ds: xr.Dataset) -> xr.DataArray:
     if len(datavars) != 1:
         raise ValueError("Cannot open as xr.DataArray: dataset contains multiple variables")
     return ds[datavars[0]]
-

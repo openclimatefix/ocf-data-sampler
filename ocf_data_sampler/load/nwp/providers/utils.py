@@ -30,4 +30,3 @@ def open_zarr_paths(zarr_path: str | list[str], time_dim: str = "init_time") -> 
             chunks="auto",
         )
     return ds
-

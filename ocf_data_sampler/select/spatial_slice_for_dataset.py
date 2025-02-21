@@ -25,11 +25,9 @@ def slice_datasets_by_space(
     sliced_datasets_dict = {}
 
     if "nwp" in datasets_dict:
-
         sliced_datasets_dict["nwp"] = {}
 
         for nwp_key, nwp_config in config.input_data.nwp.items():
-
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
                 datasets_dict["nwp"][nwp_key],
                 location,

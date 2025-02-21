@@ -74,4 +74,3 @@ def copy_batch_to_device(batch: TensorBatch, device: torch.device) -> TensorBatc
         else:
             batch_copy[k] = v
     return batch_copy
-

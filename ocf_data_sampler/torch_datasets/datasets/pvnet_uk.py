@@ -88,8 +88,8 @@ def process_and_combine_datasets(
     if target_key == "gsp":
         # Make sun coords NumpySample
         datetimes = pd.date_range(
-            t0+minutes(gsp_config.interval_start_minutes),
-            t0+minutes(gsp_config.interval_end_minutes),
+            t0 + minutes(gsp_config.interval_start_minutes),
+            t0 + minutes(gsp_config.interval_end_minutes),
             freq=minutes(gsp_config.time_resolution_minutes),
         )
 
@@ -158,7 +158,7 @@ def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
     for gsp_id in gsp_ids:
         locations.append(
             Location(
-                coordinate_system = "osgb",
+                coordinate_system="osgb",
                 x=df_gsp_loc.loc[gsp_id].x_osgb,
                 y=df_gsp_loc.loc[gsp_id].y_osgb,
                 id=gsp_id,
@@ -197,10 +197,10 @@ class PVNetUKRegionalDataset(Dataset):
 
         # Filter t0 times to given range
         if start_time is not None:
-            valid_t0_times = valid_t0_times[valid_t0_times>=pd.Timestamp(start_time)]
+            valid_t0_times = valid_t0_times[valid_t0_times >= pd.Timestamp(start_time)]
 
         if end_time is not None:
-            valid_t0_times = valid_t0_times[valid_t0_times<=pd.Timestamp(end_time)]
+            valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
         locations = get_gsp_locations(gsp_ids)
@@ -227,11 +227,9 @@ class PVNetUKRegionalDataset(Dataset):
         self.datasets_dict = datasets_dict
         self.config = config
 
-
     @override
     def __len__(self) -> int:
         return len(self.index_pairs)
-
 
     def _get_sample(self, t0: pd.Timestamp, location: Location) -> dict:
         """Generate the PVNet sample for given coordinates.
@@ -248,10 +246,8 @@ class PVNetUKRegionalDataset(Dataset):
 
         return sample
 
-
     @override
     def __getitem__(self, idx: int) -> dict:
-
         # Get the coordinates of the sample
         t_index, loc_index = self.index_pairs[idx]
         location = self.locations[loc_index]
@@ -259,7 +255,6 @@ class PVNetUKRegionalDataset(Dataset):
 
         # Generate the sample
         return self._get_sample(t0, location)
-
 
     def get_sample(self, t0: pd.Timestamp, gsp_id: int) -> dict:
         """Generate a sample for the given coordinates.
@@ -314,10 +309,10 @@ class PVNetUKConcurrentDataset(Dataset):
 
         # Filter t0 times to given range
         if start_time is not None:
-            valid_t0_times = valid_t0_times[valid_t0_times>=pd.Timestamp(start_time)]
+            valid_t0_times = valid_t0_times[valid_t0_times >= pd.Timestamp(start_time)]
 
         if end_time is not None:
-            valid_t0_times = valid_t0_times[valid_t0_times<=pd.Timestamp(end_time)]
+            valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
         locations = get_gsp_locations(gsp_ids)
@@ -330,11 +325,9 @@ class PVNetUKConcurrentDataset(Dataset):
         self.datasets_dict = datasets_dict
         self.config = config
 
-
     @override
     def __len__(self) -> int:
         return len(self.valid_t0_times)
-
 
     def _get_sample(self, t0: pd.Timestamp) -> dict:
         """Generate a concurrent PVNet sample for given init-time.
@@ -352,18 +345,19 @@ class PVNetUKConcurrentDataset(Dataset):
         for location in self.locations:
             gsp_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
             gsp_numpy_sample = process_and_combine_datasets(
-                gsp_sample_dict, self.config, t0, location,
+                gsp_sample_dict,
+                self.config,
+                t0,
+                location,
             )
             gsp_samples.append(gsp_numpy_sample)
 
         # Stack GSP samples
         return stack_np_samples_into_batch(gsp_samples)
 
-
     @override
     def __getitem__(self, idx: int) -> dict:
         return self._get_sample(self.valid_t0_times[idx])
-
 
     def get_sample(self, t0: pd.Timestamp) -> dict:
         """Generate a sample for the given init-time.
@@ -377,4 +371,3 @@ class PVNetUKConcurrentDataset(Dataset):
         if t0 not in self.valid_t0_times:
             raise ValueError(f"Input init time '{t0!s}' not in valid times")
         return self._get_sample(t0)
-

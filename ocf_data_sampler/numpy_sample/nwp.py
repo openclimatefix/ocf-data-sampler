@@ -14,7 +14,6 @@ class NWPSampleKey:
     target_time_utc = 'nwp_target_time_utc'
     t0_idx = 'nwp_t0_idx'
 
-
 def convert_nwp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
     """Convert from Xarray to NWP NumpySample
     
@@ -35,4 +34,3 @@ def convert_nwp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> 
         sample[NWPSampleKey.t0_idx] = t0_idx
 
     return sample
-

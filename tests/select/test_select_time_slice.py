@@ -7,6 +7,7 @@ from ocf_data_sampler.select.select_time_slice import select_time_slice, select_
 
 NWP_FREQ = pd.Timedelta("3h")
 
+
 @pytest.fixture(scope="module")
 def da_sat_like():
     """Create dummy data which looks like satellite data"""
@@ -59,7 +60,7 @@ def test_select_time_slice(da_sat_like, t0_str):
     freq = pd.Timedelta("5min")
 
     # Expect to return these timestamps from the selection
-    expected_datetimes = pd.date_range(t0 +interval_start, t0 + interval_end, freq=freq)
+    expected_datetimes = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
 
     # Make the selection
     sat_sample = select_time_slice(
@@ -107,15 +108,14 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
     # Check the returned times are as expected
     assert (sat_sample.time_utc == expected_datetimes).all()
 
-
     # Check all the values before the first timestamp available in the data are NaN
     all_nan_space = sat_sample.isnull().all(dim=("x_geostationary", "y_geostationary"))
     if expected_datetimes[0] < min_time:
-        assert all_nan_space.sel(time_utc=slice(None, min_time-freq)).all(dim="time_utc")
+        assert all_nan_space.sel(time_utc=slice(None, min_time - freq)).all(dim="time_utc")
 
     # Check all the values before the first timestamp available in the data are NaN
     if expected_datetimes[-1] > max_time:
-        assert all_nan_space.sel(time_utc=slice(max_time+freq, None)).all(dim="time_utc")
+        assert all_nan_space.sel(time_utc=slice(max_time + freq, None)).all(dim="time_utc")
 
     # Check that none of the values between the first and last available timestamp are NaN
     any_nan_space = sat_sample.isnull().any(dim=("x_geostationary", "y_geostationary"))
@@ -139,22 +139,22 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
         sample_period_duration=freq,
         interval_start=interval_start,
         interval_end=interval_end,
-        dropout_timedeltas = None,
-        dropout_frac = 0,
-        accum_channels = [],
-        channel_dim_name = "channel",
+        dropout_timedeltas=None,
+        dropout_frac=0,
+        accum_channels=[],
+        channel_dim_name="channel",
     )
 
     # Check the target-times are as expected
     expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
-    assert (da_slice.target_time_utc==expected_target_times).all()
+    assert (da_slice.target_time_utc == expected_target_times).all()
 
     # Check the init-times are as expected
     # - Forecast frequency is `NWP_FREQ`, and we can't have selected future init-times
     expected_init_times = pd.to_datetime(
-        [t if t<t0 else t0 for t in expected_target_times],
+        [t if t < t0 else t0 for t in expected_target_times],
     ).floor(NWP_FREQ)
-    assert (da_slice.init_time_utc==expected_init_times).all()
+    assert (da_slice.init_time_utc == expected_init_times).all()
 
 
 @pytest.mark.parametrize("dropout_hours", [1, 2, 5])
@@ -173,22 +173,22 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
         sample_period_duration=freq,
         interval_start=interval_start,
         interval_end=interval_end,
-        dropout_timedeltas = [dropout_timedelta],
-        dropout_frac = 1,
-        accum_channels = [],
-        channel_dim_name = "channel",
+        dropout_timedeltas=[dropout_timedelta],
+        dropout_frac=1,
+        accum_channels=[],
+        channel_dim_name="channel",
     )
 
     # Check the target-times are as expected
     expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
-    assert (da_slice.target_time_utc==expected_target_times).all()
+    assert (da_slice.target_time_utc == expected_target_times).all()
 
     # Check the init-times are as expected considering the delay
     t0_delayed = t0 + dropout_timedelta
     expected_init_times = pd.to_datetime(
-        [t if t<t0_delayed else t0_delayed for t in expected_target_times],
+        [t if t < t0_delayed else t0_delayed for t in expected_target_times],
     ).floor(NWP_FREQ)
-    assert (da_slice.init_time_utc==expected_init_times).all()
+    assert (da_slice.init_time_utc == expected_init_times).all()
 
 
 @pytest.mark.parametrize("t0_str", ["10:00", "11:00", "12:00"])
@@ -218,13 +218,13 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
 
     # Check the target-times are as expected
     expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
-    assert (da_slice.target_time_utc==expected_target_times).all()
+    assert (da_slice.target_time_utc == expected_target_times).all()
 
     # Check the init-times are as expected considering the delay
     expected_init_times = pd.to_datetime(
-        [t if t<t0_delayed else t0_delayed for t in expected_target_times],
+        [t if t < t0_delayed else t0_delayed for t in expected_target_times],
     ).floor(NWP_FREQ)
-    assert (da_slice.init_time_utc==expected_init_times).all()
+    assert (da_slice.init_time_utc == expected_init_times).all()
 
     # Check channels are as expected
     assert (da_slice.channel.values == ["t", "diff_dswrf"]).all()
@@ -243,8 +243,9 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
         da_nwp_like.sel(
             init_time_utc=t0_delayed,
             channel="dswrf",
-        ).diff(dim="step", label="lower")
-        .sel(step=slice(t0-t0_delayed + interval_start, t0-t0_delayed + interval_end))
+        )
+        .diff(dim="step", label="lower")
+        .sel(step=slice(t0 - t0_delayed + interval_start, t0 - t0_delayed + interval_end))
     )
 
     # Check the values are the same
@@ -260,15 +261,10 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
 
     # Get the original data for the t0_delayed init-time, and select the steps which are expected
     # to be used in the above slice
-    da_orig = (
-        da_nwp_like.sel(
-            init_time_utc=t0_delayed,
-            channel="t",
-        )
-        .sel(step=slice(t0-t0_delayed + interval_start, t0-t0_delayed + interval_end))
-    )
+    da_orig = da_nwp_like.sel(
+        init_time_utc=t0_delayed,
+        channel="t",
+    ).sel(step=slice(t0 - t0_delayed + interval_start, t0 - t0_delayed + interval_end))
 
     # Check the values are the same
     assert (da_slice_nonaccum.values == da_orig.values).all()
-
-

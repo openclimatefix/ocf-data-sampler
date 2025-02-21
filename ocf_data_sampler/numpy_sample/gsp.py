@@ -37,4 +37,3 @@ def convert_gsp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> 
         sample[GSPSampleKey.t0_idx] = t0_idx
 
     return sample
-

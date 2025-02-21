@@ -34,4 +34,3 @@ def make_datetime_numpy_dict(datetimes: pd.DatetimeIndex, key_prefix: str = "win
     time_numpy_sample[key_prefix + "_time_cos"] = np.cos(time_in_pi)
 
     return time_numpy_sample
-

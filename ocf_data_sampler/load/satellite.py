@@ -75,4 +75,3 @@ def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
 
     # TODO: should we control the dtype of the DataArray?
     return get_xr_data_array_from_xr_dataset(ds)
-

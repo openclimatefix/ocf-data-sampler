@@ -20,4 +20,3 @@ def open_nwp(zarr_path: str | list[str], provider: str) -> xr.DataArray:
     else:
         raise ValueError(f"Unknown provider: {provider}")
     return _open_nwp(zarr_path)
-

@@ -41,11 +41,12 @@ def test_draw_dropout_time_partial():
     # Loop over 1000 to have very high probability of seeing all dropouts
     # The chances of this failing by chance are approx ((2/3)^100)*3 = 7e-18
     for _ in range(100):
-        dropouts.add(draw_dropout_time(t0, dropout_timedeltas, dropout_frac=2/3))
+        dropouts.add(draw_dropout_time(t0, dropout_timedeltas, dropout_frac=2 / 3))
 
     # TODO: Check all dropouts are present
 
-def test_draw_dropout_time_null():
+
+def test_draw_dropout_time_none():
     t0 = pd.Timestamp("2021-01-01 04:00:00")
 
     # Dropout fraction is 0
@@ -65,4 +66,6 @@ def test_apply_dropout_time(da_sample, t0_str):
     da_dropout = apply_dropout_time(da_sample, dropout_time)
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
-    assert da_dropout.sel(time_utc=slice(dropout_time+pd.Timedelta(5, "min"), None)).isnull().all()
+    assert (
+        da_dropout.sel(time_utc=slice(dropout_time + pd.Timedelta(5, "min"), None)).isnull().all()
+    )

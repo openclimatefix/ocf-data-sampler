@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 def convert_coords_to_match_xarray(
-        x: float | np.ndarray,
-        y: float | np.ndarray,
-        from_coords: str,
-        da: xr.DataArray,
-    ) -> tuple[float | np.ndarray, float | np.ndarray]:
+    x: float | np.ndarray,
+    y: float | np.ndarray,
+    from_coords: str,
+    da: xr.DataArray,
+) -> tuple[float | np.ndarray, float | np.ndarray]:
     """Convert x and y coords to cooridnate system matching xarray data.
 
     Args:
@@ -61,6 +61,7 @@ def convert_coords_to_match_xarray(
             )
 
     return x, y
+
 
 # TODO: This function and _get_idx_of_pixel_closest_to_poi_geostationary() should not be separate
 # We should combine them, and consider making a Coord class to help with this
@@ -132,7 +133,7 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
             xr_data=da,
         )
     else:
-        x,y = center.x, center.y
+        x, y = center.x, center.y
     center_geostationary = Location(x=x, y=y, coordinate_system="geostationary")
 
     # Check that the requested point lies within the data
@@ -171,8 +172,9 @@ def _select_partial_spatial_slice_pixels(
     """Return spatial window of given pixel size when window partially overlaps input data."""
     # We should never be padding on both sides of a window. This would mean our desired window is
     # larger than the size of the input data
-    if (left_pad_pixels!=0 and right_pad_pixels!=0)\
-        or (bottom_pad_pixels!=0 and top_pad_pixels!=0):
+    if (left_pad_pixels != 0 and right_pad_pixels != 0) or (
+        bottom_pad_pixels != 0 and top_pad_pixels != 0
+    ):
         raise ValueError("Cannot pad both sides of the window")
 
     dx = np.median(np.diff(da[x_dim].values))
@@ -252,9 +254,9 @@ def _select_spatial_slice_pixels(
     if center_idx.coordinate_system != "idx":
         raise ValueError(f"Expected center_idx to be in 'idx' coordinates, got '{center_idx}'")
     # TODO: It shouldn't take much effort to allow height and width to be odd
-    if (width_pixels % 2)!=0:
+    if (width_pixels % 2) != 0:
         raise ValueError("Width must be an even number")
-    if (height_pixels % 2)!=0:
+    if (height_pixels % 2) != 0:
         raise ValueError("Height must be an even number")
 
     half_width = width_pixels // 2
@@ -277,13 +279,11 @@ def _select_spatial_slice_pixels(
 
     if pad_required:
         if allow_partial_slice:
-
             left_pad_pixels = (-left_idx) if left_pad_required else 0
             right_pad_pixels = (right_idx - data_width_pixels) if right_pad_required else 0
 
             bottom_pad_pixels = (-bottom_idx) if bottom_pad_required else 0
             top_pad_pixels = (top_idx - data_height_pixels) if top_pad_required else 0
-
 
             da = _select_partial_spatial_slice_pixels(
                 da,

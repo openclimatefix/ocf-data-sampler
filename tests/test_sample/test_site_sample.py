@@ -2,7 +2,6 @@
 Site class testing - SiteSample
 """
 
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -14,7 +13,7 @@ from ocf_data_sampler.sample.site import SiteSample
 
 @pytest.fixture
 def sample_data():
-    """ Fixture creation with sample data """
+    """Fixture creation with sample data"""
 
     #  Time periods specified
     init_time = pd.Timestamp("2023-01-01 00:00")
@@ -29,13 +28,21 @@ def sample_data():
     return Dataset(
         data_vars={
             "nwp-ukv": (
-                ["nwp-ukv__target_time_utc", "nwp-ukv__channel",
-                 "nwp-ukv__y_osgb", "nwp-ukv__x_osgb"],
+                [
+                    "nwp-ukv__target_time_utc",
+                    "nwp-ukv__channel",
+                    "nwp-ukv__y_osgb",
+                    "nwp-ukv__x_osgb",
+                ],
                 np.random.rand(4, 1, 2, 2),
             ),
             "satellite": (
-                ["satellite__time_utc", "satellite__channel",
-                 "satellite__y_geostationary", "satellite__x_geostationary"],
+                [
+                    "satellite__time_utc",
+                    "satellite__channel",
+                    "satellite__y_geostationary",
+                    "satellite__x_geostationary",
+                ],
                 np.random.rand(7, 1, 2, 2),
             ),
             "site": (["site__time_utc"], np.random.rand(4)),
@@ -48,20 +55,17 @@ def sample_data():
             "nwp-ukv__x_osgb": [0, 1],
             "nwp-ukv__init_time_utc": init_time,
             "nwp-ukv__step": ("nwp-ukv__target_time_utc", steps),
-
             # Sat coords
             "satellite__time_utc": sat_times,
             "satellite__channel": ["vis"],
             "satellite__y_geostationary": [0, 1],
             "satellite__x_geostationary": [0, 1],
-
             # Site coords
             "site__time_utc": site_times,
             "site__capacity_kwp": 1000.0,
             "site__site_id": 1,
             "site__longitude": -3.5,
             "site__latitude": 51.5,
-
             # Site features as coords
             "site__solar_azimuth": ("site__time_utc", np.random.rand(4)),
             "site__solar_elevation": ("site__time_utc", np.random.rand(4)),

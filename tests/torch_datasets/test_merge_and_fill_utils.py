@@ -37,5 +37,3 @@ def test_fill_nans_in_arrays():
     assert np.array_equal(result["array1"], np.array([1.0, 0.0, 3.0, 0.0]))
     assert np.array_equal(result["nested"]["array2"], np.array([0.0, 2.0, 0.0, 4.0]))
     assert result["string_key"] == "not_an_array"
-
-

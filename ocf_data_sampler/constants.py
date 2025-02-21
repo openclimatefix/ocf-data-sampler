@@ -225,4 +225,3 @@ RSS_MEAN = {
 
 RSS_STD = _to_data_array(RSS_STD)
 RSS_MEAN = _to_data_array(RSS_MEAN)
-

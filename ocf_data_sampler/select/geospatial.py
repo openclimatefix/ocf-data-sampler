@@ -19,15 +19,20 @@ WGS84 = 4326
 
 
 _osgb_to_lon_lat = pyproj.Transformer.from_crs(
-    crs_from=OSGB36, crs_to=WGS84, always_xy=True,
+    crs_from=OSGB36,
+    crs_to=WGS84,
+    always_xy=True,
 ).transform
 _lon_lat_to_osgb = pyproj.Transformer.from_crs(
-    crs_from=WGS84, crs_to=OSGB36, always_xy=True,
+    crs_from=WGS84,
+    crs_to=OSGB36,
+    always_xy=True,
 ).transform
 
 
 def osgb_to_lon_lat(
-    x: Number | np.ndarray, y: Number | np.ndarray,
+    x: Number | np.ndarray,
+    y: Number | np.ndarray,
 ) -> tuple[Number | np.ndarray, Number | np.ndarray]:
     """Change OSGB coordinates to lon, lat.
 
@@ -71,6 +76,7 @@ def lon_lat_to_geostationary_area_coords(
     """
     return coordinates_to_geostationary_area_coords(longitude, latitude, xr_data, WGS84)
 
+
 def osgb_to_geostationary_area_coords(
     x: Number | np.ndarray,
     y: Number | np.ndarray,
@@ -87,7 +93,6 @@ def osgb_to_geostationary_area_coords(
         Geostationary coords: x, y
     """
     return coordinates_to_geostationary_area_coords(x, y, xr_data, OSGB36)
-
 
 
 def coordinates_to_geostationary_area_coords(
@@ -120,7 +125,9 @@ def coordinates_to_geostationary_area_coords(
     )
     geostationary_crs = geostationary_area_definition.crs
     osgb_to_geostationary = pyproj.Transformer.from_crs(
-        crs_from=crs_from, crs_to=geostationary_crs, always_xy=True,
+        crs_from=crs_from,
+        crs_to=geostationary_crs,
+        always_xy=True,
     ).transform
     return osgb_to_geostationary(xx=x, yy=y)
 
@@ -158,4 +165,3 @@ def spatial_coord_type(ds: xr.DataArray) -> tuple[str, str, str]:
         raise ValueError(f"Unrecognized input type: {type(ds)}")
 
     return coords
-

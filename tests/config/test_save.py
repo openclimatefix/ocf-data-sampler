@@ -1,4 +1,5 @@
 """Tests for configuration saving functionality."""
+
 import os
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration, save_yaml_configuration

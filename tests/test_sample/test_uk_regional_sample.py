@@ -13,7 +13,7 @@ from ocf_data_sampler.sample.uk_regional import UKRegionalSample
 
 @pytest.fixture
 def pvnet_config_filename(tmp_path):
-    """ Minimal config file - testing """
+    """Minimal config file - testing"""
     config_content = """
     input_data:
         gsp:
@@ -74,26 +74,25 @@ def test_sample_save_load(numpy_sample):
        sample.save(tf.name)
        loaded = UKRegionalSample.load(tf.name)
 
-       assert set(loaded._data.keys()) == set(sample._data.keys())
-       assert isinstance(loaded._data["nwp"], dict)
-       assert "ukv" in loaded._data["nwp"]
+        assert set(loaded._data.keys()) == set(sample._data.keys())
+        assert isinstance(loaded._data["nwp"], dict)
+        assert "ukv" in loaded._data["nwp"]
 
-       assert loaded._data[GSPSampleKey.gsp].shape == (7,)
-       assert loaded._data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
-       assert loaded._data[GSPSampleKey.solar_azimuth].shape == (7,)
-       assert loaded._data[GSPSampleKey.solar_elevation].shape == (7,)
+        assert loaded._data[GSPSampleKey.gsp].shape == (7,)
+        assert loaded._data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
+        assert loaded._data[GSPSampleKey.solar_azimuth].shape == (7,)
+        assert loaded._data[GSPSampleKey.solar_elevation].shape == (7,)
 
-       np.testing.assert_array_almost_equal(
-           loaded._data[GSPSampleKey.gsp],
-           sample._data[GSPSampleKey.gsp],
-       )
+        np.testing.assert_array_almost_equal(
+            loaded._data[GSPSampleKey.gsp],
+            sample._data[GSPSampleKey.gsp],
+        )
 
 
 def test_load_corrupted_file():
-    """ Test loading - corrupted / empty file """
+    """Test loading - corrupted / empty file"""
 
-    with (tempfile.NamedTemporaryFile(suffix=".pt") as tf,
-         open(tf.name, "wb") as f):
+    with tempfile.NamedTemporaryFile(suffix=".pt") as tf, open(tf.name, "wb") as f:
         f.write(b"corrupted data")
 
         with pytest.raises(ValueError):

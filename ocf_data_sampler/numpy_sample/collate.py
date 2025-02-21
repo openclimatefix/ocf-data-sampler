@@ -62,4 +62,3 @@ def stack_data_list(data_list: list, key: str) -> np.ndarray:
         return data_list[0]
     else:
         return np.stack(data_list)
-

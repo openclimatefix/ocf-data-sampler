@@ -59,7 +59,7 @@ def find_contiguous_time_periods(
 
     if len(periods) == 0:
         raise ValueError(
-            f"Did not find an periods from {datetimes}. " f"{min_seq_length=} {max_gap_duration=}",
+            f"Did not find an periods from {datetimes}. {min_seq_length=} {max_gap_duration=}",
         )
 
     return pd.DataFrame(periods)
@@ -93,13 +93,12 @@ def trim_contiguous_time_periods(
     return contiguous_time_periods
 
 
-
 def find_contiguous_t0_periods(
-        datetimes: pd.DatetimeIndex,
-        interval_start: pd.Timedelta,
-        interval_end: pd.Timedelta,
-        sample_period_duration: pd.Timedelta,
-    ) -> pd.DataFrame:
+    datetimes: pd.DatetimeIndex,
+    interval_start: pd.Timedelta,
+    interval_end: pd.Timedelta,
+    sample_period_duration: pd.Timedelta,
+) -> pd.DataFrame:
     """Return a pd.DataFrame where each row records the boundary of a contiguous time period.
 
     Args:
@@ -142,7 +141,6 @@ def find_contiguous_t0_periods_nwp(
     max_staleness: pd.Timedelta,
     max_dropout: pd.Timedelta = ZERO_TDELTA,
     first_forecast_step: pd.Timedelta = ZERO_TDELTA,
-
 ) -> pd.DataFrame:
     """Get all time periods from the NWP init times which are valid as t0 datetimes.
 
@@ -174,7 +172,7 @@ def find_contiguous_t0_periods_nwp(
     if not (pd.Timedelta(0) <= max_dropout <= max_staleness):
         raise ValueError("The max dropout must be between 0 and the max staleness")
 
-    hist_drop_buffer = max(first_forecast_step-interval_start, max_dropout)
+    hist_drop_buffer = max(first_forecast_step - interval_start, max_dropout)
 
     # Store contiguous periods
     contiguous_periods = []
@@ -191,7 +189,7 @@ def find_contiguous_t0_periods_nwp(
         # considering dropout) then the contiguous period breaks
         # Else if the previous init time becomes stale before the fist step of the next forecast
         # then this also causes a break in the contiguous period
-        if (end_this_period < dt_init + max(max_dropout, first_forecast_step)):
+        if end_this_period < dt_init + max(max_dropout, first_forecast_step):
             contiguous_periods.append([start_this_period, end_this_period])
             # The new period begins with the same conditions as the first period
             start_this_period = dt_init + hist_drop_buffer

@@ -66,14 +66,13 @@ def test_compute():
 
 
 def test_pvnet_uk_regional_dataset(pvnet_config_filename):
-
     # Create dataset object
     dataset = PVNetUKRegionalDataset(pvnet_config_filename)
 
-    assert len(dataset.locations) == 317 # Number of regional GSPs
+    assert len(dataset.locations) == 317  # Number of regional GSPs
     # NB. I have not checked the value (39 below) is in fact correct
     assert len(dataset.valid_t0_times) == 39
-    assert len(dataset) == 317*39
+    assert len(dataset) == 317 * 39
 
     # Generate a sample
     sample = dataset[0]
@@ -81,8 +80,11 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
     assert isinstance(sample, dict)
 
     for key in [
-        "nwp", "satellite_actual", "gsp",
-        "gsp_solar_azimuth", "gsp_solar_elevation",
+        "nwp",
+        "satellite_actual",
+        "gsp",
+        "gsp_solar_azimuth",
+        "gsp_solar_elevation",
     ]:
         assert key in sample
 
@@ -102,7 +104,6 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
 
 
 def test_pvnet_no_gsp(tmp_path, pvnet_config_filename):
-
     # Create new config without GSP inputs
     config = load_yaml_configuration(pvnet_config_filename)
     config.input_data.gsp.zarr_path = ""
@@ -117,14 +118,13 @@ def test_pvnet_no_gsp(tmp_path, pvnet_config_filename):
 
 
 def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
-
     # Create dataset object using a limited set of GSPs for test
-    gsp_ids = [1,2,3]
+    gsp_ids = [1, 2, 3]
     num_gsps = len(gsp_ids)
 
     dataset = PVNetUKConcurrentDataset(pvnet_config_filename, gsp_ids=gsp_ids)
 
-    assert len(dataset.locations) == num_gsps # Number of regional GSPs
+    assert len(dataset.locations) == num_gsps  # Number of regional GSPs
     # NB. I have not checked the value (39 below) is in fact correct
     assert len(dataset.valid_t0_times) == 39
     assert len(dataset) == 39
@@ -135,8 +135,11 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     assert isinstance(sample, dict)
 
     for key in [
-        "nwp", "satellite_actual", "gsp",
-        "gsp_solar_azimuth", "gsp_solar_elevation",
+        "nwp",
+        "satellite_actual",
+        "gsp",
+        "gsp_solar_azimuth",
+        "gsp_solar_elevation",
     ]:
         assert key in sample
 

@@ -23,10 +23,8 @@ def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | 
 
     # Load NWP data if in config
     if input_config.nwp:
-
         datasets_dict["nwp"] = {}
         for nwp_source, nwp_config in input_config.nwp.items():
-
             da_nwp = open_nwp(nwp_config.zarr_path, provider=nwp_config.provider)
 
             da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
@@ -51,4 +49,3 @@ def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | 
         datasets_dict["site"] = da_sites
 
     return datasets_dict
-

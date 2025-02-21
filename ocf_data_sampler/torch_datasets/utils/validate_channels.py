@@ -80,4 +80,3 @@ def validate_satellite_channels(config: Configuration) -> None:
             stds_channels=RSS_STD.channel.values,
             source_name="satellite",
         )
-

@@ -45,7 +45,7 @@ class TestSample(SampleBase):
 
 
 def test_sample_base_initialisation():
-    """ Initialisation of SampleBase subclass """
+    """Initialisation of SampleBase subclass"""
 
     sample = TestSample()
     assert hasattr(sample, "_data"), "Sample should have _data attribute"
@@ -53,7 +53,7 @@ def test_sample_base_initialisation():
 
 
 def test_sample_base_save_load(tmp_path):
-    """ Test basic save and load functionality """
+    """Test basic save and load functionality"""
 
     sample = TestSample()
     sample._data["test_data"] = [1, 2, 3]
@@ -67,14 +67,14 @@ def test_sample_base_save_load(tmp_path):
 
 
 def test_sample_base_abstract_methods():
-    """ Test abstract method enforcement """
+    """Test abstract method enforcement"""
 
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
         SampleBase()
 
 
 def test_sample_base_to_numpy():
-    """ Test the to_numpy functionality """
+    """Test the to_numpy functionality"""
     import numpy as np
 
     sample = TestSample()
@@ -90,7 +90,7 @@ def test_sample_base_to_numpy():
 
 
 def test_batch_to_tensor_nested():
-    """ Test nested dictionary conversion """
+    """Test nested dictionary conversion"""
     batch = {
         "outer": {
             "inner": np.array([1, 2, 3]),
@@ -102,7 +102,7 @@ def test_batch_to_tensor_nested():
 
 
 def test_batch_to_tensor_mixed_types():
-    """ Test handling of mixed data types """
+    """Test handling of mixed data types"""
     batch = {
         "tensor_data": np.array([1, 2, 3]),
         "string_data": "not_a_tensor",
@@ -120,7 +120,7 @@ def test_batch_to_tensor_mixed_types():
 
 
 def test_batch_to_tensor_different_dtypes():
-    """ Test conversion of arrays with different dtypes """
+    """Test conversion of arrays with different dtypes"""
     batch = {
         "float_data": np.array([1.0, 2.0, 3.0], dtype=np.float32),
         "int_data": np.array([1, 2, 3], dtype=np.int64),
@@ -135,7 +135,7 @@ def test_batch_to_tensor_different_dtypes():
 
 
 def test_batch_to_tensor_multidimensional():
-    """ Test conversion of multidimensional arrays """
+    """Test conversion of multidimensional arrays"""
     batch = {
         "matrix": np.array([[1, 2], [3, 4]]),
         "tensor": np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]),
@@ -148,7 +148,7 @@ def test_batch_to_tensor_multidimensional():
 
 
 def test_copy_batch_to_device():
-    """ Test moving tensors to a different device """
+    """Test moving tensors to a different device"""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     batch = {
         "tensor_data": torch.tensor([1, 2, 3]),

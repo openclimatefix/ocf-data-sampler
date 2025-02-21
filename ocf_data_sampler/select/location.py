@@ -1,10 +1,10 @@
 """Location model with coordinate system validation."""
 
-
 import numpy as np
 from pydantic import BaseModel, Field, model_validator
 
-allowed_coordinate_systems =["osgb", "lon_lat", "geostationary", "idx"]
+allowed_coordinate_systems = ["osgb", "lon_lat", "geostationary", "idx"]
+
 
 class Location(BaseModel):
     """Represent a spatial location."""
@@ -65,4 +65,3 @@ class Location(BaseModel):
                 f"y = {self.y} must be within {[min_y, max_y]} for {co} coordinate system",
             )
         return self
-

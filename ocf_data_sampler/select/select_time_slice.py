@@ -22,6 +22,7 @@ def select_time_slice(
 
     return ds.sel(time_utc=slice(start_dt, end_dt))
 
+
 def select_time_slice_nwp(
     da: xr.DataArray,
     t0: pd.Timestamp,
@@ -45,12 +46,14 @@ def select_time_slice_nwp(
         raise ValueError("dropout_frac must be between 0 and 1")
     consider_dropout = (dropout_timedeltas is not None) and dropout_frac > 0
 
-     # The accumatation and non-accumulation channels
+    # The accumatation and non-accumulation channels
     accum_channels = np.intersect1d(
-        da[channel_dim_name].values, accum_channels,
+        da[channel_dim_name].values,
+        accum_channels,
     )
     non_accum_channels = np.setdiff1d(
-        da[channel_dim_name].values, accum_channels,
+        da[channel_dim_name].values,
+        accum_channels,
     )
 
     start_dt = (t0 + interval_start).ceil(sample_period_duration)
@@ -109,7 +112,8 @@ def select_time_slice_nwp(
         # Slice out the data which does not need to be diffed
         da_non_accum = da_min.sel({channel_dim_name: non_accum_channels})
         da_sel_non_accum = da_non_accum.sel(
-            step=step_indexer, init_time_utc=init_time_indexer,
+            step=step_indexer,
+            init_time_utc=init_time_indexer,
         )
 
         # Slice out the channels which need to be diffed
@@ -127,9 +131,7 @@ def select_time_slice_nwp(
 
         # Rename the diffed channels
         da_sel[channel_dim_name] = [
-            f"diff_{v}" if v in accum_channels else v
-            for v in da_sel[channel_dim_name].values
+            f"diff_{v}" if v in accum_channels else v for v in da_sel[channel_dim_name].values
         ]
 
     return da_sel
-

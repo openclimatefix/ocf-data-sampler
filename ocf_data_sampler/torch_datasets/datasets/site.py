@@ -75,12 +75,14 @@ class SitesDataset(Dataset):
 
         # Filter t0 times to given range
         if start_time is not None:
-            valid_t0_and_site_ids \
-                = valid_t0_and_site_ids[valid_t0_and_site_ids["t0"] >= pd.Timestamp(start_time)]
+            valid_t0_and_site_ids = valid_t0_and_site_ids[
+                valid_t0_and_site_ids["t0"] >= pd.Timestamp(start_time)
+            ]
 
         if end_time is not None:
-            valid_t0_and_site_ids \
-                = valid_t0_and_site_ids[valid_t0_and_site_ids["t0"] <= pd.Timestamp(end_time)]
+            valid_t0_and_site_ids = valid_t0_and_site_ids[
+                valid_t0_and_site_ids["t0"] <= pd.Timestamp(end_time)
+            ]
 
         # Assign coords and indices to self
         self.valid_t0_and_site_ids = valid_t0_and_site_ids
@@ -155,7 +157,7 @@ class SitesDataset(Dataset):
             config: Configuration file
         """
         # 1. Get valid time period for nwp and satellite
-        datasets_without_site = {k:v for k, v in datasets_dict.items() if k!="site"}
+        datasets_without_site = {k: v for k, v in datasets_dict.items() if k != "site"}
         valid_time_periods = find_valid_time_periods(datasets_without_site, self.config)
 
         # 2. Now lets loop over each location in system id and find the valid periods
@@ -197,7 +199,6 @@ class SitesDataset(Dataset):
         valid_t0_and_site_ids.reset_index(inplace=True)
 
         return valid_t0_and_site_ids
-
 
     def get_locations(self, site_xr: xr.Dataset) -> list[Location]:
         """Get list of locations of all sites."""
@@ -277,7 +278,8 @@ class SitesDataset(Dataset):
         return combined_sample_dataset.fillna(0.0)
 
     def merge_data_arrays(
-        self, normalised_data_arrays: list[tuple[str, xr.DataArray]],
+        self,
+        normalised_data_arrays: list[tuple[str, xr.DataArray]],
     ) -> xr.Dataset:
         """Combine a list of DataArrays into a single Dataset with unique naming conventions.
 
@@ -310,7 +312,8 @@ class SitesDataset(Dataset):
 
             # Handle concatenation dimension if applicable
             concat_dim = (
-                f"{key}__target_time_utc" if f"{key}__target_time_utc" in dataset.coords
+                f"{key}__target_time_utc"
+                if f"{key}__target_time_utc" in dataset.coords
                 else f"{key}__time_utc"
             )
 
@@ -332,7 +335,9 @@ class SitesDataset(Dataset):
 
         return combined_dataset
 
+
 # ----- functions to load presaved samples ------
+
 
 def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
     """Convert a netcdf dataset to a numpy sample."""
@@ -353,6 +358,7 @@ def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
     #   to allow it to be flexible
 
     return sample
+
 
 def convert_from_dataset_to_dict_datasets(combined_dataset: xr.Dataset) -> dict[str, xr.DataArray]:
     """Convert a combined sample dataset to a dict of datasets for each input.
@@ -396,6 +402,7 @@ def nest_nwp_source_dict(d: dict, sep: str = "/") -> dict:
         new_dict["nwp"] = nwp_subdict
     return new_dict
 
+
 def convert_to_numpy_and_combine(
     dataset_dict: dict,
 ) -> dict:
@@ -403,7 +410,6 @@ def convert_to_numpy_and_combine(
     numpy_modalities = []
 
     if "nwp" in dataset_dict:
-
         nwp_numpy_modalities = {}
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
             # Convert to NumpySample
@@ -435,7 +441,7 @@ def convert_to_numpy_and_combine(
     return combined_sample
 
 
-def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float=0.1) -> xr.Dataset:
+def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float = 0.1) -> xr.Dataset:
     """Coarsen the data to a specified resolution in degrees.
 
     Args:
@@ -443,9 +449,9 @@ def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float=0.1) -> xr.Dataset:
         coarsen_to_deg: resolution to coarsen to in degrees
     """
     if "latitude" in xr_data.coords and "longitude" in xr_data.coords:
-        step = np.abs(xr_data.latitude.values[1]-xr_data.latitude.values[0])
-        step = np.round(step,4)
-        coarsen_factor = int(coarsen_to_deg/step)
+        step = np.abs(xr_data.latitude.values[1] - xr_data.latitude.values[0])
+        step = np.round(step, 4)
+        coarsen_factor = int(coarsen_to_deg / step)
         if coarsen_factor > 1:
             xr_data = xr_data.coarsen(
                 latitude=coarsen_factor,

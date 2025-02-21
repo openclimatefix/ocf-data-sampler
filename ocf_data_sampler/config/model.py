@@ -4,7 +4,6 @@ Absolute or relative zarr filepath(s).
 Prefix with a protocol like s3:// to read from alternative filesystems.
 """
 
-
 from collections.abc import Iterator
 from typing import override
 
@@ -27,7 +26,8 @@ class General(Base):
 
     name: str = Field("example", description="The name of this configuration file")
     description: str = Field(
-        "example configuration", description="Description of this configuration file",
+        "example configuration",
+        description="Description of this configuration file",
     )
 
 
@@ -133,7 +133,8 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     )
 
     channels: list[str] = Field(
-        ..., description="the satellite channels that are used",
+        ...,
+        description="the satellite channels that are used",
     )
 
 
@@ -147,7 +148,8 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     )
 
     channels: list[str] = Field(
-        ..., description="the channels used in the nwp data",
+        ...,
+        description="the channels used in the nwp data",
     )
 
     provider: str = Field(..., description="The provider of the NWP data")
@@ -160,7 +162,6 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         " used to construct an example. If set to None, then the max staleness is set according to"
         " the maximum forecast horizon of the NWP and the requested forecast length.",
     )
-
 
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:
@@ -240,4 +241,3 @@ class Configuration(Base):
 
     general: General = General()
     input_data: InputData = InputData()
-
