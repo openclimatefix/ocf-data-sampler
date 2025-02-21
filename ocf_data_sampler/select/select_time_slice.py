@@ -11,7 +11,7 @@ def select_time_slice(
     interval_start: pd.Timedelta,
     interval_end: pd.Timedelta,
     sample_period_duration: pd.Timedelta,
-) -> xr.Dataset:
+) -> xr.DataArray:
     """Select a time slice from a Dataset or DataArray."""
     t0_datetime_utc = pd.Timestamp(t0)
     start_dt = t0_datetime_utc + interval_start

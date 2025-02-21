@@ -60,7 +60,7 @@ def find_contiguous_time_periods(
 
     if len(periods) == 0:
         raise ValueError(
-            f"Did not find an periods from {datetimes}. {min_seq_length=} {max_gap_duration=}",
+            f"Did not find any periods from {datetimes}. {min_seq_length=} {max_gap_duration=}",
         )
 
     return pd.DataFrame(periods)

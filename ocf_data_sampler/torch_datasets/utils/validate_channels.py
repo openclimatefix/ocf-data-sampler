@@ -1,4 +1,4 @@
-"""Functions for validating channels within a torch dataset."""
+"""Functions for checking that normalisation statistics exist for the data channels requested."""
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
