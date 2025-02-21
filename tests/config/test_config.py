@@ -31,7 +31,8 @@ def test_incorrect_interval_start_minutes(test_config_filename):
     configuration.input_data.nwp["ukv"].interval_start_minutes = -1111
     with pytest.raises(
         ValueError,
-        match="interval_start_minutes must be divisible by time_resolution_minutes",
+        match=r"interval_start_minutes \(-1111\) "
+        r"must be divisible by time_resolution_minutes \(60\)",
     ):
         _ = Configuration(**configuration.model_dump())
 
@@ -46,7 +47,8 @@ def test_incorrect_interval_end_minutes(test_config_filename):
     configuration.input_data.nwp["ukv"].interval_end_minutes = 1111
     with pytest.raises(
         ValueError,
-        match="interval_end_minutes must be divisible by time_resolution_minutes",
+        match=r"interval_end_minutes \(1111\) "
+        r"must be divisible by time_resolution_minutes \(60\)",
     ):
         _ = Configuration(**configuration.model_dump())
 

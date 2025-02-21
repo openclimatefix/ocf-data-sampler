@@ -100,20 +100,10 @@ def test_load_corrupted_file():
             UKRegionalSample.load(tf.name)
 
 
-def test_to_numpy():
+def test_to_numpy(numpy_sample):
     """To numpy conversion check"""
 
-    data = {
-        "nwp": {
-            "ukv": {
-                "nwp": np.random.rand(4, 1, 2, 2),
-                "x": np.array([1, 2]),
-                "y": np.array([1, 2]),
-            },
-        },
-    }
-
-    sample = UKRegionalSample(data)
+    sample = UKRegionalSample(numpy_sample)
 
     numpy_data = sample.to_numpy()
 
