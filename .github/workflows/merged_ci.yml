@@ -1,0 +1,14 @@
+name: Default Branch Push CI
+
+on:
+  pull_request:
+    types: [ "closed" ]
+    branches: [ "main" ]
+
+jobs:
+  merged-ci:
+    uses: openclimatefix/.github/.github/workflows/default_branch_pr_merged_ci.yml@main
+    secrets: inherit
+    with:
+      containerfile: '' # No container to build
+
