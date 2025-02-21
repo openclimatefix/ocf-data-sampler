@@ -3,7 +3,6 @@
 from typing_extensions import override
 
 import torch
-from matplotlib import pyplot as plt
 
 from ocf_data_sampler.sample.base import SampleBase, NumpySample
 from ocf_data_sampler.numpy_sample import (
@@ -43,6 +42,7 @@ class UKRegionalSample(SampleBase):
 
     def plot(self) -> None:
         """Creates visualisations for NWP, GSP, solar position, and satellite data"""
+        from matplotlib import pyplot as plt
 
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
         
