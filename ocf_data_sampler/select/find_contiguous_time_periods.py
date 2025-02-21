@@ -5,7 +5,6 @@ import pandas as pd
 from ocf_data_sampler.load.utils import check_time_unique_increasing
 
 
-
 def find_contiguous_time_periods(
     datetimes: pd.DatetimeIndex,
     min_seq_length: int,

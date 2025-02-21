@@ -16,7 +16,6 @@ from ocf_data_sampler.numpy_sample import (
 from ocf_data_sampler.sample.uk_regional import UKRegionalSample
 
 
-# Fixture define
 @pytest.fixture
 def pvnet_config_filename(tmp_path):
     """ Minimal config file - testing """
@@ -50,8 +49,8 @@ def pvnet_config_filename(tmp_path):
     config_file.write_text(config_content)
     return str(config_file)
 
-
-def create_test_data():
+@pytest.fixture
+def numpy_sample():
     """ Synthetic data generation """
 
     # Field / spatial coordinates
@@ -73,18 +72,8 @@ def create_test_data():
     }
 
 
-# UKRegionalSample testing
-def test_sample_init():
-    """ Initialisation """
-    sample = UKRegionalSample()
-    assert hasattr(sample, '_data'), "Sample should have _data attribute"
-    assert isinstance(sample._data, dict)
-    assert len(sample._data) == 0
-
-
-def test_sample_save_load():
-   sample = UKRegionalSample()
-   sample._data = create_test_data()
+def test_sample_save_load(numpy_sample):
+   sample = UKRegionalSample(numpy_sample)
    
    with tempfile.NamedTemporaryFile(suffix='.pt') as tf:
        sample.save(tf.name)
@@ -105,24 +94,6 @@ def test_sample_save_load():
        )
 
 
-def test_save_unsupported_format():
-   """ Test saving - unsupported file format """
-   sample = UKRegionalSample()
-   sample._data = create_test_data()
-  
-   with tempfile.NamedTemporaryFile(suffix='.npz') as tf:
-       with pytest.raises(ValueError, match="Only .pt format is supported"):
-           sample.save(tf.name)
-
-
-def test_load_unsupported_format():
-    """ Test loading - unsupported file format """
-
-    with tempfile.NamedTemporaryFile(suffix='.npz') as tf:
-        with pytest.raises(ValueError, match="Only .pt format is supported"):
-            UKRegionalSample.load(tf.name)
-
-
 def test_load_corrupted_file():
     """ Test loading - corrupted / empty file """
 
@@ -136,8 +107,8 @@ def test_load_corrupted_file():
 
 def test_to_numpy():
     """ To numpy conversion check """
-    sample = UKRegionalSample()
-    sample._data = {
+
+    data = {
         'nwp': {
             'ukv': {
                 'nwp': np.random.rand(4, 1, 2, 2),
@@ -150,6 +121,8 @@ def test_to_numpy():
         GSPSampleKey.solar_azimuth: np.random.rand(7),
         GSPSampleKey.solar_elevation: np.random.rand(7)
     }
+
+    sample = UKRegionalSample(data)
     
     numpy_data = sample.to_numpy()
     

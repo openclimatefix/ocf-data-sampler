@@ -27,16 +27,15 @@ def calculate_azimuth_and_elevation(
         latitude=lat,
         method='nrel_numpy'
     )
-    azimuth = solpos["azimuth"].values
-    elevation = solpos["elevation"].values
-    return azimuth, elevation
+
+    return solpos["azimuth"].values, solpos["elevation"].values
 
 
 def make_sun_position_numpy_sample(
-        datetimes: pd.DatetimeIndex, 
-        lon: float, 
-        lat: float, 
-        key_prefix: str = "gsp"
+    datetimes: pd.DatetimeIndex, 
+    lon: float, 
+    lat: float, 
+    key_prefix: str = "gsp"
 ) -> dict:
     """Creates NumpySample with standardized solar coordinates
 
@@ -44,18 +43,18 @@ def make_sun_position_numpy_sample(
         datetimes: The datetimes to calculate solar angles for
         lon: The longitude
         lat: The latitude
+        key_prefix: The prefix to add to the keys in the NumpySample
     """
     
     azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon, lat)
 
     # Normalise
-
     # Azimuth is in range [0, 360] degrees
     azimuth = azimuth / 360
 
     # Elevation is in range [-90, 90] degrees
     elevation = elevation / 180 + 0.5
-    
+
     # Make NumpySample
     sun_numpy_sample = {
         key_prefix + "_solar_azimuth": azimuth,

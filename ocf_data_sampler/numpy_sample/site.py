@@ -18,9 +18,13 @@ class SiteSampleKey:
     time_cos = "site_time_cos"
 
 def convert_site_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
-    """Convert from Xarray to NumpySample"""
+    """Convert from Xarray to NumpySample
+    
+    Args:
+        da: xarray DataArray containing site data
+        t0_idx: Index of the t0 timestamp in the time dimension of the site data
+    """
 
-    # Extract values from the DataArray
     sample = {
         SiteSampleKey.generation: da.values,
         SiteSampleKey.capacity_kwp: da.isel(time_utc=0)["capacity_kwp"].values,

@@ -49,31 +49,34 @@ class TimeWindowMixin(Base):
         ...,
         description="Data interval ends at `t0 + interval_end_minutes`",
     )
-    
+
     @model_validator(mode='after')
-    def check_interval_range(cls, values):
-        if values.interval_start_minutes > values.interval_end_minutes:
-            raise ValueError('interval_start_minutes must be <= interval_end_minutes')
+    def validate_intervals(cls, values):
+        start = values.interval_start_minutes
+        end = values.interval_end_minutes
+        resolution = values.time_resolution_minutes
+        if start > end:
+            raise ValueError(
+                f"interval_start_minutes ({start}) must be <= interval_end_minutes ({end})"
+            )
+        if (start % resolution != 0):
+            raise ValueError(
+                f"interval_start_minutes ({start}) must be divisible "
+                f"by time_resolution_minutes ({resolution})"
+            )
+        if (end % resolution != 0):
+            raise ValueError(
+                f"interval_end_minutes ({end}) must be divisible "
+                f"by time_resolution_minutes ({resolution})"
+            )
         return values
-
-    @field_validator("interval_start_minutes")
-    def interval_start_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
-        if v % info.data["time_resolution_minutes"] != 0:
-            raise ValueError("interval_start_minutes must be divisible by time_resolution_minutes")
-        return v
-
-    @field_validator("interval_end_minutes")
-    def interval_end_minutes_divide_by_time_resolution(cls, v: int, info: ValidationInfo) -> int:
-        if v % info.data["time_resolution_minutes"] != 0:
-            raise ValueError("interval_end_minutes must be divisible by time_resolution_minutes")
-        return v
 
 
 class DropoutMixin(Base):
     """Mixin class, to add dropout minutes"""
 
-    dropout_timedeltas_minutes: Optional[List[int]] = Field(
-        default=None,
+    dropout_timedeltas_minutes: List[int] = Field(
+        default=[],
         description="List of possible minutes before t0 where data availability may start. Must be "
         "negative or zero.",
     )
@@ -88,18 +91,17 @@ class DropoutMixin(Base):
     @field_validator("dropout_timedeltas_minutes")
     def dropout_timedeltas_minutes_negative(cls, v: List[int]) -> List[int]:
         """Validate 'dropout_timedeltas_minutes'"""
-        if v is not None:
-            for m in v:
-                assert m <= 0, "Dropout timedeltas must be negative"
+        for m in v:
+            assert m <= 0, "Dropout timedeltas must be negative"
         return v
 
     @model_validator(mode="after")
     def dropout_instructions_consistent(self) -> Self:
         if self.dropout_fraction == 0:
-            if self.dropout_timedeltas_minutes is not None:
+            if self.dropout_timedeltas_minutes != []:
                 raise ValueError("To use dropout timedeltas dropout fraction should be > 0")
         else:
-            if self.dropout_timedeltas_minutes is None:
+            if self.dropout_timedeltas_minutes == []:
                 raise ValueError("To dropout fraction > 0 requires a list of dropout timedeltas")
         return self
 
