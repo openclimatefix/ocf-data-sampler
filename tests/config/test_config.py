@@ -103,7 +103,7 @@ def test_inconsistent_dropout_use(test_config_filename):
     """
 
     configuration = load_yaml_configuration(test_config_filename)
-    configuration.input_data.satellite.dropout_fraction= 1.0
+    configuration.input_data.satellite.dropout_fraction = 1.0
     configuration.input_data.satellite.dropout_timedeltas_minutes = []
 
     with pytest.raises(

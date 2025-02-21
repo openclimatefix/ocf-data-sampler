@@ -7,6 +7,7 @@ from ocf_data_sampler.load.utils import check_time_unique_increasing
 
 ZERO_TDELTA = pd.Timedelta(0)
 
+
 def find_contiguous_time_periods(
     datetimes: pd.DatetimeIndex,
     min_seq_length: int,

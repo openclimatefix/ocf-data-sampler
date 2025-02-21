@@ -44,9 +44,10 @@ def pvnet_config_filename(tmp_path):
     config_file.write_text(config_content)
     return str(config_file)
 
+
 @pytest.fixture
 def numpy_sample():
-    """ Synthetic data generation """
+    """Synthetic data generation"""
 
     # Field / spatial coordinates
     nwp_data = {
@@ -68,11 +69,11 @@ def numpy_sample():
 
 
 def test_sample_save_load(numpy_sample):
-   sample = UKRegionalSample(numpy_sample)
-   
-   with tempfile.NamedTemporaryFile(suffix='.pt') as tf:
-       sample.save(tf.name)
-       loaded = UKRegionalSample.load(tf.name)
+    sample = UKRegionalSample(numpy_sample)
+
+    with tempfile.NamedTemporaryFile(suffix=".pt") as tf:
+        sample.save(tf.name)
+        loaded = UKRegionalSample.load(tf.name)
 
         assert set(loaded._data.keys()) == set(sample._data.keys())
         assert isinstance(loaded._data["nwp"], dict)
@@ -100,20 +101,20 @@ def test_load_corrupted_file():
 
 
 def test_to_numpy():
-    """ To numpy conversion check """
+    """To numpy conversion check"""
 
     data = {
-        'nwp': {
-            'ukv': {
-                'nwp': np.random.rand(4, 1, 2, 2),
-                'x': np.array([1, 2]),
-                'y': np.array([1, 2])
-            }
+        "nwp": {
+            "ukv": {
+                "nwp": np.random.rand(4, 1, 2, 2),
+                "x": np.array([1, 2]),
+                "y": np.array([1, 2]),
+            },
         },
-    )
+    }
 
     sample = UKRegionalSample(data)
-    
+
     numpy_data = sample.to_numpy()
 
     # Check returned data matches

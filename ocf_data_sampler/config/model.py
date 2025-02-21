@@ -7,7 +7,7 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 from collections.abc import Iterator
 from typing import override
 
-from pydantic import BaseModel, Field, RootModel, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 
 from ocf_data_sampler.constants import NWP_PROVIDERS
 
@@ -50,32 +50,33 @@ class TimeWindowMixin(Base):
         description="Data interval ends at `t0 + interval_end_minutes`",
     )
 
-    @model_validator(mode='after')
-    def validate_intervals(cls, values):
-        start = values.interval_start_minutes
-        end = values.interval_end_minutes
-        resolution = values.time_resolution_minutes
+    @model_validator(mode="after")
+    def validate_intervals(self) -> "TimeWindowMixin":
+        """Validator for time interval fields."""
+        start = self.interval_start_minutes
+        end = self.interval_end_minutes
+        resolution = self.time_resolution_minutes
         if start > end:
             raise ValueError(
-                f"interval_start_minutes ({start}) must be <= interval_end_minutes ({end})"
+                f"interval_start_minutes ({start}) must be <= interval_end_minutes ({end})",
             )
-        if (start % resolution != 0):
+        if start % resolution != 0:
             raise ValueError(
                 f"interval_start_minutes ({start}) must be divisible "
-                f"by time_resolution_minutes ({resolution})"
+                f"by time_resolution_minutes ({resolution})",
             )
-        if (end % resolution != 0):
+        if end % resolution != 0:
             raise ValueError(
                 f"interval_end_minutes ({end}) must be divisible "
-                f"by time_resolution_minutes ({resolution})"
+                f"by time_resolution_minutes ({resolution})",
             )
-        return values
+        return self
 
 
 class DropoutMixin(Base):
     """Mixin class, to add dropout minutes."""
 
-    dropout_timedeltas_minutes: List[int] = Field(
+    dropout_timedeltas_minutes: list[int] = Field(
         default=[],
         description="List of possible minutes before t0 where data availability may start. Must be "
         "negative or zero.",
@@ -89,10 +90,11 @@ class DropoutMixin(Base):
     )
 
     @field_validator("dropout_timedeltas_minutes")
-    def dropout_timedeltas_minutes_negative(cls, v: List[int]) -> List[int]:
-        """Validate 'dropout_timedeltas_minutes'"""
+    def dropout_timedeltas_minutes_negative(cls, v: list[int]) -> list[int]:
+        """Validate 'dropout_timedeltas_minutes'."""
         for m in v:
-            assert m <= 0, "Dropout timedeltas must be negative"
+            if m > 0:
+                raise ValueError("Dropout timedeltas must be negative")
         return v
 
     @model_validator(mode="after")

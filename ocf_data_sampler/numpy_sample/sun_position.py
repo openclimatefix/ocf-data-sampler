@@ -32,10 +32,10 @@ def calculate_azimuth_and_elevation(
 
 
 def make_sun_position_numpy_sample(
-    datetimes: pd.DatetimeIndex, 
-    lon: float, 
-    lat: float, 
-    key_prefix: str = "gsp"
+    datetimes: pd.DatetimeIndex,
+    lon: float,
+    lat: float,
+    key_prefix: str = "gsp",
 ) -> dict:
     """Creates NumpySample with standardized solar coordinates.
 

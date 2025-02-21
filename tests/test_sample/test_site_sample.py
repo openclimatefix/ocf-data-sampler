@@ -78,9 +78,9 @@ def sample_data():
 
 
 def test_site_sample_with_data(sample_data):
-    """ Testing of defined sample with actual data """
+    """Testing of defined sample with actual data"""
     sample = SiteSample(sample_data)
-    
+
     # Assert data structure
     assert isinstance(sample._data, Dataset)
 
@@ -103,7 +103,7 @@ def test_site_sample_with_data(sample_data):
 
 
 def test_save_load(tmp_path, sample_data):
-    """ Save and load functionality """
+    """Save and load functionality"""
     sample = SiteSample(sample_data)
     filepath = tmp_path / "test_sample.nc"
     sample.save(filepath)
@@ -122,14 +122,14 @@ def test_save_load(tmp_path, sample_data):
 
 
 def test_invalid_data_type():
-    """ Handling of invalid data types """
-    
+    """Handling of invalid data types"""
+
     with pytest.raises(TypeError, match="Data must be xarray Dataset"):
         _ = SiteSample({"invalid": "data"})
 
 
 def test_to_numpy(sample_data):
-    """ To numpy conversion """
+    """To numpy conversion"""
     sample = SiteSample(sample_data)
     numpy_data = sample.to_numpy()
 
@@ -153,7 +153,7 @@ def test_to_numpy(sample_data):
 
 
 def test_data_consistency(sample_data):
-    """ Consistency of data across operations """
+    """Consistency of data across operations"""
     sample = SiteSample(sample_data)
     numpy_data = sample.to_numpy()
 
@@ -166,4 +166,3 @@ def test_data_consistency(sample_data):
     assert numpy_data["site"].shape == (4,)
     assert np.all(numpy_data["site"] >= 0)
     assert np.all(numpy_data["site"] <= 1)
-

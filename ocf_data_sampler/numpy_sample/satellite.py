@@ -1,4 +1,4 @@
-"""Convert Satellite to NumpySample"""
+"""Convert Satellite to NumpySample."""
 
 import xarray as xr
 
@@ -14,8 +14,8 @@ class SatelliteSampleKey:
 
 
 def convert_satellite_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
-    """Convert from Xarray to NumpySample
-    
+    """Convert from Xarray to NumpySample.
+
     Args:
         da: xarray DataArray containing satellite data
         t0_idx: Index of the t0 timestamp in the time dimension of the satellite data

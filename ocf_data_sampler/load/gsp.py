@@ -34,4 +34,3 @@ def open_gsp(zarr_path: str) -> xr.DataArray:
     )
 
     return ds.generation_mw
-

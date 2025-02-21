@@ -13,11 +13,9 @@ from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
 )
 
 
-
 def test_process_and_combine_datasets(pvnet_config_filename, ds_nwp_ukv_time_sliced):
-
     config = load_yaml_configuration(pvnet_config_filename)
-    
+
     t0 = pd.Timestamp("2024-01-01 00:00")
     location = Location(coordinate_system="osgb", x=1234, y=5678, id=1)
 
@@ -32,10 +30,7 @@ def test_process_and_combine_datasets(pvnet_config_filename, ds_nwp_ukv_time_sli
         },
     )
 
-    dataset_dict = {
-        "nwp": {"ukv": ds_nwp_ukv_time_sliced},
-        "sat": sat_data
-    }
+    dataset_dict = {"nwp": {"ukv": ds_nwp_ukv_time_sliced}, "sat": sat_data}
 
     sample = process_and_combine_datasets(dataset_dict, config, t0, location)
 
