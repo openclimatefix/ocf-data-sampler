@@ -45,7 +45,7 @@ def apply_dropout_time(
     """Apply dropout time to the data
     
     Args:
-        ds: Xarray DataArray with 'time_utc' coordiante 
+        ds: Xarray DataArray with 'time_utc' coordinate 
         dropout_time: Time after which data is set to NaN
     """
     # This replaces the times after the dropout with NaNs

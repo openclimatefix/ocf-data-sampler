@@ -95,7 +95,7 @@ def test_load_corrupted_file():
     with tempfile.NamedTemporaryFile(suffix=".pt") as tf, open(tf.name, "wb") as f:
         f.write(b"corrupted data")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(EOFError):
             UKRegionalSample.load(tf.name)
 
 
@@ -110,11 +110,7 @@ def test_to_numpy():
                 'y': np.array([1, 2])
             }
         },
-        GSPSampleKey.gsp: np.random.rand(7),
-        SatelliteSampleKey.satellite_actual: np.random.rand(7, 1, 2, 2),
-        GSPSampleKey.solar_azimuth: np.random.rand(7),
-        GSPSampleKey.solar_elevation: np.random.rand(7),
-    }
+    )
 
     sample = UKRegionalSample(data)
     

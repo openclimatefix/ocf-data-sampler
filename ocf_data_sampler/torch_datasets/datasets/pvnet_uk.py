@@ -1,10 +1,10 @@
 """Torch dataset for UK PVNet."""
 
+from importlib.resources import files
 from typing import override
 
 import numpy as np
 import pandas as pd
-import pkg_resources
 import xarray as xr
 from torch.utils.data import Dataset
 
@@ -151,7 +151,7 @@ def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
 
     # Load UK GSP locations
     df_gsp_loc = pd.read_csv(
-        pkg_resources.resource_filename(__name__, "../../data/uk_gsp_locations.csv"),
+        files("ocf_data_sampler.data").joinpath("uk_gsp_locations.csv"),
         index_col="gsp_id",
     )
 

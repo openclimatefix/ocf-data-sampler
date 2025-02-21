@@ -26,7 +26,8 @@ class TestChannelValidation:
                 "norm_channels": ["channel1"],
                 "source_name": "test_source",
                 "expect_error": True,
-                "error_match": "following channels for test_source are missing in normalisation means",
+                "error_match": "following channels for test_source "
+                "are missing in normalisation means",
             },
             # NWP case - success
             {
@@ -56,7 +57,8 @@ class TestChannelValidation:
                 "norm_channels": ["IR_016"],
                 "source_name": "satellite",
                 "expect_error": True,
-                "error_match": "following channels for satellite are missing in normalisation means",
+                "error_match": "following channels for satellite "
+                "are missing in normalisation means",
             },
         ],
     )

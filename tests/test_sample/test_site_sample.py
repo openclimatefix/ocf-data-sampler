@@ -166,3 +166,4 @@ def test_data_consistency(sample_data):
     assert numpy_data["site"].shape == (4,)
     assert np.all(numpy_data["site"] >= 0)
     assert np.all(numpy_data["site"] <= 1)
+

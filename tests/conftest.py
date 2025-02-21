@@ -239,7 +239,7 @@ def ds_uk_gsp():
             "capacity_mwp": da_cap,
             "installedcapacity_mwp": da_cap,
             "generation_mw": da_gen,
-        }
+        },
     )
 
 
@@ -287,7 +287,7 @@ def data_sites(session_tmp_path) -> Site:
         {
             "capacity_kwp": da_cap,
             "generation_kw": da_gen,
-        }
+        },
     )
 
     filename = f"{session_tmp_path}/sites.netcdf"

@@ -1,7 +1,8 @@
 """Functions for loading GSP data."""
 
+from importlib.resources import files
+
 import pandas as pd
-import pkg_resources
 import xarray as xr
 
 
@@ -20,7 +21,7 @@ def open_gsp(zarr_path: str) -> xr.DataArray:
 
     # Load UK GSP locations
     df_gsp_loc = pd.read_csv(
-        pkg_resources.resource_filename(__name__, "../data/uk_gsp_locations.csv"),
+        files("ocf_data_sampler.data").joinpath("uk_gsp_locations.csv"),
         index_col="gsp_id",
     )
 
@@ -33,3 +34,4 @@ def open_gsp(zarr_path: str) -> xr.DataArray:
     )
 
     return ds.generation_mw
+

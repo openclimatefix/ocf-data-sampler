@@ -27,6 +27,7 @@ dependencies = [
     "xarray",
     "zarr==2.18.3",
     "dask",
+    "matplotlib",
     "ocf_blosc2",
     "pvlib",
     "pydantic",
@@ -44,7 +45,6 @@ dev = [
     "ruff >= 0.9.2",
     # LSP Support
     "python-lsp-server",
-    "pylsp-mypy",
     "python-lsp-ruff",
 ]
 

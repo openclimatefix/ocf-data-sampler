@@ -239,7 +239,7 @@ def _select_spatial_slice_pixels(
     x_dim: str,
     y_dim: str,
     allow_partial_slice: bool,
-) -> xr.DatArray:
+) -> xr.DataArray:
     """Select a spatial slice from an xarray object.
 
     Args:
