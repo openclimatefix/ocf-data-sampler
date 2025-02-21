@@ -2,11 +2,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ocf_data_sampler.numpy_sample.sun_position import (
-    calculate_azimuth_and_elevation, make_sun_position_numpy_sample
-)
-
 from ocf_data_sampler.numpy_sample import GSPSampleKey
+from ocf_data_sampler.numpy_sample.sun_position import (
+    calculate_azimuth_and_elevation,
+    make_sun_position_numpy_sample,
+)
 
 
 @pytest.mark.parametrize("lat", [0, 5, 10, 23.5])
@@ -52,8 +52,8 @@ def test_calculate_azimuth_and_elevation_random():
     azimuths = np.array(azimuths)
     elevations = np.array(elevations)
 
-    assert (0<=azimuths).all() and (azimuths<=360).all()
-    assert (-90<=elevations).all() and (elevations<=90).all()
+    assert (azimuths >= 0).all() and (azimuths<=360).all()
+    assert (elevations >= -90).all() and (elevations<=90).all()
 
     # Azimuth range is [0, 360]
     assert azimuths.min() < 30

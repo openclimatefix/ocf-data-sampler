@@ -1,13 +1,13 @@
-"""Load configuration from a yaml file"""
+"""Load configuration from a yaml file."""
 
 import fsspec
 from pyaml_env import parse_config
+
 from ocf_data_sampler.config import Configuration
 
 
 def load_yaml_configuration(filename: str) -> Configuration:
-    """
-    Load a yaml file which has a configuration in it
+    """Load a yaml file which has a configuration in it.
 
     Args:
         filename: the yaml file name that you want to load.  Will load from local, AWS, or GCP

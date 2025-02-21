@@ -6,9 +6,9 @@ import torch
 
 from ocf_data_sampler.sample.base import SampleBase, NumpySample
 from ocf_data_sampler.numpy_sample import (
-    NWPSampleKey, 
     GSPSampleKey,
-    SatelliteSampleKey
+    NWPSampleKey,
+    SatelliteSampleKey,
 )
 
 

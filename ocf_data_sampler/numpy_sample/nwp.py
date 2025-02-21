@@ -1,10 +1,11 @@
-"""Convert NWP to NumpySample"""
+"""Convert NWP to NumpySample."""
 
 import pandas as pd
 import xarray as xr
 
 
 class NWPSampleKey:
+    """Keys for NWP NumpySample."""
 
     nwp = 'nwp'
     channel_names = 'nwp_channel_names'
@@ -32,5 +33,6 @@ def convert_nwp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> 
 
     if t0_idx is not None:
         sample[NWPSampleKey.t0_idx] = t0_idx
-        
+
     return sample
+

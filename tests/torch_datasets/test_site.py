@@ -1,16 +1,15 @@
-import pytest
-
 import numpy as np
 import pandas as pd
+import pytest
 import xarray as xr
-
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.torch_datasets.datasets.site import (
-    SitesDataset, convert_from_dataset_to_dict_datasets, coarsen_data
+    SitesDataset,
+    coarsen_data,
+    convert_from_dataset_to_dict_datasets,
 )
-
 
 
 @pytest.fixture()
@@ -111,10 +110,6 @@ def test_site_time_filter_end(site_config_filename):
     assert len(dataset) == 0
 
 
-def test_site_get_sample(sites_dataset):
-    sample = sites_dataset.get_sample(t0=pd.Timestamp("2023-01-01 12:00"), site_id=1)
-
-
 def test_convert_from_dataset_to_dict_datasets(sites_dataset):
 
     # Generate sample
@@ -128,7 +123,7 @@ def test_convert_from_dataset_to_dict_datasets(sites_dataset):
         assert key in sample
 
 
-def test_site_dataset_with_dataloader(sites_dataset):
+def test_site_dataset_with_dataloader(sites_dataset) -> None:
 
     expected_coods = {
         "site__solar_azimuth",
@@ -139,21 +134,6 @@ def test_site_dataset_with_dataloader(sites_dataset):
         "site__date_sin",
     }
 
-    dataloader_kwargs = dict(
-        shuffle=False,
-        batch_size=None,
-        sampler=None,
-        batch_sampler=None,
-        num_workers=1,
-        collate_fn=None,
-        pin_memory=False,  # Only using CPU to prepare samples so pinning is not beneficial
-        drop_last=False,
-        timeout=0,
-        worker_init_fn=None,
-        prefetch_factor=1,
-        persistent_workers=False,  # Not needed since we only enter the dataloader loop once
-    )
-
     dataloader = DataLoader(sites_dataset, collate_fn=None, batch_size=None)
 
     sample = next(iter(dataloader))
@@ -163,7 +143,7 @@ def test_site_dataset_with_dataloader(sites_dataset):
         assert key in sample
 
 
-def test_process_and_combine_site_sample_dict(sites_dataset):
+def test_process_and_combine_site_sample_dict(sites_dataset: xr.Dataset) -> None:
 
     # Specify minimal structure for testing
     raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
@@ -177,7 +157,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset):
                     "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
                     "channel": ["dswrf"],  # Single channel
                 },
-            )
+            ),
         },
         "site": xr.DataArray(
             fake_site_values,
@@ -187,11 +167,10 @@ def test_process_and_combine_site_sample_dict(sites_dataset):
                     "capacity_kwp": 1000,
                     "site_id": 1,
                     "longitude": -3.5,
-                    "latitude": 51.5
-                }
-        )
+                    "latitude": 51.5,
+                },
+        ),
     }
-    print(f"Input site_dict: {site_dict}")
 
     # Call function
     result = sites_dataset.process_and_combine_site_sample_dict(site_dict)
@@ -203,8 +182,9 @@ def test_process_and_combine_site_sample_dict(sites_dataset):
     # Validate variable via assertion and shape of such
     expected_variables = ["nwp-ukv", "site"]
     for expected_variable in expected_variables:
-        assert expected_variable in result.data_vars, f"Expected variable '{expected_variable}' not found"
-    
+        assert expected_variable in result.data_vars,\
+        f"Expected variable '{expected_variable}' not found"
+
     nwp_result = result["nwp-ukv"]
     assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
     site_result = result["site"]

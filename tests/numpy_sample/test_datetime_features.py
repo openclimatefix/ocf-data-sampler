@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pytest
 
 from ocf_data_sampler.numpy_sample.datetime_features import make_datetime_numpy_dict
 
@@ -34,4 +33,5 @@ def test_make_datetime_numpy_batch_custom_key_prefix():
 
     # Assert dict contains expected quantity of keys and verify starting with custom prefix
     assert len(datetime_features) == 4
-    assert all(key.startswith(key_prefix) for key in datetime_features.keys())
+    assert all(key.startswith(key_prefix) for key in datetime_features)
+

@@ -1,14 +1,13 @@
-import pytest
-
 import os
+
+import dask.array
 import numpy as np
 import pandas as pd
+import pytest
 import xarray as xr
-import dask.array
 
-from ocf_data_sampler.config.model import Site
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
-
+from ocf_data_sampler.config.model import Site
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -32,13 +31,13 @@ def sat_zarr_path(session_tmp_path):
 
     # Define coords for satellite-like dataset
     variables = [
-        'IR_016', 'IR_039', 'IR_087', 'IR_097', 'IR_108', 'IR_120', 
-        'IR_134', 'VIS006', 'VIS008', 'WV_062', 'WV_073',
+        "IR_016", "IR_039", "IR_087", "IR_097", "IR_108", "IR_120",
+        "IR_134", "VIS006", "VIS008", "WV_062", "WV_073",
     ]
     x = np.linspace(start=15002, stop=-1824245, num=100)
     y = np.linspace(start=4191563, stop=5304712, num=100)
     times = pd.date_range("2023-01-01 00:00", "2023-01-01 23:55", freq="5min")
-    
+
     area_string = (
         """msg_seviri_rss_3km:
         description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
@@ -61,24 +60,24 @@ def sat_zarr_path(session_tmp_path):
             units: m
         """
     )
-    
+
     # Create satellite-like data with some NaNs
     data = dask.array.zeros(
-        shape=(len(variables), len(times), len(y), len(x)), 
+        shape=(len(variables), len(times), len(y), len(x)),
         chunks=(-1, 10, -1, -1),
-        dtype=np.float32
+        dtype=np.float32,
     )
     data [:, 10, :, :] = np.nan
-    
+
     ds = xr.DataArray(
         data=data,
-        coords=dict(
-            variable=variables,
-            time=times,
-            y_geostationary=y,
-            x_geostationary=x,
-        ),
-        attrs=dict(area=area_string),
+        coords={
+            "variable": variables,
+            "time": times,
+            "y_geostationary": y,
+            "x_geostationary": x,
+        },
+        attrs={"area": area_string},
     ).to_dataset(name="data")
 
     # Save temporarily as a zarr
@@ -118,12 +117,12 @@ def ds_nwp_ukv():
 def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
     ds = ds_nwp_ukv.chunk(
         {
-            "init_time": 1, 
-            "step": -1, 
+            "init_time": 1,
+            "step": -1,
             "variable": -1,
-            "x": 50, 
+            "x": 50,
             "y": 50,
-        }
+        },
     )
     zarr_path = session_tmp_path / "ukv_nwp.zarr"
     ds.to_zarr(zarr_path)
@@ -193,12 +192,12 @@ def ds_nwp_ecmwf():
 def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
     ds = ds_nwp_ecmwf.chunk(
         {
-            "init_time": 1, 
-            "step": -1, 
+            "init_time": 1,
+            "step": -1,
             "variable": -1,
-            "longitude": 50, 
+            "longitude": 50,
             "latitude": 50,
-        }
+        },
     )
 
     zarr_path = session_tmp_path / "ukv_ecmwf.zarr"
@@ -229,9 +228,9 @@ def ds_uk_gsp():
     )
 
     return xr.Dataset({
-        "capacity_mwp": da_cap, 
-        "installedcapacity_mwp": da_cap, 
-        "generation_mw":da_gen
+        "capacity_mwp": da_cap,
+        "installedcapacity_mwp": da_cap,
+        "generation_mw":da_gen,
     })
 
 
@@ -270,10 +269,10 @@ def data_sites(session_tmp_path) -> Site:
 
     # metadata
     meta_df = pd.DataFrame(columns=[], data = [])
-    meta_df['site_id'] = site_ids
-    meta_df['capacity_kwp'] = capacity_kwp_1d
-    meta_df['longitude'] = longitude
-    meta_df['latitude'] = latitude
+    meta_df["site_id"] = site_ids
+    meta_df["capacity_kwp"] = capacity_kwp_1d
+    meta_df["longitude"] = longitude
+    meta_df["latitude"] = latitude
 
     generation = xr.Dataset({
         "capacity_kwp": da_cap,
@@ -305,7 +304,7 @@ def uk_gsp_zarr_path(session_tmp_path, ds_uk_gsp):
 
 @pytest.fixture()
 def pvnet_config_filename(
-    tmp_path, config_filename, nwp_ukv_zarr_path, uk_gsp_zarr_path, sat_zarr_path
+    tmp_path, config_filename, nwp_ukv_zarr_path, uk_gsp_zarr_path, sat_zarr_path,
 ):
 
     # adjust config to point to the zarr file

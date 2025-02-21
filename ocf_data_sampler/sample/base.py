@@ -13,10 +13,7 @@ TensorBatch: TypeAlias = dict[str, torch.Tensor | dict[str, torch.Tensor]]
 
 
 class SampleBase(ABC):
-    """ 
-    Abstract base class for all sample types 
-    Provides core data storage functionality
-    """
+    """Abstract base class for all sample types."""
 
     @abstractmethod
     def to_numpy(self) -> NumpySample:
@@ -71,9 +68,10 @@ def copy_batch_to_device(batch: TensorBatch, device: torch.device) -> TensorBatc
 
     for k, v in batch.items():
         if isinstance(v, dict):
-            batch_copy[k] = copy_batch_to_device(v, device)  
+            batch_copy[k] = copy_batch_to_device(v, device)
         elif isinstance(v, torch.Tensor):
             batch_copy[k] = v.to(device)
         else:
             batch_copy[k] = v
     return batch_copy
+

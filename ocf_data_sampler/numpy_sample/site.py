@@ -1,9 +1,10 @@
-"""Convert site to Numpy Sample"""
+"""Convert site to Numpy Sample."""
 
 import xarray as xr
 
 
 class SiteSampleKey:
+    """Keys for the site sample dictionary."""
 
     generation = "site"
     capacity_kwp = "site_capacity_kwp"
@@ -42,3 +43,4 @@ def convert_site_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) ->
         sample[SiteSampleKey.t0_idx] = t0_idx
 
     return sample
+

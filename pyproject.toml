@@ -45,7 +45,7 @@ dev = [
     "ruff >= 0.9.2",
     # LSP Support
     "python-lsp-server",
-    "pylsp-mypy",
+    # "pylsp-mypy",
     "python-lsp-ruff",
 ]
 
@@ -118,7 +118,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"test*" = ["D", "ANN"]
+"test*" = ["D", "ANN", "S101"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

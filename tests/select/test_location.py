@@ -1,5 +1,6 @@
-from ocf_data_sampler.select.location import Location
 import pytest
+
+from ocf_data_sampler.select.location import Location
 
 
 def test_make_valid_location_object_with_default_coordinate_system():

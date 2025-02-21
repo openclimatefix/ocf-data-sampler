@@ -1,7 +1,10 @@
+"""Utility functions for merging dictionaries and filling NaNs in arrays."""
+
 import numpy as np
 
+
 def merge_dicts(list_of_dicts: list[dict]) -> dict:
-    """Merge a list of dictionaries into a single dictionary"""
+    """Merge a list of dictionaries into a single dictionary."""
     # TODO: This doesn't account for duplicate keys, which will be overwritten
     combined_dict = {}
     for d in list_of_dicts:

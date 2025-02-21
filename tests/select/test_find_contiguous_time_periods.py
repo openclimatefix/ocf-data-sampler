@@ -1,10 +1,10 @@
 import pandas as pd
 
 from ocf_data_sampler.select.find_contiguous_time_periods import (
-    find_contiguous_t0_periods, find_contiguous_t0_periods_nwp, 
+    find_contiguous_t0_periods,
+    find_contiguous_t0_periods_nwp,
     intersection_of_multiple_dataframes_of_periods,
 )
-
 
 
 def test_find_contiguous_t0_periods():
@@ -32,13 +32,13 @@ def test_find_contiguous_t0_periods():
                 [
                     "2023-01-01 13:35",
                     "2023-01-01 15:35",
-                ]
+                ],
             ),
             "end_dt": pd.to_datetime(
                 [
                     "2023-01-01 14:10",
                     "2023-01-01 16:45",
-                ]
+                ],
             ),
         },
     )
@@ -62,13 +62,13 @@ def test_find_contiguous_t0_periods_nwp():
                     [
                         "2023-01-01 05:00",
                         "2023-01-02 05:00",
-                    ]
+                    ],
                 ),
                 "end_dt": pd.to_datetime(
                     [
                         "2023-01-01 21:00",
                         "2023-01-03 06:00",
-                    ]
+                    ],
                 ),
             },
         ),
@@ -79,14 +79,14 @@ def test_find_contiguous_t0_periods_nwp():
                         "2023-01-01 05:00",
                         "2023-01-02 05:00",
                         "2023-01-02 14:00",
-                    ]
+                    ],
                 ),
                 "end_dt": pd.to_datetime(
                     [
                         "2023-01-01 18:00",
                         "2023-01-02 09:00",
                         "2023-01-03 03:00",
-                    ]
+                    ],
                 ),
             },
         ),
@@ -98,7 +98,7 @@ def test_find_contiguous_t0_periods_nwp():
                         "2023-01-01 11:00",
                         "2023-01-02 05:00",
                         "2023-01-02 14:00",
-                    ]
+                    ],
                 ),
                 "end_dt": pd.to_datetime(
                     [
@@ -106,7 +106,7 @@ def test_find_contiguous_t0_periods_nwp():
                         "2023-01-01 15:00",
                         "2023-01-02 06:00",
                         "2023-01-03 00:00",
-                    ]
+                    ],
                 ),
             },
         ),
@@ -118,7 +118,7 @@ def test_find_contiguous_t0_periods_nwp():
                         "2023-01-01 12:00",
                         "2023-01-02 06:00",
                         "2023-01-02 15:00",
-                    ]
+                    ],
                 ),
                 "end_dt": pd.to_datetime(
                     [
@@ -126,7 +126,7 @@ def test_find_contiguous_t0_periods_nwp():
                         "2023-01-01 18:00",
                         "2023-01-02 09:00",
                         "2023-01-03 03:00",
-                    ]
+                    ],
                 ),
             },
         ),
@@ -186,17 +186,17 @@ def test_intersection_of_multiple_dataframes_of_periods():
     expected_result = pd.DataFrame(
         {
             "start_dt": pd.to_datetime(
-                ["2023-01-01 12:00", "2023-01-01 13:00", "2023-01-01 14:10"]
+                ["2023-01-01 12:00", "2023-01-01 13:00", "2023-01-01 14:10"],
             ),
             "end_dt": pd.to_datetime([
-                "2023-01-01 12:30", "2023-01-01 13:35", "2023-01-01 18:00"]
+                "2023-01-01 12:30", "2023-01-01 13:35", "2023-01-01 18:00"],
             ),
         },
     )
 
     overlaping_periods = intersection_of_multiple_dataframes_of_periods(
-        [periods_1, periods_2, periods_3]
-    )   
+        [periods_1, periods_2, periods_3],
+    )
 
     # Check if results are as expected
     assert overlaping_periods.equals(expected_result)

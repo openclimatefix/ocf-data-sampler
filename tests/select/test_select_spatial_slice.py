@@ -1,11 +1,13 @@
 import numpy as np
-import xarray as xr
-from ocf_data_sampler.select.location import Location
 import pytest
+import xarray as xr
 
+from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.select_spatial_slice import (
-    select_spatial_slice_pixels, _get_idx_of_pixel_closest_to_poi
+    _get_idx_of_pixel_closest_to_poi,
+    select_spatial_slice_pixels,
 )
+
 
 @pytest.fixture(scope="module")
 def da():
@@ -15,16 +17,16 @@ def da():
 
     da = xr.DataArray(
         np.random.normal(size=(len(x), len(y))),
-        coords=dict(
-            x_osgb=(["x_osgb"], x),
-            y_osgb=(["y_osgb"], y),
-        )
+        coords={
+            "x_osgb": (["x_osgb"], x),
+            "y_osgb": (["y_osgb"], y),
+        },
     )
     return da
 
 
 def test_get_idx_of_pixel_closest_to_poi(da):
-    
+
     idx_location  = _get_idx_of_pixel_closest_to_poi(
         da,
         location=Location(x=10, y=10, coordinate_system="osgb"),
@@ -102,8 +104,6 @@ def test_select_spatial_slice_pixels(da):
     # Data has been padded on right by 5 NaN pixels
     assert da_sliced.isnull().sum() == 5*len(da_sliced.y_osgb)
 
-
-    location = Location(x=-90, y=-0, coordinate_system="osgb")
 
     # Select window which is partially outside the boundary of the data - padded on top
     da_sliced = select_spatial_slice_pixels(

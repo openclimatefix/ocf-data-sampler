@@ -1,19 +1,19 @@
-import pkg_resources
+"""Functions for loading GSP data."""
 
 import pandas as pd
+import pkg_resources
 import xarray as xr
 
 
 def open_gsp(zarr_path: str) -> xr.DataArray:
-    """Open the GSP data
-    
+    """Open the GSP data.
+
     Args:
         zarr_path: Path to the GSP zarr data
 
     Returns:
         xr.DataArray: The opened GSP data
     """
-
     ds = xr.open_zarr(zarr_path)
 
     ds = ds.rename({"datetime_gmt": "time_utc"})

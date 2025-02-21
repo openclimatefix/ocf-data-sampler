@@ -4,12 +4,13 @@ import xarray as xr
 
 
 class SatelliteSampleKey:
+    """Keys for the SatelliteSample dictionary."""
 
-    satellite_actual = 'satellite_actual'
-    time_utc = 'satellite_time_utc'
-    x_geostationary = 'satellite_x_geostationary'
-    y_geostationary = 'satellite_y_geostationary'
-    t0_idx = 'satellite_t0_idx'
+    satellite_actual = "satellite_actual"
+    time_utc = "satellite_time_utc"
+    x_geostationary = "satellite_x_geostationary"
+    y_geostationary = "satellite_y_geostationary"
+    t0_idx = "satellite_t0_idx"
 
 
 def convert_satellite_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
@@ -30,4 +31,3 @@ def convert_satellite_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = Non
         sample[SatelliteSampleKey.t0_idx] = t0_idx
 
     return sample
-    

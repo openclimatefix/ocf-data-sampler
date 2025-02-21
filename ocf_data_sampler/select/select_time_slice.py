@@ -1,6 +1,9 @@
-import xarray as xr
-import pandas as pd
+"""Select a time slice from a Dataset or DataArray."""
+
 import numpy as np
+import pandas as pd
+import xarray as xr
+
 
 def select_time_slice(
     ds: xr.DataArray,
@@ -8,7 +11,7 @@ def select_time_slice(
     interval_start: pd.Timedelta,
     interval_end: pd.Timedelta,
     sample_period_duration: pd.Timedelta,
-):
+) -> xr.Dataset:
     """Select a time slice from a Dataset or DataArray."""
     t0_datetime_utc = pd.Timestamp(t0)
     start_dt = t0_datetime_utc + interval_start
@@ -27,23 +30,27 @@ def select_time_slice_nwp(
     sample_period_duration: pd.Timedelta,
     dropout_timedeltas: list[pd.Timedelta] | None = None,
     dropout_frac: float | None = 0,
-    accum_channels: list[str] = [],
+    accum_channels: list[str] | None = None,
     channel_dim_name: str = "channel",
-):
+) -> xr.DataArray:
+    """Select a time slice from a NWP DataArray."""
+    if accum_channels is None:
+        accum_channels = []
     if dropout_timedeltas is not None:
-        assert all(
-            [t < pd.Timedelta(0) for t in dropout_timedeltas]
-        ), "dropout timedeltas must be negative"
-        assert len(dropout_timedeltas) >= 1
-    assert 0 <= dropout_frac <= 1
+        if not all(t < pd.Timedelta(0) for t in dropout_timedeltas):
+            raise ValueError("dropout timedeltas must be negative")
+        if len(dropout_timedeltas) < 1:
+            raise ValueError("dropout timedeltas must have at least one element")
+    if not (0 <= dropout_frac <= 1):
+        raise ValueError("dropout_frac must be between 0 and 1")
     consider_dropout = (dropout_timedeltas is not None) and dropout_frac > 0
 
      # The accumatation and non-accumulation channels
     accum_channels = np.intersect1d(
-        da[channel_dim_name].values, accum_channels
+        da[channel_dim_name].values, accum_channels,
     )
     non_accum_channels = np.setdiff1d(
-        da[channel_dim_name].values, accum_channels
+        da[channel_dim_name].values, accum_channels,
     )
 
     start_dt = (t0 + interval_start).ceil(sample_period_duration)
@@ -60,7 +67,7 @@ def select_time_slice_nwp(
 
     # Forecasts made up to and including t0
     available_init_times = da.init_time_utc.sel(
-        init_time_utc=slice(None, t0_available)
+        init_time_utc=slice(None, t0_available),
     )
 
     # Find the most recent available init times for all target times
@@ -77,7 +84,7 @@ def select_time_slice_nwp(
     # init_times and steps, which is not what # we want! Instead, we use xarray's
     # vectorized-indexing mode by using a DataArray indexer.  See the last example here:
     # https://docs.xarray.dev/en/latest/user-guide/indexing.html#more-advanced-indexing
-    
+
     coords = {"target_time_utc": target_times}
     init_time_indexer = xr.DataArray(selected_init_times, coords=coords)
     step_indexer = xr.DataArray(steps, coords=coords)
@@ -96,25 +103,25 @@ def select_time_slice_nwp(
             {
                 "init_time_utc": unique_init_times,
                 "step": slice(min_step, max_step),
-            }
+            },
         )
 
         # Slice out the data which does not need to be diffed
         da_non_accum = da_min.sel({channel_dim_name: non_accum_channels})
         da_sel_non_accum = da_non_accum.sel(
-            step=step_indexer, init_time_utc=init_time_indexer
+            step=step_indexer, init_time_utc=init_time_indexer,
         )
 
         # Slice out the channels which need to be diffed
         da_accum = da_min.sel({channel_dim_name: accum_channels})
-        
+
         # Take the diff and slice requested data
         da_accum = da_accum.diff(dim="step", label="lower")
         da_sel_accum = da_accum.sel(step=step_indexer, init_time_utc=init_time_indexer)
 
         # Join diffed and non-diffed variables
         da_sel = xr.concat([da_sel_non_accum, da_sel_accum], dim=channel_dim_name)
-        
+
         # Reorder the variable back to the original order
         da_sel = da_sel.sel({channel_dim_name: da[channel_dim_name].values})
 
@@ -125,3 +132,4 @@ def select_time_slice_nwp(
         ]
 
     return da_sel
+

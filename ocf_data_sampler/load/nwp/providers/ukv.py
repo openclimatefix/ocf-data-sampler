@@ -1,18 +1,17 @@
-"""UKV provider loaders"""
+"""UKV provider loaders."""
 
 import xarray as xr
 
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
+    get_xr_data_array_from_xr_dataset,
     make_spatial_coords_increasing,
-    get_xr_data_array_from_xr_dataset
 )
 
 
 def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
-    """
-    Opens the NWP data
+    """Opens the NWP data.
 
     Args:
         zarr_path: Path to the zarr to open
@@ -28,7 +27,7 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
             "variable": "channel",
             "x": "x_osgb",
             "y": "y_osgb",
-        }
+        },
     )
 
     check_time_unique_increasing(ds.init_time_utc)
@@ -39,3 +38,4 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
 
     # TODO: should we control the dtype of the DataArray?
     return get_xr_data_array_from_xr_dataset(ds)
+
