@@ -12,23 +12,13 @@ from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
 )
 from ocf_data_sampler.select.location import Location
 
-def test_process_and_combine_datasets(pvnet_config_filename):
 
-    # Load in config for function and define location 
+def test_process_and_combine_datasets(pvnet_config_filename, ds_nwp_ukv_time_sliced):
+
     config = load_yaml_configuration(pvnet_config_filename)
+    
     t0 = pd.Timestamp("2024-01-01 00:00")
     location = Location(coordinate_system="osgb", x=1234, y=5678, id=1)
-
-    nwp_data = xr.DataArray(
-        np.random.rand(4, 2, 2, 2),
-        dims=["time_utc", "channel", "y", "x"],
-        coords={
-            "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
-            "channel": ["t", "dswrf"],
-            "step": ("time_utc", pd.timedelta_range(start='0h', periods=4, freq='h')),
-            "init_time_utc": pd.Timestamp("2024-01-01 00:00")
-        }
-    )
 
     sat_data = xr.DataArray(
         np.random.rand(7, 1, 2, 2),
@@ -41,20 +31,17 @@ def test_process_and_combine_datasets(pvnet_config_filename):
         }
     )
 
-    # Combine as dict
     dataset_dict = {
-        "nwp": {"ukv": nwp_data},
+        "nwp": {"ukv": ds_nwp_ukv_time_sliced},
         "sat": sat_data
     }
 
-    # Call relevant function
     sample = process_and_combine_datasets(dataset_dict, config, t0, location)
 
-    # Assert result is dict - check and validate
     assert isinstance(sample, dict)
     assert "nwp" in sample
-    assert sample["satellite_actual"].shape == (7, 1, 2, 2)
-    assert sample["nwp"]["ukv"]["nwp"].shape == (4, 2, 2, 2)
+    assert sample["satellite_actual"].shape == sat_data.shape
+    assert sample["nwp"]["ukv"]["nwp"].shape == ds_nwp_ukv_time_sliced.shape
     assert "gsp_id" in sample
 
 

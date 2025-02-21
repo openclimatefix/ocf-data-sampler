@@ -1,8 +1,8 @@
 """PVNet UK Regional sample implementation for dataset handling and visualisation"""
 
-import torch
+from typing_extensions import override
 
-from typing import override
+import torch
 from matplotlib import pyplot as plt
 
 from ocf_data_sampler.sample.base import SampleBase, NumpySample

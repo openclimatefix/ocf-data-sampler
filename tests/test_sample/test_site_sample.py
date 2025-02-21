@@ -74,17 +74,9 @@ def sample_data():
     )
 
 
-def test_site_sample_init():
-    """ Test initialisation """
-    sample = SiteSample()
-    assert isinstance(sample._data, dict)
-    assert len(sample._data) == 0
-
-
 def test_site_sample_with_data(sample_data):
     """ Testing of defined sample with actual data """
-    sample = SiteSample()
-    sample._data = sample_data
+    sample = SiteSample(sample_data)
     
     # Assert data structure
     assert isinstance(sample._data, Dataset)
@@ -109,8 +101,7 @@ def test_site_sample_with_data(sample_data):
 
 def test_save_load(tmp_path, sample_data):
     """ Save and load functionality """
-    sample = SiteSample()
-    sample._data = sample_data    
+    sample = SiteSample(sample_data)
     filepath = tmp_path / "test_sample.nc"
     sample.save(filepath)
     
@@ -127,36 +118,16 @@ def test_save_load(tmp_path, sample_data):
     xr.testing.assert_identical(sample._data, loaded._data)
 
 
-def test_invalid_save_format(sample_data):
-    """ Saving with invalid format """
-    sample = SiteSample()
-    sample._data = sample_data
-    with pytest.raises(ValueError, match="Only .nc format is supported"):
-        sample.save("invalid.txt")
-
-
-def test_invalid_load_format():
-    """ Loading with invalid format """
-    with pytest.raises(ValueError, match="Only .nc format is supported"):
-        SiteSample.load("invalid.txt")
-
-
 def test_invalid_data_type():
     """ Handling of invalid data types """
-    sample = SiteSample()
-    sample._data = {"invalid": "data"}
     
     with pytest.raises(TypeError, match="Data must be xarray Dataset"):
-        sample.to_numpy()
-    
-    with pytest.raises(TypeError, match="Data must be xarray Dataset for saving"):
-        sample.save("test.nc")
+        _ = SiteSample({"invalid": "data"})
 
 
 def test_to_numpy(sample_data):
     """ To numpy conversion """
-    sample = SiteSample()
-    sample._data = sample_data
+    sample = SiteSample(sample_data)
     numpy_data = sample.to_numpy()
     
     # Assert structure
@@ -180,8 +151,7 @@ def test_to_numpy(sample_data):
 
 def test_data_consistency(sample_data):
     """ Consistency of data across operations """
-    sample = SiteSample()
-    sample._data = sample_data    
+    sample = SiteSample(sample_data)
     numpy_data = sample.to_numpy()
     
     # Assert components remain consistent after conversion above

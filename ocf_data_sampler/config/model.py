@@ -75,8 +75,8 @@ class TimeWindowMixin(Base):
 class DropoutMixin(Base):
     """Mixin class, to add dropout minutes"""
 
-    dropout_timedeltas_minutes: Optional[List[int]] = Field(
-        default=None,
+    dropout_timedeltas_minutes: List[int] = Field(
+        default=[],
         description="List of possible minutes before t0 where data availability may start. Must be "
         "negative or zero.",
     )
@@ -91,18 +91,17 @@ class DropoutMixin(Base):
     @field_validator("dropout_timedeltas_minutes")
     def dropout_timedeltas_minutes_negative(cls, v: List[int]) -> List[int]:
         """Validate 'dropout_timedeltas_minutes'"""
-        if v is not None:
-            for m in v:
-                assert m <= 0, "Dropout timedeltas must be negative"
+        for m in v:
+            assert m <= 0, "Dropout timedeltas must be negative"
         return v
 
     @model_validator(mode="after")
     def dropout_instructions_consistent(self) -> Self:
         if self.dropout_fraction == 0:
-            if self.dropout_timedeltas_minutes is not None:
+            if self.dropout_timedeltas_minutes != []:
                 raise ValueError("To use dropout timedeltas dropout fraction should be > 0")
         else:
-            if self.dropout_timedeltas_minutes is None:
+            if self.dropout_timedeltas_minutes == []:
                 raise ValueError("To dropout fraction > 0 requires a list of dropout timedeltas")
         return self
 

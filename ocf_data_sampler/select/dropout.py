@@ -11,7 +11,7 @@ import xarray as xr
 def draw_dropout_time(
     t0: pd.Timestamp,
     dropout_timedeltas: list[pd.Timedelta],
-    dropout_frac: float = 0,
+    dropout_frac: float,
 ) -> pd.Timestamp:
     """Randomly pick a dropout time from a list of timedeltas
     
@@ -22,13 +22,15 @@ def draw_dropout_time(
             inclusive
     """
 
-    if len(dropout_timedeltas) > 0:
-        assert all(
-            [t <= pd.Timedelta("0min") for t in dropout_timedeltas]
-        ), "dropout timedeltas must be negative"
+    if dropout_frac>0:
+        assert len(dropout_timedeltas) > 0, "To apply dropout dropout_timedeltas must be provided"
+
+    for t in dropout_timedeltas:
+        assert t <= pd.Timedelta("0min"), "Dropout timedeltas must be negative"
+
     assert 0 <= dropout_frac <= 1
 
-    if (len(dropout_timedeltas) > 0) or (np.random.uniform() >= dropout_frac):
+    if (len(dropout_timedeltas) == 0) or (np.random.uniform() >= dropout_frac):
         dropout_time = t0
     else:
         dropout_time = t0 + np.random.choice(dropout_timedeltas)

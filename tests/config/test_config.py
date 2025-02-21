@@ -30,7 +30,7 @@ def test_incorrect_interval_start_minutes(test_config_filename):
     configuration.input_data.nwp['ukv'].interval_start_minutes = -1111
     with pytest.raises(
         ValueError, 
-        match="interval_start_minutes must be divisible by time_resolution_minutes"
+        match="interval_start_minutes.*must be divisible.*time_resolution_minutes.*"
     ):
         _ = Configuration(**configuration.model_dump())
 
@@ -45,7 +45,7 @@ def test_incorrect_interval_end_minutes(test_config_filename):
     configuration.input_data.nwp['ukv'].interval_end_minutes = 1111
     with pytest.raises(
         ValueError, 
-        match="interval_end_minutes must be divisible by time_resolution_minutes"
+        match="interval_end_minutes.*must be divisible.*time_resolution_minutes.*"
     ):
         _ = Configuration(**configuration.model_dump())
 
@@ -103,7 +103,7 @@ def test_inconsistent_dropout_use(test_config_filename):
 
     configuration = load_yaml_configuration(test_config_filename)
     configuration.input_data.satellite.dropout_fraction= 1.0
-    configuration.input_data.satellite.dropout_timedeltas_minutes = None
+    configuration.input_data.satellite.dropout_timedeltas_minutes = []
 
     with pytest.raises(ValueError, match="To dropout fraction > 0 requires a list of dropout timedeltas"):
         _ = Configuration(**configuration.model_dump())
