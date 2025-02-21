@@ -11,6 +11,6 @@ jobs:
     with:
       enable_linting: true
       enable_typechecking: false
-      containerfile: '' # No container to be built
+      containerfile: 'None'
       tests_folder: 'tests'
 
