@@ -115,3 +115,8 @@ def test_inconsistent_dropout_use(test_config_filename):
         match="To use dropout timedeltas dropout fraction should be > 0",
     ):
         _ = Configuration(**configuration.model_dump())
+
+    # Additional check: Ensure an empty dropout_timedeltas list with dropout_fraction 0 is valid
+    configuration.input_data.satellite.dropout_timedeltas_minutes = []
+    _ = Configuration(**configuration.model_dump())  # This should pass without errors
+
