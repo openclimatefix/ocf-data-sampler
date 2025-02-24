@@ -1,37 +1,30 @@
 """Tests for configuration saving functionality."""
-import pytest
-from pathlib import Path
-import tempfile
-import yaml
 
-from ocf_data_sampler.config import Configuration, save_yaml_configuration
+import os
 
-@pytest.fixture
-def temp_dir():
-    """Create a temporary directory."""
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        yield Path(tmpdirname)
+from ocf_data_sampler.config import Configuration, load_yaml_configuration, save_yaml_configuration
 
-def test_save_yaml_configuration_basic(temp_dir):
-    """Test basic configuration saving functionality."""
+
+def test_save_yaml_configuration_basic(tmp_path):
+    """Save an empty configuration object"""
     config = Configuration()
-    filepath = temp_dir / "config.yaml"
-    result = save_yaml_configuration(config, filepath)
-    
-    assert filepath.exists()
-    with open(filepath) as f:
-        loaded_yaml = yaml.safe_load(f)
-    assert isinstance(loaded_yaml, dict)
 
-def test_save_yaml_configuration_none_filename():
-    """Test that None filename raises ValueError."""
-    config = Configuration()
-    with pytest.raises(ValueError, match="filename cannot be None"):
-        save_yaml_configuration(config, None)
+    filepath = f"{tmp_path}/config.yaml"
+    save_yaml_configuration(config, filepath)
 
-def test_save_yaml_configuration_invalid_directory(temp_dir):
-    """Test handling of invalid directory paths."""
-    config = Configuration()
-    invalid_path = (temp_dir / "nonexistent" / "config.yaml").resolve()
-    with pytest.raises(ValueError, match="Directory does not exist"):
-        save_yaml_configuration(config, invalid_path)
+    assert os.path.exists(filepath)
+
+
+def test_save_load_yaml_configuration(tmp_path, test_config_filename):
+    """Make sure a saved configuration is the same after loading"""
+
+    # Start with this config
+    initial_config = load_yaml_configuration(test_config_filename)
+
+    # Save it
+    filepath = f"{tmp_path}/config.yaml"
+    save_yaml_configuration(initial_config, filepath)
+
+    # Load it and check it is still the same
+    loaded_config = load_yaml_configuration(filepath)
+    assert loaded_config == initial_config

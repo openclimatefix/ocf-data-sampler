@@ -1,33 +1,38 @@
-import xarray as xr
-import numpy as np
+"""Constants for the package."""
 
+from typing import override
+
+import numpy as np
+import xarray as xr
 
 NWP_PROVIDERS = [
     "ukv",
     "ecmwf",
-    "gfs"
+    "gfs",
 ]
 # TODO add ICON
 
 
-def _to_data_array(d):
+def _to_data_array(d: dict) -> xr.DataArray:
+    """Convert a dictionary to a DataArray."""
     return xr.DataArray(
-        [d[k] for k in d.keys()],
-        coords={"channel": [k for k in d.keys()]},
+        [d[k] for k in d],
+        coords={"channel": list(d.keys())},
     ).astype(np.float32)
 
 
 class NWPStatDict(dict):
-    """Custom dictionary class to hold NWP normalization stats"""
+    """Custom dictionary class to hold NWP normalization stats."""
 
-    def __getitem__(self, key):
+    @override
+    def __getitem__(self, key: str) -> xr.DataArray:
         if key not in NWP_PROVIDERS:
             raise KeyError(f"{key} is not a supported NWP provider - {NWP_PROVIDERS}")
         elif key in self.keys():
             return super().__getitem__(key)
         else:
             raise KeyError(
-                f"Values for {key} not yet available in ocf-data-sampler {list(self.keys())}"
+                f"Values for {key} not yet available in ocf-data-sampler {list(self.keys())}",
             )
 
 
@@ -86,7 +91,7 @@ ECMWF_STD = {
     "lcc": 0.3791404366493225,
     "mcc": 0.38039860129356384,
     "prate": 9.81039775069803e-05,
-    "sde": 0.000913831521756947,
+    "sd": 0.000913831521756947,
     "sr": 16294988.0,
     "t2m": 3.692270040512085,
     "tcc": 0.37487083673477173,
@@ -110,7 +115,7 @@ ECMWF_MEAN = {
     "lcc": 0.44901806116104126,
     "mcc": 0.3288780450820923,
     "prate": 3.108070450252853e-05,
-    "sde": 8.107526082312688e-05,
+    "sd": 8.107526082312688e-05,
     "sr": 12905302.0,
     "t2m": 283.48333740234375,
     "tcc": 0.7049227356910706,
@@ -177,12 +182,12 @@ GFS_MEAN = _to_data_array(GFS_MEAN)
 NWP_STDS = NWPStatDict(
     ukv=UKV_STD,
     ecmwf=ECMWF_STD,
-    gfs=GFS_STD
+    gfs=GFS_STD,
 )
 NWP_MEANS = NWPStatDict(
     ukv=UKV_MEAN,
     ecmwf=ECMWF_MEAN,
-    gfs=GFS_MEAN
+    gfs=GFS_MEAN,
 )
 
 # ------ Satellite

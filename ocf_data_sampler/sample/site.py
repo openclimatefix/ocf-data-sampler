@@ -1,81 +1,37 @@
-""" 
-PVNet - Site sample / dataset implementation
-"""
+"""PVNet Site sample implementation for netCDF data handling and conversion."""
 
-import logging
 import xarray as xr
-import numpy as np
+from typing_extensions import override
 
-from pathlib import Path
-from typing import Dict, Any, Union
-
-from ocf_data_sampler.sample.base import SampleBase
+from ocf_data_sampler.sample.base import NumpySample, SampleBase
 from ocf_data_sampler.torch_datasets.datasets.site import convert_netcdf_to_numpy_sample
 
 
-logger = logging.getLogger(__name__)
-
-
 class SiteSample(SampleBase):
-    """ Sample class specific to Site PVNet """
+    """Handles PVNet site specific netCDF operations."""
 
-    def __init__(self):
-        logger.debug("Initialise SiteSample instance")
-        super().__init__()
-        self._data = {}
+    def __init__(self, data: xr.Dataset) -> None:
+        """Initializes the SiteSample object with the given xarray Dataset."""
+        if not isinstance(data, xr.Dataset):
+            raise TypeError(f"Data must be xarray Dataset - Found type {type(data)}")
+        self._data = data
 
-    def to_numpy(self) -> Dict[str, Any]:
-        """ Convert sample numpy arrays - netCDF conversion """
-        logger.debug("Converting site sample to numpy format")
-        
-        try:
-            if not isinstance(self._data, xr.Dataset):
-                raise TypeError("Data must be xarray Dataset")
-            
-            numpy_data = convert_netcdf_to_numpy_sample(self._data)
+    @override
+    def to_numpy(self) -> NumpySample:
+        return convert_netcdf_to_numpy_sample(self._data)
 
-            logger.debug("Successfully converted to numpy format")
-            return numpy_data
-            
-        except Exception as e:
-            logger.error(f"Error converting to numpy: {str(e)}")
-            raise
-
-    def save(self, path: Union[str, Path]) -> None:
-        """ Save site sample as netCDF - h5netcdf engine """
-        logger.debug(f"Saving SiteSample to {path}")
-        path = Path(path)
-        
-        if path.suffix != '.nc':
-            logger.error(f"Invalid file format - {path.suffix}")
-            raise ValueError("Only .nc format is supported")
-        
-        if not isinstance(self._data, xr.Dataset):
-            raise TypeError("Data must be xarray Dataset for saving")
-                
-        self._data.to_netcdf(
-            path, 
-            mode="w", 
-            engine="h5netcdf"
-        )
-        logger.debug(f"Successfully saved SiteSample - {path}")
+    @override
+    def save(self, path: str) -> None:
+        # Saves as NetCDF
+        self._data.to_netcdf(path, mode="w", engine="h5netcdf")
 
     @classmethod
-    def load(cls, path: str) -> None:
-        """ Load site sample from netCDF """
-        logger.debug(f"Loading SiteSample from {path}")
-        path = Path(path)
-        
-        if path.suffix != '.nc':
-            logger.error(f"Invalid file format - {path.suffix}")
-            raise ValueError("Only .nc format is supported")
-        
-        instance = cls()
-        instance._data = xr.open_dataset(path)
-        logger.debug(f"Loaded SiteSample from {path}")
-        return instance
+    @override
+    def load(cls, path: str) -> "SiteSample":
+        # Loads from NetCDF
+        return cls(xr.open_dataset(path))
 
-    # TO DO - placeholder for now
-    def plot(self, **kwargs) -> None:
-        """ Plot sample data - placeholder """
-        pass
+    @override
+    def plot(self) -> None:
+        # TODO - placeholder for now
+        raise NotImplementedError("Plotting not yet implemented for SiteSample")

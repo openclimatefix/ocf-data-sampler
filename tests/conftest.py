@@ -1,15 +1,16 @@
 import os
+
+import dask.array
 import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-import tempfile
-from typing import Generator
 
-from ocf_data_sampler.config.model import Site
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
+from ocf_data_sampler.config.model import Site
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
+
 
 @pytest.fixture()
 def test_config_filename():
@@ -18,41 +19,35 @@ def test_config_filename():
 
 @pytest.fixture(scope="session")
 def config_filename():
-    return f"{os.path.dirname(os.path.abspath(__file__))}/test_data/configs/pvnet_test_config.yaml"
+    return f"{_top_test_directory}/test_data/configs/pvnet_test_config.yaml"
 
 
 @pytest.fixture(scope="session")
-def sat_zarr_path():
+def session_tmp_path(tmp_path_factory):
+    return tmp_path_factory.mktemp("data")
 
-    # Load dataset which only contains coordinates, but no data
-    ds = xr.open_zarr(
-        f"{os.path.dirname(os.path.abspath(__file__))}/test_data/non_hrv_shell.zarr.zip"
-    ).compute()
 
-    # Add time coord
-    ds = ds.assign_coords(time=pd.date_range("2023-01-01 00:00", "2023-01-02 23:55", freq="5min"))
+@pytest.fixture(scope="session")
+def sat_zarr_path(session_tmp_path):
+    # Define coords for satellite-like dataset
+    variables = [
+        "IR_016",
+        "IR_039",
+        "IR_087",
+        "IR_097",
+        "IR_108",
+        "IR_120",
+        "IR_134",
+        "VIS006",
+        "VIS008",
+        "WV_062",
+        "WV_073",
+    ]
+    x = np.linspace(start=15002, stop=-1824245, num=100)
+    y = np.linspace(start=4191563, stop=5304712, num=100)
+    times = pd.date_range("2023-01-01 00:00", "2023-01-01 23:55", freq="5min")
 
-    # Add data to dataset
-    ds["data"] = xr.DataArray(
-        np.zeros([len(ds[c]) for c in ds.coords], dtype=np.float32),
-        coords=ds.coords,
-    )
-
-    # Transpose to variables, time, y, x (just in case)
-    ds = ds.transpose("variable", "time", "y_geostationary", "x_geostationary")
-
-    # add 100,000 to x_geostationary, this to make sure the fix index is within the satellite image
-    ds["x_geostationary"] = ds["x_geostationary"] - 200_000
-
-    # Add some NaNs
-    ds["data"].values[:, :, 0, 0] = np.nan
-
-    # make sure channel values are strings
-    ds["variable"] = ds["variable"].astype(str)
-
-    # add data attrs area
-    ds["data"].attrs["area"] = (
-        """msg_seviri_rss_3km:
+    area_string = """msg_seviri_rss_3km:
         description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
         projection:
             proj: geos
@@ -72,17 +67,31 @@ def sat_zarr_path():
             upper_right_xy: [-1816744.1169023514, 4196063.827395439]
             units: m
         """
-    )
 
-    # Specifiy chunking
-    ds = ds.chunk({"time": 10, "variable": -1, "y_geostationary": -1, "x_geostationary": -1})
+    # Create satellite-like data with some NaNs
+    data = dask.array.zeros(
+        shape=(len(variables), len(times), len(y), len(x)),
+        chunks=(-1, 10, -1, -1),
+        dtype=np.float32,
+    )
+    data[:, 10, :, :] = np.nan
+
+    ds = xr.DataArray(
+        data=data,
+        coords={
+            "variable": variables,
+            "time": times,
+            "y_geostationary": y,
+            "x_geostationary": x,
+        },
+        attrs={"area": area_string},
+    ).to_dataset(name="data")
 
     # Save temporarily as a zarr
-    with tempfile.TemporaryDirectory() as tmpdir:
-        zarr_path = f"{tmpdir}/test_sat.zarr"
-        ds.to_zarr(zarr_path)
+    zarr_path = session_tmp_path / "test_sat.zarr"
+    ds.to_zarr(zarr_path)
 
-        yield zarr_path
+    yield zarr_path
 
 
 @pytest.fixture(scope="session")
@@ -112,20 +121,51 @@ def ds_nwp_ukv():
 
 
 @pytest.fixture(scope="session")
-def nwp_ukv_zarr_path(ds_nwp_ukv):
+def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
     ds = ds_nwp_ukv.chunk(
         {
-            "init_time": 1, 
-            "step": -1, 
+            "init_time": 1,
+            "step": -1,
             "variable": -1,
-            "x": 50, 
+            "x": 50,
             "y": 50,
-        }
+        },
     )
-    with tempfile.TemporaryDirectory() as tmpdir:
-        filename = tmpdir + "/ukv_nwp.zarr"
-        ds.to_zarr(filename)
-        yield filename
+    zarr_path = session_tmp_path / "ukv_nwp.zarr"
+    ds.to_zarr(zarr_path)
+    yield zarr_path
+
+
+@pytest.fixture()
+def ds_nwp_ukv_time_sliced():
+    t0 = pd.to_datetime("2024-01-02 00:00")
+
+    x = np.arange(-100, 100, 10)
+    y = np.arange(-100, 100, 10)
+    steps = pd.timedelta_range("0h", "8h", freq="1h")
+    target_times = t0 + steps
+
+    channels = ["t", "dswrf"]
+    init_times = pd.to_datetime([t0] * len(steps))
+
+    # Create dummy time-sliced NWP data
+    da_nwp = xr.DataArray(
+        np.random.normal(size=(len(target_times), len(channels), len(x), len(y))),
+        coords={
+            "target_time_utc": (["target_time_utc"], target_times),
+            "channel": (["channel"], channels),
+            "x_osgb": (["x_osgb"], x),
+            "y_osgb": (["y_osgb"], y),
+        },
+    )
+
+    # Add extra non-coordinate dimensions
+    da_nwp = da_nwp.assign_coords(
+        init_time_utc=("target_time_utc", init_times),
+        step=("target_time_utc", steps),
+    )
+
+    return da_nwp
 
 
 @pytest.fixture(scope="session")
@@ -135,7 +175,7 @@ def ds_nwp_ecmwf():
 
     lons = np.arange(-12, 3)
     lats = np.arange(48, 60)
-    variables = ["t2m","dswrf", "mcc"]
+    variables = ["t2m", "dswrf", "mcc"]
 
     coords = (
         ("init_time", init_times),
@@ -155,20 +195,20 @@ def ds_nwp_ecmwf():
 
 
 @pytest.fixture(scope="session")
-def nwp_ecmwf_zarr_path(ds_nwp_ecmwf):
+def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
     ds = ds_nwp_ecmwf.chunk(
         {
-            "init_time": 1, 
-            "step": -1, 
+            "init_time": 1,
+            "step": -1,
             "variable": -1,
-            "longitude": 50, 
+            "longitude": 50,
             "latitude": 50,
-        }
+        },
     )
-    with tempfile.TemporaryDirectory() as tmpdir:
-        filename = tmpdir + "/ukv_ecmwf.zarr"
-        ds.to_zarr(filename)
-        yield filename
+
+    zarr_path = session_tmp_path / "ukv_ecmwf.zarr"
+    ds.to_zarr(zarr_path)
+    yield zarr_path
 
 
 @pytest.fixture(scope="session")
@@ -193,22 +233,24 @@ def ds_uk_gsp():
         coords=coords,
     )
 
-    return xr.Dataset({
-        "capacity_mwp": da_cap, 
-        "installedcapacity_mwp": da_cap, 
-        "generation_mw":da_gen
-    })
+    return xr.Dataset(
+        {
+            "capacity_mwp": da_cap,
+            "installedcapacity_mwp": da_cap,
+            "generation_mw": da_gen,
+        },
+    )
 
 
 @pytest.fixture(scope="session")
-def data_sites() -> Generator[Site, None, None]:
+def data_sites(session_tmp_path) -> Site:
     """
     Make fake data for sites
     Returns: filename for netcdf file, and csv metadata
     """
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    site_ids = list(range(0,10))
-    capacity_kwp_1d = np.array([0.1,1.1,4,6,8,9,15,2,3,4])
+    site_ids = list(range(0, 10))
+    capacity_kwp_1d = np.array([0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 4])
     # these are quite specific for the fake satellite data
     longitude = np.arange(-4, -3, 0.1)
     latitude = np.arange(51, 52, 0.1)
@@ -216,7 +258,7 @@ def data_sites() -> Generator[Site, None, None]:
     generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(np.float32)
 
     # repeat capacity in new dims len(times) times
-    capacity_kwp = (np.tile(capacity_kwp_1d, len(times))).reshape(len(times),10)
+    capacity_kwp = (np.tile(capacity_kwp_1d, len(times))).reshape(len(times), 10)
 
     coords = (
         ("time_utc", times),
@@ -234,48 +276,50 @@ def data_sites() -> Generator[Site, None, None]:
     )
 
     # metadata
-    meta_df = pd.DataFrame(columns=[], data = [])
-    meta_df['site_id'] = site_ids
-    meta_df['capacity_kwp'] = capacity_kwp_1d
-    meta_df['longitude'] = longitude
-    meta_df['latitude'] = latitude
+    meta_df = pd.DataFrame(columns=[], data=[])
+    meta_df["site_id"] = site_ids
+    meta_df["capacity_kwp"] = capacity_kwp_1d
+    meta_df["longitude"] = longitude
+    meta_df["latitude"] = latitude
 
-    generation = xr.Dataset({
-        "capacity_kwp": da_cap,
-        "generation_kw": da_gen,
-    })
+    generation = xr.Dataset(
+        {
+            "capacity_kwp": da_cap,
+            "generation_kw": da_gen,
+        },
+    )
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        filename = tmpdir + "/sites.netcdf"
-        filename_csv = tmpdir + "/sites_metadata.csv"
-        generation.to_netcdf(filename)
-        meta_df.to_csv(filename_csv)
+    filename = f"{session_tmp_path}/sites.netcdf"
+    filename_csv = f"{session_tmp_path}/sites_metadata.csv"
+    generation.to_netcdf(filename)
+    meta_df.to_csv(filename_csv)
 
-        site = Site(
-            file_path=filename,
-            metadata_file_path=filename_csv,
-            interval_start_minutes=-30,
-            interval_end_minutes=60,
-            time_resolution_minutes=30,
-        )
+    site = Site(
+        file_path=filename,
+        metadata_file_path=filename_csv,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
+        time_resolution_minutes=30,
+    )
 
-        yield site
+    yield site
 
 
 @pytest.fixture(scope="session")
-def uk_gsp_zarr_path(ds_uk_gsp):
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        filename = tmpdir + "/uk_gsp.zarr"
-        ds_uk_gsp.to_zarr(filename)
-        yield filename
+def uk_gsp_zarr_path(session_tmp_path, ds_uk_gsp):
+    zarr_path = session_tmp_path / "uk_gsp.zarr"
+    ds_uk_gsp.to_zarr(zarr_path)
+    yield zarr_path
 
 
 @pytest.fixture()
 def pvnet_config_filename(
-    tmp_path, config_filename, nwp_ukv_zarr_path, uk_gsp_zarr_path, sat_zarr_path
+    tmp_path,
+    config_filename,
+    nwp_ukv_zarr_path,
+    uk_gsp_zarr_path,
+    sat_zarr_path,
 ):
-
     # adjust config to point to the zarr file
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path

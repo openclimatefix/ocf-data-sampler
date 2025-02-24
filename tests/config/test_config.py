@@ -1,6 +1,5 @@
 import pytest
 from pydantic import ValidationError
-
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 
 
@@ -99,7 +98,6 @@ def test_inconsistent_dropout_use(test_config_filename):
     # Case 1: dropout_fraction is positive, but dropout_timedeltas list is empty
     configuration.input_data.satellite.dropout_fraction = 1.0
     configuration.input_data.satellite.dropout_timedeltas_minutes = []
-
     with pytest.raises(
         ValueError,
         match="To dropout fraction > 0 requires a list of dropout timedeltas",
@@ -109,7 +107,6 @@ def test_inconsistent_dropout_use(test_config_filename):
     # Case 2: dropout_timedeltas are defined, but dropout_fraction is 0
     configuration.input_data.satellite.dropout_fraction = 0.0
     configuration.input_data.satellite.dropout_timedeltas_minutes = [-120, -60]
-
     with pytest.raises(
         ValueError,
         match="To use dropout timedeltas dropout fraction should be > 0",

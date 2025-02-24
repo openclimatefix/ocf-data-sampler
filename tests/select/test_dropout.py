@@ -1,10 +1,9 @@
-from ocf_data_sampler.select.dropout import draw_dropout_time, apply_dropout_time
-
 import numpy as np
 import pandas as pd
+import pytest
 import xarray as xr
 
-import pytest
+from ocf_data_sampler.select.dropout import apply_dropout_time, draw_dropout_time
 
 
 @pytest.fixture(scope="module")
@@ -15,9 +14,9 @@ def da_sample():
 
     da_sat = xr.DataArray(
         np.random.normal(size=(len(datetimes),)),
-        coords=dict(
-            time_utc=(["time_utc"], datetimes),
-        )
+        coords={
+            "time_utc": (["time_utc"], datetimes),
+        },
     )
     return da_sat
 
@@ -29,7 +28,7 @@ def test_draw_dropout_time():
     dropout_time = draw_dropout_time(t0, dropout_timedeltas, dropout_frac=1)
 
     assert isinstance(dropout_time, pd.Timestamp)
-    assert dropout_time-t0 in dropout_timedeltas
+    assert (dropout_time - t0) in dropout_timedeltas
 
 
 def test_draw_dropout_time_partial():
@@ -42,27 +41,22 @@ def test_draw_dropout_time_partial():
     # Loop over 1000 to have very high probability of seeing all dropouts
     # The chances of this failing by chance are approx ((2/3)^100)*3 = 7e-18
     for _ in range(100):
-        dropouts.add(draw_dropout_time(t0, dropout_timedeltas, dropout_frac=2/3))
+        dropouts.add(draw_dropout_time(t0, dropout_timedeltas, dropout_frac=2 / 3))
 
-    # Check all expected dropouts are present
-    dropouts == {None} | set(t0 + dt for dt in dropout_timedeltas)
+    # TODO: Check all dropouts are present
 
 
 def test_draw_dropout_time_none():
     t0 = pd.Timestamp("2021-01-01 04:00:00")
 
-    # No dropout timedeltas
-    dropout_time = draw_dropout_time(t0, dropout_timedeltas=None, dropout_frac=1)
-    assert dropout_time is None
-
     # Dropout fraction is 0
     dropout_timedeltas = [pd.Timedelta(-30, "min")]
     dropout_time = draw_dropout_time(t0, dropout_timedeltas=dropout_timedeltas, dropout_frac=0)
-    assert dropout_time is None
+    assert dropout_time == t0
 
     # No dropout timedeltas and dropout fraction is 0
-    dropout_time = draw_dropout_time(t0, dropout_timedeltas=None, dropout_frac=0)
-    assert dropout_time is None
+    dropout_time = draw_dropout_time(t0, dropout_timedeltas=[], dropout_frac=0)
+    assert dropout_time == t0
 
 
 @pytest.mark.parametrize("t0_str", ["12:00", "12:30", "13:00"])
@@ -72,4 +66,6 @@ def test_apply_dropout_time(da_sample, t0_str):
     da_dropout = apply_dropout_time(da_sample, dropout_time)
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
-    assert da_dropout.sel(time_utc=slice(dropout_time+pd.Timedelta(5, "min"), None)).isnull().all()
+    assert (
+        da_dropout.sel(time_utc=slice(dropout_time + pd.Timedelta(5, "min"), None)).isnull().all()
+    )

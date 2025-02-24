@@ -1,4 +1,5 @@
-""" Functions for selecting data around a given location """
+"""Functions for selecting data around a given location."""
+
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.select_spatial_slice import select_spatial_slice_pixels
@@ -9,24 +10,24 @@ def slice_datasets_by_space(
     location: Location,
     config: Configuration,
 ) -> dict:
-    """Slice the dictionary of input data sources around a given location
+    """Slice the dictionary of input data sources around a given location.
 
     Args:
         datasets_dict: Dictionary of the input data sources
         location: The location to sample around
         config: Configuration object.
     """
-
-    assert set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp", "site"})
+    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp", "site"}):
+        raise ValueError(
+            "'datasets_dict' should only contain keys 'nwp', 'sat', 'gsp', 'site'",
+        )
 
     sliced_datasets_dict = {}
 
     if "nwp" in datasets_dict:
-
         sliced_datasets_dict["nwp"] = {}
 
         for nwp_key, nwp_config in config.input_data.nwp.items():
-
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
                 datasets_dict["nwp"][nwp_key],
                 location,

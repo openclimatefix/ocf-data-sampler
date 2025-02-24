@@ -1,8 +1,10 @@
-import xarray as xr
+"""Helper functions for refactoring legacy site data."""
+
 import pandas as pd
+import xarray as xr
 
 
-def legacy_format(data_ds, metadata_df):
+def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
     """
     Converts legacy site data to the new format.
 

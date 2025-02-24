@@ -1,44 +1,77 @@
-"""
-Base class definition - abstract
-Handling of both flat and nested structures - consideration for NWP
-"""
+"""Base class for handling flat/nested data structures with NWP consideration."""
 
-import logging
-import numpy as np
-
-from pathlib import Path
-from typing import Any, Dict, Optional, Union
 from abc import ABC, abstractmethod
+from typing import TypeAlias
 
-logger = logging.getLogger(__name__)
+import numpy as np
+import torch
+
+NumpySample: TypeAlias = dict[str, np.ndarray | dict[str, np.ndarray]]
+NumpyBatch: TypeAlias = dict[str, np.ndarray | dict[str, np.ndarray]]
+TensorBatch: TypeAlias = dict[str, torch.Tensor | dict[str, torch.Tensor]]
+
 
 class SampleBase(ABC):
-    """ 
-    Abstract base class for all sample types 
-    Provides core data storage functionality
-    """
-
-    def __init__(self):
-        """ Initialise data container """
-        logger.debug("Initialising SampleBase instance")
+    """Abstract base class for all sample types."""
 
     @abstractmethod
-    def to_numpy(self) -> Dict[str, Any]:
-        """ Convert data to a numpy array representation """
+    def to_numpy(self) -> NumpySample:
+        """Convert sample data to numpy format."""
         raise NotImplementedError
 
     @abstractmethod
-    def plot(self, **kwargs) -> None:
-        """ Abstract method for plotting """
+    def plot(self) -> None:
+        """Create a visualisation of the data."""
         raise NotImplementedError
 
     @abstractmethod
-    def save(self, path: Union[str, Path]) -> None:
-        """ Abstract method for saving sample data """
+    def save(self, path: str) -> None:
+        """Saves the sample to disk in the implementations' required format."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def load(cls, path: Union[str, Path]) -> 'SampleBase':
-        """ Abstract class method for loading sample data """
+    def load(cls, path: str) -> "SampleBase":
+        """Load a sample from disk from the implementations' format."""
         raise NotImplementedError
+
+
+def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
+    """Recursively converts numpy arrays in nested dict to torch tensors.
+
+    Args:
+        batch: NumpyBatch with data in numpy arrays
+    Returns:
+        TensorBatch with data in torch tensors
+    """
+    for k, v in batch.items():
+        if isinstance(v, dict):
+            batch[k] = batch_to_tensor(v)
+        elif isinstance(v, np.ndarray):
+            if v.dtype == np.bool_:
+                batch[k] = torch.tensor(v, dtype=torch.bool)
+            elif np.issubdtype(v.dtype, np.number):
+                batch[k] = torch.as_tensor(v)
+    return batch
+
+
+def copy_batch_to_device(batch: TensorBatch, device: torch.device) -> TensorBatch:
+    """Recursively copies tensors in nested dict to specified device.
+
+    Args:
+        batch: Nested dict with tensors to move
+        device: Device to move tensors to
+
+    Returns:
+        A dict with tensors moved to the new device
+    """
+    batch_copy = {}
+
+    for k, v in batch.items():
+        if isinstance(v, dict):
+            batch_copy[k] = copy_batch_to_device(v, device)
+        elif isinstance(v, torch.Tensor):
+            batch_copy[k] = v.to(device)
+        else:
+            batch_copy[k] = v
+    return batch_copy
