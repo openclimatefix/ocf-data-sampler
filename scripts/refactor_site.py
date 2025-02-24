@@ -1,14 +1,17 @@
-""" Helper functions for refactoring legacy site data """
+"""Helper functions for refactoring legacy site data."""
+
+import pandas as pd
 import xarray as xr
 
-def legacy_format(data_ds, metadata_df):
+
+def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
     """This formats old legacy data to the new format.
 
     1. This renames the columns in the metadata
     2. Re-formats the site data from data variables named by the site_id to
-    a data array with a site_id dimension. Also adds capacity_kwp to the dataset as a time series for each site_id
+       a data array with a site_id dimension.
+       Also adds capacity_kwp to the dataset as a time series for each site_id
     """
-
     if "system_id" in metadata_df.columns:
         metadata_df["site_id"] = metadata_df["system_id"]
 
@@ -45,6 +48,6 @@ def legacy_format(data_ds, metadata_df):
             {
                 "generation_kw": gen_da,
                 "capacity_kwp": capacity_da,
-            }
+            },
         )
     return data_ds

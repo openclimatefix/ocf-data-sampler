@@ -1,33 +1,38 @@
-import xarray as xr
-import numpy as np
+"""Constants for the package."""
 
+from typing import override
+
+import numpy as np
+import xarray as xr
 
 NWP_PROVIDERS = [
     "ukv",
     "ecmwf",
-    "gfs"
+    "gfs",
 ]
 # TODO add ICON
 
 
-def _to_data_array(d):
+def _to_data_array(d: dict) -> xr.DataArray:
+    """Convert a dictionary to a DataArray."""
     return xr.DataArray(
-        [d[k] for k in d.keys()],
-        coords={"channel": [k for k in d.keys()]},
+        [d[k] for k in d],
+        coords={"channel": list(d.keys())},
     ).astype(np.float32)
 
 
 class NWPStatDict(dict):
-    """Custom dictionary class to hold NWP normalization stats"""
+    """Custom dictionary class to hold NWP normalization stats."""
 
-    def __getitem__(self, key):
+    @override
+    def __getitem__(self, key: str) -> xr.DataArray:
         if key not in NWP_PROVIDERS:
             raise KeyError(f"{key} is not a supported NWP provider - {NWP_PROVIDERS}")
         elif key in self.keys():
             return super().__getitem__(key)
         else:
             raise KeyError(
-                f"Values for {key} not yet available in ocf-data-sampler {list(self.keys())}"
+                f"Values for {key} not yet available in ocf-data-sampler {list(self.keys())}",
             )
 
 
@@ -177,12 +182,12 @@ GFS_MEAN = _to_data_array(GFS_MEAN)
 NWP_STDS = NWPStatDict(
     ukv=UKV_STD,
     ecmwf=ECMWF_STD,
-    gfs=GFS_STD
+    gfs=GFS_STD,
 )
 NWP_MEANS = NWPStatDict(
     ukv=UKV_MEAN,
     ecmwf=ECMWF_MEAN,
-    gfs=GFS_MEAN
+    gfs=GFS_MEAN,
 )
 
 # ------ Satellite

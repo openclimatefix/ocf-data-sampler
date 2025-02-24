@@ -1,19 +1,18 @@
-"""Select spatial slices"""
+"""Select spatial slices."""
 
 import logging
 
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.geospatial import (
-    lon_lat_to_osgb,
     lon_lat_to_geostationary_area_coords,
+    lon_lat_to_osgb,
     osgb_to_geostationary_area_coords,
     osgb_to_lon_lat,
     spatial_coord_type,
 )
-
+from ocf_data_sampler.select.location import Location
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 def convert_coords_to_match_xarray(
-        x: float | np.ndarray, 
-        y: float | np.ndarray, 
-        from_coords: str, 
-        da: xr.DataArray
-    ):
-    """Convert x and y coords to cooridnate system matching xarray data
+    x: float | np.ndarray,
+    y: float | np.ndarray,
+    from_coords: str,
+    da: xr.DataArray,
+) -> tuple[float | np.ndarray, float | np.ndarray]:
+    """Convert x and y coords to cooridnate system matching xarray data.
 
     Args:
         x: Float or array-like
@@ -35,38 +34,42 @@ def convert_coords_to_match_xarray(
         from_coords: String describing coordinate system of x and y
         da: DataArray to which coordinates should be matched
     """
-
     target_coords, *_ = spatial_coord_type(da)
 
-    assert from_coords in ["osgb", "lon_lat"]
-    assert target_coords in ["geostationary", "osgb", "lon_lat"]
-
-    if target_coords == "geostationary":
-        if from_coords == "osgb":
+    match (from_coords, target_coords):
+        case ("osgb", "geostationary"):
             x, y = osgb_to_geostationary_area_coords(x, y, da)
 
-    elif target_coords == "lon_lat":
-        if from_coords == "osgb":
+        case ("osgb", "lon_lat"):
             x, y = osgb_to_lon_lat(x, y)
 
-        # else the from_coords=="lon_lat" and we don't need to convert
+        case ("osgb", "osgb"):
+            pass
 
-    elif target_coords == "osgb":
-        if from_coords == "lon_lat":
+        case ("lon_lat", "osgb"):
             x, y = lon_lat_to_osgb(x, y)
 
-        # else the from_coords=="osgb" and we don't need to convert
+        case ("lon_lat", "geostationary"):
+            x, y = lon_lat_to_geostationary_area_coords(x, y, da)
+
+        case ("lon_lat", "lon_lat"):
+            pass
+
+        case (_, _):
+            raise NotImplementedError(
+                f"Conversion from {from_coords} to {target_coords} is not supported",
+            )
 
     return x, y
 
-# TODO: This function and _get_idx_of_pixel_closest_to_poi_geostationary() should not be separate
+
+# TODO: This function and _get_idx_of_pixel_closest_to_poi_geostationary() should not be separate
 # We should combine them, and consider making a Coord class to help with this
 def _get_idx_of_pixel_closest_to_poi(
     da: xr.DataArray,
     location: Location,
 ) -> Location:
-    """
-    Return x and y index location of pixel at center of region of interest.
+    """Return x and y index location of pixel at center of region of interest.
 
     Args:
         da: xarray DataArray
@@ -88,8 +91,14 @@ def _get_idx_of_pixel_closest_to_poi(
     )
 
     # Check that the requested point lies within the data
-    assert da[x_dim].min() < x < da[x_dim].max()
-    assert da[y_dim].min() < y < da[y_dim].max()
+    if not (da[x_dim].min() < x < da[x_dim].max()):
+        raise ValueError(
+            f"{x} is not in the interval {da[x_dim].min().values}: {da[x_dim].max().values}",
+        )
+    if not (da[y_dim].min() < y < da[y_dim].max()):
+        raise ValueError(
+            f"{y} is not in the interval {da[y_dim].min().values}: {da[y_dim].max().values}",
+        )
 
     x_index = da.get_index(x_dim)
     y_index = da.get_index(y_dim)
@@ -104,32 +113,38 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
     da: xr.DataArray,
     center: Location,
 ) -> Location:
-    """
-    Return x and y index location of pixel at center of region of interest.
+    """Return x and y index location of pixel at center of region of interest.
 
     Args:
         da: xarray DataArray
-        center_osgb: Center in OSGB coordinates
+        center: Center in OSGB coordinates
 
     Returns:
         Location for the center pixel in geostationary coordinates
     """
-
     _, x_dim, y_dim = spatial_coord_type(da)
 
-    if center.coordinate_system == 'osgb':
+    if center.coordinate_system == "osgb":
         x, y = osgb_to_geostationary_area_coords(x=center.x, y=center.y, xr_data=da)
-    elif center.coordinate_system == 'lon_lat':
-        x, y = lon_lat_to_geostationary_area_coords(longitude=center.x, latitude=center.y, xr_data=da)
+    elif center.coordinate_system == "lon_lat":
+        x, y = lon_lat_to_geostationary_area_coords(
+            longitude=center.x,
+            latitude=center.y,
+            xr_data=da,
+        )
     else:
-        x,y = center.x, center.y
+        x, y = center.x, center.y
     center_geostationary = Location(x=x, y=y, coordinate_system="geostationary")
 
     # Check that the requested point lies within the data
-    assert da[x_dim].min() < x < da[x_dim].max(), \
-        f"{x} is not in the interval {da[x_dim].min().values}: {da[x_dim].max().values}"
-    assert da[y_dim].min() < y < da[y_dim].max(), \
-        f"{y} is not in the interval {da[y_dim].min().values}: {da[y_dim].max().values}"
+    if not (da[x_dim].min() < x < da[x_dim].max()):
+        raise ValueError(
+            f"{x} is not in the interval {da[x_dim].min().values}: {da[x_dim].max().values}",
+        )
+    if not (da[y_dim].min() < y < da[y_dim].max()):
+        raise ValueError(
+            f"{y} is not in the interval {da[y_dim].min().values}: {da[y_dim].max().values}",
+        )
 
     # Get the index into x and y nearest to x_center_geostationary and y_center_geostationary:
     x_index_at_center = np.searchsorted(da[x_dim].values, center_geostationary.x)
@@ -142,24 +157,25 @@ def _get_idx_of_pixel_closest_to_poi_geostationary(
 
 
 def _select_partial_spatial_slice_pixels(
-    da,
-    left_idx,
-    right_idx,
-    bottom_idx,
-    top_idx,
-    left_pad_pixels,
-    right_pad_pixels,
-    bottom_pad_pixels,
-    top_pad_pixels,
-    x_dim,
-    y_dim,
-):
-    """Return spatial window of given pixel size when window partially overlaps input data"""
-
-    # We should never be padding on both sides of a window. This would mean our desired window is 
+    da: xr.DataArray,
+    left_idx: int,
+    right_idx: int,
+    bottom_idx: int,
+    top_idx: int,
+    left_pad_pixels: int,
+    right_pad_pixels: int,
+    bottom_pad_pixels: int,
+    top_pad_pixels: int,
+    x_dim: str,
+    y_dim: str,
+) -> xr.DataArray:
+    """Return spatial window of given pixel size when window partially overlaps input data."""
+    # We should never be padding on both sides of a window. This would mean our desired window is
     # larger than the size of the input data
-    assert left_pad_pixels==0 or right_pad_pixels==0
-    assert bottom_pad_pixels==0 or top_pad_pixels==0
+    if (left_pad_pixels != 0 and right_pad_pixels != 0) or (
+        bottom_pad_pixels != 0 and top_pad_pixels != 0
+    ):
+        raise ValueError("Cannot pad both sides of the window")
 
     dx = np.median(np.diff(da[x_dim].values))
     dy = np.median(np.diff(da[y_dim].values))
@@ -170,7 +186,7 @@ def _select_partial_spatial_slice_pixels(
             [
                 da[x_dim].values[0] + np.arange(-left_pad_pixels, 0) * dx,
                 da[x_dim].values[0:right_idx],
-            ]
+            ],
         )
         da = da.isel({x_dim: slice(0, right_idx)}).reindex({x_dim: x_sel})
 
@@ -180,7 +196,7 @@ def _select_partial_spatial_slice_pixels(
             [
                 da[x_dim].values[left_idx:],
                 da[x_dim].values[-1] + np.arange(1, right_pad_pixels + 1) * dx,
-            ]
+            ],
         )
         da = da.isel({x_dim: slice(left_idx, None)}).reindex({x_dim: x_sel})
 
@@ -194,7 +210,7 @@ def _select_partial_spatial_slice_pixels(
             [
                 da[y_dim].values[0] + np.arange(-bottom_pad_pixels, 0) * dy,
                 da[y_dim].values[0:top_idx],
-            ]
+            ],
         )
         da = da.isel({y_dim: slice(0, top_idx)}).reindex({y_dim: y_sel})
 
@@ -204,7 +220,7 @@ def _select_partial_spatial_slice_pixels(
             [
                 da[y_dim].values[bottom_idx:],
                 da[y_dim].values[-1] + np.arange(1, top_pad_pixels + 1) * dy,
-            ]
+            ],
         )
         da = da.isel({y_dim: slice(left_idx, None)}).reindex({y_dim: y_sel})
 
@@ -216,15 +232,15 @@ def _select_partial_spatial_slice_pixels(
 
 
 def _select_spatial_slice_pixels(
-    da: xr.DataArray, 
-    center_idx: Location, 
-    width_pixels: int, 
-    height_pixels: int, 
-    x_dim: str, 
-    y_dim: str, 
+    da: xr.DataArray,
+    center_idx: Location,
+    width_pixels: int,
+    height_pixels: int,
+    x_dim: str,
+    y_dim: str,
     allow_partial_slice: bool,
-):
-    """Select a spatial slice from an xarray object
+) -> xr.DataArray:
+    """Select a spatial slice from an xarray object.
 
     Args:
         da: xarray DataArray to slice from
@@ -235,11 +251,13 @@ def _select_spatial_slice_pixels(
         y_dim: Name of the y-dimension in `da`
         allow_partial_slice: Whether to allow a partially filled window
     """
-
-    assert center_idx.coordinate_system == "idx"
+    if center_idx.coordinate_system != "idx":
+        raise ValueError(f"Expected center_idx to be in 'idx' coordinates, got '{center_idx}'")
     # TODO: It shouldn't take much effort to allow height and width to be odd
-    assert (width_pixels % 2)==0, "Width must be an even number"
-    assert (height_pixels % 2)==0, "Height must be an even number"
+    if (width_pixels % 2) != 0:
+        raise ValueError("Width must be an even number")
+    if (height_pixels % 2) != 0:
+        raise ValueError("Height must be an even number")
 
     half_width = width_pixels // 2
     half_height = height_pixels // 2
@@ -261,13 +279,11 @@ def _select_spatial_slice_pixels(
 
     if pad_required:
         if allow_partial_slice:
-
             left_pad_pixels = (-left_idx) if left_pad_required else 0
             right_pad_pixels = (right_idx - data_width_pixels) if right_pad_required else 0
 
             bottom_pad_pixels = (-bottom_idx) if bottom_pad_required else 0
             top_pad_pixels = (top_idx - data_height_pixels) if top_pad_required else 0
-
 
             da = _select_partial_spatial_slice_pixels(
                 da,
@@ -287,7 +303,7 @@ def _select_spatial_slice_pixels(
                 f"Window for location {center_idx} not available. Missing (left, right, bottom, "
                 f"top) pixels  = ({left_pad_required}, {right_pad_required}, "
                 f"{bottom_pad_required}, {top_pad_required}). "
-                f"You may wish to set `allow_partial_slice=True`"
+                f"You may wish to set `allow_partial_slice=True`",
             )
 
     else:
@@ -295,17 +311,19 @@ def _select_spatial_slice_pixels(
             {
                 x_dim: slice(left_idx, right_idx),
                 y_dim: slice(bottom_idx, top_idx),
-            }
+            },
         )
 
-    assert len(da[x_dim]) == width_pixels, (
-        f"Expected x-dim len {width_pixels} got {len(da[x_dim])} "
-        f"for location {center_idx} for slice {left_idx}:{right_idx}"
-    )
-    assert len(da[y_dim]) == height_pixels, (
-        f"Expected y-dim len {height_pixels} got {len(da[y_dim])} "
-        f"for location {center_idx} for slice {bottom_idx}:{top_idx}"
-    )
+    if len(da[x_dim]) != width_pixels:
+        raise ValueError(
+            f"Expected x-dim len {width_pixels} got {len(da[x_dim])} "
+            f"for location {center_idx} for slice {left_idx}:{right_idx}",
+        )
+    if len(da[y_dim]) != height_pixels:
+        raise ValueError(
+            f"Expected y-dim len {height_pixels} got {len(da[y_dim])} "
+            f"for location {center_idx} for slice {bottom_idx}:{top_idx}",
+        )
 
     return da
 
@@ -319,9 +337,8 @@ def select_spatial_slice_pixels(
     width_pixels: int,
     height_pixels: int,
     allow_partial_slice: bool = False,
-):
-    """
-    Select spatial slice based off pixels from location point of interest
+) -> xr.DataArray:
+    """Select spatial slice based off pixels from location point of interest.
 
     If `allow_partial_slice` is set to True, then slices may be made which intersect the border
     of the input data. The additional x and y cordinates that would be required for this slice
@@ -336,7 +353,6 @@ def select_spatial_slice_pixels(
         width_pixels: Width of the slice in pixels
         allow_partial_slice: Whether to allow a partial slice.
     """
-
     xr_coords, x_dim, y_dim = spatial_coord_type(da)
 
     if xr_coords == "geostationary":

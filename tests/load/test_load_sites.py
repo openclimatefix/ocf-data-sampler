@@ -1,5 +1,6 @@
-from ocf_data_sampler.load.site import open_site
 import xarray as xr
+
+from ocf_data_sampler.load.site import open_site
 
 
 def test_open_site(data_sites):

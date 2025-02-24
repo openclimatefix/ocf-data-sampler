@@ -1,59 +1,62 @@
-"""Torch dataset for sites"""
+"""Torch dataset for sites."""
 
 import logging
+from typing import override
+
 import numpy as np
 import pandas as pd
 import xarray as xr
-from typing import Tuple
-
 from torch.utils.data import Dataset
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
+from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
+from ocf_data_sampler.numpy_sample import (
+    NWPSampleKey,
+    convert_nwp_to_numpy_sample,
+    convert_satellite_to_numpy_sample,
+    convert_site_to_numpy_sample,
+    make_datetime_numpy_dict,
+    make_sun_position_numpy_sample,
+)
 from ocf_data_sampler.select import (
     Location,
     fill_time_periods,
     find_contiguous_t0_periods,
     intersection_of_multiple_dataframes_of_periods,
-    slice_datasets_by_time, slice_datasets_by_space
+    slice_datasets_by_space,
+    slice_datasets_by_time,
 )
-from ocf_data_sampler.utils import minutes
+from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
+    fill_nans_in_arrays,
+    merge_dicts,
+)
 from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
-from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import merge_dicts, fill_nans_in_arrays
-
-from ocf_data_sampler.numpy_sample import (
-    convert_site_to_numpy_sample, 
-    convert_satellite_to_numpy_sample, 
-    convert_nwp_to_numpy_sample,
-    make_datetime_numpy_dict,
-    make_sun_position_numpy_sample,
-)
-from ocf_data_sampler.numpy_sample import NWPSampleKey
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
-
 from ocf_data_sampler.torch_datasets.utils.validate_channels import (
     validate_nwp_channels,
     validate_satellite_channels,
 )
+from ocf_data_sampler.utils import minutes
 
 xr.set_options(keep_attrs=True)
 
 
 class SitesDataset(Dataset):
+    """A torch Dataset for creating PVNet Site samples."""
+
     def __init__(
         self,
         config_filename: str,
         start_time: str | None = None,
         end_time: str | None = None,
-    ):
-        """A torch Dataset for creating PVNet Site samples
+    ) -> None:
+        """A torch Dataset for creating PVNet Site samples.
 
         Args:
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
         """
-
         config: Configuration = load_yaml_configuration(config_filename)
         validate_nwp_channels(config)
         validate_satellite_channels(config)
@@ -65,28 +68,31 @@ class SitesDataset(Dataset):
         self.config = config
 
         # get all locations
-        self.locations = self.get_locations(datasets_dict['site'])
+        self.locations = self.get_locations(datasets_dict["site"])
 
         # Get t0 times where all input data is available
         valid_t0_and_site_ids = self.find_valid_t0_and_site_ids(datasets_dict)
 
         # Filter t0 times to given range
         if start_time is not None:
-            valid_t0_and_site_ids \
-                = valid_t0_and_site_ids[valid_t0_and_site_ids['t0'] >= pd.Timestamp(start_time)]
+            valid_t0_and_site_ids = valid_t0_and_site_ids[
+                valid_t0_and_site_ids["t0"] >= pd.Timestamp(start_time)
+            ]
 
         if end_time is not None:
-            valid_t0_and_site_ids \
-                = valid_t0_and_site_ids[valid_t0_and_site_ids['t0'] <= pd.Timestamp(end_time)]
+            valid_t0_and_site_ids = valid_t0_and_site_ids[
+                valid_t0_and_site_ids["t0"] <= pd.Timestamp(end_time)
+            ]
 
         # Assign coords and indices to self
         self.valid_t0_and_site_ids = valid_t0_and_site_ids
 
-    def __len__(self):
+    @override
+    def __len__(self) -> int:
         return len(self.valid_t0_and_site_ids)
-    
-    def __getitem__(self, idx):
 
+    @override
+    def __getitem__(self, idx: int) -> dict:
         # Get the coordinates of the sample
         t0, site_id = self.valid_t0_and_site_ids.iloc[idx]
 
@@ -97,7 +103,7 @@ class SitesDataset(Dataset):
         return self._get_sample(t0, location)
 
     def _get_sample(self, t0: pd.Timestamp, location: Location) -> dict:
-        """Generate the PVNet sample for given coordinates
+        """Generate the PVNet sample for given coordinates.
 
         Args:
             t0: init-time for sample
@@ -119,20 +125,20 @@ class SitesDataset(Dataset):
             t0: init-time for sample
             site_id: site id as int
         """
-
         location = self.get_location_from_site_id(site_id)
 
         return self._get_sample(t0, location)
-    
-    def get_location_from_site_id(self, site_id):
-        """Get location from system id"""
 
+    def get_location_from_site_id(self, site_id: int) -> Location:
+        """Get location from system id."""
         locations = [loc for loc in self.locations if loc.id == site_id]
         if len(locations) == 0:
             raise ValueError(f"Location not found for site_id {site_id}")
 
         if len(locations) > 1:
-            logging.warning(f"Multiple locations found for site_id {site_id}, but will take the first")
+            logging.warning(
+                f"Multiple locations found for site_id {site_id}, but will take the first",
+            )
 
         return locations[0]
 
@@ -140,7 +146,7 @@ class SitesDataset(Dataset):
         self,
         datasets_dict: dict,
     ) -> pd.DataFrame:
-        """Find the t0 times where all of the requested input data is available
+        """Find the t0 times where all of the requested input data is available.
 
         The idea is to
         1. Get valid time period for nwp and satellite
@@ -150,9 +156,8 @@ class SitesDataset(Dataset):
             datasets_dict: A dictionary of input datasets
             config: Configuration file
         """
-
         # 1. Get valid time period for nwp and satellite
-        datasets_without_site = {k:v for k, v in datasets_dict.items() if k!="site"}
+        datasets_without_site = {k: v for k, v in datasets_dict.items() if k != "site"}
         valid_time_periods = find_valid_time_periods(datasets_without_site, self.config)
 
         # 2. Now lets loop over each location in system id and find the valid periods
@@ -166,7 +171,7 @@ class SitesDataset(Dataset):
 
             # drop any nan values
             # not sure this is right?
-            site = site.dropna(dim='time_utc')
+            site = site.dropna(dim="time_utc")
 
             # Get the valid time periods for this location
             time_periods = find_contiguous_t0_periods(
@@ -176,29 +181,27 @@ class SitesDataset(Dataset):
                 interval_end=minutes(site_config.interval_end_minutes),
             )
             valid_time_periods_per_site = intersection_of_multiple_dataframes_of_periods(
-                [valid_time_periods, time_periods]
+                [valid_time_periods, time_periods],
             )
 
             # Fill out the contiguous time periods to get the t0 times
             valid_t0_times_per_site = fill_time_periods(
                 valid_time_periods_per_site,
-                freq=minutes(site_config.time_resolution_minutes)
+                freq=minutes(site_config.time_resolution_minutes),
             )
 
             valid_t0_per_site = pd.DataFrame(index=valid_t0_times_per_site)
-            valid_t0_per_site['site_id'] = site_id
+            valid_t0_per_site["site_id"] = site_id
             valid_t0_and_site_ids.append(valid_t0_per_site)
 
         valid_t0_and_site_ids = pd.concat(valid_t0_and_site_ids)
-        valid_t0_and_site_ids.index.name = 't0'
+        valid_t0_and_site_ids.index.name = "t0"
         valid_t0_and_site_ids.reset_index(inplace=True)
 
         return valid_t0_and_site_ids
 
-
-    def get_locations(self, site_xr: xr.Dataset):
-        """Get list of locations of all sites"""
-
+    def get_locations(self, site_xr: xr.Dataset) -> list[Location]:
+        """Get list of locations of all sites."""
         locations = []
         for site_id in site_xr.site_id.values:
             site = site_xr.sel(site_id=site_id)
@@ -206,7 +209,7 @@ class SitesDataset(Dataset):
                 id=site_id,
                 x=site.longitude.values,
                 y=site.latitude.values,
-                coordinate_system="lon_lat"
+                coordinate_system="lon_lat",
             )
             locations.append(location)
 
@@ -216,8 +219,7 @@ class SitesDataset(Dataset):
         self,
         dataset_dict: dict,
     ) -> xr.Dataset:
-        """
-        Normalize and combine data into a single xr Dataset
+        """Normalize and combine data into a single xr Dataset.
 
         Args:
             dataset_dict: dict containing sliced xr DataArrays
@@ -225,19 +227,18 @@ class SitesDataset(Dataset):
 
         Returns:
             xr.Dataset: A merged Dataset with nans filled in.
-        
-        """
 
+        """
         data_arrays = []
 
         if "nwp" in dataset_dict:
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
                 provider = self.config.input_data.nwp[nwp_key].provider
-                
+
                 # Standardise
                 da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
                 data_arrays.append((f"nwp-{provider}", da_nwp))
-            
+
         if "sat" in dataset_dict:
             da_sat = dataset_dict["sat"]
 
@@ -257,7 +258,7 @@ class SitesDataset(Dataset):
         datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
         datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site_")
         combined_sample_dataset = combined_sample_dataset.assign_coords(
-            {k: ("site__time_utc", v) for k, v in datetime_features.items()}
+            {k: ("site__time_utc", v) for k, v in datetime_features.items()},
         )
 
         # add sun features
@@ -268,22 +269,22 @@ class SitesDataset(Dataset):
             key_prefix="site_",
         )
         combined_sample_dataset = combined_sample_dataset.assign_coords(
-            {k: ("site__time_utc", v) for k, v in sun_position_features.items()}
+            {k: ("site__time_utc", v) for k, v in sun_position_features.items()},
         )
 
-        # TODO include t0_index in xr dataset? 
+        # TODO include t0_index in xr dataset?
 
         # Fill any nan values
         return combined_sample_dataset.fillna(0.0)
 
     def merge_data_arrays(
-        self, normalised_data_arrays: list[Tuple[str, xr.DataArray]]
+        self,
+        normalised_data_arrays: list[tuple[str, xr.DataArray]],
     ) -> xr.Dataset:
-        """
-        Combine a list of DataArrays into a single Dataset with unique naming conventions.
+        """Combine a list of DataArrays into a single Dataset with unique naming conventions.
 
         Args:
-            list_of_arrays: List of tuples where each tuple contains:
+            normalised_data_arrays: List of tuples where each tuple contains:
                 - A string (key name).
                 - An xarray.DataArray.
 
@@ -295,7 +296,7 @@ class SitesDataset(Dataset):
         for key, data_array in normalised_data_arrays:
             # Ensure all attributes are strings for consistency
             data_array = data_array.assign_attrs(
-                {attr_key: str(attr_value) for attr_key, attr_value in data_array.attrs.items()}
+                {attr_key: str(attr_value) for attr_key, attr_value in data_array.attrs.items()},
             )
 
             # Convert DataArray to Dataset with the variable name as the key
@@ -303,15 +304,16 @@ class SitesDataset(Dataset):
 
             # Prepend key name to all dimension and coordinate names for uniqueness
             dataset = dataset.rename(
-                {dim: f"{key}__{dim}" for dim in dataset.dims if dim not in dataset.coords}
+                {dim: f"{key}__{dim}" for dim in dataset.dims if dim not in dataset.coords},
             )
             dataset = dataset.rename(
-                {coord: f"{key}__{coord}" for coord in dataset.coords}
+                {coord: f"{key}__{coord}" for coord in dataset.coords},
             )
 
             # Handle concatenation dimension if applicable
             concat_dim = (
-                f"{key}__target_time_utc" if f"{key}__target_time_utc" in dataset.coords
+                f"{key}__target_time_utc"
+                if f"{key}__target_time_utc" in dataset.coords
                 else f"{key}__time_utc"
             )
 
@@ -325,20 +327,22 @@ class SitesDataset(Dataset):
 
         # Ensure all datasets are valid xarray.Dataset objects
         for ds in datasets:
-            assert isinstance(ds, xr.Dataset), f"Object is not an xr.Dataset: {type(ds)}"
+            if not isinstance(ds, xr.Dataset):
+                raise ValueError(f"Object is not an xr.Dataset: {type(ds)}")
 
         # Merge all prepared datasets
         combined_dataset = xr.merge(datasets)
 
         return combined_dataset
 
+
 # ----- functions to load presaved samples ------
 
-def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
-    """Convert a netcdf dataset to a numpy sample"""
 
+def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
+    """Convert a netcdf dataset to a numpy sample."""
     # convert the single dataset to a dict of arrays
-    sample_dict = convert_from_dataset_to_dict_datasets(ds) 
+    sample_dict = convert_from_dataset_to_dict_datasets(ds)
 
     if "satellite" in sample_dict:
         # rename satellite to satellite actual # TODO this could be improves
@@ -349,14 +353,15 @@ def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
         dataset_dict=sample_dict,
     )
 
-    # TODO think about normalization, maybe its done not in sample creation, maybe its done afterwards,
-    #  to allow it to be flexible
+    # TODO think about normalization:
+    # * maybe its done not in sample creation, maybe its done afterwards,
+    #   to allow it to be flexible
 
     return sample
 
+
 def convert_from_dataset_to_dict_datasets(combined_dataset: xr.Dataset) -> dict[str, xr.DataArray]:
-    """
-    Convert a combined sample dataset to a dict of datasets for each input
+    """Convert a combined sample dataset to a dict of datasets for each input.
 
     Args:
         combined_dataset: The combined NetCDF dataset
@@ -374,10 +379,10 @@ def convert_from_dataset_to_dict_datasets(combined_dataset: xr.Dataset) -> dict[
             if f"{key}__" not in dim:
                 dataset: xr.Dataset = dataset.drop(dim)
         dataset = dataset.rename(
-            {dim: dim.split(f"{key}__")[1] for dim in dataset.dims if dim not in dataset.coords}
+            {dim: dim.split(f"{key}__")[1] for dim in dataset.dims if dim not in dataset.coords},
         )
         dataset: xr.Dataset = dataset.rename(
-            {coord: coord.split(f"{key}__")[1] for coord in dataset.coords}
+            {coord: coord.split(f"{key}__")[1] for coord in dataset.coords},
         )
         # Split the dataset by the prefix
         datasets[key] = dataset
@@ -391,22 +396,21 @@ def nest_nwp_source_dict(d: dict, sep: str = "/") -> dict:
     """Re-nest a dictionary where the NWP values are nested under keys 'nwp/<key>'."""
     nwp_prefix = f"nwp{sep}"
     new_dict = {k: v for k, v in d.items() if not k.startswith(nwp_prefix)}
-    nwp_keys = [k for k in d.keys() if k.startswith(nwp_prefix)]
+    nwp_keys = [k for k in d if k.startswith(nwp_prefix)]
     if len(nwp_keys) > 0:
         nwp_subdict = {k.removeprefix(nwp_prefix): d[k] for k in nwp_keys}
         new_dict["nwp"] = nwp_subdict
     return new_dict
 
+
 def convert_to_numpy_and_combine(
     dataset_dict: dict,
 ) -> dict:
-    """Convert input data in a dict to numpy arrays"""
-
+    """Convert input data in a dict to numpy arrays."""
     numpy_modalities = []
 
     if "nwp" in dataset_dict:
-
-        nwp_numpy_modalities = dict()
+        nwp_numpy_modalities = {}
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
             # Convert to NumpySample
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
@@ -427,7 +431,7 @@ def convert_to_numpy_and_combine(
         numpy_modalities.append(
             convert_site_to_numpy_sample(
                 da_sites,
-            )
+            ),
         )
 
     # Combine all the modalities and fill NaNs
@@ -437,25 +441,23 @@ def convert_to_numpy_and_combine(
     return combined_sample
 
 
-def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float=0.1):
-    """
-    Coarsen the data to a specified resolution in degrees.
-    
+def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float = 0.1) -> xr.Dataset:
+    """Coarsen the data to a specified resolution in degrees.
+
     Args:
         xr_data: xarray dataset to coarsen
         coarsen_to_deg: resolution to coarsen to in degrees
     """
-
     if "latitude" in xr_data.coords and "longitude" in xr_data.coords:
-        step = np.abs(xr_data.latitude.values[1]-xr_data.latitude.values[0])
-        step = np.round(step,4)
-        coarsen_factor = int(coarsen_to_deg/step)
+        step = np.abs(xr_data.latitude.values[1] - xr_data.latitude.values[0])
+        step = np.round(step, 4)
+        coarsen_factor = int(coarsen_to_deg / step)
         if coarsen_factor > 1:
             xr_data = xr_data.coarsen(
                 latitude=coarsen_factor,
                 longitude=coarsen_factor,
                 boundary="pad",
-                coord_func="min"
+                coord_func="min",
             ).mean()
-        
+
     return xr_data

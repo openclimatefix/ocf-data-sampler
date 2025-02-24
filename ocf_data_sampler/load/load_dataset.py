@@ -1,17 +1,17 @@
-""" Loads all data sources """
+"""Loads all data sources."""
+
 import xarray as xr
 
 from ocf_data_sampler.config import InputData
-from ocf_data_sampler.load import open_nwp, open_gsp, open_sat_data, open_site
+from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
 
 
 def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
-    """Construct dictionary of all of the input data sources
+    """Construct dictionary of all of the input data sources.
 
     Args:
         input_config: InputData configuration object
     """
-
     datasets_dict = {}
 
     # Load GSP data unless the path is None
@@ -23,10 +23,8 @@ def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | 
 
     # Load NWP data if in config
     if input_config.nwp:
-
         datasets_dict["nwp"] = {}
         for nwp_source, nwp_config in input_config.nwp.items():
-
             da_nwp = open_nwp(nwp_config.zarr_path, provider=nwp_config.provider)
 
             da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
