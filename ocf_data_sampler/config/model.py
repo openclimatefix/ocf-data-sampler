@@ -229,13 +229,28 @@ class Site(TimeWindowMixin, DropoutMixin):
     # TODO validate the csv for metadata
 
 
+class SolarPosition(TimeWindowMixin):
+    """Solar position configuration model."""
+    
+    apply_to_gsp: bool = Field(
+        False,
+        description="Whether to apply solar position calculations to GSP data."
+    )
+    
+    apply_to_site: bool = Field(
+        False,
+        description="Whether to apply solar position calculations to site data."
+    )
+
+
 class InputData(Base):
     """Input data model."""
 
-    satellite: Satellite | None = None
-    nwp: MultiNWP | None = None
-    gsp: GSP | None = None
-    site: Site | None = None
+    satellite: Optional[Satellite] = None
+    nwp: Optional[MultiNWP] = None
+    gsp: Optional[GSP] = None
+    site: Optional[Site] = None
+    solar_position: Optional[SolarPosition] = None
 
 
 class Configuration(Base):

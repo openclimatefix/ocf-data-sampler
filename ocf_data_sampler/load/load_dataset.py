@@ -4,6 +4,7 @@ import xarray as xr
 
 from ocf_data_sampler.config import InputData
 from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
+from ocf_data_sampler.load.utils import add_solar_position_to_gsp, add_solar_position_to_site
 
 
 def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
@@ -17,6 +18,10 @@ def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | 
     # Load GSP data unless the path is None
     if input_config.gsp and input_config.gsp.zarr_path:
         da_gsp = open_gsp(zarr_path=input_config.gsp.zarr_path).compute()
+
+        # Add solar position data if configured
+        if input_config.solar_position and input_config.solar_position.apply_to_gsp:
+            add_solar_position_to_gsp(da_gsp)
 
         # Remove national GSP
         datasets_dict["gsp"] = da_gsp.sel(gsp_id=slice(1, None))
@@ -46,6 +51,11 @@ def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | 
             generation_file_path=input_config.site.file_path,
             metadata_file_path=input_config.site.metadata_file_path,
         )
+
+        # Add solar position data if configured
+        if input_config.solar_position and input_config.solar_position.apply_to_site:
+            add_solar_position_to_site(da_sites)
+
         datasets_dict["site"] = da_sites
 
     return datasets_dict
