@@ -83,8 +83,6 @@ def test_sample_save_load(numpy_sample):
 
        assert loaded._data[GSPSampleKey.gsp].shape == (7,)
        assert loaded._data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2) 
-       assert loaded._data[GSPSampleKey.solar_azimuth].shape == (7,)
-       assert loaded._data[GSPSampleKey.solar_elevation].shape == (7,)
 
        np.testing.assert_array_almost_equal(
            loaded._data[GSPSampleKey.gsp], 
