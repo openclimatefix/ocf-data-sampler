@@ -1,6 +1,5 @@
 """ Loads all data sources """
 import xarray as xr
-import pandas as pd
 
 from ocf_data_sampler.config import InputData
 from ocf_data_sampler.load import open_nwp, open_gsp, open_sat_data, open_site
