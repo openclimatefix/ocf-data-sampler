@@ -79,7 +79,7 @@ def add_solar_position(
         lat = float(location_data[y_attr].values)
 
         # Calculate solar position and normalise
-        azimuth, elevation = calculate_azimuth_and_elevation(times, lon, lat)  
+        azimuth, elevation = calculate_azimuth_and_elevation(times, lon, lat)
         azimuth = azimuth / 360
         elevation = elevation / 180 + 0.5
 
