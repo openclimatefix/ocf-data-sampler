@@ -55,9 +55,13 @@ def make_sun_position_numpy_sample(
     elevation = elevation / 180 + 0.5
 
     # Make NumpySample
-    sun_numpy_sample = {
-        key_prefix + "_solar_azimuth": azimuth,
-        key_prefix + "_solar_elevation": elevation,
-    }
-
-    return sun_numpy_sample
+    if key_prefix:
+        return {
+            f"{key_prefix}_solar_azimuth": azimuth,
+            f"{key_prefix}_solar_elevation": elevation,
+        }
+    else:
+        return {
+            "solar_azimuth": azimuth,
+            "solar_elevation": elevation,
+        }
