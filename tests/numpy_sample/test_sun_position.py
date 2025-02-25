@@ -64,22 +64,6 @@ def test_calculate_azimuth_and_elevation_random():
     assert elevations.max() > 70
 
 
-# def test_make_sun_position_numpy_sample():
-
-#     datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min")
-#     lon, lat = 0, 51.5
-
-#     sample = make_sun_position_numpy_sample(datetimes, lon, lat, key_prefix="gsp")
-
-#     assert GSPSampleKey.solar_elevation in sample
-#     assert GSPSampleKey.solar_azimuth in sample
-
-#     # The solar coords are normalised in the function
-#     assert (sample[GSPSampleKey.solar_elevation]>=0).all()
-#     assert (sample[GSPSampleKey.solar_elevation]<=1).all()
-#     assert (sample[GSPSampleKey.solar_azimuth]>=0).all()
-#     assert (sample[GSPSampleKey.solar_azimuth]<=1).all()
-
 def test_make_sun_position_numpy_sample():
     datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min")
     lon, lat = 0, 51.5
