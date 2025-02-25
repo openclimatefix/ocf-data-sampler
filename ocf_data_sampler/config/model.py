@@ -225,11 +225,6 @@ class Site(TimeWindowMixin, DropoutMixin):
 class SolarPosition(TimeWindowMixin):
     """Solar position configuration model"""
     
-    calculation_method: str = Field(
-        "pysolar",
-        description="Method used to calculate solar position (e.g., 'pysolar', 'pvlib')"
-    )
-    
     apply_to_gsp: bool = Field(
         False,
         description="Whether to apply solar position calculations to GSP data"
