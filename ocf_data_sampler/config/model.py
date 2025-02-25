@@ -231,26 +231,26 @@ class Site(TimeWindowMixin, DropoutMixin):
 
 class SolarPosition(TimeWindowMixin):
     """Solar position configuration model."""
-    
+
     apply_to_gsp: bool = Field(
         False,
-        description="Whether to apply solar position calculations to GSP data."
+        description="Whether to apply solar position calculations to GSP data.",
     )
-    
+
     apply_to_site: bool = Field(
         False,
-        description="Whether to apply solar position calculations to site data."
+        description="Whether to apply solar position calculations to site data.",
     )
 
 
 class InputData(Base):
     """Input data model."""
 
-    satellite: Optional[Satellite] = None
-    nwp: Optional[MultiNWP] = None
-    gsp: Optional[GSP] = None
-    site: Optional[Site] = None
-    solar_position: Optional[SolarPosition] = None
+    satellite: Satellite | None = None
+    nwp: MultiNWP | None = None
+    gsp: GSP | None = None
+    site: Site | None = None
+    solar_position: SolarPosition | None = None
 
 
 class Configuration(Base):
