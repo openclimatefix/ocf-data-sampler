@@ -10,8 +10,6 @@ class GSPSampleKey:
     effective_capacity_mwp = 'gsp_effective_capacity_mwp'
     time_utc = 'gsp_time_utc'
     t0_idx = 'gsp_t0_idx'
-    solar_azimuth = 'gsp_solar_azimuth'
-    solar_elevation = 'gsp_solar_elevation'
     gsp_id = 'gsp_id'
     x_osgb = 'gsp_x_osgb'
     y_osgb = 'gsp_y_osgb'

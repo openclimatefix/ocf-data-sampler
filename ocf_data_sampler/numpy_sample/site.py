@@ -10,8 +10,6 @@ class SiteSampleKey:
     time_utc = "site_time_utc"
     t0_idx = "site_t0_idx"
     id = "site_id"
-    solar_azimuth = "site_solar_azimuth"
-    solar_elevation = "site_solar_elevation"
     date_sin = "site_date_sin"
     date_cos = "site_date_cos"
     time_sin = "site_time_sin"
