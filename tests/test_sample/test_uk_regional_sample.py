@@ -63,8 +63,6 @@ def numpy_sample():
         },
         GSPSampleKey.gsp: np.random.rand(7),
         SatelliteSampleKey.satellite_actual: np.random.rand(7, 1, 2, 2),
-        GSPSampleKey.solar_azimuth: np.random.rand(7),
-        GSPSampleKey.solar_elevation: np.random.rand(7),
     }
 
 
