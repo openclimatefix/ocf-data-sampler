@@ -5,7 +5,6 @@ import pandas as pd
 from ocf_data_sampler.config import InputData
 from ocf_data_sampler.load import open_nwp, open_gsp, open_sat_data, open_site
 from ocf_data_sampler.load.utils import add_solar_position_to_gsp, add_solar_position_to_site
-from ocf_data_sampler.numpy_sample.sun_position import calculate_azimuth_and_elevation
 
 
 def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
