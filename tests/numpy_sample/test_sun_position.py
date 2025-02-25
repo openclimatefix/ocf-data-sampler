@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ocf_data_sampler.numpy_sample import GSPSampleKey
 from ocf_data_sampler.numpy_sample.sun_position import (
     calculate_azimuth_and_elevation,
     make_sun_position_numpy_sample,
