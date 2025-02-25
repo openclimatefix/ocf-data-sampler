@@ -1,9 +1,0 @@
-version: 2
-mkdocs: {} # tell readthedocs to use mkdocs
-python:
-  version: 3.8
-  install:
-    - method: pip
-      path: .
-    - method: pip
-      command: install -e .[docs] # Change to use pyproject.toml and set to editable mode so changes to source code can reflect without need to reinstall

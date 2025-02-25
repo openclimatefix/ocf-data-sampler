@@ -1,3 +1,4 @@
+"""Module for calculating solar position."""
 
 import pvlib
 import numpy as np

@@ -3,7 +3,6 @@ from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import PVNetUKRegionalDat
 
 
 def test_stack_np_samples_into_batch(pvnet_config_filename):
-
     # Create dataset object
     dataset = PVNetUKRegionalDataset(pvnet_config_filename)
 

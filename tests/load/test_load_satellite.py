@@ -1,6 +1,7 @@
-from ocf_data_sampler.load.satellite import open_sat_data
-import xarray as xr
 import numpy as np
+import xarray as xr
+
+from ocf_data_sampler.load.satellite import open_sat_data
 
 
 def test_open_satellite(sat_zarr_path):
@@ -13,5 +14,3 @@ def test_open_satellite(sat_zarr_path):
     # There are 100 x 100 pixels
     assert da.shape == (288, 11, 100, 100)
     assert np.issubdtype(da.dtype, np.number)
-
-

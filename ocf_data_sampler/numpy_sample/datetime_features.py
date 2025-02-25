@@ -1,11 +1,11 @@
-"""Functions to create trigonometric date and time inputs"""
+"""Functions to create trigonometric date and time inputs."""
 
 import numpy as np
 import pandas as pd
 
 
 def _get_date_time_in_pi(dt: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
-    """Create positional embeddings for the datetimes in radians
+    """Create positional embeddings for the datetimes in radians.
 
     Args:
         dt: DatetimeIndex to create radian embeddings for
@@ -13,7 +13,6 @@ def _get_date_time_in_pi(dt: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
     Returns:
         Tuple of numpy arrays containing radian coordinates for date and time
     """
-
     day_of_year = dt.dayofyear
     minute_of_day = dt.minute + dt.hour * 60
 
@@ -24,8 +23,7 @@ def _get_date_time_in_pi(dt: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
 
 
 def make_datetime_numpy_dict(datetimes: pd.DatetimeIndex, key_prefix: str = "wind") -> dict:
-    """ Creates dictionary of cyclical datetime features - encoded """
-
+    """Creates dictionary of cyclical datetime features - encoded."""
     date_in_pi, time_in_pi = _get_date_time_in_pi(datetimes)
 
     time_numpy_sample = {}

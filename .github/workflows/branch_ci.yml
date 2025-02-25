@@ -1,0 +1,16 @@
+name: Non-Default Branch Push CI (Python)
+on:
+  push:
+    branches-ignore: ['main']
+    paths-ignore: ['README.md']
+
+jobs:
+  branch-ci:
+    uses: openclimatefix/.github/.github/workflows/nondefault_branch_push_ci_python.yml@main
+    secrets: inherit
+    with:
+      enable_linting: true
+      enable_typechecking: false
+      containerfile: 'None'
+      tests_folder: 'tests'
+
