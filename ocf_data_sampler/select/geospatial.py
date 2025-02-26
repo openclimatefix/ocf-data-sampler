@@ -1,7 +1,6 @@
-"""Geospatial functions"""
+"""Geospatial functions."""
 
 from numbers import Number
-from typing import Union
 
 import numpy as np
 import pyproj
@@ -20,16 +19,21 @@ WGS84 = 4326
 
 
 _osgb_to_lon_lat = pyproj.Transformer.from_crs(
-    crs_from=OSGB36, crs_to=WGS84, always_xy=True
+    crs_from=OSGB36,
+    crs_to=WGS84,
+    always_xy=True,
 ).transform
 _lon_lat_to_osgb = pyproj.Transformer.from_crs(
-    crs_from=WGS84, crs_to=OSGB36, always_xy=True
+    crs_from=WGS84,
+    crs_to=OSGB36,
+    always_xy=True,
 ).transform
 
 
 def osgb_to_lon_lat(
-    x: Union[Number, np.ndarray], y: Union[Number, np.ndarray]
-) -> tuple[Union[Number, np.ndarray], Union[Number, np.ndarray]]:
+    x: Number | np.ndarray,
+    y: Number | np.ndarray,
+) -> tuple[Number | np.ndarray, Number | np.ndarray]:
     """Change OSGB coordinates to lon, lat.
 
     Args:
@@ -41,9 +45,9 @@ def osgb_to_lon_lat(
 
 
 def lon_lat_to_osgb(
-    x: Union[Number, np.ndarray],
-    y: Union[Number, np.ndarray],
-) -> tuple[Union[Number, np.ndarray], Union[Number, np.ndarray]]:
+    x: Number | np.ndarray,
+    y: Number | np.ndarray,
+) -> tuple[Number | np.ndarray, Number | np.ndarray]:
     """Change lon-lat coordinates to OSGB.
 
     Args:
@@ -56,11 +60,11 @@ def lon_lat_to_osgb(
 
 
 def lon_lat_to_geostationary_area_coords(
-    longitude: Union[Number, np.ndarray],
-    latitude: Union[Number, np.ndarray],
+    longitude: Number | np.ndarray,
+    latitude: Number | np.ndarray,
     xr_data: xr.DataArray,
-) -> tuple[Union[Number, np.ndarray], Union[Number, np.ndarray]]:
-    """Loads geostationary area and transformation from lat-lon to geostationary coords
+) -> tuple[Number | np.ndarray, Number | np.ndarray]:
+    """Loads geostationary area and transformation from lat-lon to geostationary coords.
 
     Args:
         longitude: longitude
@@ -72,12 +76,13 @@ def lon_lat_to_geostationary_area_coords(
     """
     return coordinates_to_geostationary_area_coords(longitude, latitude, xr_data, WGS84)
 
+
 def osgb_to_geostationary_area_coords(
-    x: Union[Number, np.ndarray],
-    y: Union[Number, np.ndarray],
+    x: Number | np.ndarray,
+    y: Number | np.ndarray,
     xr_data: xr.DataArray,
-) -> tuple[Union[Number, np.ndarray], Union[Number, np.ndarray]]:
-    """Loads geostationary area and transformation from OSGB to geostationary coords
+) -> tuple[Number | np.ndarray, Number | np.ndarray]:
+    """Loads geostationary area and transformation from OSGB to geostationary coords.
 
     Args:
         x: osgb east-west
@@ -87,30 +92,28 @@ def osgb_to_geostationary_area_coords(
     Returns:
         Geostationary coords: x, y
     """
-
     return coordinates_to_geostationary_area_coords(x, y, xr_data, OSGB36)
 
 
-
 def coordinates_to_geostationary_area_coords(
-    x: Union[Number, np.ndarray],
-    y: Union[Number, np.ndarray],
+    x: Number | np.ndarray,
+    y: Number | np.ndarray,
     xr_data: xr.DataArray,
-    crs_from: int
-) -> tuple[Union[Number, np.ndarray], Union[Number, np.ndarray]]:
-    """Loads geostationary area and transformation from respective coordiates to geostationary coords
+    crs_from: int,
+) -> tuple[Number | np.ndarray, Number | np.ndarray]:
+    """Loads geostationary area and transforms to geostationary coords.
 
-        Args:
-            x: osgb east-west, or latitude
-            y: osgb north-south, or longitude
-            xr_data: xarray object with geostationary area
-            crs_from: the cordiates system of x,y
+    Args:
+        x: osgb east-west, or latitude
+        y: osgb north-south, or longitude
+        xr_data: xarray object with geostationary area
+        crs_from: the cordiates system of x,y
 
-        Returns:
-            Geostationary coords: x, y
-        """
-
-    assert crs_from in [OSGB36, WGS84], f"Unrecognized coordinate system: {crs_from}"
+    Returns:
+        Geostationary coords: x, y
+    """
+    if crs_from not in [OSGB36, WGS84]:
+        raise ValueError(f"Unrecognized coordinate system: {crs_from}")
 
     # Only load these if using geostationary projection
     import pyresample
@@ -118,16 +121,19 @@ def coordinates_to_geostationary_area_coords(
     area_definition_yaml = xr_data.attrs["area"]
 
     geostationary_area_definition = pyresample.area_config.load_area_from_string(
-        area_definition_yaml
+        area_definition_yaml,
     )
     geostationary_crs = geostationary_area_definition.crs
     osgb_to_geostationary = pyproj.Transformer.from_crs(
-        crs_from=crs_from, crs_to=geostationary_crs, always_xy=True
+        crs_from=crs_from,
+        crs_to=geostationary_crs,
+        always_xy=True,
     ).transform
     return osgb_to_geostationary(xx=x, yy=y)
 
 
-def _coord_priority(available_coords):
+def _coord_priority(available_coords: list[str]) -> tuple[str, str, str]:
+    """Determines the coordinate system of spatial coordinates present."""
     if "longitude" in available_coords:
         return "lon_lat", "longitude", "latitude"
     elif "x_geostationary" in available_coords:
@@ -138,7 +144,7 @@ def _coord_priority(available_coords):
         raise ValueError(f"Unrecognized coordinate system: {available_coords}")
 
 
-def spatial_coord_type(ds: xr.DataArray):
+def spatial_coord_type(ds: xr.DataArray) -> tuple[str, str, str]:
     """Searches the data array to determine the kind of spatial coordinates present.
 
     This search has a preference for the dimension coordinates of the xarray object.
@@ -147,9 +153,10 @@ def spatial_coord_type(ds: xr.DataArray):
         ds: Dataset with spatial coords
 
     Returns:
-        str: The kind of the coordinate system
-        x_coord: Name of the x-coordinate
-        y_coord: Name of the y-coordinate
+        Three strings with:
+            1. The kind of the coordinate system
+            2. Name of the x-coordinate
+            3. Name of the y-coordinate
     """
     if isinstance(ds, xr.DataArray):
         # Search dimension coords of dataarray

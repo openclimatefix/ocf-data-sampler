@@ -1,40 +1,43 @@
 import xarray as xr
 import pandas as pd
 
-
-def legacy_format(data_ds, metadata_df):
+def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
     """
-    Converts legacy site data to the new format.
+    Converts old legacy site data into a more structured format.
 
-    1. Renames columns in the metadata DataFrame to align with the new format.
-    2. Reformats site data from data variables named by site_id to a DataArray
-       with a site_id dimension.
-    3. Adds `capacity_kwp` as a time series for each site_id.
-
+    This function does three main things:
+    1. Renames some columns in the metadata to keep things consistent.
+    2. Reshapes site data so that instead of having separate variables for each site,
+       we use a `site_id` dimension—makes life easier for analysis.
+    3. Adds `capacity_kwp` as a time series so that each site has its capacity info.
+    
     Parameters:
-        data_ds (xr.Dataset): Legacy site data with site_id as data variables.
-        metadata_df (pd.DataFrame): Metadata for sites.
+        data_ds (xr.Dataset): The dataset containing legacy site data.
+        metadata_df (pd.DataFrame): A DataFrame with metadata about the sites.
 
     Returns:
         xr.Dataset: Reformatted dataset with `generation_kw` and `capacity_kwp`.
     """
 
-    # Rename columns in metadata to match new format
+    # Step 1: Rename metadata columns to match the new expected format
     if "system_id" in metadata_df.columns:
         metadata_df = metadata_df.rename(columns={"system_id": "site_id"})
+    
+    # Convert capacity from megawatts to kilowatts if needed
     if "capacity_megawatts" in metadata_df.columns:
         metadata_df["capacity_kwp"] = metadata_df["capacity_megawatts"] * 1000
 
-    # Ensure metadata contains required columns
+    # Quick sanity check to ensure we have what we need
     if "site_id" not in metadata_df.columns or "capacity_kwp" not in metadata_df.columns:
-        raise ValueError("Metadata must contain 'site_id' and 'capacity_kwp' columns.")
+        raise ValueError("Metadata is missing required columns: 'site_id' and 'capacity_kwp'.")
 
-    # Check if site data contains site_id as data variables
+    # Step 2: Transform the dataset
+    # Check if we actually have site data in the expected format
     if "0" in data_ds:
-        # Convert data variables to DataFrame
+        # Convert the dataset into a DataFrame so we can manipulate it more easily
         site_data_df = data_ds.to_dataframe()
 
-        # Create generation DataArray
+        # Create a DataArray for generation data
         generation_da = xr.DataArray(
             data=site_data_df.values,
             coords={
@@ -45,13 +48,18 @@ def legacy_format(data_ds, metadata_df):
             name="generation_kw",
         )
 
-        # Create capacity DataArray by broadcasting metadata to match data dimensions
+        # Step 3: Attach capacity information
+        # Map site_ids to their respective capacities
         site_ids = site_data_df.columns
         capacities = metadata_df.set_index("site_id").loc[site_ids, "capacity_kwp"]
+
+        # Broadcast capacities across all timestamps
         capacity_df = pd.DataFrame(
             {site_id: [capacities[site_id]] * len(site_data_df) for site_id in site_ids},
             index=site_data_df.index,
         )
+
+        # Create a DataArray for capacity data
         capacity_da = xr.DataArray(
             data=capacity_df.values,
             coords={
@@ -62,7 +70,10 @@ def legacy_format(data_ds, metadata_df):
             name="capacity_kwp",
         )
 
-        # Combine into a new Dataset
-        data_ds = xr.Dataset({"generation_kw": generation_da, "capacity_kwp": capacity_da})
+        # Finally, bundle everything into a single Dataset
+        data_ds = xr.Dataset({
+            "generation_kw": generation_da,
+            "capacity_kwp": capacity_da,
+        })
 
     return data_ds

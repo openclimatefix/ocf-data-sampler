@@ -1,34 +1,31 @@
+"""Functions pertaining to finding valid time periods for the input data."""
+
 import numpy as np
 import pandas as pd
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.find_contiguous_time_periods import (
+    find_contiguous_t0_periods,
     find_contiguous_t0_periods_nwp,
-    find_contiguous_t0_periods, 
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.utils import minutes
 
 
-
-def find_valid_time_periods(
-    datasets_dict: dict,
-    config: Configuration,
-):
-    """Find the t0 times where all of the requested input data is available
+def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.DataFrame:
+    """Find the t0 times where all of the requested input data is available.
 
     Args:
         datasets_dict: A dictionary of input datasets
         config: Configuration file
     """
+    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp"}):
+        raise ValueError(f"Invalid keys in datasets_dict: {datasets_dict.keys()}")
 
-    assert set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp"})
-
-    contiguous_time_periods: dict[str: pd.DataFrame] = {}  # Used to store contiguous time periods from each data source
-
+    # Used to store contiguous time periods from each data source
+    contiguous_time_periods: dict[str : pd.DataFrame] = {}
     if "nwp" in datasets_dict:
         for nwp_key, nwp_config in config.input_data.nwp.items():
-
             da = datasets_dict["nwp"][nwp_key]
 
             if nwp_config.dropout_timedeltas_minutes is None:
@@ -59,8 +56,12 @@ def find_valid_time_periods(
                 max_staleness = max_possible_staleness
             else:
                 # Make sure the max acceptable staleness isn't longer than the max possible
-                assert max_staleness <= max_possible_staleness
-                
+                if max_staleness > max_possible_staleness:
+                    raise ValueError(
+                        f"max_staleness_minutes is too long for the input data, "
+                        f"{max_staleness=}, {max_possible_staleness=}",
+                    )
+
             # Find the first forecast step
             first_forecast_step = pd.Timedelta(da["step"].min().item())
 
@@ -69,10 +70,10 @@ def find_valid_time_periods(
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 max_staleness=max_staleness,
                 max_dropout=max_dropout,
-                first_forecast_step = first_forecast_step,
+                first_forecast_step=first_forecast_step,
             )
 
-            contiguous_time_periods[f'nwp_{nwp_key}'] = time_periods
+            contiguous_time_periods[f"nwp_{nwp_key}"] = time_periods
 
     if "sat" in datasets_dict:
         sat_config = config.input_data.satellite
@@ -84,7 +85,7 @@ def find_valid_time_periods(
             interval_end=minutes(sat_config.interval_end_minutes),
         )
 
-        contiguous_time_periods['sat'] = time_periods
+        contiguous_time_periods["sat"] = time_periods
 
     if "gsp" in datasets_dict:
         gsp_config = config.input_data.gsp
@@ -96,7 +97,7 @@ def find_valid_time_periods(
             interval_end=minutes(gsp_config.interval_end_minutes),
         )
 
-        contiguous_time_periods['gsp'] = time_periods
+        contiguous_time_periods["gsp"] = time_periods
 
     # just get the values (not the keys)
     contiguous_time_periods_values = list(contiguous_time_periods.values())
@@ -104,7 +105,7 @@ def find_valid_time_periods(
     # Find joint overlapping contiguous time periods
     if len(contiguous_time_periods_values) > 1:
         valid_time_periods = intersection_of_multiple_dataframes_of_periods(
-            contiguous_time_periods_values
+            contiguous_time_periods_values,
         )
     else:
         valid_time_periods = contiguous_time_periods_values[0]

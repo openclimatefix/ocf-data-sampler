@@ -1,5 +1,6 @@
-from ocf_data_sampler.load.gsp import open_gsp
 import xarray as xr
+
+from ocf_data_sampler.load.gsp import open_gsp
 
 
 def test_open_gsp(uk_gsp_zarr_path):
