@@ -35,7 +35,6 @@ def make_sun_position_numpy_sample(
     datetimes: pd.DatetimeIndex,
     lon: float,
     lat: float,
-    key_prefix: str | None = None,
 ) -> dict:
     """Creates NumpySample with standardized solar coordinates.
 
@@ -43,7 +42,6 @@ def make_sun_position_numpy_sample(
         datetimes: The datetimes to calculate solar angles for
         lon: The longitude
         lat: The latitude
-        key_prefix: The prefix to add to the keys in the NumpySample
     """
     azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon, lat)
 
@@ -55,13 +53,7 @@ def make_sun_position_numpy_sample(
     elevation = elevation / 180 + 0.5
 
     # Make NumpySample
-    if key_prefix:
-        return {
-            f"{key_prefix}_solar_azimuth": azimuth,
-            f"{key_prefix}_solar_elevation": elevation,
-        }
-    else:
-        return {
-            "solar_azimuth": azimuth,
-            "solar_elevation": elevation,
-        }
+    return {
+        "solar_azimuth": azimuth,
+        "solar_elevation": elevation,
+    }
