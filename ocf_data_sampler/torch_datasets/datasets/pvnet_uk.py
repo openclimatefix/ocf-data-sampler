@@ -104,7 +104,7 @@ def process_and_combine_datasets(
         )
 
     numpy_modalities.append(
-        make_sun_position_numpy_sample(datetimes, lon, lat, key_prefix=target_key),
+        make_sun_position_numpy_sample(datetimes, lon, lat),
     )
 
     # Combine all the modalities and fill NaNs

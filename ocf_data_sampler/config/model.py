@@ -232,14 +232,9 @@ class Site(TimeWindowMixin, DropoutMixin):
 class SolarPosition(TimeWindowMixin):
     """Solar position configuration model."""
 
-    apply_to_gsp: bool = Field(
+    enabled: bool = Field(
         False,
-        description="Whether to apply solar position calculations to GSP data.",
-    )
-
-    apply_to_site: bool = Field(
-        False,
-        description="Whether to apply solar position calculations to site data.",
+        description="Whether to enable solar position calculations.",
     )
 
 

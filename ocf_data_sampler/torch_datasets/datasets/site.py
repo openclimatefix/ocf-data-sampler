@@ -266,7 +266,6 @@ class SitesDataset(Dataset):
             datetimes=datetimes,
             lon=combined_sample_dataset.site__longitude.values,
             lat=combined_sample_dataset.site__latitude.values,
-            key_prefix="site_",
         )
         combined_sample_dataset = combined_sample_dataset.assign_coords(
             {k: ("site__time_utc", v) for k, v in sun_position_features.items()},
