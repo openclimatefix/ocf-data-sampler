@@ -105,7 +105,7 @@ def process_and_combine_datasets(
 
     # Only add solar position if explicitly configured
     has_solar_config = (
-        hasattr(config.input_data, "solar_position") and 
+        hasattr(config.input_data, "solar_position") and
         config.input_data.solar_position is not None
         )
 
@@ -157,7 +157,6 @@ def find_valid_t0_times(datasets_dict: dict, config: Configuration) -> pd.Dateti
         valid_time_periods,
         freq=minutes(config.input_data.gsp.time_resolution_minutes),
     )
-
     return valid_t0_times
 
 

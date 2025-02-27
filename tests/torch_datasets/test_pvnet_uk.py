@@ -157,10 +157,10 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
 def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
     """Test that solar position calculations are properly decoupled from data sources."""
 
-    config = load_yaml_configuration(pvnet_config_filename)    
-    config_without_solar = config.model_copy(deep=True)    
+    config = load_yaml_configuration(pvnet_config_filename)
+    config_without_solar = config.model_copy(deep=True)
     config_without_solar.input_data.solar_position = None
-    
+
     # Create version with explicit solar position configuration
     config_with_solar = config.model_copy(deep=True)
     config_with_solar.input_data.solar_position = SolarPosition(
@@ -169,7 +169,7 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
         interval_end_minutes=180,
         calculation_method="nrel_numpy",
     )
-    
+
     # Save both testing configurations
     config_without_solar_path = tmp_path / "config_without_solar.yaml"
     config_with_solar_path = tmp_path / "config_with_solar.yaml"
@@ -183,14 +183,14 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
     # Generate samples
     sample_without_solar = dataset_without_solar[0]
     sample_with_solar = dataset_with_solar[0]
-    
+
     # Assert solar position keys are only in sample specifically with solar configuration
     solar_keys = ["gsp_solar_azimuth", "gsp_solar_elevation"]
-    
+
     # Sample without solar config should not have solar position data
     for key in solar_keys:
-        assert key not in sample_without_solar, f"Solar key {key} should not be in sample without solar config"
-    
+        assert key not in sample_without_solar, f"Solar key {key} should not be in sample"
+
     # Sample with solar config should have solar position data
     for key in solar_keys:
-        assert key in sample_with_solar, f"Solar key {key} should be in sample with solar config"
+        assert key in sample_with_solar, f"Solar key {key} should be in sample"
