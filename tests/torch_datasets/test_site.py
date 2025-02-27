@@ -5,6 +5,7 @@ import xarray as xr
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
+from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.torch_datasets.datasets.site import (
     SitesDataset,
     coarsen_data,
@@ -196,7 +197,7 @@ def test_potentially_coarsen(ds_nwp_ecmwf):
 
 
 def test_solar_position_decoupling_site(tmp_path, site_config_filename):
-    """Test that solar position calculations are properly decoupled from data sources for site dataset."""
+    """Test that solar position calculations are properly decoupled from data sources."""
 
     config = load_yaml_configuration(site_config_filename)
     config_without_solar = config.model_copy(deep=True)
@@ -229,8 +230,8 @@ def test_solar_position_decoupling_site(tmp_path, site_config_filename):
 
     # Sample without solar config should not have solar position data
     for key in solar_keys:
-        assert key not in sample_without_solar.coords, f"Solar key {key} should not be in sample coordinates"
+        assert key not in sample_without_solar.coords, f"Solar key {key} should not be in sample"
 
     # Sample with solar config should have solar position data
     for key in solar_keys:
-        assert key in sample_with_solar.coords, f"Solar key {key} should be in sample coordinates"
+        assert key in sample_with_solar.coords, f"Solar key {key} should be in sample"
