@@ -3,8 +3,6 @@
 import pandas as pd
 import xarray as xr
 
-from ocf_data_sampler.numpy_sample.sun_position import calculate_azimuth_and_elevation
-
 
 def check_time_unique_increasing(datetimes: xr.DataArray) -> None:
     """Check that the time dimension is unique and increasing."""

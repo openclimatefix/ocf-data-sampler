@@ -9,7 +9,6 @@ import xarray as xr
 from torch.utils.data import Dataset
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.numpy_sample import (
@@ -108,8 +107,8 @@ def process_and_combine_datasets(
     has_solar_config = (
         hasattr(config.input_data, "solar_position") and 
         config.input_data.solar_position is not None
-    )
-    
+        )
+
     if has_solar_config:
         datetimes = pd.date_range(
             t0 + minutes(gsp_config.interval_start_minutes),
@@ -118,7 +117,7 @@ def process_and_combine_datasets(
         )
 
         lon, lat = osgb_to_lon_lat(location.x, location.y)
-        
+
         solar_positions = make_sun_position_numpy_sample(datetimes, lon, lat)
 
         prefixed_solar_positions = {
