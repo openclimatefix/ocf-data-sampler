@@ -232,11 +232,6 @@ class Site(TimeWindowMixin, DropoutMixin):
 class SolarPosition(TimeWindowMixin):
     """Solar position configuration model."""
 
-    calculation_method: str = Field(
-        "nrel_numpy",
-        description="Method used for solar position calculations.",
-    )
-
 
 class InputData(Base):
     """Input data model."""

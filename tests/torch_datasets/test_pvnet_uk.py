@@ -167,7 +167,6 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
         time_resolution_minutes=30,
         interval_start_minutes=0,
         interval_end_minutes=180,
-        calculation_method="nrel_numpy",
     )
 
     # Save both testing configurations
