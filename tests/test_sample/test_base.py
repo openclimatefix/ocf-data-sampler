@@ -158,6 +158,6 @@ def test_copy_batch_to_device():
         "non_tensor": "unchanged",
     }
     moved_batch = copy_batch_to_device(batch, device)
-    assert moved_batch["tensor_data"].device.type == device.type
-    assert moved_batch["nested"]["matrix"].device.type == device.type
+    assert moved_batch["tensor_data"].device == device
+    assert moved_batch["nested"]["matrix"].device == device
     assert moved_batch["non_tensor"] == "unchanged"  # Non-tensors should remain unchanged
