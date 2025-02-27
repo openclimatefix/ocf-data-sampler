@@ -232,9 +232,9 @@ class Site(TimeWindowMixin, DropoutMixin):
 class SolarPosition(TimeWindowMixin):
     """Solar position configuration model."""
 
-    enabled: bool = Field(
-        False,
-        description="Whether to enable solar position calculations.",
+    calculation_method: str = Field(
+        "nrel_numpy",
+        description="Method used for solar position calculations.",
     )
 
 
