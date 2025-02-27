@@ -57,8 +57,6 @@ def test_site(tmp_path, site_config_filename):
     }
 
     expected_coords_subset = {
-        "site__solar_azimuth",
-        "site__solar_elevation",
         "site__date_cos",
         "site__time_cos",
         "site__time_sin",
@@ -119,8 +117,6 @@ def test_convert_from_dataset_to_dict_datasets(sites_dataset):
 
 def test_site_dataset_with_dataloader(sites_dataset) -> None:
     expected_coods = {
-        "site__solar_azimuth",
-        "site__solar_elevation",
         "site__date_cos",
         "site__time_cos",
         "site__time_sin",
