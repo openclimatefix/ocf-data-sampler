@@ -103,9 +103,30 @@ def process_and_combine_datasets(
             },
         )
 
-    numpy_modalities.append(
-        make_sun_position_numpy_sample(datetimes, lon, lat, key_prefix=target_key),
+    # Only add solar position if explicitly configured
+    has_solar_config = (
+        hasattr(config.input_data, "solar_position") and
+        config.input_data.solar_position is not None
     )
+
+    if has_solar_config:
+        # Create datetime range for solar position calculation
+        datetimes = pd.date_range(
+            t0 + minutes(gsp_config.interval_start_minutes),
+            t0 + minutes(gsp_config.interval_end_minutes),
+            freq=minutes(gsp_config.time_resolution_minutes),
+        )
+
+        # We already have lon, lat if target_key is "gsp", otherwise calculate them
+        if target_key != "gsp":
+            lon, lat = osgb_to_lon_lat(location.x, location.y)
+
+        # Calculate solar positions and add to modalities
+        solar_positions = make_sun_position_numpy_sample(datetimes, lon, lat)
+        prefixed_solar_positions = {
+            f"gsp_{key}": value for key, value in solar_positions.items()
+        }
+        numpy_modalities.append(prefixed_solar_positions)
 
     # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
@@ -138,7 +159,6 @@ def find_valid_t0_times(datasets_dict: dict, config: Configuration) -> pd.Dateti
         valid_time_periods,
         freq=minutes(config.input_data.gsp.time_resolution_minutes),
     )
-
     return valid_t0_times
 
 

@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ocf_data_sampler.numpy_sample import GSPSampleKey
 from ocf_data_sampler.numpy_sample.sun_position import (
     calculate_azimuth_and_elevation,
     make_sun_position_numpy_sample,
@@ -66,13 +65,13 @@ def test_make_sun_position_numpy_sample():
     datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min")
     lon, lat = 0, 51.5
 
-    sample = make_sun_position_numpy_sample(datetimes, lon, lat, key_prefix="gsp")
+    sample = make_sun_position_numpy_sample(datetimes, lon, lat)
 
-    assert GSPSampleKey.solar_elevation in sample
-    assert GSPSampleKey.solar_azimuth in sample
+    assert "solar_elevation" in sample
+    assert "solar_azimuth" in sample
 
     # The solar coords are normalised in the function
-    assert (sample[GSPSampleKey.solar_elevation] >= 0).all()
-    assert (sample[GSPSampleKey.solar_elevation] <= 1).all()
-    assert (sample[GSPSampleKey.solar_azimuth] >= 0).all()
-    assert (sample[GSPSampleKey.solar_azimuth] <= 1).all()
+    assert (sample["solar_elevation"] >= 0).all()
+    assert (sample["solar_elevation"] <= 1).all()
+    assert (sample["solar_azimuth"] >= 0).all()
+    assert (sample["solar_azimuth"] <= 1).all()
