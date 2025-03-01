@@ -52,7 +52,9 @@ def validate_nwp_channels(config: Configuration) -> None:
         ValueError: If there's a mismatch between configured NWP channels
         and normalisation constants
     """
-    if hasattr(config.input_data, "nwp") and (config.input_data.nwp is not None):
+    if hasattr(config.input_data, "nwp") and (
+        config.input_data.nwp is not None
+        ):
         for _, nwp_config in config.input_data.nwp.items():
             provider = nwp_config.provider
             validate_channels(
@@ -73,7 +75,9 @@ def validate_satellite_channels(config: Configuration) -> None:
         ValueError: If there's a mismatch between configured satellite channels
         and normalisation constants
     """
-    if hasattr(config.input_data, "satellite") and (config.input_data.satellite is not None):
+    if hasattr(config.input_data, "satellite") and (
+        config.input_data.satellite is not None
+        ):
         validate_channels(
             data_channels=config.input_data.satellite.channels,
             means_channels=RSS_MEAN.channel.values,
