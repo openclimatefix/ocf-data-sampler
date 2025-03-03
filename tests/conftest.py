@@ -210,6 +210,7 @@ def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
     ds.to_zarr(zarr_path)
     yield zarr_path
 
+
 @pytest.fixture(scope="session")
 def icon_eu_zarr_path(session_tmp_path):
     date = "20211101"
@@ -227,12 +228,18 @@ def icon_eu_zarr_path(session_tmp_path):
                 "time": pd.Timestamp(f"2021-11-01T{hour}:00:00"),
             },
             data_vars={
-                "t": (("step", "isobaricInhPa", "latitude", "longitude"),
-                      np.random.rand(93, 6, 100, 100).astype(np.float32)),
-                "u_10m": (("step", "latitude", "longitude"),
-                         np.random.rand(93, 100, 100).astype(np.float32)),
-                "v_10m": (("step", "latitude", "longitude"),
-                         np.random.rand(93, 100, 100).astype(np.float32)),
+                "t": (
+                    ("step", "isobaricInhPa", "latitude", "longitude"),
+                    np.random.rand(93, 6, 100, 100).astype(np.float32),
+                ),
+                "u_10m": (
+                    ("step", "latitude", "longitude"),
+                    np.random.rand(93, 100, 100).astype(np.float32),
+                ),
+                "v_10m": (
+                    ("step", "latitude", "longitude"),
+                    np.random.rand(93, 100, 100).astype(np.float32),
+                ),
             },
             attrs={
                 "Conventions": "CF-1.7",

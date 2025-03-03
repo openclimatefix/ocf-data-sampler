@@ -71,13 +71,13 @@ def test_site(tmp_path, site_config_filename):
     sample = xr.open_dataset(f"{tmp_path}/sample.nc")
 
     # Check dimensions
-    assert set(sample.dims) == expected_dims, (
-        f"Missing or extra dimensions: {set(sample.dims) ^ expected_dims}"
-    )
+    assert (
+        set(sample.dims) == expected_dims
+    ), f"Missing or extra dimensions: {set(sample.dims) ^ expected_dims}"
     # Check data variables
-    assert set(sample.data_vars) == expected_data_vars, (
-        f"Missing or extra data variables: {set(sample.data_vars) ^ expected_data_vars}"
-    )
+    assert (
+        set(sample.data_vars) == expected_data_vars
+    ), f"Missing or extra data variables: {set(sample.data_vars) ^ expected_data_vars}"
 
     for coords in expected_coords_subset:
         assert coords in sample.coords
@@ -174,9 +174,9 @@ def test_process_and_combine_site_sample_dict(sites_dataset: xr.Dataset) -> None
     # Validate variable via assertion and shape of such
     expected_variables = ["nwp-ukv", "site"]
     for expected_variable in expected_variables:
-        assert expected_variable in result.data_vars, (
-            f"Expected variable '{expected_variable}' not found"
-        )
+        assert (
+            expected_variable in result.data_vars
+        ), f"Expected variable '{expected_variable}' not found"
 
     nwp_result = result["nwp-ukv"]
     assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"

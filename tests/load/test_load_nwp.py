@@ -19,6 +19,7 @@ def test_load_ecmwf(nwp_ecmwf_zarr_path):
     assert da.shape == (24 * 7, 15, 3, 15, 12)
     assert np.issubdtype(da.dtype, np.number)
 
+
 def test_load_icon_eu(icon_eu_zarr_path):
     da = open_nwp(zarr_path=icon_eu_zarr_path, provider="icon-eu")
     assert isinstance(da, DataArray)

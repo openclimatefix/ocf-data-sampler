@@ -34,17 +34,15 @@ def find_contiguous_time_periods(
     if min_seq_length < 1:
         raise ValueError(f"{min_seq_length=} must be >= 1")
     check_time_unique_increasing(datetimes)
-    
+
     # Handle single timestamp case
     if len(datetimes) == 1:
         if min_seq_length == 1:
             return pd.DataFrame([{"start_dt": datetimes[0], "end_dt": datetimes[0]}])
         else:
             raise ValueError(
-                "Only one timestamp found, but min_seq_length > 1. No valid periods."
+                "Only one timestamp found, but min_seq_length > 1. No valid periods.",
             )
-
-
 
     # Find indices of gaps larger than max_gap:
     gap_mask = pd.TimedeltaIndex(np.diff(datetimes)) > max_gap_duration
