@@ -1,14 +1,16 @@
-"""Open GFS Forecast data"""
+"""Open GFS Forecast data."""
 
 import logging
+
 import xarray as xr
+
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
+
 _log = logging.getLogger(__name__)
 
 
-def open_gfs(zarr_path) -> xr.DataArray:
-    """
-    Opens the GFS data
+def open_gfs(zarr_path: str | list[str]) -> xr.DataArray:
+    """Opens the GFS data.
 
     Args:
         zarr_path: Path to the zarr to open
