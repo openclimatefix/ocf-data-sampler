@@ -200,89 +200,149 @@ def test_intersection_of_multiple_dataframes_of_periods():
 def test_intersection_of_2_dataframes_of_periods():
     # Condition 1: A fully contains B.
     a = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-01"]), "end_dt": pd.to_datetime(["2025-03-05"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-01 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-05 12:00"]),
+        }
     )
     b = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-02"]), "end_dt": pd.to_datetime(["2025-03-04"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-02 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-04 12:00"]),
+        }
     )
     expected = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-02"]), "end_dt": pd.to_datetime(["2025-03-04"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-02 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-04 12:00"]),
+        }
     )
     result = intersection_of_2_dataframes_of_periods(a, b)
     assert result.equals(expected), "Condition 1 failed"
 
     # Condition 2: B fully contains A.
     a = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-02"]), "end_dt": pd.to_datetime(["2025-03-04"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-02 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-04 12:00"]),
+        }
     )
     b = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-01"]), "end_dt": pd.to_datetime(["2025-03-05"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-01 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-05 12:00"]),
+        }
     )
     expected = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-02"]), "end_dt": pd.to_datetime(["2025-03-04"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-02 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-04 12:00"]),
+        }
     )
     result = intersection_of_2_dataframes_of_periods(a, b)
     assert result.equals(expected), "Condition 2 failed"
 
     # Condition 3: Overlap at the start of A.
     a = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-03"]), "end_dt": pd.to_datetime(["2025-03-06"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-03 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-06 12:00"]),
+        }
     )
     b = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-01"]), "end_dt": pd.to_datetime(["2025-03-05"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-01 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-05 12:00"]),
+        }
     )
     expected = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-03"]), "end_dt": pd.to_datetime(["2025-03-05"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-03 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-05 12:00"]),
+        }
     )
     result = intersection_of_2_dataframes_of_periods(a, b)
     assert result.equals(expected), "Condition 3 failed"
 
     # Condition 4: Overlap at the start of B.
     a = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-01"]), "end_dt": pd.to_datetime(["2025-03-05"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-01 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-05 12:00"]),
+        }
     )
     b = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-03"]), "end_dt": pd.to_datetime(["2025-03-06"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-03 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-06 12:00"]),
+        }
     )
     expected = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-03"]), "end_dt": pd.to_datetime(["2025-03-05"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-03 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-05 12:00"]),
+        }
     )
     result = intersection_of_2_dataframes_of_periods(a, b)
     assert result.equals(expected), "Condition 4 failed"
 
     # Condition 5: Overlap at the end of A (and equivalently the start of B; single-point overlap).
     a = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-02"]), "end_dt": pd.to_datetime(["2025-03-05"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-02 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-05 12:00"]),
+        }
     )
     b = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-05"]), "end_dt": pd.to_datetime(["2025-03-08"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-05 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-08 12:00"]),
+        }
     )
     expected = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-05"]), "end_dt": pd.to_datetime(["2025-03-05"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-05 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-05 12:00"]),
+        }
     )
     result = intersection_of_2_dataframes_of_periods(a, b)
     assert result.equals(expected), "Condition 5 failed"
 
     # Condition 6: Exact match.
     a = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-01"]), "end_dt": pd.to_datetime(["2025-03-03"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-01 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-03 12:00"]),
+        }
     )
     b = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-01"]), "end_dt": pd.to_datetime(["2025-03-03"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-01 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-03 12:00"]),
+        }
     )
     expected = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-01"]), "end_dt": pd.to_datetime(["2025-03-03"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-01 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-03 12:00"]),
+        }
     )
     result = intersection_of_2_dataframes_of_periods(a, b)
     assert result.equals(expected), "Condition 6 failed"
 
     # Condition 7: No overlap.
     a = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-01"]), "end_dt": pd.to_datetime(["2025-03-03"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-01 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-03 12:00"]),
+        }
     )
     b = pd.DataFrame(
-        {"start_dt": pd.to_datetime(["2025-03-04"]), "end_dt": pd.to_datetime(["2025-03-06"])}
+        {
+            "start_dt": pd.to_datetime(["2025-03-04 12:00"]),
+            "end_dt": pd.to_datetime(["2025-03-06 12:00"]),
+        }
     )
-    expected = pd.DataFrame(columns=["start_dt", "end_dt"])
+    expected = pd.DataFrame({"start_dt": pd.to_datetime([]), "end_dt": pd.to_datetime([])})
     result = intersection_of_2_dataframes_of_periods(a, b)
     assert result.equals(expected), "Condition 7 failed"
