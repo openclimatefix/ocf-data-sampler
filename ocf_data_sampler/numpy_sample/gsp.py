@@ -1,6 +1,7 @@
 """Convert GSP to Numpy Sample."""
 
 import xarray as xr
+from ocf_data_sampler.sample.base import NumpySample
 
 
 class GSPSampleKey:
@@ -18,7 +19,7 @@ class GSPSampleKey:
     y_osgb = "gsp_y_osgb"
 
 
-def convert_gsp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
+def convert_gsp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> NumpySample:
     """Convert from Xarray to NumpySample.
 
     Args:

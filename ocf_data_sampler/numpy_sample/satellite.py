@@ -1,6 +1,7 @@
 """Convert Satellite to NumpySample."""
 
 import xarray as xr
+from ocf_data_sampler.sample.base import NumpySample
 
 
 class SatelliteSampleKey:
@@ -13,7 +14,7 @@ class SatelliteSampleKey:
     t0_idx = "satellite_t0_idx"
 
 
-def convert_satellite_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
+def convert_satellite_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> NumpySample:
     """Convert from Xarray to NumpySample.
 
     Args:
