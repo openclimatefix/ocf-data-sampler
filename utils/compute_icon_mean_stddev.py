@@ -22,7 +22,10 @@ parser.add_argument(
     help='Path pattern to zarr files (e.g., "/path/to/data/*.zarr.zip")',
 )
 parser.add_argument(
-    "--n-samples", type=int, default=2000, help="Number of random samples to use (default: 2000)"
+    "--n-samples",
+    type=int,
+    default=2000,
+    help="Number of random samples to use (default: 2000)",
 )
 
 args = parser.parse_args()

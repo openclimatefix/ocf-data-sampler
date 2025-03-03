@@ -117,7 +117,7 @@ select = [
 fixable = ["ALL"]
 ignore = [
     "D203", "D213", "D215", "D400", "D401", "D404", "D406",
-    "D407", "D408", "D409", "D413",
+    "D407", "D408", "D409", "D413","ANN101", "ANN102",
 ]
 
 [tool.ruff.lint.per-file-ignores]
