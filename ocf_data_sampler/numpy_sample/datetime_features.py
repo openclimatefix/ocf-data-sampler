@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+
 from ocf_data_sampler.sample.base import NumpySample
 
 

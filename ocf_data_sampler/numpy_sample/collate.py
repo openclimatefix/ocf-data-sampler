@@ -1,6 +1,7 @@
 """Functions for collating samples into batches."""
 
 import numpy as np
+
 from ocf_data_sampler.sample.base import NumpySample
 
 
