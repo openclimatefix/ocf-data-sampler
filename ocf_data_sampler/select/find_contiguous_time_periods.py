@@ -31,9 +31,20 @@ def find_contiguous_time_periods(
     # Sanity checks.
     if len(datetimes) == 0:
         raise ValueError("No datetimes to use")
-    if min_seq_length <= 1:
-        raise ValueError(f"{min_seq_length=} must be greater than 1")
+    if min_seq_length < 1:
+        raise ValueError(f"{min_seq_length=} must be >= 1")
     check_time_unique_increasing(datetimes)
+    
+    # Handle single timestamp case
+    if len(datetimes) == 1:
+        if min_seq_length == 1:
+            return pd.DataFrame([{"start_dt": datetimes[0], "end_dt": datetimes[0]}])
+        else:
+            raise ValueError(
+                "Only one timestamp found, but min_seq_length > 1. No valid periods."
+            )
+
+
 
     # Find indices of gaps larger than max_gap:
     gap_mask = pd.TimedeltaIndex(np.diff(datetimes)) > max_gap_duration
@@ -52,7 +63,7 @@ def find_contiguous_time_periods(
     start_i = 0
     for next_start_i in segment_boundaries:
         n_timesteps = next_start_i - start_i
-        if n_timesteps > min_seq_length:
+        if n_timesteps >= min_seq_length:
             end_i = next_start_i - 1
             period = {"start_dt": datetimes[start_i], "end_dt": datetimes[end_i]}
             periods.append(period)
