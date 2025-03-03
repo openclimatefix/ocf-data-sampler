@@ -226,65 +226,98 @@ def intersection_of_multiple_dataframes_of_periods(
 
 
 def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
-    """Find the intersection of two pd.DataFrames of time periods.
+    """Find the intersection of two DataFrames of time periods, allowing an overlap of length 1.
 
-    Each row of each pd.DataFrame represents a single time period.  Each pd.DataFrame has
-    two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
-
-    A typical use-case is that each pd.DataFrame represents all the time periods where
-    a `DataSource` has contiguous, valid data.
-
-    Here's a graphical example of two pd.DataFrames of time periods and their intersection:
-
-                 ----------------------> TIME ->---------------------
-               a: |-----|   |----|     |----------|     |-----------|
-               b:    |--------|                       |----|    |---|
-    intersection:    |--|   |-|                         |--|    |---|
-
-    Args:
-        a: pd.DataFrame where each row represents a time period.  The pd.DataFrame has
-        two columns: start_dt and end_dt.
-        b: pd.DataFrame where each row represents a time period.  The pd.DataFrame has
-        two columns: start_dt and end_dt.
-
-    Returns:
-        Sorted list of intersecting time periods represented as a pd.DataFrame with two columns:
-        start_dt and end_dt.
+    Intervals are treated as inclusive of both endpoints.
     """
+    # Intersection of two dataframes can be as follows:
+
+    # 🟩 Condition 1: a fully contains b
+    # Diagram:
+    #   a: ┌───────┐
+    #   b:     └───┘
+    # Explanation: Interval 'a' fully contains interval 'b'. The intersection is the entirety of 'b'
+
+    # 🟩 Condition 2: b fully contains a
+    # Diagram:
+    #   a:    ┌───┐
+    #   b: ┌─────────┐
+    # Explanation: Interval 'b' fully contains interval 'a'. The intersection is the entirety of 'a'
+
+    # 🟩 Condition 3: Overlap at the start of a
+    # Diagram:
+    #   a:    ┌──────┐
+    #   b: ┌────┘
+    # Explanation: Interval 'b' starts inside interval 'a'. The intersection starts from 'b's start
+    # and ends at 'a's end.
+
+    # 🟩 Condition 4: Overlap at the start of b
+    # Diagram:
+    #   a: ┌──────┐
+    #   b:    └──────┐
+    # Explanation: Interval 'a' starts before 'b' but they overlap. The intersection starts from
+    # 'b's start and ends at 'a's end.
+
+    # 🟩 Condition 5: Overlap at the end of a
+    # Diagram:
+    #   a: ┌────┐
+    #    b:     └────┐
+    # Explanation: Interval 'b' ends inside interval 'a'. The intersection starts at 'b's start
+    # and ends at 'a's end.
+
+    # 🟩 Condition 6: Exact match
+    # Diagram:
+    #   a: ┌──────┐
+    #   b: ┌──────┐
+    # Explanation: Intervals 'a' and 'b' are exactly the same. The intersection is the
+    # entirety of both intervals.
+
+    # 🟩 Condition 7: Single point overlap
+    # Diagram:
+    #   a: ┌──────┐
+    #   b:   └┐
+    # OR
+    #   b:   ┌┘
+    #   a: └──────┘
+    # Explanation: There is only a single point of overlap where the end of one interval
+    # touches the start of the other.
+
+    # 🟩 Condition 8: No overlap (Single point gap)
+    # Diagram:
+    #   a: ┌──────┐
+    #       (gap)
+    #   b:      ┌──────┐
+    # Explanation: There is no overlap, as the intervals are completely separated by a gap.
+    # Expected intersection: Empty DataFrame (No valid overlap)
+
     if a.empty or b.empty:
         return pd.DataFrame(columns=["start_dt", "end_dt"])
 
-    all_intersecting_periods = []
-    for a_period in a.itertuples():
-        # Five ways in which two periods may overlap:
-        # a: |----| or |---|   or  |---| or   |--|   or |-|
-        # b:  |--|       |---|   |---|      |------|    |-|
-        # In all five, `a` must always start before `b` ends,
-        # and `a` must always end after `b` starts:
+    # Create a Cartesian product (cross join) of all rows in a and b.
+    merged = pd.merge(a, b, how="cross")  # Columns: start_dt_x, end_dt_x, start_dt_y, end_dt_y
 
-        # TODO: <= and >= because we should allow overlap time periods of length 1. e.g.
-        # a: |----|      or   |---|
-        # b:      |--|            |---|
-        # These aren't allowed if we use < and >.
+    # Use inclusive conditions for overlapping:
+    # Two intervals overlap if a.start <= b.end AND b.start <= a.end.
+    merged = merged[
+        (merged["start_dt_x"] <= merged["end_dt_y"]) & (merged["end_dt_x"] >= merged["start_dt_y"])
+    ]
 
-        overlapping_periods = b[(a_period.start_dt < b.end_dt) & (a_period.end_dt > b.start_dt)]
+    # Calculate the intersection:
+    # The intersection starts at the later start date and ends at the earlier end date.
+    merged["start_dt"] = merged[["start_dt_x", "start_dt_y"]].max(axis=1)
+    merged["end_dt"] = merged[["end_dt_x", "end_dt_y"]].min(axis=1)
 
-        # There are two ways in which two periods may *not* overlap:
-        # a: |---|        or        |---|
-        # b:       |---|      |---|
-        # `overlapping` will not include periods which do *not* overlap.
+    # Ensure the computed intersection is valid (start_dt should not be after end_dt).
+    # (If they are equal, it's a single-point overlap which is allowed.)
+    valid = merged["start_dt"] <= merged["end_dt"]
+    merged = merged[valid]
 
-        # Now find the intersection of each period in `overlapping_periods` with
-        # the period from `a` that starts at `a_start_dt` and ends at `a_end_dt`.
-        # We do this by clipping each row of `overlapping_periods`
-        # to start no earlier than `a_start_dt`, and end no later than `a_end_dt`.
-
-        # First, make a copy, so we don't clip the underlying data in `b`.
-        intersection = overlapping_periods.copy()
-        intersection["start_dt"] = intersection.start_dt.clip(lower=a_period.start_dt)
-        intersection["end_dt"] = intersection.end_dt.clip(upper=a_period.end_dt)
-
-        all_intersecting_periods.append(intersection)
-
-    all_intersecting_periods = pd.concat(all_intersecting_periods)
-    return all_intersecting_periods.sort_values(by="start_dt").reset_index(drop=True)
+    # Select only the relevant columns, remove any duplicate intersections,
+    # sort by start_dt, and reset the index.
+    result = (
+        merged[["start_dt", "end_dt"]]
+        .drop_duplicates()
+        .sort_values(by="start_dt")
+        .reset_index(drop=True)
+    )
+    return result
