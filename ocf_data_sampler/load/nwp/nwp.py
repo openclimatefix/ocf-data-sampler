@@ -5,7 +5,7 @@ import xarray as xr
 from ocf_data_sampler.load.nwp.providers.ecmwf import open_ifs
 from ocf_data_sampler.load.nwp.providers.icon import open_icon_eu
 from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
-
+from ocf_data_sampler.load.nwp.providers.gfs import open_gfs  # Import GFS provider
 
 def open_nwp(zarr_path: str | list[str], provider: str) -> xr.DataArray:
     """Opens NWP zarr.
@@ -13,13 +13,21 @@ def open_nwp(zarr_path: str | list[str], provider: str) -> xr.DataArray:
     Args:
         zarr_path: path to the zarr file
         provider: NWP provider
+
+    Returns:
+        Xarray DataArray of the NWP data
     """
-    if provider.lower() == "ukv":
+    provider = provider.lower()
+
+    if provider == "ukv":
         _open_nwp = open_ukv
-    elif provider.lower() == "ecmwf":
+    elif provider == "ecmwf":
         _open_nwp = open_ifs
-    elif provider.lower() == "icon-eu":
+    elif provider == "icon-eu":
         _open_nwp = open_icon_eu
+    elif provider == "gfs": 
+        _open_nwp = open_gfs
     else:
         raise ValueError(f"Unknown provider: {provider}")
+
     return _open_nwp(zarr_path)
