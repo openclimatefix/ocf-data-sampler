@@ -2,7 +2,7 @@
 
 import xarray as xr
 
-from ocf_data_sampler.sample.base import NumpySample
+from ocf_data_sampler.numpy_sample.base import NumpySample
 
 
 class SatelliteSampleKey:

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ocf_data_sampler.sample.base import NumpySample
+from ocf_data_sampler.numpy_sample.base import NumpySample
 
 
 def stack_np_samples_into_batch(dict_list: list[dict]) -> NumpySample:

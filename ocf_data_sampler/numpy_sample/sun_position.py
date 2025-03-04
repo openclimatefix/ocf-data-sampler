@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pvlib
 
-from ocf_data_sampler.sample.base import NumpySample
+from ocf_data_sampler.numpy_sample.base import NumpySample
 
 
 def calculate_azimuth_and_elevation(
