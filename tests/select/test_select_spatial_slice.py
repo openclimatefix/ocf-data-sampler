@@ -162,5 +162,5 @@ def test_select_spatial_slice_pixels_no_partial(da):
             location=Location(x=90, y=90, coordinate_system="osgb"),
             width_pixels=40,
             height_pixels=40,
-            allow_partial_slice=False
+            allow_partial_slice=False,
         )
