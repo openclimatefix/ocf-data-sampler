@@ -124,7 +124,7 @@ def process_and_combine_datasets(
         # Calculate solar positions and add to modalities
         solar_positions = make_sun_position_numpy_sample(datetimes, lon, lat)
         prefixed_solar_positions = {
-            f"gsp_{key}": value for key, value in solar_positions.items()
+            f"solar_position_{key}": value for key, value in solar_positions.items()
         }
         numpy_modalities.append(prefixed_solar_positions)
 

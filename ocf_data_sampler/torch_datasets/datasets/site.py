@@ -275,7 +275,7 @@ class SitesDataset(Dataset):
                 lat=combined_sample_dataset.site__latitude.values,
             )
             combined_sample_dataset = combined_sample_dataset.assign_coords(
-                {f"site_{key}": ("site__time_utc", v) for key, v in sun_position_features.items()},
+                {f"solar_position_{key}": ("site__time_utc", v) for key, v in sun_position_features.items()},
             )
 
         # TODO include t0_index in xr dataset?

@@ -226,7 +226,7 @@ def test_solar_position_decoupling_site(tmp_path, site_config_filename):
     sample_with_solar = dataset_with_solar[0]
 
     # Assert solar position keys are only in sample specifically with solar configuration
-    solar_keys = ["site_solar_azimuth", "site_solar_elevation"]
+    solar_keys = ["solar_position_azimuth", "solar_position_elevation"]
 
     # Sample without solar config should not have solar position data
     for key in solar_keys:

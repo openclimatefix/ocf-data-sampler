@@ -81,11 +81,11 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
         assert key in sample
 
     # Check solar position keys only if present in the sample
-    solar_keys = ["gsp_solar_azimuth", "gsp_solar_elevation"]
+    solar_keys = ["solar_position_azimuth", "solar_position_elevation"]
     if all(key in sample for key in solar_keys):
         # Solar angles have same shape as GSP data
-        assert sample["gsp_solar_azimuth"].shape == (7,)
-        assert sample["gsp_solar_elevation"].shape == (7,)
+        assert sample["solar_position_azimuth"].shape == (7,)
+        assert sample["solar_position_elevation"].shape == (7,)
 
     for nwp_source in ["ukv"]:
         assert nwp_source in sample["nwp"]
@@ -136,11 +136,11 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
         assert key in sample
 
     # Check solar position keys only if present in the sample
-    solar_keys = ["gsp_solar_azimuth", "gsp_solar_elevation"]
+    solar_keys = ["solar_position_azimuth", "solar_position_elevation"]
     if all(key in sample for key in solar_keys):
         # Solar angles have same shape as GSP data
-        assert sample["gsp_solar_azimuth"].shape == (num_gsps, 7)
-        assert sample["gsp_solar_elevation"].shape == (num_gsps, 7)
+        assert sample["solar_position_azimuth"].shape == (num_gsps, 7)
+        assert sample["solar_position_elevation"].shape == (num_gsps, 7)
 
     for nwp_source in ["ukv"]:
         assert nwp_source in sample["nwp"]
@@ -184,7 +184,7 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
     sample_with_solar = dataset_with_solar[0]
 
     # Assert solar position keys are only in sample specifically with solar configuration
-    solar_keys = ["gsp_solar_azimuth", "gsp_solar_elevation"]
+    solar_keys = ["solar_position_azimuth", "solar_position_elevation"]
 
     # Sample without solar config should not have solar position data
     for key in solar_keys:
