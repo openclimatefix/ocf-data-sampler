@@ -229,6 +229,10 @@ class Site(TimeWindowMixin, DropoutMixin):
     # TODO validate the csv for metadata
 
 
+class SolarPosition(TimeWindowMixin):
+    """Solar position configuration model."""
+
+
 class InputData(Base):
     """Input data model."""
 
@@ -236,6 +240,7 @@ class InputData(Base):
     nwp: MultiNWP | None = None
     gsp: GSP | None = None
     site: Site | None = None
+    solar_position: SolarPosition | None = None
 
 
 class Configuration(Base):

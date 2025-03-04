@@ -5,6 +5,7 @@ import xarray as xr
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
+from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.torch_datasets.datasets.site import (
     SitesDataset,
     coarsen_data,
@@ -57,8 +58,6 @@ def test_site(tmp_path, site_config_filename):
     }
 
     expected_coords_subset = {
-        "site__solar_azimuth",
-        "site__solar_elevation",
         "site__date_cos",
         "site__time_cos",
         "site__time_sin",
@@ -119,8 +118,6 @@ def test_convert_from_dataset_to_dict_datasets(sites_dataset):
 
 def test_site_dataset_with_dataloader(sites_dataset) -> None:
     expected_coods = {
-        "site__solar_azimuth",
-        "site__solar_elevation",
         "site__date_cos",
         "site__time_cos",
         "site__time_sin",
@@ -197,3 +194,44 @@ def test_potentially_coarsen(ds_nwp_ecmwf):
 
     data = coarsen_data(xr_data=nwp_data, coarsen_to_deg=1)
     assert data.ECMWF_UK.shape[3:] == (15, 12)  # No coarsening (same shape)
+
+
+def test_solar_position_decoupling_site(tmp_path, site_config_filename):
+    """Test that solar position calculations are properly decoupled from data sources."""
+
+    config = load_yaml_configuration(site_config_filename)
+    config_without_solar = config.model_copy(deep=True)
+    config_without_solar.input_data.solar_position = None
+
+    # Create version with explicit solar position configuration
+    config_with_solar = config.model_copy(deep=True)
+    config_with_solar.input_data.solar_position = SolarPosition(
+        time_resolution_minutes=30,
+        interval_start_minutes=0,
+        interval_end_minutes=180,
+    )
+
+    # Save both testing configurations
+    config_without_solar_path = tmp_path / "site_config_without_solar.yaml"
+    config_with_solar_path = tmp_path / "site_config_with_solar.yaml"
+    save_yaml_configuration(config_without_solar, config_without_solar_path)
+    save_yaml_configuration(config_with_solar, config_with_solar_path)
+
+    # Create datasets with both configurations
+    dataset_without_solar = SitesDataset(config_without_solar_path)
+    dataset_with_solar = SitesDataset(config_with_solar_path)
+
+    # Generate samples
+    sample_without_solar = dataset_without_solar[0]
+    sample_with_solar = dataset_with_solar[0]
+
+    # Assert solar position keys are only in sample specifically with solar configuration
+    solar_keys = ["solar_position_azimuth", "solar_position_elevation"]
+
+    # Sample without solar config should not have solar position data
+    for key in solar_keys:
+        assert key not in sample_without_solar.coords, f"Solar key {key} should not be in sample"
+
+    # Sample with solar config should have solar position data
+    for key in solar_keys:
+        assert key in sample_with_solar.coords, f"Solar key {key} should be in sample"

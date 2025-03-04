@@ -261,16 +261,23 @@ class SitesDataset(Dataset):
             {k: ("site__time_utc", v) for k, v in datetime_features.items()},
         )
 
-        # add sun features
-        sun_position_features = make_sun_position_numpy_sample(
-            datetimes=datetimes,
-            lon=combined_sample_dataset.site__longitude.values,
-            lat=combined_sample_dataset.site__latitude.values,
-            key_prefix="site_",
+        # Only add solar position if explicitly configured
+        has_solar_config = (
+            hasattr(self.config.input_data, "solar_position") and
+            self.config.input_data.solar_position is not None
         )
-        combined_sample_dataset = combined_sample_dataset.assign_coords(
-            {k: ("site__time_utc", v) for k, v in sun_position_features.items()},
-        )
+
+        if has_solar_config:
+            # add sun features
+            sun_position_features = make_sun_position_numpy_sample(
+                datetimes=datetimes,
+                lon=combined_sample_dataset.site__longitude.values,
+                lat=combined_sample_dataset.site__latitude.values,
+            )
+            combined_sample_dataset = combined_sample_dataset.assign_coords(
+                {f"solar_position_{key}": ("site__time_utc", v)
+                for key, v in sun_position_features.items()},
+            )
 
         # TODO include t0_index in xr dataset?
 
