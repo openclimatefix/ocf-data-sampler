@@ -4,7 +4,7 @@ import xarray as xr
 
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.select_spatial_slice import (
-    _get_idx_of_pixel_closest_to_poi,
+    _get_pixel_index_location,  # Corrected import
     select_spatial_slice_pixels,
 )
 
@@ -26,7 +26,7 @@ def da():
 
 
 def test_get_idx_of_pixel_closest_to_poi(da):
-    idx_location = _get_idx_of_pixel_closest_to_poi(
+    idx_location = _get_pixel_index_location(
         da,
         location=Location(x=10, y=10, coordinate_system="osgb"),
     )
@@ -143,3 +143,24 @@ def test_select_spatial_slice_pixels(da):
     assert (
         da_sliced.isnull().sum() == 15 * len(da_sliced.y_osgb) + 5 * len(da_sliced.x_osgb) - 15 * 5
     )
+
+
+def test_select_spatial_slice_pixels_no_partial(da):
+    """Test that ValueError is raised when allow_partial_slice=False and padding is needed."""
+    with pytest.raises(ValueError):
+        select_spatial_slice_pixels(
+            da,
+            location=Location(x=-90, y=-80, coordinate_system="osgb"),
+            width_pixels=30,
+            height_pixels=30,
+            allow_partial_slice=False,
+        )
+
+    with pytest.raises(ValueError):
+        select_spatial_slice_pixels(
+            da,
+            location=Location(x=90, y=90, coordinate_system="osgb"),
+            width_pixels=40,
+            height_pixels=40,
+            allow_partial_slice=False
+        )
