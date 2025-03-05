@@ -5,6 +5,7 @@ import logging
 import xarray as xr
 
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
+from ocf_data_sampler.load.utils import (make_spatial_coords_increasing,check_time_unique_increasing)
 
 _log = logging.getLogger(__name__)
 
@@ -26,9 +27,10 @@ def open_gfs(zarr_path: str | list[str]) -> xr.DataArray:
 
     del gfs
 
-    nwp = nwp.rename({"variable": "channel"})
-    if "init_time" in nwp.dims:
-        nwp = nwp.rename({"init_time": "init_time_utc"})
+    nwp = nwp.rename({"variable": "channel","init_time": "init_time_utc",})
+    check_time_unique_increasing(nwp.init_time_utc)
+    nwp = make_spatial_coords_increasing(nwp, x_coord="longitude", y_coord="latitude")
+
     nwp = nwp.transpose("init_time_utc", "step", "channel", "latitude", "longitude")
 
     return nwp
