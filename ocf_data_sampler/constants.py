@@ -1,6 +1,6 @@
 """Constants for the package."""
 
-from typing import override
+from typing_extensions import override
 
 import numpy as np
 import xarray as xr
@@ -10,7 +10,6 @@ NWP_PROVIDERS = [
     "ecmwf",
     "gfs",
 ]
-# TODO add ICON
 
 
 def _to_data_array(d: dict) -> xr.DataArray:

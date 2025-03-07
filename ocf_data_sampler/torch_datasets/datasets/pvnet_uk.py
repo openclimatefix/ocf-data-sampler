@@ -1,7 +1,7 @@
 """Torch dataset for UK PVNet."""
 
 from importlib.resources import files
-from typing import override
+from typing_extensions import override
 
 import numpy as np
 import pandas as pd

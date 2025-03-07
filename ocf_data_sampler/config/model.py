@@ -5,7 +5,7 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 """
 
 from collections.abc import Iterator
-from typing import override
+from typing_extensions import override
 
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 
