@@ -13,7 +13,7 @@ def select_time_slice(
     time_resolution: pd.Timedelta,
 ) -> xr.DataArray:
     """Select a time slice from a DataArray.
-    
+
     Args:
         da: The DataArray to slice from
         t0: The init-time
@@ -41,7 +41,7 @@ def select_time_slice_nwp(
     accum_channels: list[str] | None = None,
 ) -> xr.DataArray:
     """Select a time slice from an NWP DataArray.
-    
+
     Args:
         da: The DataArray to slice from
         t0: The init-time
@@ -54,16 +54,16 @@ def select_time_slice_nwp(
     """
     if accum_channels is None:
         accum_channels = []
-    
+
     if dropout_timedeltas is not None:
         if not all(t < pd.Timedelta(0) for t in dropout_timedeltas):
             raise ValueError("dropout timedeltas must be negative")
         if len(dropout_timedeltas) < 1:
             raise ValueError("dropout timedeltas must have at least one element")
-    
+
     if not (0 <= dropout_frac <= 1):
         raise ValueError("dropout_frac must be between 0 and 1")
-    
+
     consider_dropout = (dropout_timedeltas is not None) and dropout_frac > 0
 
     # The accumatated and non-accumulated channels

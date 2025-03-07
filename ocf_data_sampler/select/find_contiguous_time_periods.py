@@ -5,7 +5,6 @@ import pandas as pd
 
 from ocf_data_sampler.load.utils import check_time_unique_increasing
 
-
 ZERO_TDELTA = pd.Timedelta(0)
 
 
@@ -80,7 +79,6 @@ def trim_contiguous_time_periods(
     Returns:
       The contiguous_time_periods pd.DataFrame with the `start_dt` and `end_dt` columns updated.
     """
-
     # Make a copy so the data is not edited in place.
     trimmed_time_periods = contiguous_time_periods.copy()
     trimmed_time_periods["start_dt"] -= interval_start
@@ -109,9 +107,8 @@ def find_contiguous_t0_periods(
         pd.DataFrame where each row represents a single time period.  The pd.DataFrame
             has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
-
     check_time_unique_increasing(datetimes)
-    
+
     total_duration = interval_end - interval_start
 
     contiguous_time_periods = find_contiguous_time_periods(
@@ -163,7 +160,7 @@ def find_contiguous_t0_periods_nwp(
     # Sanity checks.
     if len(init_times) == 0:
         raise ValueError("No init-times to use")
-    
+
     check_time_unique_increasing(init_times)
 
     if max_staleness < pd.Timedelta(0):

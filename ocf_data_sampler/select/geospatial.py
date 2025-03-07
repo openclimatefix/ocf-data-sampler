@@ -10,9 +10,9 @@ Supports conversions between:
 """
 
 import numpy as np
-import xarray as xr
 import pyproj
 import pyresample
+import xarray as xr
 
 # Coordinate Reference System (CRS) identifiers
 # OSGB36: UK Ordnance Survey National Grid (easting/northing in meters)
@@ -118,7 +118,7 @@ def coordinates_to_geostationary_area_coords(
         Geostationary coords: x, y
     """
     if crs_from not in [OSGB36, WGS84]:
-        raise ValueError(f"Unrecognized coordinate system: {crs_from}")    
+        raise ValueError(f"Unrecognized coordinate system: {crs_from}")
 
     area_definition_yaml = xr_data.attrs["area"]
 
