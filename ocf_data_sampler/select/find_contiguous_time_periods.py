@@ -145,7 +145,7 @@ def find_contiguous_t0_periods_nwp(
         init_times: The initialisation times of the available forecasts
         interval_start: The start of the time interval with respect to t0
         max_staleness: Up to how long after an init-time are we willing to use the forecast.
-            Each init-time will only be used up to this t0 time regardless of the forecast valid 
+            Each init-time will only be used up to this t0 time regardless of the forecast valid
             time.
         max_dropout: What is the maximum amount of dropout that will be used.
             This must be <= max_staleness.
@@ -181,8 +181,8 @@ def find_contiguous_t0_periods_nwp(
     end_this_period = init_times[0] + max_staleness
 
     for dt_init in init_times[1:]:
-        # If the previous init-time becomes stale before the next init-time becomes valid (whilst also
-        # considering dropout) then the contiguous period breaks
+        # If the previous init-time becomes stale before the next init-time becomes valid (whilst
+        # also considering dropout) then the contiguous period breaks
         # Else if the previous init-time becomes stale before the fist step of the next forecast
         # then this also causes a break in the contiguous period
         if end_this_period < dt_init + max(max_dropout, first_forecast_step):
@@ -201,7 +201,7 @@ def intersection_of_multiple_dataframes_of_periods(
 ) -> pd.DataFrame:
     """Find the intersection of list of time periods.
 
-    Consecutively updates intersection of time periods. 
+    Consecutively updates intersection of time periods.
     See the docstring of intersection_of_2_dataframes_of_periods() for further details.
     """
     if len(time_periods) == 0:
@@ -221,7 +221,7 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
     A typical use-case is that each pd.DataFrame represents all the time periods where
     a `DataSource` has contiguous, valid data.
 
-    Graphical representation of two pd.DataFrames of time periods and their intersection, 
+    Graphical representation of two pd.DataFrames of time periods and their intersection,
     as follows:
 
                  ----------------------> TIME ->---------------------

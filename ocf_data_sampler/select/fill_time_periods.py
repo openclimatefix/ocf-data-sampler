@@ -7,7 +7,7 @@ import pandas as pd
 def fill_time_periods(time_periods: pd.DataFrame, freq: pd.Timedelta) -> pd.DatetimeIndex:
     """Create range of timestamps between given start and end times.
 
-    Each of the continuous periods (i.e. each row of the input DataFrame) is filled with the 
+    Each of the continuous periods (i.e. each row of the input DataFrame) is filled with the
     specified frequency.
 
     Args:

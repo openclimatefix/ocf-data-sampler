@@ -1,7 +1,7 @@
 """Geospatial coordinate transformation functions.
 
 Provides utilities for working with different coordinate systems
-commonly used in geospatial applications, particularly for UK-based data. 
+commonly used in geospatial applications, particularly for UK-based data.
 
 Supports conversions between:
 - OSGB36 (Ordnance Survey Great Britain, easting/northing in meters)

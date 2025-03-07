@@ -133,6 +133,8 @@ def select_time_slice_nwp(
         da_sel = da_sel.sel(channel=da.channel.values)
 
         # Rename the diffed channels
-        da_sel["channel"] = [f"diff_{v}" if v in accum_channels else v for v in da_sel.channel.values]
+        da_sel["channel"] = [
+            f"diff_{v}" if v in accum_channels else v for v in da_sel.channel.values
+        ]
 
     return da_sel
