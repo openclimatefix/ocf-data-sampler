@@ -1,12 +1,12 @@
 """Torch dataset for UK PVNet."""
 
 from importlib.resources import files
-from typing import override
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
+from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD

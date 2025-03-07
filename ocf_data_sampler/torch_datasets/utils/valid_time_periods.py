@@ -80,7 +80,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
 
         time_periods = find_contiguous_t0_periods(
             pd.DatetimeIndex(datasets_dict["sat"]["time_utc"]),
-            sample_period_duration=minutes(sat_config.time_resolution_minutes),
+            time_resolution=minutes(sat_config.time_resolution_minutes),
             interval_start=minutes(sat_config.interval_start_minutes),
             interval_end=minutes(sat_config.interval_end_minutes),
         )
@@ -92,7 +92,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
 
         time_periods = find_contiguous_t0_periods(
             pd.DatetimeIndex(datasets_dict["gsp"]["time_utc"]),
-            sample_period_duration=minutes(gsp_config.time_resolution_minutes),
+            time_resolution=minutes(gsp_config.time_resolution_minutes),
             interval_start=minutes(gsp_config.interval_start_minutes),
             interval_end=minutes(gsp_config.interval_end_minutes),
         )

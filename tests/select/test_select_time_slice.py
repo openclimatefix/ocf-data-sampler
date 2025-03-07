@@ -68,7 +68,7 @@ def test_select_time_slice(da_sat_like, t0_str):
         t0=t0,
         interval_start=interval_start,
         interval_end=interval_end,
-        sample_period_duration=freq,
+        time_resolution=freq,
     )
 
     # Check the returned times are as expected
@@ -102,7 +102,7 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
         t0=t0,
         interval_start=interval_start,
         interval_end=interval_end,
-        sample_period_duration=freq,
+        time_resolution=freq,
     )
 
     # Check the returned times are as expected
@@ -136,13 +136,12 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
     da_slice = select_time_slice_nwp(
         da_nwp_like,
         t0,
-        sample_period_duration=freq,
+        time_resolution=freq,
         interval_start=interval_start,
         interval_end=interval_end,
         dropout_timedeltas=None,
         dropout_frac=0,
         accum_channels=[],
-        channel_dim_name="channel",
     )
 
     # Check the target-times are as expected
@@ -170,13 +169,12 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
     da_slice = select_time_slice_nwp(
         da_nwp_like,
         t0,
-        sample_period_duration=freq,
+        time_resolution=freq,
         interval_start=interval_start,
         interval_end=interval_end,
         dropout_timedeltas=[dropout_timedelta],
         dropout_frac=1,
         accum_channels=[],
-        channel_dim_name="channel",
     )
 
     # Check the target-times are as expected
@@ -207,13 +205,12 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
     da_slice = select_time_slice_nwp(
         da_nwp_like,
         t0,
-        sample_period_duration=freq,
+        time_resolution=freq,
         interval_start=interval_start,
         interval_end=interval_end,
         dropout_timedeltas=[dropout_timedelta],
         dropout_frac=1,
         accum_channels=["dswrf"],
-        channel_dim_name="channel",
     )
 
     # Check the target-times are as expected

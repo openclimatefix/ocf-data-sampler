@@ -1,23 +1,28 @@
-"""Geospatial functions."""
+"""Geospatial coordinate transformation functions.
 
-from numbers import Number
+Provides utilities for working with different coordinate systems
+commonly used in geospatial applications, particularly for UK-based data.
+
+Supports conversions between:
+- OSGB36 (Ordnance Survey Great Britain, easting/northing in meters)
+- WGS84 (World Geodetic System, latitude/longitude in degrees)
+- Geostationary satellite coordinate systems
+"""
 
 import numpy as np
 import pyproj
+import pyresample
 import xarray as xr
 
-# OSGB is also called "OSGB 1936 / British National Grid -- United
-# Kingdom Ordnance Survey".  OSGB is used in many UK electricity
-# system maps, and is used by the UK Met Office UKV model.  OSGB is a
-# Transverse Mercator projection, using 'easting' and 'northing'
-# coordinates which are in meters.  See https://epsg.io/27700
+# Coordinate Reference System (CRS) identifiers
+# OSGB36: UK Ordnance Survey National Grid (easting/northing in meters)
+# Refer to - https://epsg.io/27700
 OSGB36 = 27700
 
-# WGS84 is short for "World Geodetic System 1984", used in GPS. Uses
-# latitude and longitude.
+# WGS84: World Geodetic System 1984 (latitude/longitude in degrees), used in GPS
 WGS84 = 4326
 
-
+# Pre-init Transformer
 _osgb_to_lon_lat = pyproj.Transformer.from_crs(
     crs_from=OSGB36,
     crs_to=WGS84,
@@ -31,10 +36,10 @@ _lon_lat_to_osgb = pyproj.Transformer.from_crs(
 
 
 def osgb_to_lon_lat(
-    x: Number | np.ndarray,
-    y: Number | np.ndarray,
-) -> tuple[Number | np.ndarray, Number | np.ndarray]:
-    """Change OSGB coordinates to lon, lat.
+    x: float | np.ndarray,
+    y: float | np.ndarray,
+) -> tuple[float | np.ndarray, float | np.ndarray]:
+    """Change OSGB coordinates to lon-lat.
 
     Args:
         x: osgb east-west
@@ -45,9 +50,9 @@ def osgb_to_lon_lat(
 
 
 def lon_lat_to_osgb(
-    x: Number | np.ndarray,
-    y: Number | np.ndarray,
-) -> tuple[Number | np.ndarray, Number | np.ndarray]:
+    x: float | np.ndarray,
+    y: float | np.ndarray,
+) -> tuple[float | np.ndarray, float | np.ndarray]:
     """Change lon-lat coordinates to OSGB.
 
     Args:
@@ -60,10 +65,10 @@ def lon_lat_to_osgb(
 
 
 def lon_lat_to_geostationary_area_coords(
-    longitude: Number | np.ndarray,
-    latitude: Number | np.ndarray,
+    longitude: float | np.ndarray,
+    latitude: float | np.ndarray,
     xr_data: xr.DataArray,
-) -> tuple[Number | np.ndarray, Number | np.ndarray]:
+) -> tuple[float | np.ndarray, float | np.ndarray]:
     """Loads geostationary area and transformation from lat-lon to geostationary coords.
 
     Args:
@@ -78,10 +83,10 @@ def lon_lat_to_geostationary_area_coords(
 
 
 def osgb_to_geostationary_area_coords(
-    x: Number | np.ndarray,
-    y: Number | np.ndarray,
+    x: float | np.ndarray,
+    y: float | np.ndarray,
     xr_data: xr.DataArray,
-) -> tuple[Number | np.ndarray, Number | np.ndarray]:
+) -> tuple[float | np.ndarray, float | np.ndarray]:
     """Loads geostationary area and transformation from OSGB to geostationary coords.
 
     Args:
@@ -96,11 +101,11 @@ def osgb_to_geostationary_area_coords(
 
 
 def coordinates_to_geostationary_area_coords(
-    x: Number | np.ndarray,
-    y: Number | np.ndarray,
+    x: float | np.ndarray,
+    y: float | np.ndarray,
     xr_data: xr.DataArray,
     crs_from: int,
-) -> tuple[Number | np.ndarray, Number | np.ndarray]:
+) -> tuple[float | np.ndarray, float | np.ndarray]:
     """Loads geostationary area and transforms to geostationary coords.
 
     Args:
@@ -114,9 +119,6 @@ def coordinates_to_geostationary_area_coords(
     """
     if crs_from not in [OSGB36, WGS84]:
         raise ValueError(f"Unrecognized coordinate system: {crs_from}")
-
-    # Only load these if using geostationary projection
-    import pyresample
 
     area_definition_yaml = xr_data.attrs["area"]
 

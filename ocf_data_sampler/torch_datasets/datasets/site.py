@@ -1,12 +1,12 @@
 """Torch dataset for sites."""
 
 import logging
-from typing import override
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
+from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
@@ -176,7 +176,7 @@ class SitesDataset(Dataset):
             # Get the valid time periods for this location
             time_periods = find_contiguous_t0_periods(
                 pd.DatetimeIndex(site["time_utc"]),
-                sample_period_duration=minutes(site_config.time_resolution_minutes),
+                time_resolution=minutes(site_config.time_resolution_minutes),
                 interval_start=minutes(site_config.interval_start_minutes),
                 interval_end=minutes(site_config.interval_end_minutes),
             )
