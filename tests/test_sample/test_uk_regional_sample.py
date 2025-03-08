@@ -63,8 +63,6 @@ def numpy_sample():
         },
         GSPSampleKey.gsp: np.random.rand(7),
         SatelliteSampleKey.satellite_actual: np.random.rand(7, 1, 2, 2),
-        GSPSampleKey.solar_azimuth: np.random.rand(7),
-        GSPSampleKey.solar_elevation: np.random.rand(7),
     }
 
 
@@ -81,8 +79,6 @@ def test_sample_save_load(numpy_sample):
 
         assert loaded._data[GSPSampleKey.gsp].shape == (7,)
         assert loaded._data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
-        assert loaded._data[GSPSampleKey.solar_azimuth].shape == (7,)
-        assert loaded._data[GSPSampleKey.solar_elevation].shape == (7,)
 
         np.testing.assert_array_almost_equal(
             loaded._data[GSPSampleKey.gsp],
