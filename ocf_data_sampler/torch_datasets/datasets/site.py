@@ -112,7 +112,7 @@ class SitesDataset(Dataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
 
-        sample = self.process_and_combine_site_sample_dict(sample_dict)
+        sample = self.process_and_combine_site_sample_dict(sample_dict, t0)
         sample = sample.compute()
         return sample
 
@@ -218,12 +218,14 @@ class SitesDataset(Dataset):
     def process_and_combine_site_sample_dict(
         self,
         dataset_dict: dict,
+        t0: pd.Timestamp,
     ) -> xr.Dataset:
         """Normalize and combine data into a single xr Dataset.
 
         Args:
             dataset_dict: dict containing sliced xr DataArrays
             config: Configuration for the model
+            t0: The initial timestamp of the sample
 
         Returns:
             xr.Dataset: A merged Dataset with nans filled in.
@@ -268,18 +270,34 @@ class SitesDataset(Dataset):
         )
 
         if has_solar_config:
-            # add sun features
+            solar_config = self.config.input_data.solar_position
+
+            # Get site timestamps - determine start and length
+            site_timestamps = combined_sample_dataset.site__time_utc.values
+            site_time_length = len(site_timestamps)
+
+            # Create datetime range using solar config params
+            solar_datetimes = pd.date_range(
+                t0 + minutes(solar_config.interval_start_minutes),
+                t0 + minutes(solar_config.interval_end_minutes),
+                freq=minutes(solar_config.time_resolution_minutes),
+            )
+
+            # Ensure matching of site time dimension length
+            solar_datetimes = solar_datetimes[:site_time_length]
+
+            # Calculate sun position features
             sun_position_features = make_sun_position_numpy_sample(
-                datetimes=datetimes,
+                datetimes=solar_datetimes,
                 lon=combined_sample_dataset.site__longitude.values,
                 lat=combined_sample_dataset.site__latitude.values,
             )
+
+            # Assign to existing site time dimension
             combined_sample_dataset = combined_sample_dataset.assign_coords(
                 {f"solar_position_{key}": ("site__time_utc", v)
                 for key, v in sun_position_features.items()},
             )
-
-        # TODO include t0_index in xr dataset?
 
         # Fill any nan values
         return combined_sample_dataset.fillna(0.0)
