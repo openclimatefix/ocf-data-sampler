@@ -303,3 +303,7 @@ def test_convert_netcdf_to_numpy_solar_handling(tmp_path, site_config_filename):
     assert "nwp" in numpy_sample
     assert "satellite_actual" in numpy_sample or "sat" in numpy_sample
     assert "site" in numpy_sample
+
+    # Assert solar position values exist in numpy sample
+    for key in solar_keys:
+        assert key in numpy_sample, f"Solar key {key} not found in numpy sample"

@@ -298,6 +298,8 @@ class SitesDataset(Dataset):
                     {key: (solar_dim_name, values)},
                 )
 
+        # TODO include t0_index in xr dataset?
+
         # Fill any nan values
         return combined_sample_dataset.fillna(0.0)
 
@@ -376,6 +378,12 @@ def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
     sample = convert_to_numpy_and_combine(
         dataset_dict=sample_dict,
     )
+
+    # Extraction of solar position coords
+    solar_keys = ["solar_azimuth", "solar_elevation"]
+    for key in solar_keys:
+        if key in ds.coords:
+            sample[key] = ds.coords[key].values
 
     # TODO think about normalization:
     # * maybe its done not in sample creation, maybe its done afterwards,
