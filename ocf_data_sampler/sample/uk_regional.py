@@ -55,20 +55,11 @@ class UKRegionalSample(SampleBase):
             axes[0, 0].plot(self._data[GSPSampleKey.gsp])
             axes[0, 0].set_title("GSP Generation")
 
-        solar_keys = {
-            k: v for k, v in self._data.items()
-            if "solar_azimuth" in k or "solar_elevation" in k
-        }
-
-        if solar_keys:
-            azimuth_key = next((k for k in solar_keys if "solar_azimuth" in k), None)
-            elevation_key = next((k for k in solar_keys if "solar_elevation" in k), None)
-
-            if azimuth_key and elevation_key:
-                axes[1, 1].plot(self._data[azimuth_key], label="Azimuth")
-                axes[1, 1].plot(self._data[elevation_key], label="Elevation")
-                axes[1, 1].set_title("Solar Position")
-                axes[1, 1].legend()
+        if "solar_azimuth" in self._data and "solar_elevation" in self._data:
+                    axes[1, 1].plot(self._data["solar_azimuth"], label="Azimuth")
+                    axes[1, 1].plot(self._data["solar_elevation"], label="Elevation")
+                    axes[1, 1].set_title("Solar Position")
+                    axes[1, 1].legend()
 
         if SatelliteSampleKey.satellite_actual in self._data:
             axes[1, 0].imshow(self._data[SatelliteSampleKey.satellite_actual])
