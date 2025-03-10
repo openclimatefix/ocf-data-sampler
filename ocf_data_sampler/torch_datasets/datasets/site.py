@@ -272,19 +272,12 @@ class SitesDataset(Dataset):
         if has_solar_config:
             solar_config = self.config.input_data.solar_position
 
-            # Get site timestamps - determine start and length
-            site_timestamps = combined_sample_dataset.site__time_utc.values
-            site_time_length = len(site_timestamps)
-
-            # Create datetime range using solar config params
+            # Datetime range - solar config params
             solar_datetimes = pd.date_range(
                 t0 + minutes(solar_config.interval_start_minutes),
                 t0 + minutes(solar_config.interval_end_minutes),
                 freq=minutes(solar_config.time_resolution_minutes),
             )
-
-            # Ensure matching of site time dimension length
-            solar_datetimes = solar_datetimes[:site_time_length]
 
             # Calculate sun position features
             sun_position_features = make_sun_position_numpy_sample(
@@ -293,11 +286,17 @@ class SitesDataset(Dataset):
                 lat=combined_sample_dataset.site__latitude.values,
             )
 
-            # Assign to existing site time dimension
+            # Dimension state for solar position data
+            solar_dim_name = "solar_time_utc"
             combined_sample_dataset = combined_sample_dataset.assign_coords(
-                {f"solar_position_{key}": ("site__time_utc", v)
-                for key, v in sun_position_features.items()},
+                {solar_dim_name: solar_datetimes},
             )
+
+            # Assign solar position values
+            for key, values in sun_position_features.items():
+                combined_sample_dataset = combined_sample_dataset.assign_coords(
+                    {key: (solar_dim_name, values)},
+                )
 
         # Fill any nan values
         return combined_sample_dataset.fillna(0.0)

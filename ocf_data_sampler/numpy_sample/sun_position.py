@@ -54,6 +54,6 @@ def make_sun_position_numpy_sample(
 
     # Make NumpySample
     return {
-        "azimuth": azimuth,
-        "elevation": elevation,
+        "solar_azimuth": azimuth,
+        "solar_elevation": elevation,
     }

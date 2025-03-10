@@ -229,7 +229,7 @@ def test_solar_position_decoupling_site(tmp_path, site_config_filename):
     sample_with_solar = dataset_with_solar[0]
 
     # Assert solar position keys are only in sample specifically with solar configuration
-    solar_keys = ["solar_position_azimuth", "solar_position_elevation"]
+    solar_keys = ["solar_azimuth", "solar_elevation"]
 
     # Sample without solar config should not have solar position data
     for key in solar_keys:
@@ -258,7 +258,7 @@ def test_convert_from_dataset_to_dict_solar_handling(tmp_path, site_config_filen
     sample_with_solar = dataset_with_solar[0]
 
     # Verify solar position data exists in original sample
-    solar_keys = ["solar_position_azimuth", "solar_position_elevation"]
+    solar_keys = ["solar_azimuth", "solar_elevation"]
     for key in solar_keys:
         assert key in sample_with_solar.coords, f"Solar key {key} not found in original sample"
 
@@ -291,7 +291,7 @@ def test_convert_netcdf_to_numpy_solar_handling(tmp_path, site_config_filename):
     loaded_sample = xr.open_dataset(netcdf_path)
 
     # Verify solar position data exists in sample
-    solar_keys = ["solar_position_azimuth", "solar_position_elevation"]
+    solar_keys = ["solar_azimuth", "solar_elevation"]
     for key in solar_keys:
         assert key in loaded_sample.coords, f"Solar key {key} not found in loaded netCDF"
 

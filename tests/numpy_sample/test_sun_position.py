@@ -67,11 +67,11 @@ def test_make_sun_position_numpy_sample():
 
     sample = make_sun_position_numpy_sample(datetimes, lon, lat)
 
-    assert "elevation" in sample
-    assert "azimuth" in sample
+    assert "solar_elevation" in sample
+    assert "solar_azimuth" in sample
 
     # The solar coords are normalised in the function
-    assert (sample["elevation"] >= 0).all()
-    assert (sample["elevation"] <= 1).all()
-    assert (sample["azimuth"] >= 0).all()
-    assert (sample["azimuth"] <= 1).all()
+    assert (sample["solar_elevation"] >= 0).all()
+    assert (sample["solar_elevation"] <= 1).all()
+    assert (sample["solar_azimuth"] >= 0).all()
+    assert (sample["solar_azimuth"] <= 1).all()
