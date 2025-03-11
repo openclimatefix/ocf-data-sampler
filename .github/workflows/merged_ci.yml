@@ -11,5 +11,5 @@ jobs:
     secrets: inherit
     with:
       containerfile: 'None'
-      pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+      enable_pypi: true
 
