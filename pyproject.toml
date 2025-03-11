@@ -51,6 +51,9 @@ dev = [
 [project.urls]
 repository = "https://github.com/openclimatefix/ocf-data-sampler"
 
+[tool.setuptools]
+license-files = []
+
 [tool.setuptools.packages.find]
 where = ["."]
 exclude = ["test*"]
