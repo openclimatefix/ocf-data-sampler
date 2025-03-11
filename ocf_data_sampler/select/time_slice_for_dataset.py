@@ -32,7 +32,7 @@ def slice_datasets_by_time(
             sliced_datasets_dict["nwp"][nwp_key] = select_time_slice_nwp(
                 da_nwp,
                 t0,
-                sample_period_duration=minutes(nwp_config.time_resolution_minutes),
+                time_resolution=minutes(nwp_config.time_resolution_minutes),
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 interval_end=minutes(nwp_config.interval_end_minutes),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
@@ -46,7 +46,7 @@ def slice_datasets_by_time(
         sliced_datasets_dict["sat"] = select_time_slice(
             datasets_dict["sat"],
             t0,
-            sample_period_duration=minutes(sat_config.time_resolution_minutes),
+            time_resolution=minutes(sat_config.time_resolution_minutes),
             interval_start=minutes(sat_config.interval_start_minutes),
             interval_end=minutes(sat_config.interval_end_minutes),
         )
@@ -70,7 +70,7 @@ def slice_datasets_by_time(
         da_gsp_past = select_time_slice(
             datasets_dict["gsp"],
             t0,
-            sample_period_duration=minutes(gsp_config.time_resolution_minutes),
+            time_resolution=minutes(gsp_config.time_resolution_minutes),
             interval_start=minutes(gsp_config.interval_start_minutes),
             interval_end=minutes(0),
         )
@@ -90,7 +90,7 @@ def slice_datasets_by_time(
         da_gsp_future = select_time_slice(
             datasets_dict["gsp"],
             t0,
-            sample_period_duration=minutes(gsp_config.time_resolution_minutes),
+            time_resolution=minutes(gsp_config.time_resolution_minutes),
             interval_start=minutes(gsp_config.time_resolution_minutes),
             interval_end=minutes(gsp_config.interval_end_minutes),
         )
@@ -103,7 +103,7 @@ def slice_datasets_by_time(
         sliced_datasets_dict["site"] = select_time_slice(
             datasets_dict["site"],
             t0,
-            sample_period_duration=minutes(site_config.time_resolution_minutes),
+            time_resolution=minutes(site_config.time_resolution_minutes),
             interval_start=minutes(site_config.interval_start_minutes),
             interval_end=minutes(site_config.interval_end_minutes),
         )

@@ -1,9 +1,8 @@
 """Constants for the package."""
 
-from typing import override
-
 import numpy as np
 import xarray as xr
+from typing_extensions import override
 
 NWP_PROVIDERS = [
     "ukv",

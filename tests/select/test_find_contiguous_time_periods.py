@@ -20,7 +20,7 @@ def test_find_contiguous_t0_periods():
         datetimes=datetimes,
         interval_start=interval_start,
         interval_end=interval_end,
-        sample_period_duration=freq,
+        time_resolution=freq,
     )
 
     expected_results = pd.DataFrame(

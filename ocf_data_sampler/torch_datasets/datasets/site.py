@@ -1,12 +1,12 @@
 """Torch dataset for sites."""
 
 import logging
-from typing import override
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
+from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
@@ -112,7 +112,7 @@ class SitesDataset(Dataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
 
-        sample = self.process_and_combine_site_sample_dict(sample_dict)
+        sample = self.process_and_combine_site_sample_dict(sample_dict, t0)
         sample = sample.compute()
         return sample
 
@@ -176,7 +176,7 @@ class SitesDataset(Dataset):
             # Get the valid time periods for this location
             time_periods = find_contiguous_t0_periods(
                 pd.DatetimeIndex(site["time_utc"]),
-                sample_period_duration=minutes(site_config.time_resolution_minutes),
+                time_resolution=minutes(site_config.time_resolution_minutes),
                 interval_start=minutes(site_config.interval_start_minutes),
                 interval_end=minutes(site_config.interval_end_minutes),
             )
@@ -218,12 +218,14 @@ class SitesDataset(Dataset):
     def process_and_combine_site_sample_dict(
         self,
         dataset_dict: dict,
+        t0: pd.Timestamp,
     ) -> xr.Dataset:
         """Normalize and combine data into a single xr Dataset.
 
         Args:
             dataset_dict: dict containing sliced xr DataArrays
             config: Configuration for the model
+            t0: The initial timestamp of the sample
 
         Returns:
             xr.Dataset: A merged Dataset with nans filled in.
@@ -261,16 +263,40 @@ class SitesDataset(Dataset):
             {k: ("site__time_utc", v) for k, v in datetime_features.items()},
         )
 
-        # add sun features
-        sun_position_features = make_sun_position_numpy_sample(
-            datetimes=datetimes,
-            lon=combined_sample_dataset.site__longitude.values,
-            lat=combined_sample_dataset.site__latitude.values,
-            key_prefix="site_",
+        # Only add solar position if explicitly configured
+        has_solar_config = (
+            hasattr(self.config.input_data, "solar_position") and
+            self.config.input_data.solar_position is not None
         )
-        combined_sample_dataset = combined_sample_dataset.assign_coords(
-            {k: ("site__time_utc", v) for k, v in sun_position_features.items()},
-        )
+
+        if has_solar_config:
+            solar_config = self.config.input_data.solar_position
+
+            # Datetime range - solar config params
+            solar_datetimes = pd.date_range(
+                t0 + minutes(solar_config.interval_start_minutes),
+                t0 + minutes(solar_config.interval_end_minutes),
+                freq=minutes(solar_config.time_resolution_minutes),
+            )
+
+            # Calculate sun position features
+            sun_position_features = make_sun_position_numpy_sample(
+                datetimes=solar_datetimes,
+                lon=combined_sample_dataset.site__longitude.values,
+                lat=combined_sample_dataset.site__latitude.values,
+            )
+
+            # Dimension state for solar position data
+            solar_dim_name = "solar_time_utc"
+            combined_sample_dataset = combined_sample_dataset.assign_coords(
+                {solar_dim_name: solar_datetimes},
+            )
+
+            # Assign solar position values
+            for key, values in sun_position_features.items():
+                combined_sample_dataset = combined_sample_dataset.assign_coords(
+                    {key: (solar_dim_name, values)},
+                )
 
         # TODO include t0_index in xr dataset?
 
@@ -352,6 +378,12 @@ def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
     sample = convert_to_numpy_and_combine(
         dataset_dict=sample_dict,
     )
+
+    # Extraction of solar position coords
+    solar_keys = ["solar_azimuth", "solar_elevation"]
+    for key in solar_keys:
+        if key in ds.coords:
+            sample[key] = ds.coords[key].values
 
     # TODO think about normalization:
     # * maybe its done not in sample creation, maybe its done afterwards,

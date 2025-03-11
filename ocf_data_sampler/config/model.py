@@ -5,9 +5,9 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 """
 
 from collections.abc import Iterator
-from typing import override
 
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
+from typing_extensions import override
 
 from ocf_data_sampler.constants import NWP_PROVIDERS
 
@@ -229,6 +229,10 @@ class Site(TimeWindowMixin, DropoutMixin):
     # TODO validate the csv for metadata
 
 
+class SolarPosition(TimeWindowMixin):
+    """Solar position configuration model."""
+
+
 class InputData(Base):
     """Input data model."""
 
@@ -236,6 +240,7 @@ class InputData(Base):
     nwp: MultiNWP | None = None
     gsp: GSP | None = None
     site: Site | None = None
+    solar_position: SolarPosition | None = None
 
 
 class Configuration(Base):

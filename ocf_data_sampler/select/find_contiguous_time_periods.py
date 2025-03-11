@@ -1,4 +1,4 @@
-"""Get contiguous time periods for training."""
+"""Get contiguous time periods."""
 
 import numpy as np
 import pandas as pd
@@ -17,16 +17,14 @@ def find_contiguous_time_periods(
 
     Args:
       datetimes: pd.DatetimeIndex. Must be sorted.
-      min_seq_length: Sequences of min_seq_length or shorter will be discarded.  Typically, this
-        would be set to the `total_seq_length` of each machine learning example.
+      min_seq_length: Sequences of min_seq_length or shorter will be discarded.
       max_gap_duration: If any pair of consecutive `datetimes` is more than `max_gap_duration`
         apart, then this pair of `datetimes` will be considered a "gap" between two contiguous
-        sequences. Typically, `max_gap_duration` would be set to the sample period of
-        the timeseries.
+        sequences.
 
     Returns:
-      pd.DataFrame where each row represents a single time period.  The pd.DataFrame
-          has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
+      pd.DataFrame where each row represents a single time period. The pd.DataFrame
+      has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
     # Sanity checks.
     if len(datetimes) == 0:
@@ -57,14 +55,13 @@ def find_contiguous_time_periods(
     # Capture the last segment of dt_index.
     segment_boundaries = np.concatenate((segment_boundaries, [len(datetimes)]))
 
-    periods: list[dict[str, pd.Timestamp]] = []
+    periods: list[list[pd.Timestamp]] = []
     start_i = 0
     for next_start_i in segment_boundaries:
         n_timesteps = next_start_i - start_i
         if n_timesteps >= min_seq_length:
             end_i = next_start_i - 1
-            period = {"start_dt": datetimes[start_i], "end_dt": datetimes[end_i]}
-            periods.append(period)
+            periods.append([datetimes[start_i], datetimes[end_i]])
         start_i = next_start_i
 
     if len(periods) == 0:
@@ -72,7 +69,7 @@ def find_contiguous_time_periods(
             f"Did not find any periods from {datetimes}. {min_seq_length=} {max_gap_duration=}",
         )
 
-    return pd.DataFrame(periods)
+    return pd.DataFrame(periods, columns=["start_dt", "end_dt"])
 
 
 def trim_contiguous_time_periods(
@@ -80,54 +77,53 @@ def trim_contiguous_time_periods(
     interval_start: pd.Timedelta,
     interval_end: pd.Timedelta,
 ) -> pd.DataFrame:
-    """Trim the contiguous time periods to allow for history and forecast durations.
+    """Trims contiguous time periods to account for history requirements and forecast horizons.
 
     Args:
-        contiguous_time_periods: DataFrame where each row represents a single time period.
-            The DataFrame must have `start_dt` and `end_dt` columns.
+        contiguous_time_periods: pd.DataFrame where each row represents a single time period.
+            The pd.DataFrame must have `start_dt` and `end_dt` columns.
         interval_start: The start of the interval with respect to t0
         interval_end: The end of the interval with respect to t0
 
-
     Returns:
-      The contiguous_time_periods DataFrame with the `start_dt` and `end_dt` columns updated.
+      The contiguous_time_periods pd.DataFrame with the `start_dt` and `end_dt` columns updated.
     """
-    contiguous_time_periods = contiguous_time_periods.copy()
+    # Make a copy so the data is not edited in place.
+    trimmed_time_periods = contiguous_time_periods.copy()
+    trimmed_time_periods["start_dt"] -= interval_start
+    trimmed_time_periods["end_dt"] -= interval_end
 
-    contiguous_time_periods["start_dt"] -= interval_start
-    contiguous_time_periods["end_dt"] -= interval_end
+    valid_mask = trimmed_time_periods["start_dt"] <= trimmed_time_periods["end_dt"]
 
-    valid_mask = contiguous_time_periods["start_dt"] <= contiguous_time_periods["end_dt"]
-    contiguous_time_periods = contiguous_time_periods.loc[valid_mask]
-
-    return contiguous_time_periods
+    return trimmed_time_periods.loc[valid_mask]
 
 
 def find_contiguous_t0_periods(
     datetimes: pd.DatetimeIndex,
     interval_start: pd.Timedelta,
     interval_end: pd.Timedelta,
-    sample_period_duration: pd.Timedelta,
+    time_resolution: pd.Timedelta,
 ) -> pd.DataFrame:
     """Return a pd.DataFrame where each row records the boundary of a contiguous time period.
 
     Args:
-        datetimes: pd.DatetimeIndex. Must be sorted.
+        datetimes: pd.DatetimeIndex
         interval_start: The start of the interval with respect to t0
         interval_end: The end of the interval with respect to t0
-        sample_period_duration: The sample frequency of the timeseries
-
+        time_resolution: The sample frequency of the timeseries
 
     Returns:
         pd.DataFrame where each row represents a single time period.  The pd.DataFrame
             has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
+    check_time_unique_increasing(datetimes)
+
     total_duration = interval_end - interval_start
 
     contiguous_time_periods = find_contiguous_time_periods(
         datetimes=datetimes,
-        min_seq_length=int(total_duration / sample_period_duration) + 1,
-        max_gap_duration=sample_period_duration,
+        min_seq_length=int(total_duration / time_resolution) + 1,
+        max_gap_duration=time_resolution,
     )
 
     contiguous_t0_periods = trim_contiguous_time_periods(
@@ -139,7 +135,7 @@ def find_contiguous_t0_periods(
     if len(contiguous_t0_periods) == 0:
         raise ValueError(
             f"No contiguous time periods found for {datetimes}. "
-            f"{interval_start=} {interval_end=} {sample_period_duration=}",
+            f"{interval_start=} {interval_end=} {time_resolution=}",
         )
 
     return contiguous_t0_periods
@@ -152,57 +148,56 @@ def find_contiguous_t0_periods_nwp(
     max_dropout: pd.Timedelta = ZERO_TDELTA,
     first_forecast_step: pd.Timedelta = ZERO_TDELTA,
 ) -> pd.DataFrame:
-    """Get all time periods from the NWP init times which are valid as t0 datetimes.
+    """Get all time periods from the NWP init-times which are valid as t0 datetimes.
 
     Args:
         init_times: The initialisation times of the available forecasts
-        interval_start: The start of the desired data interval with respect to t0
-        max_staleness: Up to how long after an init time are we willing to use the forecast.
-            Each init time will only be used up to this t0 time
-            regardless of the forecast valid time.
+        interval_start: The start of the time interval with respect to t0
+        max_staleness: Up to how long after an init-time are we willing to use the forecast.
+            Each init-time will only be used up to this t0 time regardless of the forecast valid
+            time.
         max_dropout: What is the maximum amount of dropout that will be used.
             This must be <= max_staleness.
         first_forecast_step: The timedelta of the first step of the forecast.
             By default we assume the first valid time of the forecast
-            is the same as its init time.
+            is the same as its init-time.
 
     Returns:
-        pd.DataFrame where each row represents a single time period.  The pd.DataFrame
+        pd.DataFrame where each row represents a single time period. The pd.DataFrame
         has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
     # Sanity checks.
     if len(init_times) == 0:
-        raise ValueError("No init times to use")
-    if not init_times.is_monotonic_increasing:
-        raise ValueError("Init times must be sorted and monotinically increasing")
-    if not init_times.is_unique:
-        raise ValueError("Init times must be unique")
+        raise ValueError("No init-times to use")
+
+    check_time_unique_increasing(init_times)
+
     if max_staleness < pd.Timedelta(0):
         raise ValueError("The max staleness must be positive")
     if not (pd.Timedelta(0) <= max_dropout <= max_staleness):
         raise ValueError("The max dropout must be between 0 and the max staleness")
 
-    hist_drop_buffer = max(first_forecast_step - interval_start, max_dropout)
+    history_drop_buffer = max(first_forecast_step - interval_start, max_dropout)
 
     # Store contiguous periods
-    contiguous_periods = []
+    contiguous_periods: list[list[pd.Timestamp]] = []
 
     # Begin the first period allowing for the time to the first_forecast_step, the length of the
     # interval sampled from before t0, and the dropout
-    start_this_period = init_times[0] + hist_drop_buffer
+    start_this_period = init_times[0] + history_drop_buffer
 
     # The first forecast is valid up to the max staleness
     end_this_period = init_times[0] + max_staleness
 
     for dt_init in init_times[1:]:
-        # If the previous init time becomes stale before the next init becomes valid (whilst also
-        # considering dropout) then the contiguous period breaks
-        # Else if the previous init time becomes stale before the fist step of the next forecast
+        # If the previous init-time becomes stale before the next init-time becomes valid (whilst
+        # also considering dropout) then the contiguous period breaks
+        # Else if the previous init-time becomes stale before the fist step of the next forecast
         # then this also causes a break in the contiguous period
         if end_this_period < dt_init + max(max_dropout, first_forecast_step):
             contiguous_periods.append([start_this_period, end_this_period])
             # The new period begins with the same conditions as the first period
-            start_this_period = dt_init + hist_drop_buffer
+            start_this_period = dt_init + history_drop_buffer
         end_this_period = dt_init + max_staleness
 
     contiguous_periods.append([start_this_period, end_this_period])
@@ -213,9 +208,10 @@ def find_contiguous_t0_periods_nwp(
 def intersection_of_multiple_dataframes_of_periods(
     time_periods: list[pd.DataFrame],
 ) -> pd.DataFrame:
-    """Find the intersection of a list of time periods.
+    """Find the intersection of list of time periods.
 
-    See the docstring of intersection_of_2_dataframes_of_periods() for more details.
+    Consecutively updates intersection of time periods.
+    See the docstring of intersection_of_2_dataframes_of_periods() for further details.
     """
     if len(time_periods) == 0:
         raise ValueError("No time periods to intersect")
@@ -226,9 +222,6 @@ def intersection_of_multiple_dataframes_of_periods(
 
 
 def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
-    """Find the intersection of two DataFrames of time periods, allowing an overlap of length 1.
-
-    Intervals are treated as inclusive of both endpoints.
     """
     # Intersection of two dataframes can be as follows:
 
