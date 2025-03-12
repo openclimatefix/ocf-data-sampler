@@ -9,7 +9,7 @@ import pytest
 import torch
 from typing_extensions import override
 
-from ocf_data_sampler.numpy_sample.base import SampleBase, batch_to_tensor, copy_batch_to_device
+from ocf_data_sampler.sample.base import SampleBase, batch_to_tensor, copy_batch_to_device
 
 
 class TestSample(SampleBase):

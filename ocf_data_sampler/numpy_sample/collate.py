@@ -1,11 +1,10 @@
 """Functions for collating samples into batches."""
 
 import numpy as np
+from ocf_data_sampler.numpy_sample.common_types import NumpyBatch
 
-from ocf_data_sampler.numpy_sample.base import NumpySample
 
-
-def stack_np_samples_into_batch(dict_list: list[dict]) -> NumpySample:
+def stack_np_samples_into_batch(dict_list: list[dict]) -> NumpyBatch:
     """Stacks list of dict samples into a dict where all samples are joined along a new axis.
 
     Args:

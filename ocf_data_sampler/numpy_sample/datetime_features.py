@@ -2,8 +2,7 @@
 
 import numpy as np
 import pandas as pd
-
-from ocf_data_sampler.numpy_sample.base import NumpySample
+from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 
 def _get_date_time_in_pi(dt: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
