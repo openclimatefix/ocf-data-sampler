@@ -4,6 +4,7 @@ import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
+from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
     PVNetUKConcurrentDataset,
@@ -74,14 +75,30 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
 
     assert isinstance(sample, dict)
 
-    for key in [
-        "nwp",
-        "satellite_actual",
-        "gsp",
-        "gsp_solar_azimuth",
-        "gsp_solar_elevation",
-    ]:
+    # These keys should always be present
+    required_keys = ["nwp", "satellite_actual", "gsp"]
+    for key in required_keys:
         assert key in sample
+
+    solar_keys = ["solar_azimuth", "solar_elevation"]
+    if dataset.config.input_data.solar_position is not None:
+        # Test that solar position keys are present when configured
+        for key in solar_keys:
+            assert key in sample, f"Solar position key {key} should be present in sample"
+
+        # Get expected time steps from configuration
+        expected_time_steps = (
+            dataset.config.input_data.solar_position.interval_end_minutes
+            - dataset.config.input_data.solar_position.interval_start_minutes
+        ) // dataset.config.input_data.solar_position.time_resolution_minutes + 1
+
+        # Test solar angle shapes based on config
+        assert sample["solar_azimuth"].shape == (expected_time_steps,)
+        assert sample["solar_elevation"].shape == (expected_time_steps,)
+    else:
+        # Test that solar position keys are not present
+        for key in solar_keys:
+            assert key not in sample, f"Solar position key {key} should not be present"
 
     for nwp_source in ["ukv"]:
         assert nwp_source in sample["nwp"]
@@ -93,9 +110,6 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
     assert sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
     # 3 hours of 30 minute data (inclusive)
     assert sample["gsp"].shape == (7,)
-    # Solar angles have same shape as GSP data
-    assert sample["gsp_solar_azimuth"].shape == (7,)
-    assert sample["gsp_solar_elevation"].shape == (7,)
 
 
 def test_pvnet_no_gsp(tmp_path, pvnet_config_filename):
@@ -129,14 +143,31 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
 
     assert isinstance(sample, dict)
 
-    for key in [
-        "nwp",
-        "satellite_actual",
-        "gsp",
-        "gsp_solar_azimuth",
-        "gsp_solar_elevation",
-    ]:
+    # These keys should always be present
+    required_keys = ["nwp", "satellite_actual", "gsp"]
+    for key in required_keys:
         assert key in sample
+
+    # Check if solar position is configured in the dataset
+    solar_keys = ["solar_azimuth", "solar_elevation"]
+    if dataset.config.input_data.solar_position is not None:
+        # Solar position keys should be present when configured
+        for key in solar_keys:
+            assert key in sample, f"Solar position key {key} should be present in sample"
+
+        # Get expected time steps from configuration
+        expected_time_steps = (
+            dataset.config.input_data.solar_position.interval_end_minutes
+            - dataset.config.input_data.solar_position.interval_start_minutes
+        ) // dataset.config.input_data.solar_position.time_resolution_minutes + 1
+
+        # Test solar angle shapes based on configuration
+        assert sample["solar_azimuth"].shape == (num_gsps, expected_time_steps)
+        assert sample["solar_elevation"].shape == (num_gsps, expected_time_steps)
+    else:
+        # Solar position keys should not be present when not configured
+        for key in solar_keys:
+            assert key not in sample, f"Solar position key {key} should not be present"
 
     for nwp_source in ["ukv"]:
         assert nwp_source in sample["nwp"]
@@ -148,6 +179,44 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     assert sample["nwp"]["ukv"]["nwp"].shape == (num_gsps, 4, 1, 2, 2)
     # 3 hours of 30 minute data (inclusive)
     assert sample["gsp"].shape == (num_gsps, 7)
-    # Solar angles have same shape as GSP data
-    assert sample["gsp_solar_azimuth"].shape == (num_gsps, 7)
-    assert sample["gsp_solar_elevation"].shape == (num_gsps, 7)
+
+
+def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
+    """Test that solar position calculations are properly decoupled from data sources."""
+
+    config = load_yaml_configuration(pvnet_config_filename)
+    config_without_solar = config.model_copy(deep=True)
+    config_without_solar.input_data.solar_position = None
+
+    # Create version with explicit solar position configuration
+    config_with_solar = config.model_copy(deep=True)
+    config_with_solar.input_data.solar_position = SolarPosition(
+        time_resolution_minutes=30,
+        interval_start_minutes=0,
+        interval_end_minutes=180,
+    )
+
+    # Save both testing configurations
+    config_without_solar_path = tmp_path / "config_without_solar.yaml"
+    config_with_solar_path = tmp_path / "config_with_solar.yaml"
+    save_yaml_configuration(config_without_solar, config_without_solar_path)
+    save_yaml_configuration(config_with_solar, config_with_solar_path)
+
+    # Create datasets with both configurations
+    dataset_without_solar = PVNetUKRegionalDataset(config_without_solar_path, gsp_ids=[1])
+    dataset_with_solar = PVNetUKRegionalDataset(config_with_solar_path, gsp_ids=[1])
+
+    # Generate samples
+    sample_without_solar = dataset_without_solar[0]
+    sample_with_solar = dataset_with_solar[0]
+
+    # Assert solar position keys are only in sample specifically with solar configuration
+    solar_keys = ["solar_azimuth", "solar_elevation"]
+
+    # Sample without solar config should not have solar position data
+    for key in solar_keys:
+        assert key not in sample_without_solar, f"Solar key {key} should not be in sample"
+
+    # Sample with solar config should have solar position data
+    for key in solar_keys:
+        assert key in sample_with_solar, f"Solar key {key} should be in sample"

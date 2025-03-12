@@ -1,12 +1,12 @@
 """Torch dataset for UK PVNet."""
 
 from importlib.resources import files
-from typing import override
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
+from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
@@ -46,7 +46,6 @@ def process_and_combine_datasets(
     config: Configuration,
     t0: pd.Timestamp,
     location: Location,
-    target_key: str = "gsp",
 ) -> dict:
     """Normalise and convert data to numpy arrays."""
     numpy_modalities = []
@@ -71,9 +70,8 @@ def process_and_combine_datasets(
         da_sat = (da_sat - RSS_MEAN) / RSS_STD
         numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
-    gsp_config = config.input_data.gsp
-
     if "gsp" in dataset_dict:
+        gsp_config = config.input_data.gsp
         da_gsp = dataset_dict["gsp"]
         da_gsp = da_gsp / da_gsp.effective_capacity_mwp
 
@@ -85,27 +83,37 @@ def process_and_combine_datasets(
             ),
         )
 
-    if target_key == "gsp":
-        # Make sun coords NumpySample
+    # Add GSP location data
+    numpy_modalities.append(
+        {
+            GSPSampleKey.gsp_id: location.id,
+            GSPSampleKey.x_osgb: location.x,
+            GSPSampleKey.y_osgb: location.y,
+        },
+    )
+
+    # Only add solar position if explicitly configured
+    has_solar_config = (
+        hasattr(config.input_data, "solar_position") and
+        config.input_data.solar_position is not None
+    )
+
+    if has_solar_config:
+        solar_config = config.input_data.solar_position
+
+        # Create datetime range for solar position calculation
         datetimes = pd.date_range(
-            t0 + minutes(gsp_config.interval_start_minutes),
-            t0 + minutes(gsp_config.interval_end_minutes),
-            freq=minutes(gsp_config.time_resolution_minutes),
+            t0 + minutes(solar_config.interval_start_minutes),
+            t0 + minutes(solar_config.interval_end_minutes),
+            freq=minutes(solar_config.time_resolution_minutes),
         )
 
+        # Convert OSGB coordinates to lon/lat
         lon, lat = osgb_to_lon_lat(location.x, location.y)
 
-        numpy_modalities.append(
-            {
-                GSPSampleKey.gsp_id: location.id,
-                GSPSampleKey.x_osgb: location.x,
-                GSPSampleKey.y_osgb: location.y,
-            },
-        )
-
-    numpy_modalities.append(
-        make_sun_position_numpy_sample(datetimes, lon, lat, key_prefix=target_key),
-    )
+        # Calculate solar positions and add to modalities
+        solar_positions = make_sun_position_numpy_sample(datetimes, lon, lat)
+        numpy_modalities.append(solar_positions)
 
     # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
@@ -138,7 +146,6 @@ def find_valid_t0_times(datasets_dict: dict, config: Configuration) -> pd.Dateti
         valid_time_periods,
         freq=minutes(config.input_data.gsp.time_resolution_minutes),
     )
-
     return valid_t0_times
 
 

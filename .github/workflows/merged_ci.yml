@@ -11,4 +11,4 @@ jobs:
     secrets: inherit
     with:
       containerfile: 'None'
-
+      enable_pypi: true
