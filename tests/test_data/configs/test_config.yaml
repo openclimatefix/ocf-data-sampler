@@ -24,6 +24,10 @@ input_data:
       dropout_timedeltas_minutes: [-180]
       dropout_fraction: 1.0
       max_staleness_minutes: null
+      normalisation_constants:
+        t:
+          mean: 283.64913206
+          std: 4.38818501
 
   satellite:
     zarr_path: tests/data/sat_data.zarr
@@ -34,3 +38,7 @@ input_data:
       - IR_016
     image_size_pixels_height: 24
     image_size_pixels_width: 24
+    normalisation_constants:
+      IR_016:
+        mean: 0.17594202
+        std: 0.21462157
