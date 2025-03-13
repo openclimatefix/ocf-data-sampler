@@ -14,6 +14,7 @@ NWP_PROVIDERS = [
     "ecmwf",
     "gfs",
     "icon_eu",
+    "cloudcasting",
 ]
 
 
