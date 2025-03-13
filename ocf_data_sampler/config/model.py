@@ -6,8 +6,6 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 
 from collections.abc import Iterator
 
-import numpy as np
-import xarray as xr
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
 
@@ -143,21 +141,21 @@ class NormalisationConstantsMixin(Base):
     normalisation_constants: dict[str, NormalisationValues]
 
     @property
-    def channel_means(self) -> xr.DataArray:
+    def channel_means(self) -> dict[str, float]:
         """Return the channel means."""
-        return xr.DataArray(
-            [norm_values.mean for norm_values in self.normalisation_constants.values()],
-            coords={"channel": list(self.normalisation_constants.keys())},
-        ).astype(np.float32)
+        return {
+            channel: norm_values.mean
+            for channel, norm_values in self.normalisation_constants.items()
+        }
+
 
     @property
-    def channel_stds(self) -> xr.DataArray:
+    def channel_stds(self) -> dict[str, float]:
         """Return the channel standard deviations."""
-        return xr.DataArray(
-            [norm_values.std for norm_values in self.normalisation_constants.values()],
-            coords={"channel": list(self.normalisation_constants.keys())},
-        ).astype(np.float32)
-
+        return {
+            channel: norm_values.std
+            for channel, norm_values in self.normalisation_constants.items()
+        }
 
 
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):

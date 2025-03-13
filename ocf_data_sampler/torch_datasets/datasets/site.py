@@ -26,11 +26,11 @@ from ocf_data_sampler.select import (
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
+from ocf_data_sampler.torch_datasets.utils import channel_dict_to_dataarray, find_valid_time_periods
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
     merge_dicts,
 )
-from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
 from ocf_data_sampler.utils import minutes
 
 xr.set_options(keep_attrs=True)
@@ -229,20 +229,29 @@ class SitesDataset(Dataset):
                 provider = self.config.input_data.nwp[nwp_key].provider
 
                 # Standardise
-                da_nwp = (
-                    (da_nwp - self.config.input_data.nwp[nwp_key].channel_means)
-                    / self.config.input_data.nwp[nwp_key].channel_stds
+                da_channel_means = channel_dict_to_dataarray(
+                    self.config.input_data.nwp[nwp_key].channel_means,
                 )
+                da_channel_stds = channel_dict_to_dataarray(
+                    self.config.input_data.nwp[nwp_key].channel_stds,
+                )
+
+                da_nwp = (da_nwp - da_channel_means) / da_channel_stds
+
                 data_arrays.append((f"nwp-{provider}", da_nwp))
 
         if "sat" in dataset_dict:
             da_sat = dataset_dict["sat"]
 
-            # Standardise
-            da_sat = (
-                (da_sat - self.config.input_data.satellite.channel_means)
-                / self.config.input_data.satellite.channel_stds
+            da_channel_means = channel_dict_to_dataarray(
+                self.config.input_data.satellite.channel_means,
             )
+            da_channel_stds = channel_dict_to_dataarray(
+                self.config.input_data.satellite.channel_stds,
+            )
+
+            da_sat = (da_sat - da_channel_means) / da_channel_stds
+
             data_arrays.append(("satellite", da_sat))
 
         if "site" in dataset_dict:
