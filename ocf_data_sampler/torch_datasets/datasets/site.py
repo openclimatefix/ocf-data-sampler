@@ -230,10 +230,10 @@ class SitesDataset(Dataset):
 
                 # Standardise
                 da_channel_means = channel_dict_to_dataarray(
-                    self.config.input_data.nwp[nwp_key].channel_means
+                    self.config.input_data.nwp[nwp_key].channel_means,
                 )
                 da_channel_stds = channel_dict_to_dataarray(
-                    self.config.input_data.nwp[nwp_key].channel_stds
+                    self.config.input_data.nwp[nwp_key].channel_stds,
                 )
 
                 da_nwp = (da_nwp - da_channel_means) / da_channel_stds
@@ -244,10 +244,10 @@ class SitesDataset(Dataset):
             da_sat = dataset_dict["sat"]
 
             da_channel_means = channel_dict_to_dataarray(
-                self.config.input_data.satellite.channel_means
+                self.config.input_data.satellite.channel_means,
             )
             da_channel_stds = channel_dict_to_dataarray(
-                self.config.input_data.satellite.channel_stds
+                self.config.input_data.satellite.channel_stds,
             )
 
             da_sat = (da_sat - da_channel_means) / da_channel_stds

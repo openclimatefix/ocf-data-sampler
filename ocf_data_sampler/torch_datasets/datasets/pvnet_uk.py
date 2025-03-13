@@ -53,10 +53,10 @@ def process_and_combine_datasets(
             # Standardise and convert to NumpyBatch
 
             da_channel_means = channel_dict_to_dataarray(
-                config.input_data.nwp[nwp_key].channel_means
+                config.input_data.nwp[nwp_key].channel_means,
             )
             da_channel_stds = channel_dict_to_dataarray(
-                config.input_data.nwp[nwp_key].channel_stds
+                config.input_data.nwp[nwp_key].channel_stds,
             )
 
             da_nwp = (da_nwp - da_channel_means) / da_channel_stds
