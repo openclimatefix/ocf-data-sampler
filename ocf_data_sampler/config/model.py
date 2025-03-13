@@ -11,7 +11,13 @@ import xarray as xr
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
 
-from ocf_data_sampler.constants import NWP_PROVIDERS
+
+NWP_PROVIDERS = [
+    "ukv",
+    "ecmwf",
+    "gfs",
+    "icon_eu",
+]
 
 
 class Base(BaseModel):
