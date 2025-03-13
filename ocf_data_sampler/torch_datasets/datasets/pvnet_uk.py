@@ -52,9 +52,12 @@ def process_and_combine_datasets(
 
             # Standardise and convert to NumpyBatch
 
-            nwp_source_config = config.input_data.nwp[nwp_key]
-            da_channel_means = channel_dict_to_dataarray(nwp_source_config.channel_means)
-            da_channel_stds = channel_dict_to_dataarray(nwp_source_config.channel_stds)
+            da_channel_means = channel_dict_to_dataarray(
+                config.input_data.nwp[nwp_key].channel_means
+            )
+            da_channel_stds = channel_dict_to_dataarray(
+                config.input_data.nwp[nwp_key].channel_stds
+            )
 
             da_nwp = (da_nwp - da_channel_means) / da_channel_stds
 
@@ -67,10 +70,8 @@ def process_and_combine_datasets(
         da_sat = dataset_dict["sat"]
 
         # Standardise and convert to NumpyBatch
-
-        sat_config = config.input_data.satellite
-        da_channel_means = channel_dict_to_dataarray(sat_config.channel_means)
-        da_channel_stds = channel_dict_to_dataarray(sat_config.channel_stds)
+        da_channel_means = channel_dict_to_dataarray(config.input_data.satellite.channel_means)
+        da_channel_stds = channel_dict_to_dataarray(config.input_data.satellite.channel_stds)
 
         da_sat = (da_sat - da_channel_means) / da_channel_stds
 

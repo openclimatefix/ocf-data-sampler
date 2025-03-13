@@ -229,9 +229,12 @@ class SitesDataset(Dataset):
                 provider = self.config.input_data.nwp[nwp_key].provider
 
                 # Standardise
-                nwp_source_config = self.config.input_data.nwp[nwp_key]
-                da_channel_means = channel_dict_to_dataarray(nwp_source_config.channel_means)
-                da_channel_stds = channel_dict_to_dataarray(nwp_source_config.channel_stds)
+                da_channel_means = channel_dict_to_dataarray(
+                    self.config.input_data.nwp[nwp_key].channel_means
+                )
+                da_channel_stds = channel_dict_to_dataarray(
+                    self.config.input_data.nwp[nwp_key].channel_stds
+                )
 
                 da_nwp = (da_nwp - da_channel_means) / da_channel_stds
 
@@ -240,10 +243,12 @@ class SitesDataset(Dataset):
         if "sat" in dataset_dict:
             da_sat = dataset_dict["sat"]
 
-            sat_config = self.config.input_data.satellite
-            da_channel_means = channel_dict_to_dataarray(sat_config.channel_means)
-            da_channel_stds = channel_dict_to_dataarray(sat_config.channel_stds)
-
+            da_channel_means = channel_dict_to_dataarray(
+                self.config.input_data.satellite.channel_means
+            )
+            da_channel_stds = channel_dict_to_dataarray(
+                self.config.input_data.satellite.channel_stds
+            )
 
             da_sat = (da_sat - da_channel_means) / da_channel_stds
 
