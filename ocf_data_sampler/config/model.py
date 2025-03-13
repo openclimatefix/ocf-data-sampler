@@ -6,7 +6,6 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 
 from collections.abc import Iterator
 
-import xarray as xr
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
 
@@ -151,7 +150,7 @@ class NormalisationConstantsMixin(Base):
 
 
     @property
-    def channel_stds(self) -> xr.DataArray:
+    def channel_stds(self) -> dict[str, float]:
         """Return the channel standard deviations."""
         return {
             channel: norm_values.std
