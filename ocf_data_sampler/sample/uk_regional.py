@@ -56,10 +56,10 @@ class UKRegionalSample(SampleBase):
             axes[0, 0].set_title("GSP Generation")
 
         if "solar_azimuth" in self._data and "solar_elevation" in self._data:
-                    axes[1, 1].plot(self._data["solar_azimuth"], label="Azimuth")
-                    axes[1, 1].plot(self._data["solar_elevation"], label="Elevation")
-                    axes[1, 1].set_title("Solar Position")
-                    axes[1, 1].legend()
+            axes[1, 1].plot(self._data["solar_azimuth"], label="Azimuth")
+            axes[1, 1].plot(self._data["solar_elevation"], label="Elevation")
+            axes[1, 1].set_title("Solar Position")
+            axes[1, 1].legend()
 
         if SatelliteSampleKey.satellite_actual in self._data:
             axes[1, 0].imshow(self._data[SatelliteSampleKey.satellite_actual])

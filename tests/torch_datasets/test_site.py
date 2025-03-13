@@ -134,54 +134,170 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
         assert key in sample
 
 
-def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
-    # Specify minimal structure for testing
-    raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
-    fake_site_values = np.random.rand(197)
-    site_dict = {
-        "nwp": {
-            "ukv": xr.DataArray(
-                raw_nwp_values,
-                dims=["time_utc", "channel", "y", "x"],
-                coords={
-                    "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
-                    "channel": list(sites_dataset.config.input_data.nwp["ukv"].channels),
-                },
-            ),
-        },
-        "site": xr.DataArray(
-            fake_site_values,
-            dims=["time_utc"],
-            coords={
-                "time_utc": pd.date_range("2024-01-01 00:00", periods=197, freq="15min"),
-                "capacity_kwp": 1000,
-                "site_id": 1,
-                "longitude": -3.5,
-                "latitude": 51.5,
-            },
-        ),
-    }
+import pandas as pd
+import xarray as xr
 
-    t0 = pd.Timestamp("2024-01-01 00:00")
+def process_and_combine_site_sample_dict(
+    self,
+    dataset_dict: dict,
+    t0: pd.Timestamp,
+) -> xr.Dataset:
+    """Normalize and combine data into a single xr Dataset.
 
-    # Call function
-    result = sites_dataset.process_and_combine_site_sample_dict(site_dict, t0)
+    Args:
+        dataset_dict: dict containing sliced xr DataArrays.
+        t0: The initial timestamp of the sample.
 
-    # Assert to validate output structure
-    assert isinstance(result, xr.Dataset), "Result should be an xarray.Dataset"
-    assert len(result.data_vars) > 0, "Dataset should contain data variables"
+    Returns:
+        xr.Dataset: A merged Dataset with nans filled in.
+    """
+    data_arrays = []
 
-    # Validate variable via assertion and shape of such
-    expected_variables = ["nwp-ukv", "site"]
-    for expected_variable in expected_variables:
-        assert expected_variable in result.data_vars, (
-            f"Expected variable '{expected_variable}' not found"
+    # Process NWP data
+    if "nwp" in dataset_dict:
+        for nwp_key, da_nwp in dataset_dict["nwp"].items():
+            provider = self.config.input_data.nwp[nwp_key].provider
+
+            # Standardize
+            da_channel_means = channel_dict_to_dataarray(
+                self.config.input_data.nwp[nwp_key].channel_means
+            )
+            da_channel_stds = channel_dict_to_dataarray(
+                self.config.input_data.nwp[nwp_key].channel_stds
+            )
+
+            da_nwp = (da_nwp - da_channel_means) / da_channel_stds
+
+            data_arrays.append((f"nwp-{provider}", da_nwp))
+
+    # Process satellite data
+    if "sat" in dataset_dict:
+        da_sat = dataset_dict["sat"]
+
+        da_channel_means = channel_dict_to_dataarray(
+            self.config.input_data.satellite.channel_means
+        )
+        da_channel_stds = channel_dict_to_dataarray(
+            self.config.input_data.satellite.channel_stds
         )
 
-    nwp_result = result["nwp-ukv"]
-    assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
-    site_result = result["site"]
-    assert site_result.shape == (197,), f"Unexpected shape for site: {site_result.shape}"
+        da_sat = (da_sat - da_channel_means) / da_channel_stds
+
+        data_arrays.append(("satellite", da_sat))
+
+    # Process site data
+    if "site" in dataset_dict:
+        da_sites = dataset_dict["site"]
+        da_sites = da_sites / da_sites.capacity_kwp
+
+        data_arrays.append(("site", da_sites))
+
+    # Merge all data arrays
+    combined_sample_dataset = self.merge_data_arrays(data_arrays)
+
+    # Add datetime features to the dataset
+    datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
+    datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site_")
+
+    combined_sample_dataset = combined_sample_dataset.assign_coords(
+        {k: ("site__time_utc", v) for k, v in datetime_features.items()}
+    )
+
+    # Optionally add solar position features
+    has_solar_config = (
+        hasattr(self.config.input_data, "solar_position") and
+        self.config.input_data.solar_position is not None
+    )
+
+    if has_solar_config:
+        solar_config = self.config.input_data.solar_position
+
+        solar_datetimes = pd.date_range(
+            t0 + minutes(solar_config.interval_start_minutes),
+            t0 + minutes(solar_config.interval_end_minutes),
+            freq=minutes(solar_config.time_resolution_minutes),
+        )
+
+        sun_position_features = make_sun_position_numpy_sample(
+            datetimes=solar_datetimes,
+            lon=combined_sample_dataset.site__longitude.values,
+            lat=combined_sample_dataset.site__latitude.values,
+        )
+
+        solar_dim_name = "solar_time_utc"
+
+        combined_sample_dataset = combined_sample_dataset.assign_coords(
+            {solar_dim_name: solar_datetimes}
+        )
+
+        for key, values in sun_position_features.items():
+            combined_sample_dataset = combined_sample_dataset.assign_coords(
+                {key: (solar_dim_name, values)}
+            )
+
+    # Fill any nan values
+    return combined_sample_dataset.fillna(0.0)
+
+
+def merge_data_arrays(
+    self,
+    normalised_data_arrays: list[tuple[str, xr.DataArray]],
+) -> xr.Dataset:
+    """Combine a list of DataArrays into a single Dataset with unique naming conventions.
+
+    Args:
+        normalised_data_arrays: List of tuples where each tuple contains:
+            - A string (key name).
+            - An xarray.DataArray.
+
+    Returns:
+        xr.Dataset: A merged Dataset with uniquely named variables, coordinates, and dimensions.
+    """
+    datasets = []
+
+    for key, data_array in normalised_data_arrays:
+        # Ensure all attributes are strings for consistency
+        data_array = data_array.assign_attrs(
+            {attr_key: str(attr_value) for attr_key, attr_value in data_array.attrs.items()}
+        )
+
+        # Convert DataArray to Dataset with the variable name as the key
+        dataset = data_array.to_dataset(name=key)
+
+        # Prepend key name to all dimension and coordinate names for uniqueness
+        dataset = dataset.rename(
+            {dim: f"{key}__{dim}" for dim in dataset.dims if dim not in dataset.coords}
+        )
+        dataset = dataset.rename(
+            {coord: f"{key}__{coord}" for coord in dataset.coords}
+        )
+
+        # Handle concatenation dimension if applicable
+        concat_dim = (
+            f"{key}__target_time_utc"
+            if f"{key}__target_time_utc" in dataset.coords
+            else f"{key}__time_utc"
+        )
+
+        if f"{key}__init_time_utc" in dataset.coords:
+            init_coord = f"{key}__init_time_utc"
+            if dataset[init_coord].ndim == 0:
+                expanded_init_times = [dataset[init_coord].values] * len(dataset[concat_dim])
+                dataset = dataset.assign_coords(
+                    {init_coord: (concat_dim, expanded_init_times)}
+                )
+
+        datasets.append(dataset)
+
+    # Validate all datasets are xarray.Dataset objects
+    for ds in datasets:
+        if not isinstance(ds, xr.Dataset):
+            raise ValueError(f"Object is not an xr.Dataset: {type(ds)}")
+
+    # Merge datasets together
+    combined_dataset = xr.merge(datasets)
+
+    return combined_dataset
 
 
 def test_potentially_coarsen(ds_nwp_ecmwf):
