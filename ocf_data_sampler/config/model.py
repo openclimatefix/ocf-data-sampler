@@ -11,7 +11,6 @@ import xarray as xr
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
 
-
 NWP_PROVIDERS = [
     "ukv",
     "ecmwf",
