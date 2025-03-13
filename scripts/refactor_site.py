@@ -1,16 +1,18 @@
-import xarray as xr
+"""Refactor legacy site data into a more structured format."""
+
 import pandas as pd
+import xarray as xr
+
 
 def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
-    """
-    Converts old legacy site data into a more structured format.
+    """Converts old legacy site data into a more structured format.
 
     This function does three main things:
     1. Renames some columns in the metadata to keep things consistent.
     2. Reshapes site data so that instead of having separate variables for each site,
        we use a `site_id` dimension—makes life easier for analysis.
     3. Adds `capacity_kwp` as a time series so that each site has its capacity info.
-    
+
     Parameters:
         data_ds (xr.Dataset): The dataset containing legacy site data.
         metadata_df (pd.DataFrame): A DataFrame with metadata about the sites.
@@ -18,11 +20,10 @@ def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
     Returns:
         xr.Dataset: Reformatted dataset with `generation_kw` and `capacity_kwp`.
     """
-
     # Step 1: Rename metadata columns to match the new expected format
     if "system_id" in metadata_df.columns:
         metadata_df = metadata_df.rename(columns={"system_id": "site_id"})
-    
+
     # Convert capacity from megawatts to kilowatts if needed
     if "capacity_megawatts" in metadata_df.columns:
         metadata_df["capacity_kwp"] = metadata_df["capacity_megawatts"] * 1000

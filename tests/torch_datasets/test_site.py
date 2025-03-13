@@ -145,7 +145,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
                 dims=["time_utc", "channel", "y", "x"],
                 coords={
                     "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
-                    "channel": list(sites_dataset.config.input_data.nwp["ukv"].channels), 
+                    "channel": list(sites_dataset.config.input_data.nwp["ukv"].channels),
                 },
             ),
         },

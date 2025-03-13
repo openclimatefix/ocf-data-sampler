@@ -8,7 +8,6 @@ from collections.abc import Iterator
 
 import numpy as np
 import xarray as xr
-
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
 
@@ -129,24 +128,26 @@ class SpatialWindowMixin(Base):
 
 
 class NormalisationValues(Base):
-    """Normalisation mean and standard deviation"""
+    """Normalisation mean and standard deviation."""
     mean: float = Field(..., description="Mean value for normalization")
     std: float = Field(..., gt=0, description="Standard deviation (must be positive)")
 
 
 class NormalisationConstantsMixin(Base):
-    """Normalisation constants for multiple channels"""
+    """Normalisation constants for multiple channels."""
     normalisation_constants: dict[str, NormalisationValues]
 
     @property
     def channel_means(self) -> xr.DataArray:
+        """Return the channel means."""
         return xr.DataArray(
             [norm_values.mean for norm_values in self.normalisation_constants.values()],
             coords={"channel": list(self.normalisation_constants.keys())},
         ).astype(np.float32)
-    
+
     @property
     def channel_stds(self) -> xr.DataArray:
+        """Return the channel standard deviations."""
         return xr.DataArray(
             [norm_values.std for norm_values in self.normalisation_constants.values()],
             coords={"channel": list(self.normalisation_constants.keys())},
@@ -170,13 +171,13 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
 
     @model_validator(mode="after")
     def check_all_channel_have_normalisation_constants(self) -> "Satellite":
-        """Check that all the channels have normalisation constants"""
+        """Check that all the channels have normalisation constants."""
         normalisation_channels = set(self.normalisation_constants.keys())
         missing_norm_values = set(self.channels) - set(normalisation_channels)
         if len(missing_norm_values)>0:
             raise ValueError(
                 "Normalsation constants must be provided for all channels. Missing values for "
-                f"channels: {missing_norm_values}"
+                f"channels: {missing_norm_values}",
             )
         return self
 
@@ -212,11 +213,11 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         if v.lower() not in NWP_PROVIDERS:
             raise OSError(f"NWP provider {v} is not in {NWP_PROVIDERS}")
         return v
-    
+
 
     @model_validator(mode="after")
     def check_all_channel_have_normalisation_constants(self) -> "NWP":
-        """Check that all the channels have normalisation constants"""
+        """Check that all the channels have normalisation constants."""
         normalisation_channels = set(self.normalisation_constants.keys())
         non_accum_channels = [c for c in self.channels if c not in self.accum_channels]
         accum_channel_names = [f"diff_{c}" for c in self.accum_channels]
@@ -225,16 +226,16 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         if len(missing_norm_values)>0:
             raise ValueError(
                 "Normalsation constants must be provided for all channels. Missing values for "
-                f"channels: {missing_norm_values}"
+                f"channels: {missing_norm_values}",
             )
-        
+
         missing_norm_values = set(accum_channel_names) - set(normalisation_channels)
         if len(missing_norm_values)>0:
             raise ValueError(
                 "Normalsation constants must be provided for all channels. Accumulated "
                 "channels which will be diffed require normalisation constant names which "
                 "start with the prefix 'diff_'. The following channels were missing: "
-                f"{missing_norm_values}."
+                f"{missing_norm_values}.",
             )
         return self
 

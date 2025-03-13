@@ -49,11 +49,10 @@ def process_and_combine_datasets(
         nwp_numpy_modalities = {}
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
-            provider = config.input_data.nwp[nwp_key].provider
 
             # Standardise and convert to NumpyBatch
             da_nwp = (
-                (da_nwp - config.input_data.nwp[nwp_key].channel_means) 
+                (da_nwp - config.input_data.nwp[nwp_key].channel_means)
                 / config.input_data.nwp[nwp_key].channel_stds
             )
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
@@ -66,7 +65,7 @@ def process_and_combine_datasets(
 
         # Standardise and convert to NumpyBatch
         da_sat = (
-            (da_sat - config.input_data.satellite.channel_means) 
+            (da_sat - config.input_data.satellite.channel_means)
             / config.input_data.satellite.channel_stds
         )
         numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))

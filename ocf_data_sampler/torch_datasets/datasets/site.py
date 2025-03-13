@@ -230,7 +230,7 @@ class SitesDataset(Dataset):
 
                 # Standardise
                 da_nwp = (
-                    (da_nwp - self.config.input_data.nwp[nwp_key].channel_means) 
+                    (da_nwp - self.config.input_data.nwp[nwp_key].channel_means)
                     / self.config.input_data.nwp[nwp_key].channel_stds
                 )
                 data_arrays.append((f"nwp-{provider}", da_nwp))
@@ -240,7 +240,7 @@ class SitesDataset(Dataset):
 
             # Standardise
             da_sat = (
-                (da_sat - self.config.input_data.satellite.channel_means) 
+                (da_sat - self.config.input_data.satellite.channel_means)
                 / self.config.input_data.satellite.channel_stds
             )
             data_arrays.append(("satellite", da_sat))
