@@ -134,7 +134,7 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
         assert key in sample
 
 
-def test_process_and_combine_site_sample_dict(sites_dataset: xr.Dataset) -> None:
+def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     # Specify minimal structure for testing
     raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
     fake_site_values = np.random.rand(197)
@@ -145,7 +145,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset: xr.Dataset) -> None
                 dims=["time_utc", "channel", "y", "x"],
                 coords={
                     "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
-                    "channel": ["dswrf"],  # Single channel
+                    "channel": list(sites_dataset.config.input_data.nwp["ukv"].channels), 
                 },
             ),
         },
