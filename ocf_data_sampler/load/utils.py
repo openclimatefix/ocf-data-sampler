@@ -1,5 +1,6 @@
 """Utility functions for working with xarray objects."""
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -22,8 +23,10 @@ def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -
     # Make sure the coords are in increasing order
     if ds[x_coord][0] > ds[x_coord][-1]:
         ds = ds.isel({x_coord: slice(None, None, -1)})
+        ds[x_coord] = np.ascontiguousarray(ds[x_coord].values)
     if ds[y_coord][0] > ds[y_coord][-1]:
         ds = ds.isel({y_coord: slice(None, None, -1)})
+        ds[y_coord] = np.ascontiguousarray(ds[y_coord].values)
 
     # Check the coords are all increasing now
     if not (ds[x_coord].diff(dim=x_coord) > 0).all():
