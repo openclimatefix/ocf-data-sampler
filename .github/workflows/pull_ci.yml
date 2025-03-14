@@ -2,7 +2,7 @@ name: Branch CI (Python)
 run-name: 'Test PR edit #${{ github.event.number }} "${{ github.event.pull_request.title }}"'
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, edited, reopened]
     paths-ignore: ['README.md']
 
