@@ -1,3 +1,6 @@
+"""This module defines type aliases for numpy and torch data structures used in the project."""
+
+
 from typing import TypeAlias
 
 import numpy as np

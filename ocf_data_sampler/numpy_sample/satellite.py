@@ -1,6 +1,7 @@
 """Convert Satellite to NumpySample."""
 
 import xarray as xr
+
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 

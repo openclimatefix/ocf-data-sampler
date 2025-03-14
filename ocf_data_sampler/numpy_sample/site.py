@@ -1,6 +1,7 @@
 """Convert site to Numpy Sample."""
 
 import xarray as xr
+
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 
