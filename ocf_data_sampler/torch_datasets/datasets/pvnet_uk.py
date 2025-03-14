@@ -26,7 +26,10 @@ from ocf_data_sampler.select import (
     slice_datasets_by_time,
 )
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
-from ocf_data_sampler.torch_datasets.utils import channel_dict_to_dataarray, find_valid_time_periods
+from ocf_data_sampler.torch_datasets.utils import (
+    channel_dict_to_dataarray,
+    find_valid_time_periods,
+)
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
     merge_dicts,
@@ -70,8 +73,12 @@ def process_and_combine_datasets(
         da_sat = dataset_dict["sat"]
 
         # Standardise and convert to NumpyBatch
-        da_channel_means = channel_dict_to_dataarray(config.input_data.satellite.channel_means)
-        da_channel_stds = channel_dict_to_dataarray(config.input_data.satellite.channel_stds)
+        da_channel_means = channel_dict_to_dataarray(
+            config.input_data.satellite.channel_means
+        )
+        da_channel_stds = channel_dict_to_dataarray(
+            config.input_data.satellite.channel_stds
+        )
 
         da_sat = (da_sat - da_channel_means) / da_channel_stds
 
@@ -86,7 +93,8 @@ def process_and_combine_datasets(
         numpy_modalities.append(
             convert_gsp_to_numpy_sample(
                 da_gsp,
-                t0_idx=-gsp_config.interval_start_minutes / gsp_config.time_resolution_minutes,
+                t0_idx=-gsp_config.interval_start_minutes
+                / gsp_config.time_resolution_minutes,
             ),
         )
 
@@ -101,8 +109,8 @@ def process_and_combine_datasets(
 
     # Only add solar position if explicitly configured
     has_solar_config = (
-        hasattr(config.input_data, "solar_position") and
-        config.input_data.solar_position is not None
+        hasattr(config.input_data, "solar_position")
+        and config.input_data.solar_position is not None
     )
 
     if has_solar_config:
@@ -351,7 +359,9 @@ class PVNetUKConcurrentDataset(Dataset):
 
         # Prepare sample for each GSP
         for location in self.locations:
-            gsp_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
+            gsp_sample_dict = slice_datasets_by_space(
+                sample_dict, location, self.config
+            )
             gsp_numpy_sample = process_and_combine_datasets(
                 gsp_sample_dict,
                 self.config,

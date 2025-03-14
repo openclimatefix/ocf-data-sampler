@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 
 
-def fill_time_periods(time_periods: pd.DataFrame, freq: pd.Timedelta) -> pd.DatetimeIndex:
+def fill_time_periods(
+    time_periods: pd.DataFrame, freq: pd.Timedelta
+) -> pd.DatetimeIndex:
     """Create range of timestamps between given start and end times.
 
     Each of the continuous periods (i.e. each row of the input DataFrame) is filled with the
@@ -19,5 +21,5 @@ def fill_time_periods(time_periods: pd.DataFrame, freq: pd.Timedelta) -> pd.Date
     date_ranges = [
         pd.date_range(start_dt, end_dt, freq=freq)
         for start_dt, end_dt in zip(start_dts, end_dts, strict=False)
-        ]
+    ]
     return pd.DatetimeIndex(np.concatenate(date_ranges))

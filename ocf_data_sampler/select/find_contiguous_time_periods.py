@@ -208,11 +208,15 @@ def intersection_of_multiple_dataframes_of_periods(
         raise ValueError("No time periods to intersect")
     intersection = time_periods[0]
     for time_period in time_periods[1:]:
-        intersection = intersection_of_2_dataframes_of_periods(intersection, time_period)
+        intersection = intersection_of_2_dataframes_of_periods(
+            intersection, time_period
+        )
     return intersection
 
 
-def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
+def intersection_of_2_dataframes_of_periods(
+    a: pd.DataFrame, b: pd.DataFrame
+) -> pd.DataFrame:
     """Find the intersection of two pd.DataFrames of time periods.
 
     Each row of each pd.DataFrame represents a single time period.  Each pd.DataFrame has
@@ -255,7 +259,9 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
         # b:      |--|            |---|
         # These aren't allowed if we use < and >.
 
-        overlapping_periods = b[(a_period.start_dt < b.end_dt) & (a_period.end_dt > b.start_dt)]
+        overlapping_periods = b[
+            (a_period.start_dt < b.end_dt) & (a_period.end_dt > b.start_dt)
+        ]
 
         # There are two ways in which two periods may *not* overlap:
         # a: |---|        or        |---|

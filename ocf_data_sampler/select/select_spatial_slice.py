@@ -80,7 +80,9 @@ def _get_idx_of_pixel_closest_to_poi(
     xr_coords, x_dim, y_dim = spatial_coord_type(da)
 
     if xr_coords not in ["osgb", "lon_lat"]:
-        raise NotImplementedError(f"Only 'osgb' and 'lon_lat' are supported - not '{xr_coords}'")
+        raise NotImplementedError(
+            f"Only 'osgb' and 'lon_lat' are supported - not '{xr_coords}'"
+        )
 
     # Convert location coords to match xarray data
     x, y = convert_coords_to_match_xarray(
@@ -252,7 +254,9 @@ def _select_spatial_slice_pixels(
         allow_partial_slice: Whether to allow a partially filled window
     """
     if center_idx.coordinate_system != "idx":
-        raise ValueError(f"Expected center_idx to be in 'idx' coordinates, got '{center_idx}'")
+        raise ValueError(
+            f"Expected center_idx to be in 'idx' coordinates, got '{center_idx}'"
+        )
     # TODO: It shouldn't take much effort to allow height and width to be odd
     if (width_pixels % 2) != 0:
         raise ValueError("Width must be an even number")
@@ -275,12 +279,16 @@ def _select_spatial_slice_pixels(
     bottom_pad_required = bottom_idx < 0
     top_pad_required = top_idx > data_height_pixels
 
-    pad_required = left_pad_required | right_pad_required | bottom_pad_required | top_pad_required
+    pad_required = (
+        left_pad_required | right_pad_required | bottom_pad_required | top_pad_required
+    )
 
     if pad_required:
         if allow_partial_slice:
             left_pad_pixels = (-left_idx) if left_pad_required else 0
-            right_pad_pixels = (right_idx - data_width_pixels) if right_pad_required else 0
+            right_pad_pixels = (
+                (right_idx - data_width_pixels) if right_pad_required else 0
+            )
 
             bottom_pad_pixels = (-bottom_idx) if bottom_pad_required else 0
             top_pad_pixels = (top_idx - data_height_pixels) if top_pad_required else 0
@@ -356,7 +364,9 @@ def select_spatial_slice_pixels(
     xr_coords, x_dim, y_dim = spatial_coord_type(da)
 
     if xr_coords == "geostationary":
-        center_idx: Location = _get_idx_of_pixel_closest_to_poi_geostationary(da, location)
+        center_idx: Location = _get_idx_of_pixel_closest_to_poi_geostationary(
+            da, location
+        )
     else:
         center_idx: Location = _get_idx_of_pixel_closest_to_poi(da, location)
 

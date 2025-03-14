@@ -69,7 +69,9 @@ def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
     )
 
     check_time_unique_increasing(ds.time_utc)
-    ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
+    ds = make_spatial_coords_increasing(
+        ds, x_coord="x_geostationary", y_coord="y_geostationary"
+    )
     ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
 
     # TODO: should we control the dtype of the DataArray?

@@ -8,7 +8,8 @@ allowed_coordinate_systems = ["osgb", "lon_lat", "geostationary", "idx"]
 class Location(BaseModel):
     """Represent a spatial location."""
 
-    coordinate_system: str = Field(...,
+    coordinate_system: str = Field(
+        ...,
         description="Coordinate system for the location must be lon_lat, osgb, or geostationary",
     )
 
