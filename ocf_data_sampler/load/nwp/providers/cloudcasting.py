@@ -1,4 +1,4 @@
-"""UKV provider loaders."""
+"""Cloudcasting provider loader."""
 
 from pathlib import Path
 
