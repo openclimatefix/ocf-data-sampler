@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import pvlib
+from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 def calculate_azimuth_and_elevation(
     datetimes: pd.DatetimeIndex,
@@ -34,7 +35,7 @@ def make_sun_position_numpy_sample(
     datetimes: pd.DatetimeIndex,
     lon: float,
     lat: float,
-) -> dict:
+) -> NumpySample:
     """Creates NumpySample with standardized solar coordinates.
 
     Args:
