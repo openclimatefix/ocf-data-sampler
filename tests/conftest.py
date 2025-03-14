@@ -285,7 +285,7 @@ def nwp_cloudcasting_zarr_path(session_tmp_path):
             "variable": -1,
             "x_geostationary": 50,
             "y_geostationary": 50,
-        }
+        },
     ).to_zarr(zarr_path)
     yield zarr_path
 

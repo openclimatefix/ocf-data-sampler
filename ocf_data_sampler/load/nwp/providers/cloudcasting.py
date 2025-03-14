@@ -1,14 +1,14 @@
-"""UKV provider loaders"""
-
-import xarray as xr
+"""UKV provider loaders."""
 
 from pathlib import Path
+
+import xarray as xr
 
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
+    get_xr_data_array_from_xr_dataset,
     make_spatial_coords_increasing,
-    get_xr_data_array_from_xr_dataset
 )
 
 
@@ -29,7 +29,7 @@ def open_cloudcasting(zarr_path: Path | str | list[Path] | list[str]) -> xr.Data
         {
             "init_time": "init_time_utc",
             "variable": "channel",
-        }
+        },
     )
 
     # Check the timestamps are unique and increasing
