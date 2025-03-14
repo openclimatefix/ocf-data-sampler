@@ -1,4 +1,4 @@
-name: Branch CI (Python)
+name: Pull CI (Python)
 run-name: 'Test PR edit #${{ github.event.number }} "${{ github.event.pull_request.title }}"'
 
 on:
