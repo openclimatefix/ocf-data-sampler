@@ -15,7 +15,7 @@ from ocf_data_sampler.load.utils import (
 def open_cloudcasting(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
     """Opens the satellite predictions from cloudcasting.
 
-    Cloudcasting is a OCF forecast product. We forecast future satellite images from recent 
+    Cloudcasting is a OCF forecast product. We forecast future satellite images from recent
     satellite images. More information can be found in the references below.
 
     Args:
