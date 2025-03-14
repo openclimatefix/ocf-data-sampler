@@ -23,6 +23,8 @@ def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -
     # Make sure the coords are in increasing order
     if ds[x_coord][0] > ds[x_coord][-1]:
         ds = ds.isel({x_coord: slice(None, None, -1)})
+        # Below we the coord values so we don't have numpy array with negative strides
+        # Numpy arrays with negative strides cannot be converted to torch Tensor
         ds[x_coord] = np.ascontiguousarray(ds[x_coord].values)
     if ds[y_coord][0] > ds[y_coord][-1]:
         ds = ds.isel({y_coord: slice(None, None, -1)})
