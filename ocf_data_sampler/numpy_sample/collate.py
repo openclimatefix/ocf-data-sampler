@@ -2,8 +2,10 @@
 
 import numpy as np
 
+from ocf_data_sampler.numpy_sample.common_types import NumpyBatch
 
-def stack_np_samples_into_batch(dict_list: list[dict]) -> dict:
+
+def stack_np_samples_into_batch(dict_list: list[dict]) -> NumpyBatch:
     """Stacks list of dict samples into a dict where all samples are joined along a new axis.
 
     Args:

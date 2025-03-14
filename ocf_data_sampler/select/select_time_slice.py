@@ -55,7 +55,10 @@ def select_time_slice_nwp(
     if accum_channels is None:
         accum_channels = []
 
-    if dropout_timedeltas is not None:
+    if dropout_timedeltas is None:
+        dropout_timedeltas = []
+
+    if len(dropout_timedeltas)>0:
         if not all(t < pd.Timedelta(0) for t in dropout_timedeltas):
             raise ValueError("dropout timedeltas must be negative")
         if len(dropout_timedeltas) < 1:
@@ -64,7 +67,7 @@ def select_time_slice_nwp(
     if not (0 <= dropout_frac <= 1):
         raise ValueError("dropout_frac must be between 0 and 1")
 
-    consider_dropout = (dropout_timedeltas is not None) and dropout_frac > 0
+    consider_dropout = len(dropout_timedeltas) > 0 and dropout_frac > 0
 
     # The accumatated and non-accumulated channels
     accum_channels = np.intersect1d(da.channel.values, accum_channels)

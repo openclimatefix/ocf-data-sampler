@@ -2,6 +2,8 @@
 
 import xarray as xr
 
+from ocf_data_sampler.numpy_sample.common_types import NumpySample
+
 
 class SiteSampleKey:
     """Keys for the site sample dictionary."""
@@ -17,7 +19,7 @@ class SiteSampleKey:
     time_cos = "site_time_cos"
 
 
-def convert_site_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> dict:
+def convert_site_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> NumpySample:
     """Convert from Xarray to NumpySample.
 
     Args:
