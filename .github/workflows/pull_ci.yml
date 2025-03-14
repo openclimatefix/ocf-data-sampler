@@ -2,7 +2,7 @@ name: Branch CI (Python)
 run-name: 'Test PR edit #${{ github.event.number }} "${{ github.event.pull_request.title }}"'
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, edited, reopened]
     paths-ignore: ['README.md']
 
@@ -14,5 +14,5 @@ jobs:
       enable_linting: true
       enable_typechecking: false
       containerfile: 'None'
-      tests_folder: "tests"
+      tests_folder: 'tests'
       tests_matrix: true
