@@ -7,6 +7,16 @@ on:
     paths-ignore: ['README.md']
 
 jobs:
+
+  echo:
+    runs-on: ubuntu-latest
+    env:
+      REPO_NAME: ${{ github.event.pull_request.head.repo.name }}
+      REPOSITORY_NAME: ${{ github.repository }}
+    steps:
+      - name: Echo variables
+        run: echo "$REPO_NAME" "$REPOSITORY_NAME"
+
   pull-ci:
     uses: openclimatefix/.github/.github/workflows/branch_ci.yml@main
     if: ${{ github.event.pull_request.head.repo.name != github.repository }}
