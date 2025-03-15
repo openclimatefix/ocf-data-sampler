@@ -31,6 +31,6 @@ def open_gfs(zarr_path: str | list[str]) -> xr.DataArray:
     check_time_unique_increasing(nwp.init_time_utc)
     nwp = make_spatial_coords_increasing(nwp, x_coord="longitude", y_coord="latitude")
 
-    nwp = nwp.transpose("init_time_utc", "step", "channel", "latitude", "longitude")
+    nwp = nwp.transpose("init_time_utc", "step", "channel", "longitude", "latitude")
 
     return nwp
