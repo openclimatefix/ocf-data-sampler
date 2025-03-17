@@ -41,6 +41,6 @@ def open_icon_eu(zarr_path: str) -> xr.Dataset:
     nwp = nwp.isel(step=slice(0, 78))
     nwp = remove_isobaric_lelvels_from_coords(nwp)
     nwp = nwp.to_array().rename({"variable": "channel"})
-    nwp = nwp.transpose("init_time_utc", "step", "channel", "latitude", "longitude")
+    nwp = nwp.transpose("init_time_utc", "step", "channel", "longitude", "latitude")
     nwp = make_spatial_coords_increasing(nwp, x_coord="longitude", y_coord="latitude")
     return nwp
