@@ -9,7 +9,6 @@ from torch.utils.data import Dataset
 from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-from ocf_data_sampler.constants import NWP_MEANS, NWP_STDS, RSS_MEAN, RSS_STD
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.numpy_sample import (
     convert_gsp_to_numpy_sample,
@@ -27,14 +26,10 @@ from ocf_data_sampler.select import (
     slice_datasets_by_time,
 )
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
+from ocf_data_sampler.torch_datasets.utils import channel_dict_to_dataarray, find_valid_time_periods
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
     merge_dicts,
-)
-from ocf_data_sampler.torch_datasets.utils.valid_time_periods import find_valid_time_periods
-from ocf_data_sampler.torch_datasets.utils.validate_channels import (
-    validate_nwp_channels,
-    validate_satellite_channels,
 )
 from ocf_data_sampler.utils import minutes
 
@@ -54,10 +49,18 @@ def process_and_combine_datasets(
         nwp_numpy_modalities = {}
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
-            provider = config.input_data.nwp[nwp_key].provider
 
             # Standardise and convert to NumpyBatch
-            da_nwp = (da_nwp - NWP_MEANS[provider]) / NWP_STDS[provider]
+
+            da_channel_means = channel_dict_to_dataarray(
+                config.input_data.nwp[nwp_key].channel_means,
+            )
+            da_channel_stds = channel_dict_to_dataarray(
+                config.input_data.nwp[nwp_key].channel_stds,
+            )
+
+            da_nwp = (da_nwp - da_channel_means) / da_channel_stds
+
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
         # Combine the NWPs into NumpyBatch
@@ -67,7 +70,11 @@ def process_and_combine_datasets(
         da_sat = dataset_dict["sat"]
 
         # Standardise and convert to NumpyBatch
-        da_sat = (da_sat - RSS_MEAN) / RSS_STD
+        da_channel_means = channel_dict_to_dataarray(config.input_data.satellite.channel_means)
+        da_channel_stds = channel_dict_to_dataarray(config.input_data.satellite.channel_stds)
+
+        da_sat = (da_sat - da_channel_means) / da_channel_stds
+
         numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
     if "gsp" in dataset_dict:
@@ -194,8 +201,6 @@ class PVNetUKRegionalDataset(Dataset):
         """
         # config = load_yaml_configuration(config_filename)
         config: Configuration = load_yaml_configuration(config_filename)
-        validate_nwp_channels(config)
-        validate_satellite_channels(config)
 
         datasets_dict = get_dataset_dict(config.input_data)
 
@@ -304,10 +309,6 @@ class PVNetUKConcurrentDataset(Dataset):
             gsp_ids: List of all GSP IDs included in each sample. Defaults to all
         """
         config = load_yaml_configuration(config_filename)
-
-        # Validate channels for NWP and satellite data
-        validate_nwp_channels(config)
-        validate_satellite_channels(config)
 
         datasets_dict = get_dataset_dict(config.input_data)
 

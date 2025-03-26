@@ -1,15 +1,15 @@
-name: Branch CI (Python)
-run-name: 'Test branch commit "${{ github.event.head_commit.message }}"'
+name: Pull CI (Python)
+run-name: 'Test PR edit #${{ github.event.number }} "${{ github.event.pull_request.title }}"'
 
-on:  
-  push:
-    branches-ignore: [ "main" ]
+on:
+  pull_request:
     paths-ignore: ['README.md']
 
 jobs:
-  branch-ci:
+
+  pull-ci:
     uses: openclimatefix/.github/.github/workflows/branch_ci.yml@main
-    secrets: inherit
+    if: ${{ github.event.pull_request.head.repo.fork }}
     with:
       enable_linting: true
       enable_typechecking: false

@@ -20,6 +20,7 @@ def open_zarr_paths(zarr_path: str | list[str], time_dim: str = "init_time") -> 
             concat_dim=time_dim,
             combine="nested",
             chunks="auto",
+            decode_timedelta=True,
         ).sortby(time_dim)
     else:
         ds = xr.open_dataset(
@@ -28,5 +29,6 @@ def open_zarr_paths(zarr_path: str | list[str], time_dim: str = "init_time") -> 
             consolidated=True,
             mode="r",
             chunks="auto",
+            decode_timedelta=True,
         )
     return ds
