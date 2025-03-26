@@ -9,7 +9,7 @@ from ocf_data_sampler.load.nwp.providers.icon import open_icon_eu
 from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
 
 
-def open_nwp(zarr_path: str | list[str], provider: str) -> xr.DataArray:
+def open_nwp(zarr_path: str | list[str], provider: str, ensemble_member: int) -> xr.DataArray:
     """Opens NWP zarr.
 
     Args:
