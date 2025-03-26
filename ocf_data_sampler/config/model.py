@@ -204,6 +204,8 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
 
     accum_channels: list[str] = Field([], description="the nwp channels which need to be diffed")
 
+    nwp_ensemble_member: int = Field(None, description="If using an ensemble, number of the member to use")
+
     max_staleness_minutes: int | None = Field(
         None,
         description="Sets a limit on how stale an NWP init time is allowed to be whilst still being"
