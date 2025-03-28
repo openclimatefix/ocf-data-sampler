@@ -205,6 +205,8 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
     accum_channels: list[str] = Field([], description="the nwp channels which need to be diffed")
 
     ensemble_member: int = Field(None, description="If using an ensemble, number of the member to use")
+    
+    means_path: Optional[str] = Field(None, description="Zarr path to deterministic data that supplements ensemble data if necessary")
 
     max_staleness_minutes: int | None = Field(
         None,
