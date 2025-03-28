@@ -34,4 +34,7 @@ def open_nwp(zarr_path: str | list[str], provider: str, ensemble_member: int) ->
     else:
         raise ValueError(f"Unknown provider: {provider}")
 
+    if ensemble_member:
+        return _open_nwp(zarr_path, ensemble_member=ensemble_member)
+        
     return _open_nwp(zarr_path)
