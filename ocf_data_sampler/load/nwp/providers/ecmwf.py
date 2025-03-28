@@ -7,10 +7,8 @@ from ocf_data_sampler.load.utils import (
     get_xr_data_array_from_xr_dataset
 )
 
-MEANS_PATH = "PLACEHOLDER"
 
-
-def open_ifs(zarr_path: str | list[str], ensemble_member: int | None) -> xr.DataArray:
+def open_ifs(zarr_path: str | list[str], ensemble_member: int | None, means_path: str = None) -> xr.DataArray:
     """
     Opens the ECMWF IFS NWP data
 
@@ -31,7 +29,7 @@ def open_ifs(zarr_path: str | list[str], ensemble_member: int | None) -> xr.Data
     if ensemble_member:
         ds = ds.sel(ensemble_member = ensemble_member)
         
-        means_ds = open_zarr_paths(MEANS_PATH)
+        means_ds = open_zarr_paths(means_path)
         means_ds = rename_to_legacy_variables(means_ds)
         means_ds = means_ds.to_dataarray(dim='variable')
         means_ds = means_ds.sel(
