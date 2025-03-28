@@ -9,7 +9,10 @@ from ocf_data_sampler.load.nwp.providers.icon import open_icon_eu
 from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
 
 
-def open_nwp(zarr_path: str | list[str], provider: str, ensemble_member: int) -> xr.DataArray:
+def open_nwp(zarr_path: str | list[str], 
+             provider: str, 
+             ensemble_member: int = None,
+             means_path: str = None) -> xr.DataArray:
     """Opens NWP zarr.
 
     Args:
@@ -35,6 +38,6 @@ def open_nwp(zarr_path: str | list[str], provider: str, ensemble_member: int) ->
         raise ValueError(f"Unknown provider: {provider}")
 
     if ensemble_member:
-        return _open_nwp(zarr_path, ensemble_member=ensemble_member)
+        return _open_nwp(zarr_path, ensemble_member=ensemble_member, means_path=means_path)
         
     return _open_nwp(zarr_path)
