@@ -1,4 +1,4 @@
-"""Functions for simulating dropout in time series data.
+"""Function for simulating dropout in time series data.
 
 This is used for the following types of data: GSP, Satellite and Site
 This is not used for NWP
@@ -8,20 +8,24 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-
-def draw_dropout_time(
+def simulate_dropout(
+    ds: xr.DataArray,
     t0: pd.Timestamp,
     dropout_timedeltas: list[pd.Timedelta],
     dropout_frac: float,
-) -> pd.Timestamp:
-    """Randomly pick a dropout time from a list of timedeltas.
+) -> xr.DataArray:
+    """Function that draws a dropout time and applies dropout.
 
     Args:
-        t0: The forecast init-time
-        dropout_timedeltas: List of timedeltas relative to t0 to pick from
-        dropout_frac: Probability that dropout will be applied.
-            This should be between 0 and 1 inclusive
+        ds: Xarray DataArray with a 'time_utc' coordinate.
+        t0: Forecast initialization time.
+        dropout_timedeltas: List of negative timedeltas relative to t0.
+        dropout_frac: Probability that dropout will be applied (between 0 and 1).
+
+    Returns:
+        A new DataArray with values after the chosen dropout time set to NaN.
     """
+    # Validate inputs
     if dropout_frac > 0 and len(dropout_timedeltas) == 0:
         raise ValueError("To apply dropout, dropout_timedeltas must be provided")
 
@@ -32,26 +36,11 @@ def draw_dropout_time(
     if not (0 <= dropout_frac <= 1):
         raise ValueError("dropout_frac must be between 0 and 1 inclusive")
 
+    # Determine dropout time 
     if (len(dropout_timedeltas) == 0) or (np.random.uniform() >= dropout_frac):
         dropout_time = None
     else:
         dropout_time = t0 + np.random.choice(dropout_timedeltas)
 
-    return dropout_time
-
-
-def apply_dropout_time(
-    ds: xr.DataArray,
-    dropout_time: pd.Timestamp | None,
-) -> xr.DataArray:
-    """Apply dropout time to the data.
-
-    Args:
-        ds: Xarray DataArray with 'time_utc' coordinate
-        dropout_time: Time after which data is set to NaN
-    """
-    if dropout_time is None:
-        return ds
-    else:
-        # This replaces the times after the dropout with NaNs
-        return ds.where(ds.time_utc <= dropout_time)
+    # Apply dropout time
+    return ds.where(ds.time_utc <= dropout_time)
