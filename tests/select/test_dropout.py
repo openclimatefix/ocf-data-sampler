@@ -30,7 +30,7 @@ def test_simulate_dropout_draw_time():
     provided negative timedeltas.
     """
     t0 = pd.Timestamp("2021-01-01 04:00:00")
-    
+
     dropout_timedeltas = pd.to_timedelta([-30, -60], unit="min")
     # Create a dataset spanning from t0 - 1h to t0 + 30min.
     times = pd.date_range(t0 - pd.Timedelta("1h"), t0 + pd.Timedelta("30min"), freq="10min")

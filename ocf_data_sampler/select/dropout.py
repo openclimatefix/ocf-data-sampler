@@ -14,8 +14,8 @@ def simulate_dropout(
     dropout_timedeltas: list[pd.Timedelta],
     dropout_frac: float,
 ) -> xr.DataArray:
-    """
-    Combined function that draws a dropout time and applies dropout.
+    """Combined function that draws a dropout time and applies dropout.
+    
     This function preserves the functionalities of the original two functions,
     `draw_dropout_time` and `apply_dropout_time`.
 
