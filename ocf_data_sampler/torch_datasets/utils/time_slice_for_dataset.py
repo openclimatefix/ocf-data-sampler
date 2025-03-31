@@ -51,7 +51,7 @@ def slice_datasets_by_time(
             interval_end=minutes(sat_config.interval_end_minutes),
         )
 
-        # Apply dropout using the combined function
+        # Apply dropout using the simulate_dropout function
         sliced_datasets_dict["sat"] = simulate_dropout(
             sliced_datasets_dict["sat"],
             t0,
@@ -70,7 +70,7 @@ def slice_datasets_by_time(
             interval_end=minutes(0),
         )
 
-        # Apply dropout on the past GSP data using the combined function
+        # Apply dropout on the past GSP data using the simulate_dropout function
         da_gsp_past = simulate_dropout(
             da_gsp_past,
             t0,
@@ -99,7 +99,7 @@ def slice_datasets_by_time(
             interval_end=minutes(site_config.interval_end_minutes),
         )
 
-        # Apply dropout using the combined function
+        # Apply dropout using the simulate_dropout function
         sliced_datasets_dict["site"] = simulate_dropout(
             sliced_datasets_dict["site"],
             t0,
