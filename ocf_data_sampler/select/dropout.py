@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+
 def simulate_dropout(
     ds: xr.DataArray,
     t0: pd.Timestamp,

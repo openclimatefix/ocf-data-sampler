@@ -5,6 +5,7 @@ import xarray as xr
 
 from ocf_data_sampler.select.dropout import simulate_dropout
 
+
 @pytest.fixture(scope="module")
 def da_sample():
     """Create dummy data which looks like satellite data"""
