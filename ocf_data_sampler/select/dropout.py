@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+
 def simulate_dropout(
     ds: xr.DataArray,
     t0: pd.Timestamp,
@@ -15,7 +16,7 @@ def simulate_dropout(
     dropout_frac: float,
 ) -> xr.DataArray:
     """Combined function that draws a dropout time and applies dropout.
-    
+
     This function preserves the functionalities of the original two functions,
     `draw_dropout_time` and `apply_dropout_time`.
 
