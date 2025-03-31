@@ -36,11 +36,10 @@ def simulate_dropout(
     if not (0 <= dropout_frac <= 1):
         raise ValueError("dropout_frac must be between 0 and 1 inclusive")
 
-    # Determine dropout time 
+    # Determine dropout time
     if (len(dropout_timedeltas) == 0) or (np.random.uniform() >= dropout_frac):
-        dropout_time = None
-    else:
-        dropout_time = t0 + np.random.choice(dropout_timedeltas)
+        return ds.copy()  # No dropout case
 
-    # Apply dropout time
+    # Apply dropout
+    dropout_time = t0 + np.random.choice(dropout_timedeltas)
     return ds.where(ds.time_utc <= dropout_time)
