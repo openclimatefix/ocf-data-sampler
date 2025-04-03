@@ -52,11 +52,11 @@ def test_draw_dropout_time_none():
     # Dropout fraction is 0
     dropout_timedeltas = [pd.Timedelta(-30, "min")]
     dropout_time = draw_dropout_time(t0, dropout_timedeltas=dropout_timedeltas, dropout_frac=0)
-    assert dropout_time == t0
+    assert dropout_time == None
 
     # No dropout timedeltas and dropout fraction is 0
     dropout_time = draw_dropout_time(t0, dropout_timedeltas=[], dropout_frac=0)
-    assert dropout_time == t0
+    assert dropout_time == None
 
 
 @pytest.mark.parametrize("t0_str", ["12:00", "12:30", "13:00"])
