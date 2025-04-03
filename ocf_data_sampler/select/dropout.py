@@ -33,7 +33,7 @@ def draw_dropout_time(
         raise ValueError("dropout_frac must be between 0 and 1 inclusive")
 
     if (len(dropout_timedeltas) == 0) or (np.random.uniform() >= dropout_frac):
-        dropout_time = t0
+        dropout_time = None
     else:
         dropout_time = t0 + np.random.choice(dropout_timedeltas)
 
@@ -42,7 +42,7 @@ def draw_dropout_time(
 
 def apply_dropout_time(
     ds: xr.DataArray,
-    dropout_time: pd.Timestamp,
+    dropout_time: pd.Timestamp | None,
 ) -> xr.DataArray:
     """Apply dropout time to the data.
 
@@ -50,5 +50,8 @@ def apply_dropout_time(
         ds: Xarray DataArray with 'time_utc' coordinate
         dropout_time: Time after which data is set to NaN
     """
-    # This replaces the times after the dropout with NaNs
-    return ds.where(ds.time_utc <= dropout_time)
+    if dropout_time is None:
+        return ds
+    else:
+        # This replaces the times after the dropout with NaNs
+        return ds.where(ds.time_utc <= dropout_time)
