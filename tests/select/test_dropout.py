@@ -12,7 +12,7 @@ def da_sample():
     datetimes = pd.date_range("2024-01-01 12:00", "2024-01-01 13:00", freq="5min")
     da = xr.DataArray(
         np.random.normal(size=(len(datetimes),)),
-        coords={"time_utc": datetimes}
+        coords={"time_utc": datetimes},
     )
     return da
 
@@ -54,7 +54,7 @@ def test_simulate_dropout_draw_time_none(t0):
         (pd.Timedelta(0), True),  # Dropout exactly at t0
         (pd.Timedelta("-5min"), True),
         (pd.Timedelta("-10min"), True),
-    ]
+    ],
 )
 def test_simulate_dropout_apply(t0, delta, expect_dropout):
     """Test both dropout and no-dropout scenarios."""

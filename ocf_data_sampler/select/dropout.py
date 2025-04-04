@@ -44,3 +44,4 @@ def simulate_dropout(
     # Apply dropout
     dropout_time = t0 + np.random.choice(dropout_timedeltas)
     return ds.where(ds.time_utc <= dropout_time)
+
