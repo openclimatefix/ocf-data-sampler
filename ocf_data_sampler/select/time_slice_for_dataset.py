@@ -4,7 +4,7 @@ import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.select.dropout import apply_dropout_time, draw_dropout_time
+from ocf_data_sampler.select.dropout import simulate_dropout
 from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
 from ocf_data_sampler.utils import minutes
 
@@ -51,17 +51,12 @@ def slice_datasets_by_time(
             interval_end=minutes(sat_config.interval_end_minutes),
         )
 
-        # Randomly sample dropout
-        sat_dropout_time = draw_dropout_time(
+        # Apply dropout using the combined function
+        sliced_datasets_dict["sat"] = simulate_dropout(
+            sliced_datasets_dict["sat"],
             t0,
             dropout_timedeltas=minutes(sat_config.dropout_timedeltas_minutes),
             dropout_frac=sat_config.dropout_fraction,
-        )
-
-        # Apply the dropout
-        sliced_datasets_dict["sat"] = apply_dropout_time(
-            sliced_datasets_dict["sat"],
-            sat_dropout_time,
         )
 
     if "gsp" in datasets_dict:
@@ -75,16 +70,12 @@ def slice_datasets_by_time(
             interval_end=minutes(0),
         )
 
-        # Dropout on the past GSP, but not the future GSP
-        gsp_dropout_time = draw_dropout_time(
+        # Apply dropout on the past GSP data using the combined function
+        da_gsp_past = simulate_dropout(
+            da_gsp_past,
             t0,
             dropout_timedeltas=minutes(gsp_config.dropout_timedeltas_minutes),
             dropout_frac=gsp_config.dropout_fraction,
-        )
-
-        da_gsp_past = apply_dropout_time(
-            da_gsp_past,
-            gsp_dropout_time,
         )
 
         da_gsp_future = select_time_slice(
@@ -108,17 +99,12 @@ def slice_datasets_by_time(
             interval_end=minutes(site_config.interval_end_minutes),
         )
 
-        # Randomly sample dropout
-        site_dropout_time = draw_dropout_time(
+        # Apply dropout using the combined function
+        sliced_datasets_dict["site"] = simulate_dropout(
+            sliced_datasets_dict["site"],
             t0,
             dropout_timedeltas=minutes(site_config.dropout_timedeltas_minutes),
             dropout_frac=site_config.dropout_fraction,
-        )
-
-        # Apply the dropout
-        sliced_datasets_dict["site"] = apply_dropout_time(
-            sliced_datasets_dict["site"],
-            site_dropout_time,
         )
 
     return sliced_datasets_dict
