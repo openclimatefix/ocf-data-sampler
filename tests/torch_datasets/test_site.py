@@ -67,7 +67,7 @@ def test_site(tmp_path, site_config_filename):
 
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
 
-    sample.to_netcdf(f"{tmp_path}/sample.nc")
+    sample.to_netcdf(f"{tmp_path}/sample.nc", mode="w", engine="h5netcdf")
     sample = xr.open_dataset(f"{tmp_path}/sample.nc")
 
     # Check dimensions
@@ -286,8 +286,8 @@ def test_convert_netcdf_to_numpy_solar_handling(tmp_path, site_config_filename):
     sample_with_solar = dataset_with_solar[0]
 
     # Save to netCDF and load back
-    netcdf_path = tmp_path / "sample_with_solar.nc"
-    sample_with_solar.to_netcdf(netcdf_path)
+    netcdf_path = f"{tmp_path}/sample_with_solar.nc"
+    sample_with_solar.to_netcdf(netcdf_path, mode="w", engine="h5netcdf")
     loaded_sample = xr.open_dataset(netcdf_path)
 
     # Verify solar position data exists in sample

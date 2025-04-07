@@ -4,11 +4,10 @@ Site class testing - SiteSample
 
 import numpy as np
 import pandas as pd
-import pytest
 import xarray as xr
-from xarray import Dataset
+import pytest
 
-from ocf_data_sampler.sample.site import SiteSample
+from ocf_data_sampler.torch_datasets.sample.site import SiteSample
 
 
 @pytest.fixture
@@ -25,7 +24,7 @@ def sample_data():
     steps = [(t - init_time) for t in target_times]
 
     # Create the sample dataset
-    return Dataset(
+    return xr.Dataset(
         data_vars={
             "nwp-ukv": (
                 [
@@ -82,7 +81,7 @@ def test_site_sample_with_data(sample_data):
     sample = SiteSample(sample_data)
 
     # Assert data structure
-    assert isinstance(sample._data, Dataset)
+    assert isinstance(sample._data, xr.Dataset)
 
     # Assert dimensions / shapes
     expected_dims = {
@@ -115,7 +114,7 @@ def test_save_load(tmp_path, sample_data):
     # Load and verify
     loaded = SiteSample.load(filepath)
     assert isinstance(loaded, SiteSample)
-    assert isinstance(loaded._data, Dataset)
+    assert isinstance(loaded._data, xr.Dataset)
 
     # Compare original / loaded data
     xr.testing.assert_identical(sample._data, loaded._data)
