@@ -17,43 +17,44 @@ from ocf_data_sampler.select.location import Location
 logger = logging.getLogger(__name__)
 
 
-class CoordinateConverter:
-    """Handles coordinate conversions between different systems."""
-
-    def __init__(self, from_coords: str, da: xr.DataArray) -> None:
-        """Initialise the converter.
-
-        Args:
-            from_coords: The coordinate system to convert from.
-            da: The xarray DataArray used for context (e.g., for geostationary conversion).
-        """
-        self.from_coords = from_coords
-        self.target_coords, *_ = spatial_coord_type(da)
-        self.da = da
-
-    def convert(
-        self, x: float | np.ndarray, y: float | np.ndarray,
-    ) -> tuple[float | np.ndarray, float | np.ndarray]:
-        """Convert x and y coordinates to target coordinate system."""
-        match (self.from_coords, self.target_coords):
-            case ("osgb", "geostationary"):
-                x, y = osgb_to_geostationary_area_coords(x, y, self.da)
-            case ("osgb", "lon_lat"):
-                x, y = osgb_to_lon_lat(x, y)
-            case ("osgb", "osgb"):
-                pass
-            case ("lon_lat", "osgb"):
-                x, y = lon_lat_to_osgb(x, y)
-            case ("lon_lat", "geostationary"):
-                x, y = lon_lat_to_geostationary_area_coords(x, y, self.da)
-            case ("lon_lat", "lon_lat"):
-                pass
-            case (_, _):
-                raise NotImplementedError(
-                    f"Conversion from {self.from_coords} to "
-                    f"{self.target_coords} is not supported",
-                )
-        return x, y
+def convert_coordinates(
+    from_coords: str, 
+    x: float | np.ndarray, 
+    y: float | np.ndarray,
+    da: xr.DataArray,
+) -> tuple[float | np.ndarray, float | np.ndarray]:
+    """Convert x and y coordinates to coordinate system matching xarray data.
+    
+    Args:
+        from_coords: The coordinate system to convert from.
+        x: The x-coordinate to convert.
+        y: The y-coordinate to convert.
+        da: The xarray DataArray used for context (e.g., for geostationary conversion).
+        
+    Returns:
+        The converted (x, y) coordinates.
+    """
+    target_coords, *_ = spatial_coord_type(da)
+    
+    match (from_coords, target_coords):
+        case ("osgb", "geostationary"):
+            x, y = osgb_to_geostationary_area_coords(x, y, da)
+        case ("osgb", "lon_lat"):
+            x, y = osgb_to_lon_lat(x, y)
+        case ("osgb", "osgb"):
+            pass
+        case ("lon_lat", "osgb"):
+            x, y = lon_lat_to_osgb(x, y)
+        case ("lon_lat", "geostationary"):
+            x, y = lon_lat_to_geostationary_area_coords(x, y, da)
+        case ("lon_lat", "lon_lat"):
+            pass
+        case (_, _):
+            raise NotImplementedError(
+                f"Conversion from {from_coords} to "
+                f"{target_coords} is not supported",
+            )
+    return x, y
 
 
 def _get_pixel_index_location(da: xr.DataArray, location: Location) -> Location:
@@ -71,8 +72,7 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> Location:
     """
     xr_coords, x_dim, y_dim = spatial_coord_type(da)
 
-    converter = CoordinateConverter(from_coords=location.coordinate_system, da=da)
-    x, y = converter.convert(location.x, location.y)
+    x, y = convert_coordinates(location.coordinate_system, location.x, location.y, da)
 
     # Check that requested point lies within the data
     if not (da[x_dim].min() < x < da[x_dim].max()):
