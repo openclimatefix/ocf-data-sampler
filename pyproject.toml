@@ -26,7 +26,7 @@ dependencies = [
     "pandas",
     "xarray",
     "zarr==2.18.3",
-    "numcodecs==0.15.1",
+    "numcodecs<0.16",
     "dask",
     "matplotlib",
     "ocf_blosc2",
