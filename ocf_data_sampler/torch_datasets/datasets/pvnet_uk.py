@@ -47,6 +47,35 @@ def compute(xarray_dict: dict) -> dict:
     return xarray_dict
 
 
+def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
+    """Get list of locations of all GSPs.
+
+    Args:
+        gsp_ids: List of GSP IDs to include. Defaults to all
+    """
+    if gsp_ids is None:
+        gsp_ids = list(range(1, 318))
+
+    locations = []
+
+    # Load UK GSP locations
+    df_gsp_loc = pd.read_csv(
+        files("ocf_data_sampler.data").joinpath("uk_gsp_locations.csv"),
+        index_col="gsp_id",
+    )
+
+    for gsp_id in gsp_ids:
+        locations.append(
+            Location(
+                coordinate_system="osgb",
+                x=df_gsp_loc.loc[gsp_id].x_osgb,
+                y=df_gsp_loc.loc[gsp_id].y_osgb,
+                id=gsp_id,
+            ),
+        )
+    return locations
+
+
 class AbstractPVNetUKDataset(Dataset):
     """Abstract class for PVNet UK regional datasets."""
 
@@ -79,7 +108,7 @@ class AbstractPVNetUKDataset(Dataset):
             valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
-        self.locations = self.get_gsp_locations(gsp_ids)
+        self.locations = get_gsp_locations(gsp_ids)
         self.valid_t0_times = valid_t0_times
 
         # Assign config and input data to self
@@ -203,34 +232,6 @@ class AbstractPVNetUKDataset(Dataset):
         )
         return valid_t0_times
 
-    @staticmethod
-    def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
-        """Get list of locations of all GSPs.
-
-        Args:
-            gsp_ids: List of GSP IDs to include. Defaults to all
-        """
-        if gsp_ids is None:
-            gsp_ids = list(range(1, 318))
-
-        locations = []
-
-        # Load UK GSP locations
-        df_gsp_loc = pd.read_csv(
-            files("ocf_data_sampler.data").joinpath("uk_gsp_locations.csv"),
-            index_col="gsp_id",
-        )
-
-        for gsp_id in gsp_ids:
-            locations.append(
-                Location(
-                    coordinate_system="osgb",
-                    x=df_gsp_loc.loc[gsp_id].x_osgb,
-                    y=df_gsp_loc.loc[gsp_id].y_osgb,
-                    id=gsp_id,
-                ),
-            )
-        return locations
 
 
 class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
