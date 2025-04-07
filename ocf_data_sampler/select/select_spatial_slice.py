@@ -187,7 +187,7 @@ def select_spatial_slice_pixels(
 
     Args:
         da: xarray DataArray to slice from
-        location: Location of interest
+        location: Location of interest that will be the center of the returned slice
         height_pixels: Height of the slice in pixels
         width_pixels: Width of the slice in pixels
         allow_partial_slice: Whether to allow a partial slice.
