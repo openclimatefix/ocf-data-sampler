@@ -77,7 +77,7 @@ def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
 
 
 class AbstractPVNetUKDataset(Dataset):
-    """Abstract class for PVNet UK regional datasets."""
+    """Abstract class for PVNet UK datasets."""
 
     def __init__(
         self,
@@ -86,7 +86,7 @@ class AbstractPVNetUKDataset(Dataset):
         end_time: str | None = None,
         gsp_ids: list[int] | None = None,
     ) -> None:
-        """A torch Dataset for creating PVNet UK GSP samples.
+        """A torch Dataset for creating PVNet UK samples.
 
         Args:
             config_filename: Path to the configuration file
