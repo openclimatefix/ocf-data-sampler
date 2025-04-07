@@ -9,6 +9,7 @@ from ocf_data_sampler.numpy_sample import (
     SatelliteSampleKey,
 )
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
+
 from .base import SampleBase
 
 

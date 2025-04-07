@@ -4,8 +4,8 @@ Site class testing - SiteSample
 
 import numpy as np
 import pandas as pd
-import xarray as xr
 import pytest
+import xarray as xr
 
 from ocf_data_sampler.torch_datasets.sample.site import SiteSample
 

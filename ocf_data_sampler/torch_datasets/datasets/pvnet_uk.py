@@ -17,15 +17,15 @@ from ocf_data_sampler.numpy_sample import (
     make_sun_position_numpy_sample,
 )
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
+from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
-from ocf_data_sampler.numpy_sample.common_types import NumpySample, NumpyBatch
 from ocf_data_sampler.select import Location, fill_time_periods
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 from ocf_data_sampler.torch_datasets.utils import (
-    channel_dict_to_dataarray, 
+    channel_dict_to_dataarray,
     find_valid_time_periods,
-    slice_datasets_by_space, 
+    slice_datasets_by_space,
     slice_datasets_by_time,
 )
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
@@ -49,7 +49,7 @@ def compute(xarray_dict: dict) -> dict:
 
 class AbstractPVNetUKDataset(Dataset):
     """Abstract class for PVNet UK regional datasets."""
-    
+
     def __init__(
         self,
         config_filename: str,
@@ -65,7 +65,6 @@ class AbstractPVNetUKDataset(Dataset):
             end_time: Limit the init-times to be before this
             gsp_ids: List of GSP IDs to create samples for. Defaults to all
         """
-        
         config = load_yaml_configuration(config_filename)
         datasets_dict = get_dataset_dict(config.input_data)
 
@@ -82,11 +81,11 @@ class AbstractPVNetUKDataset(Dataset):
         # Construct list of locations to sample from
         self.locations = self.get_gsp_locations(gsp_ids)
         self.valid_t0_times = valid_t0_times
-        
+
         # Assign config and input data to self
         self.config = config
         self.datasets_dict = datasets_dict
-    
+
 
     @staticmethod
     def process_and_combine_datasets(
@@ -96,7 +95,7 @@ class AbstractPVNetUKDataset(Dataset):
         location: Location,
     ) -> NumpySample:
         """Normalise and convert data to numpy arrays.
-        
+
         Args:
             dataset_dict: Dictionary of xarray datasets
             config: Configuration object
@@ -207,7 +206,7 @@ class AbstractPVNetUKDataset(Dataset):
     @staticmethod
     def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
         """Get list of locations of all GSPs.
-        
+
         Args:
             gsp_ids: List of GSP IDs to include. Defaults to all
         """
@@ -245,7 +244,7 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         end_time: str | None = None,
         gsp_ids: list[int] | None = None,
     ) -> None:
-        
+
         super().__init__(config_filename, start_time, end_time, gsp_ids)
 
         # Construct a lookup for locations - useful for users to construct sample by GSP ID

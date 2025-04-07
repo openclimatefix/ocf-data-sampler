@@ -24,9 +24,9 @@ from ocf_data_sampler.select import (
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.torch_datasets.utils import (
-    channel_dict_to_dataarray, 
+    channel_dict_to_dataarray,
     find_valid_time_periods,
-    slice_datasets_by_space, 
+    slice_datasets_by_space,
     slice_datasets_by_time,
 )
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
@@ -180,7 +180,7 @@ class SitesDataset(Dataset):
 
     def get_locations(self, site_xr: xr.Dataset) -> list[Location]:
         """Get list of locations of all sites.
-        
+
         Args:
             site_xr: xarray Dataset of site data
         """
@@ -358,7 +358,7 @@ class SitesDataset(Dataset):
 
 def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
     """Convert a netcdf dataset to a numpy sample.
-    
+
     Args:
         ds: xarray Dataset
     """
@@ -419,11 +419,11 @@ def convert_from_dataset_to_dict_datasets(combined_dataset: xr.Dataset) -> dict[
 
 
 def nest_nwp_source_dict(
-    dataset_dict: dict[xr.Dataset], 
+    dataset_dict: dict[xr.Dataset],
     sep: str = "-",
 ) -> dict[str, xr.Dataset | dict[xr.Dataset]]:
     """Re-nest a dictionary where the NWP values are nested under keys 'nwp-<key>'.
-    
+
     Args:
         dataset_dict: Dictionary of datasets
         sep: Separator to use to nest NWP keys
@@ -439,7 +439,7 @@ def nest_nwp_source_dict(
 
 def convert_to_numpy_and_combine(dataset_dict: dict[xr.Dataset]) -> NumpySample:
     """Convert input data in a dict to numpy arrays.
-    
+
     Args:
         dataset_dict: Dictionary of xarray Datasets
     """

@@ -8,7 +8,9 @@ import torch
 from typing_extensions import override
 
 from ocf_data_sampler.torch_datasets.sample.base import (
-    SampleBase, batch_to_tensor, copy_batch_to_device,
+    SampleBase,
+    batch_to_tensor,
+    copy_batch_to_device,
 )
 
 
