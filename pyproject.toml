@@ -26,6 +26,7 @@ dependencies = [
     "pandas",
     "xarray",
     "zarr==2.18.3",
+    "numcodecs==0.11.0",
     "dask",
     "matplotlib",
     "ocf_blosc2",
@@ -46,7 +47,6 @@ dev = [
     # LSP Support
     "python-lsp-server",
     "python-lsp-ruff",
-    "zarr==2.18.3",
 ]
 
 [project.urls]
