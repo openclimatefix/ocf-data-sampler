@@ -46,6 +46,7 @@ dev = [
     # LSP Support
     "python-lsp-server",
     "python-lsp-ruff",
+    "zarr==2.18.3",
 ]
 
 [project.urls]
