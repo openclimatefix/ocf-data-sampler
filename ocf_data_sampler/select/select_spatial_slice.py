@@ -18,24 +18,24 @@ logger = logging.getLogger(__name__)
 
 
 def convert_coordinates(
-    from_coords: str, 
-    x: float | np.ndarray, 
+    from_coords: str,
+    x: float | np.ndarray,
     y: float | np.ndarray,
     da: xr.DataArray,
 ) -> tuple[float | np.ndarray, float | np.ndarray]:
     """Convert x and y coordinates to coordinate system matching xarray data.
-    
+
     Args:
         from_coords: The coordinate system to convert from.
         x: The x-coordinate to convert.
         y: The y-coordinate to convert.
         da: The xarray DataArray used for context (e.g., for geostationary conversion).
-        
+
     Returns:
         The converted (x, y) coordinates.
     """
     target_coords, *_ = spatial_coord_type(da)
-    
+
     match (from_coords, target_coords):
         case ("osgb", "geostationary"):
             x, y = osgb_to_geostationary_area_coords(x, y, da)
