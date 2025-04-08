@@ -133,6 +133,7 @@ def _select_padded_slice(
 
     # Create a new DataArray which has indices which go outside
     # the original DataArray
+    # Pad the left of the window
     if left_pad_pixels > 0:
         x_sel = np.concatenate(
             [
@@ -142,6 +143,7 @@ def _select_padded_slice(
         )
         da = da.isel({x_dim: slice(0, right_idx)}).reindex({x_dim: x_sel})
 
+    # Pad the right of the window
     elif right_pad_pixels > 0:
         x_sel = np.concatenate(
             [
@@ -150,9 +152,12 @@ def _select_padded_slice(
             ],
         )
         da = da.isel({x_dim: slice(left_idx, None)}).reindex({x_dim: x_sel})
+
+    # No left-right padding required
     else:
         da = da.isel({x_dim: slice(left_idx, right_idx)})
 
+    # Pad the bottom of the window
     if bottom_pad_pixels > 0:
         y_sel = np.concatenate(
             [
@@ -162,6 +167,7 @@ def _select_padded_slice(
         )
         da = da.isel({y_dim: slice(0, top_idx)}).reindex({y_dim: y_sel})
 
+    # Pad the top of the window
     elif top_pad_pixels > 0:
         y_sel = np.concatenate(
             [
@@ -170,6 +176,8 @@ def _select_padded_slice(
             ],
         )
         da = da.isel({y_dim: slice(bottom_idx, None)}).reindex({y_dim: y_sel})
+
+    # No bottom-top padding required
     else:
         da = da.isel({y_dim: slice(bottom_idx, top_idx)})
 
