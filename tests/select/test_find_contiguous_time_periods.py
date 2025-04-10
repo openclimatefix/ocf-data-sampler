@@ -5,17 +5,16 @@ from ocf_data_sampler.select.find_contiguous_time_periods import (
     find_contiguous_t0_periods_nwp,
     intersection_of_2_dataframes_of_periods,
     intersection_of_multiple_dataframes_of_periods,
-    
 )
 
 
 def construct_time_periods_df(start_dts: list[str], end_dts: list[str]) -> pd.DataFrame:
     """Helper function to construct a DataFrame of time periods
-    
+
     Args:
         start_dts: List of period start datetimes
         end_dts: List of period end datetimes
-    
+
     Returns:
         pd.DataFrame: DataFrame with start and end datetimes columns where each period is a row
     """
@@ -43,7 +42,7 @@ def test_find_contiguous_t0_periods():
     )
 
     expected_results = construct_time_periods_df(
-        ["2023-01-01 13:35", "2023-01-01 15:35"], 
+        ["2023-01-01 13:35", "2023-01-01 15:35"],
         ["2023-01-01 14:10", "2023-01-01 16:45"],
     )
 
