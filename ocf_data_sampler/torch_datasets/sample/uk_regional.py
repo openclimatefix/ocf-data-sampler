@@ -1,5 +1,6 @@
 """PVNet UK Regional sample implementation for dataset handling and visualisation."""
 import logging
+
 import torch
 from typing_extensions import override
 
