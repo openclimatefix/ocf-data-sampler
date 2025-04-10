@@ -62,7 +62,7 @@ class UKRegionalSample(SampleBase):
             "errors": [],
         }
 
-        # Default config if none provided
+        # Default config if none
         if config is None:
             config = {
                 "required_keys": [
@@ -85,7 +85,7 @@ class UKRegionalSample(SampleBase):
         for key, expected_shape in config.get("expected_shapes", {}).items():
             if key in self._data:
                 actual_shape = self._data[key].shape
-                # Check if shapes match, accounting for None which means "any size"
+                # Check if shapes match
                 shape_valid = True
                 if len(actual_shape) != len(expected_shape):
                     shape_valid = False
@@ -101,14 +101,14 @@ class UKRegionalSample(SampleBase):
                         f"Shape mismatch for {key}: expected {expected_shape}, got {actual_shape}",
                     )
 
-        # Special checks for NWP data which has a nested structure
+        # Checks for NWP data - nested structure
         if NWPSampleKey.nwp in self._data:
             nwp_data = self._data[NWPSampleKey.nwp]
             if not isinstance(nwp_data, dict):
                 validation_result["valid"] = False
                 validation_result["errors"].append("NWP data should be a dictionary")
             else:
-                # Validate NWP data structure for each provider (ukv, etc.)
+                # Validate NWP data structure for each provider (ukv, ecmwf)
                 for provider, provider_data in nwp_data.items():
                     if "nwp" not in provider_data:
                         validation_result["valid"] = False
@@ -118,10 +118,7 @@ class UKRegionalSample(SampleBase):
 
                     # Check expected shape of NWP data if configured
                     if config.get("nwp_shape") and "nwp" in provider_data:
-                        # For NWP, we check dimensions after the first one (which is time)
-                        # and potentially after channels
                         nwp_array = provider_data["nwp"]
-                        # Get last two dimensions (height, width)
                         spatial_dims = nwp_array.shape[-2:]
 
                         if tuple(spatial_dims) != config.get("nwp_shape"):
@@ -132,15 +129,14 @@ class UKRegionalSample(SampleBase):
                                 f"got {spatial_dims}",
                             )
 
-        # Add satellite data validation
+        # Add satellite validation
         if SatelliteSampleKey.satellite_actual in self._data:
             sat_data = self._data[SatelliteSampleKey.satellite_actual]
 
-            # Get satellite spatial dimensions (last two dimensions)
             if len(sat_data.shape) >= 2:
                 spatial_dims = sat_data.shape[-2:]
 
-                # Check specific satellite shape if provided in config
+                # Check specific satellite shape if in config
                 if config.get("satellite_shape"):
                     expected_spatial_dims = config.get("satellite_shape")[-2:]
                     if spatial_dims != expected_spatial_dims:
@@ -206,13 +202,12 @@ def validate_samples(
     Returns:
         dict: Summary of validation results
     """
-    # Determine if config_or_path is a path or already a config dict
+    # Determine if path or already a config dict
     config = None
     if config_or_path is not None:
         if isinstance(config_or_path, dict):
             config = config_or_path
         else:
-            # Assume it's a path
             import yaml
             try:
                 with open(config_or_path) as f:
