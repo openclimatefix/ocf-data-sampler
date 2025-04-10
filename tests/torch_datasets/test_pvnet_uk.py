@@ -10,7 +10,6 @@ from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
     PVNetUKConcurrentDataset,
     PVNetUKRegionalDataset,
     compute,
-    process_and_combine_datasets,
 )
 
 
@@ -57,7 +56,7 @@ def test_process_and_combine_datasets(pvnet_config_filename):
 
     dataset_dict = {"nwp": {"ukv": ukv_data}, "sat": sat_data}
 
-    sample = process_and_combine_datasets(dataset_dict, config, t0, location)
+    sample = PVNetUKRegionalDataset.process_and_combine_datasets(dataset_dict, config, t0, location)
 
     assert isinstance(sample, dict)
     assert "nwp" in sample

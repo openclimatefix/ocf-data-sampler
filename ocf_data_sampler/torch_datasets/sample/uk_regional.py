@@ -9,7 +9,8 @@ from ocf_data_sampler.numpy_sample import (
     SatelliteSampleKey,
 )
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
-from ocf_data_sampler.sample.base import SampleBase
+
+from .base import SampleBase
 
 
 class UKRegionalSample(SampleBase):
