@@ -105,7 +105,7 @@ def test_find_contiguous_t0_periods_nwp():
 def test_intersection_of_2_dataframes_of_periods():
 
     def assert_expected_result_with_reverse(a, b, expected_result):
-        """Assert that the calulated intersection is as expected with and without a and b switched"""
+        """Assert the calulated intersection is as expected with and without a and b switched"""
         assert intersection_of_2_dataframes_of_periods(a, b).equals(expected_result)
         assert intersection_of_2_dataframes_of_periods(b, a).equals(expected_result)
 
