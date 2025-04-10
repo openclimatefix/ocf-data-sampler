@@ -105,7 +105,7 @@ def test_find_contiguous_t0_periods_nwp():
 def test_intersection_of_2_dataframes_of_periods():
 
     def assert_expected_result_with_reverse(a, b, expected_result):
-        """Asser that the calulated intersection is as expected with and without a and b switched"""
+        """Assert that the calulated intersection is as expected with and without a and b switched"""
         assert intersection_of_2_dataframes_of_periods(a, b).equals(expected_result)
         assert intersection_of_2_dataframes_of_periods(b, a).equals(expected_result)
 
@@ -113,8 +113,7 @@ def test_intersection_of_2_dataframes_of_periods():
     # b:  |--|
     a = construct_time_periods_df(["2025-01-01 00:00"], ["2025-01-01 12:00"])
     b = construct_time_periods_df(["2025-01-01 03:00"], ["2025-01-01 06:00"])
-    expected_result = construct_time_periods_df(["2025-01-01 03:00"], ["2025-01-01 06:00"])
-    assert_expected_result_with_reverse(a, b, expected_result)
+    assert_expected_result_with_reverse(a, b, expected_result=b)
 
     # a:   |----|
     # b: |--|
@@ -141,15 +140,13 @@ def test_intersection_of_2_dataframes_of_periods():
     # b:   |----|
     a = construct_time_periods_df(["2025-01-01 12:00"], ["2025-01-01 12:00"])
     b = construct_time_periods_df(["2025-01-01 00:00"], ["2025-01-01 18:00"])
-    expected_result = construct_time_periods_df(["2025-01-01 12:00"], ["2025-01-01 12:00"])
-    assert_expected_result_with_reverse(a, b, expected_result)
+    assert_expected_result_with_reverse(a, b, expected_result=a)
 
     # a:   |
     # b:   |----|
     a = construct_time_periods_df(["2025-01-01 00:00"], ["2025-01-01 00:00"])
     b = construct_time_periods_df(["2025-01-01 00:00"], ["2025-01-01 18:00"])
-    expected_result = construct_time_periods_df(["2025-01-01 00:00"], ["2025-01-01 00:00"])
-    assert_expected_result_with_reverse(a, b, expected_result)
+    assert_expected_result_with_reverse(a, b, expected_result=a)
 
     # a:   |
     # b:   |
