@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from ocf_data_sampler.numpy_sample import GSPSampleKey, NWPSampleKey, SatelliteSampleKey
-from ocf_data_sampler.torch_datasets.sample.uk_regional import UKRegionalSample
+from ocf_data_sampler.torch_datasets.sample.uk_regional import UKRegionalSample, validate_samples
 
 
 @pytest.fixture
@@ -111,3 +111,138 @@ def test_to_numpy(numpy_sample):
     assert "nwp" in numpy_data
     assert isinstance(numpy_data["nwp"]["ukv"]["nwp"], np.ndarray)
     assert numpy_data[GSPSampleKey.gsp].shape == (7,)
+
+# Add these tests to the existing test_uk_regional_sample.py file
+
+# Add this fixture to create a validation config file
+@pytest.fixture
+def validation_config_file(tmp_path):
+    """Create a validation config file for testing"""
+    config_content = """
+    required_keys:
+      - gsp
+      - nwp
+      - satellite_actual
+    expected_shapes:
+      gsp: [7]
+    nwp_shape: [2, 2]
+    satellite_shape: [2, 2]
+    """
+    config_file = tmp_path / "validation_config.yaml"
+    config_file.write_text(config_content)
+    return str(config_file)
+
+
+def test_validate_sample(numpy_sample):
+    """Test the validate_sample method with default config"""
+    sample = UKRegionalSample(numpy_sample)
+    validation_result = sample.validate_sample()
+
+    # Check validation structure
+    assert isinstance(validation_result, dict)
+    assert "valid" in validation_result
+    assert "errors" in validation_result
+
+    # Should be valid for the default fixture data
+    assert validation_result["valid"] is True
+    assert len(validation_result["errors"]) == 0
+
+
+def test_validate_sample_with_custom_config(numpy_sample):
+    """Test the validate_sample method with custom config"""
+    sample = UKRegionalSample(numpy_sample)
+
+    # Create a custom config
+    custom_config = {
+        "required_keys": [GSPSampleKey.gsp, NWPSampleKey.nwp],
+        "expected_shapes": {
+            GSPSampleKey.gsp: (7,),
+        },
+        "nwp_shape": (2, 2),
+    }
+
+    validation_result = sample.validate_sample(custom_config)
+    assert validation_result["valid"] is True
+    assert len(validation_result["errors"]) == 0
+
+
+def test_validate_sample_with_missing_keys(numpy_sample):
+    """Test validation with missing required keys"""
+    # Create a copy of the sample without satellite data
+    modified_data = {
+        "nwp": numpy_sample["nwp"],
+        GSPSampleKey.gsp: numpy_sample[GSPSampleKey.gsp],
+        # Satellite key intentionally removed
+    }
+
+    sample = UKRegionalSample(modified_data)
+
+    # Create a config that requires satellite data
+    config = {
+        "required_keys": [
+            GSPSampleKey.gsp,
+            NWPSampleKey.nwp,
+            SatelliteSampleKey.satellite_actual,
+        ],
+    }
+
+    validation_result = sample.validate_sample(config)
+    assert validation_result["valid"] is False
+    assert any(
+        "Missing required key: satellite_actual" in error
+        for error in validation_result["errors"]
+    )
+
+def test_validate_sample_with_wrong_shapes(numpy_sample):
+    """Test validation with incorrect data shapes"""
+    # Create a copy of the sample with wrong GSP shape
+    modified_data = numpy_sample.copy()
+    modified_data[GSPSampleKey.gsp] = np.random.rand(10)
+
+    sample = UKRegionalSample(modified_data)
+
+    config = {
+        "expected_shapes": {
+            GSPSampleKey.gsp: (7,),
+        },
+    }
+
+    validation_result = sample.validate_sample(config)
+    assert validation_result["valid"] is False
+    assert any("Shape mismatch for gsp" in error for error in validation_result["errors"])
+
+
+def test_validate_samples_function(numpy_sample):
+    """Test the validate_samples function for batch validation"""
+    # Create one valid and one invalid sample
+    valid_sample = UKRegionalSample(numpy_sample)
+
+    # Create an invalid sample with wrong GSP shape
+    modified_data = numpy_sample.copy()
+    modified_data[GSPSampleKey.gsp] = np.random.rand(10)
+    invalid_sample = UKRegionalSample(modified_data)
+
+    # Test batch validation with in-memory config instead of file
+    samples = [valid_sample, invalid_sample]
+    config = {
+        "required_keys": [
+            GSPSampleKey.gsp,
+            NWPSampleKey.nwp,
+            SatelliteSampleKey.satellite_actual,
+        ],
+        "expected_shapes": {
+            GSPSampleKey.gsp: (7,),
+        },
+    }
+
+    # Pass the config directly instead of via file path
+    results = validate_samples(samples, config)
+
+    assert results["total_samples"] == 2
+    assert results["valid_samples"] == 1
+    assert results["invalid_samples"] == 1
+    assert len(results["error_summary"]) > 0
+
+    # Also test without a config
+    results = validate_samples(samples)
+    assert results["total_samples"] == 2
