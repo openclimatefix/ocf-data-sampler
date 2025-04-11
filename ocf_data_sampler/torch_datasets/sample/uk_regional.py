@@ -46,6 +46,38 @@ class UKRegionalSample(SampleBase):
         # TODO: We should move away from using torch.load(..., weights_only=False)
         return cls(torch.load(path, weights_only=False))
 
+    def _check_dimensions(
+        self,
+        actual_shape: tuple[int, ...],
+        expected_shape: tuple[int, ...],
+        name: str,
+    ) -> None:
+        """Check if dimensions match between actual and expected shapes.
+
+        Args:
+            actual_shape: The actual shape of the data
+            expected_shape: The expected shape
+            name: Name of the data for error messages
+
+        Raises:
+            ValueError: If dimensions don't match
+        """
+        # Check dimensions match
+        if len(actual_shape) != len(expected_shape):
+            raise ValueError(
+                f"{name} shape dimension mismatch: "
+                f"expected {len(expected_shape)} dimensions, got {len(actual_shape)}",
+            )
+
+        # Check each dimension matches
+        zipped_dims = zip(actual_shape, expected_shape, strict=False)
+        for i, (actual_dim, expected_dim) in enumerate(zipped_dims):
+            if expected_dim is not None and actual_dim != expected_dim:
+                raise ValueError(
+                    f"{name} shape mismatch at dimension {i}: "
+                    f"expected {expected_dim}, got {actual_dim}",
+                )
+
     def validate_sample(self, config: dict | None = None) -> dict:
         """Validates that the sample has the expected structure and data shapes.
 
@@ -71,7 +103,9 @@ class UKRegionalSample(SampleBase):
             if key not in self._data:
                 raise ValueError(f"Missing required key: {key}")
 
-        expected_shapes = config.get("expected_shapes", {}).copy()
+        expected_shapes = {}
+        if config.get("expected_shapes"):
+            expected_shapes.update(config["expected_shapes"])
 
         # Calculate expected shapes from config if available
         if "input_data" in config:
@@ -93,49 +127,32 @@ class UKRegionalSample(SampleBase):
                             provider["image_size_pixels_height"],
                             provider["image_size_pixels_width"],
                         )
-                        break
 
             # Calculate satellite shape
             if "satellite" in config["input_data"]:
                 sat_config = config["input_data"]["satellite"]
-                has_height = "image_size_pixels_height" in sat_config
-                has_width = "image_size_pixels_width" in sat_config
-                if has_height and has_width:
-                    channels = len(sat_config.get("channels", []))
-                    interval_end = sat_config["interval_end_minutes"]
-                    interval_start = sat_config["interval_start_minutes"]
-                    time_span = interval_end - interval_start
-                    resolution = sat_config["time_resolution_minutes"]
-                    time_steps = (time_span // resolution) + 1
+                channels = len(sat_config.get("channels", []))
+                interval_end = sat_config["interval_end_minutes"]
+                interval_start = sat_config["interval_start_minutes"]
+                time_span = interval_end - interval_start
+                resolution = sat_config["time_resolution_minutes"]
+                time_steps = (time_span // resolution) + 1
 
-                    satellite_shape = (
-                        time_steps,
-                        channels,
-                        sat_config["image_size_pixels_height"],
-                        sat_config["image_size_pixels_width"],
-                    )
-                    config["satellite_shape"] = satellite_shape
+                satellite_shape = (
+                    time_steps,
+                    channels,
+                    sat_config["image_size_pixels_height"],
+                    sat_config["image_size_pixels_width"],
+                )
+                config["satellite_shape"] = satellite_shape
 
-        # Check data shapes against calculated or config given shapes
-        for key, expected_shape in expected_shapes.items():
-            if key in self._data:
-                actual_shape = self._data[key].shape
-
-                # Check dimensions match
-                if len(actual_shape) != len(expected_shape):
-                    raise ValueError(
-                        f"Shape dimension mismatch for {key}: "
-                        f"expected {len(expected_shape)} dimensions, got {len(actual_shape)}",
-                    )
-
-                # Check each dimension matches
-                zipped_dims = zip(actual_shape, expected_shape, strict=False)
-                for i, (actual_dim, expected_dim) in enumerate(zipped_dims):
-                    if expected_dim is not None and actual_dim != expected_dim:
-                        raise ValueError(
-                            f"Shape mismatch for {key} at dimension {i}: "
-                            f"expected {expected_dim}, got {actual_dim}",
-                        )
+        # Check GSP shape if specified
+        if GSPSampleKey.gsp in expected_shapes and GSPSampleKey.gsp in self._data:
+            self._check_dimensions(
+                self._data[GSPSampleKey.gsp].shape,
+                expected_shapes[GSPSampleKey.gsp],
+                "GSP",
+            )
 
         # Checks for NWP data - nested structure
         if NWPSampleKey.nwp in self._data:
@@ -169,13 +186,15 @@ class UKRegionalSample(SampleBase):
                     f"Satellite data should have at least 2 dimensions, got shape {sat_data.shape}",
                 )
 
-            spatial_dims = sat_data.shape[-2:]
             if config.get("satellite_shape"):
+                spatial_dims = sat_data.shape[-2:]
                 expected_spatial_dims = config.get("satellite_shape")[-2:]
+
                 if spatial_dims != expected_spatial_dims:
-                    raise ValueError(
-                        f"Satellite spatial dimensions mismatch: "
-                        f"expected {expected_spatial_dims}, got {spatial_dims}",
+                    self._check_dimensions(
+                        spatial_dims,
+                        expected_spatial_dims,
+                        "Satellite spatial",
                     )
 
         return True
