@@ -1,17 +1,18 @@
 """PVNet UK Regional sample implementation for dataset handling and visualisation."""
+
 import logging
 
 import torch
 from typing_extensions import override
 
+from ocf_data_sampler.config.load import load_yaml_configuration
 from ocf_data_sampler.numpy_sample import (
     GSPSampleKey,
     NWPSampleKey,
     SatelliteSampleKey,
 )
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
-
-from .base import SampleBase
+from ocf_data_sampler.torch_datasets.sample.base import SampleBase
 
 
 class UKRegionalSample(SampleBase):
@@ -208,10 +209,9 @@ def validate_samples(
         if isinstance(config_or_path, dict):
             config = config_or_path
         else:
-            import yaml
             try:
-                with open(config_or_path) as f:
-                    config = yaml.safe_load(f)
+                config_obj = load_yaml_configuration(config_or_path)
+                config = config_obj.dict()
             except Exception as e:
                 logging.warning(f"Failed to load config from {config_or_path}: {e}")
 
