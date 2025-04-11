@@ -48,21 +48,41 @@ def pvnet_config_filename(tmp_path):
 @pytest.fixture
 def numpy_sample():
     """Synthetic data generation"""
-
     # Field / spatial coordinates
     nwp_data = {
-        "nwp": np.random.rand(4, 1, 2, 2),
-        "x": np.array([1, 2]),
-        "y": np.array([1, 2]),
+        "nwp": np.random.rand(4, 1, 3, 3),
+        "x": np.array([1, 2, 3]),
+        "y": np.array([1, 2, 3]),
         NWPSampleKey.channel_names: ["test_channel"],
     }
-
     return {
         "nwp": {
             "ukv": nwp_data,
         },
         GSPSampleKey.gsp: np.random.rand(7),
         SatelliteSampleKey.satellite_actual: np.random.rand(7, 1, 2, 2),
+    }
+
+
+@pytest.fixture
+def custom_configuration():
+    """Custom configuration for testing"""
+    return {
+        "required_keys": [GSPSampleKey.gsp, NWPSampleKey.nwp],
+        "expected_shapes": {
+            GSPSampleKey.gsp: (7,),
+        },
+        "nwp_shape": (3, 3),
+    }
+
+
+@pytest.fixture
+def shape_configuration():
+    """Configuration with expected shapes for testing"""
+    return {
+        "expected_shapes": {
+            GSPSampleKey.gsp: (7,),
+        },
     }
 
 
@@ -122,48 +142,31 @@ def test_validate_sample(numpy_sample):
     assert result is True
 
 
-def test_validate_sample_with_custom_config(numpy_sample):
+def test_validate_sample_with_custom_config(numpy_sample, custom_configuration):
     """Test the validate_sample method with custom config"""
+
     sample = UKRegionalSample(numpy_sample)
 
-    # Create custom config
-    custom_config = {
-        "required_keys": [GSPSampleKey.gsp, NWPSampleKey.nwp],
-        "expected_shapes": {
-            GSPSampleKey.gsp: (7,),
-        },
-        "nwp_shape": (2, 2),
-    }
-
-    # Assertion whether function returns True
-    result = sample.validate_sample(custom_config)
+    # Validate with the custom config
+    result = sample.validate_sample(custom_configuration)
     assert result is True
 
 
 def test_validate_sample_with_missing_keys(numpy_sample):
     """Test validation with missing required keys"""
-    # Create copy of sample without satellite data
-    modified_data = {
-        "nwp": numpy_sample["nwp"],
-        GSPSampleKey.gsp: numpy_sample[GSPSampleKey.gsp],
-    }
+    # Make a copy to avoid modifying fixture
+    modified_data = numpy_sample.copy()
 
+    # Remove satellite data using pop()
+    modified_data.pop(SatelliteSampleKey.satellite_actual)
     sample = UKRegionalSample(modified_data)
 
-    # Create config with satellite data
-    config = {
-        "required_keys": [
-            GSPSampleKey.gsp,
-            NWPSampleKey.nwp,
-            SatelliteSampleKey.satellite_actual,
-        ],
-    }
-
+    # Use default config which requires satellite data
     with pytest.raises(ValueError, match="Missing required key: satellite_actual"):
-        sample.validate_sample(config)
+        sample.validate_sample()
 
 
-def test_validate_sample_with_wrong_shapes(numpy_sample):
+def test_validate_sample_with_wrong_shapes(numpy_sample, shape_configuration):
     """Test validation with incorrect data shapes"""
     # Create copy of sample with wrong GSP shape
     modified_data = numpy_sample.copy()
@@ -171,11 +174,5 @@ def test_validate_sample_with_wrong_shapes(numpy_sample):
 
     sample = UKRegionalSample(modified_data)
 
-    config = {
-        "expected_shapes": {
-            GSPSampleKey.gsp: (7,),
-        },
-    }
-
-    with pytest.raises(ValueError, match="Shape mismatch for gsp at dimension 0"):
-        sample.validate_sample(config)
+    with pytest.raises(ValueError, match="GSP shape mismatch at dimension 0"):
+        sample.validate_sample(shape_configuration)
