@@ -51,7 +51,7 @@ def slice_datasets_by_time(
             interval_end=minutes(sat_config.interval_end_minutes),
         )
 
-        # Apply dropout using the combined function
+        # Apply dropout
         sliced_datasets_dict["sat"] = simulate_dropout(
             sliced_datasets_dict["sat"],
             t0,
