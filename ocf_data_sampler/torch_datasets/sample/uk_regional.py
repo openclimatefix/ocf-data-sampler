@@ -71,9 +71,6 @@ class UKRegionalSample(SampleBase):
                     NWPSampleKey.nwp,
                     SatelliteSampleKey.satellite_actual,
                 ],
-                "expected_shapes": {
-                    GSPSampleKey.gsp: (7,),
-                },
             }
 
         # Check for required keys
@@ -82,11 +79,55 @@ class UKRegionalSample(SampleBase):
                 validation_result["valid"] = False
                 validation_result["errors"].append(f"Missing required key: {key}")
 
-        # Check data shapes
-        for key, expected_shape in config.get("expected_shapes", {}).items():
+        expected_shapes = config.get("expected_shapes", {}).copy()
+
+        if "input_data" in config:
+            # Calculate GSP shape if not in expected_shapes
+            if GSPSampleKey.gsp not in expected_shapes and "gsp" in config["input_data"]:
+                gsp_config = config["input_data"]["gsp"]
+                time_span = (
+                    gsp_config["interval_end_minutes"] -
+                    gsp_config["interval_start_minutes"]
+                )
+                resolution = gsp_config["time_resolution_minutes"]
+                expected_length = (time_span // resolution) + 1
+                expected_shapes[GSPSampleKey.gsp] = (expected_length,)
+
+            # Calculate NWP shape
+            if "nwp" in config["input_data"]:
+                for provider in config["input_data"]["nwp"].values():
+                    if isinstance(provider, dict) and "image_size_pixels_height" in provider:
+                        config["nwp_shape"] = (
+                            provider["image_size_pixels_height"],
+                            provider["image_size_pixels_width"],
+                        )
+                        break
+
+            # Calculate satellite shape
+            if "satellite" in config["input_data"]:
+                sat_config = config["input_data"]["satellite"]
+                has_height = "image_size_pixels_height" in sat_config
+                has_width = "image_size_pixels_width" in sat_config
+                if has_height and has_width:
+                    channels = len(sat_config.get("channels", []))
+                    interval_end = sat_config["interval_end_minutes"]
+                    interval_start = sat_config["interval_start_minutes"]
+                    time_span = interval_end - interval_start
+                    resolution = sat_config["time_resolution_minutes"]
+                    time_steps = (time_span // resolution) + 1
+
+                    satellite_shape = (
+                        time_steps,
+                        channels,
+                        sat_config["image_size_pixels_height"],
+                        sat_config["image_size_pixels_width"],
+                    )
+                    config["satellite_shape"] = satellite_shape
+
+        # Check data shapes against calculated or config given shapes
+        for key, expected_shape in expected_shapes.items():
             if key in self._data:
                 actual_shape = self._data[key].shape
-                # Check if shapes match
                 shape_valid = True
                 if len(actual_shape) != len(expected_shape):
                     shape_valid = False
