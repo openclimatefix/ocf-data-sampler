@@ -113,25 +113,6 @@ def test_to_numpy(numpy_sample):
     assert numpy_data[GSPSampleKey.gsp].shape == (7,)
 
 
-# Validation config file as fixture
-@pytest.fixture
-def validation_config_file(tmp_path):
-    """Create a validation config file for testing"""
-    config_content = """
-    required_keys:
-      - gsp
-      - nwp
-      - satellite_actual
-    expected_shapes:
-      gsp: [7]
-    nwp_shape: [2, 2]
-    satellite_shape: [2, 2]
-    """
-    config_file = tmp_path / "validation_config.yaml"
-    config_file.write_text(config_content)
-    return str(config_file)
-
-
 def test_validate_sample(numpy_sample):
     """Test the validate_sample method with default config"""
     sample = UKRegionalSample(numpy_sample)
