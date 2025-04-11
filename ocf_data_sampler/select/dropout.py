@@ -15,10 +15,7 @@ def simulate_dropout(
     dropout_timedeltas: list[pd.Timedelta],
     dropout_frac: float,
 ) -> xr.DataArray:
-    """Combined function that draws a dropout time and applies dropout.
-
-    This function preserves the functionalities of the original two functions,
-    `draw_dropout_time` and `apply_dropout_time`.
+    """Function that draws a dropout time and applies dropout.
 
     Args:
         ds: Xarray DataArray with a 'time_utc' coordinate.
@@ -43,13 +40,8 @@ def simulate_dropout(
 
     # Determine dropout time
     if (len(dropout_timedeltas) == 0) or (np.random.uniform() >= dropout_frac):
-        dropout_time = None
-    else:
-        dropout_time = t0 + np.random.choice(dropout_timedeltas)
-
-    # Return original data if no dropout
-    if dropout_time is None:
-        return ds.copy()
+        return ds.copy()  # No dropout case
 
     # Apply dropout
+    dropout_time = t0 + np.random.choice(dropout_timedeltas)
     return ds.where(ds.time_utc <= dropout_time)
