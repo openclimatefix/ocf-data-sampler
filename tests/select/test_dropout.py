@@ -3,69 +3,91 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from ocf_data_sampler.select.dropout import apply_dropout_time, draw_dropout_time
+from ocf_data_sampler.select.dropout import simulate_dropout
 
 
 @pytest.fixture(scope="module")
 def da_sample():
     """Create dummy data which looks like satellite data"""
-
     datetimes = pd.date_range("2024-01-01 12:00", "2024-01-01 13:00", freq="5min")
-
-    da_sat = xr.DataArray(
+    da = xr.DataArray(
         np.random.normal(size=(len(datetimes),)),
-        coords={
-            "time_utc": (["time_utc"], datetimes),
-        },
+        coords={"time_utc": datetimes},
     )
-    return da_sat
+    return da
 
 
-def test_draw_dropout_time():
-    t0 = pd.Timestamp("2021-01-01 04:00:00")
+@pytest.fixture
+def t0():
+    return pd.Timestamp("2021-01-01 04:00:00")
 
+
+def test_simulate_dropout_draw_time(t0):
     dropout_timedeltas = pd.to_timedelta([-30, -60], unit="min")
-    dropout_time = draw_dropout_time(t0, dropout_timedeltas, dropout_frac=1)
+    times = pd.date_range(t0 - pd.Timedelta("1h"), t0 + pd.Timedelta("30min"), freq="10min")
+    ds = xr.DataArray(np.arange(len(times)), coords={"time_utc": times})
 
-    assert isinstance(dropout_time, pd.Timestamp)
-    assert (dropout_time - t0) in dropout_timedeltas
+    observed_offsets = set()
+    for _ in range(50):  # 50 trials for probabilistic validation
+        ds_dropout = simulate_dropout(ds, t0, dropout_timedeltas, dropout_frac=1)
+        non_nan = ds_dropout.where(~xr.ufuncs.isnan(ds_dropout), drop=True)
+        dropout_time = non_nan.time_utc.values[-1]
+        offset = pd.Timestamp(dropout_time) - t0
+        observed_offsets.add(offset)
 
-
-def test_draw_dropout_time_partial():
-    t0 = pd.Timestamp("2021-01-01 04:00:00")
-
-    dropout_timedeltas = pd.to_timedelta([-30, -60], unit="min")
-
-    dropouts = set()
-
-    # Loop over 1000 to have very high probability of seeing all dropouts
-    # The chances of this failing by chance are approx ((2/3)^100)*3 = 7e-18
-    for _ in range(100):
-        dropouts.add(draw_dropout_time(t0, dropout_timedeltas, dropout_frac=2 / 3))
-
-    # TODO: Check all dropouts are present
+    # Verify all expected deltas were observed
+    assert observed_offsets == set(dropout_timedeltas), \
+        f"Missing offsets: {set(dropout_timedeltas) - observed_offsets}"
 
 
-def test_draw_dropout_time_none():
-    t0 = pd.Timestamp("2021-01-01 04:00:00")
+def test_simulate_dropout_draw_time_none(t0):
+    times = pd.date_range(t0 - pd.Timedelta("30min"), t0 + pd.Timedelta("30min"), freq="10min")
+    ds = xr.DataArray(np.arange(len(times)), coords={"time_utc": times})
 
-    # Dropout fraction is 0
-    dropout_timedeltas = [pd.Timedelta(-30, "min")]
-    dropout_time = draw_dropout_time(t0, dropout_timedeltas=dropout_timedeltas, dropout_frac=0)
-    assert dropout_time is None
+    # Test dropout_frac=0
+    result = simulate_dropout(ds, t0, [pd.Timedelta("-30min")], dropout_frac=0)
+    xr.testing.assert_equal(result, ds)
 
-    # No dropout timedeltas and dropout fraction is 0
-    dropout_time = draw_dropout_time(t0, dropout_timedeltas=[], dropout_frac=0)
-    assert dropout_time is None
+    # Test empty dropout_timedeltas
+    result = simulate_dropout(ds, t0, [], dropout_frac=0)
+    xr.testing.assert_equal(result, ds)
 
 
-@pytest.mark.parametrize("t0_str", ["12:00", "12:30", "13:00"])
-def test_apply_dropout_time(da_sample, t0_str):
-    dropout_time = pd.Timestamp(f"2024-01-01 {t0_str}")
+@pytest.mark.parametrize(
+    "delta,expect_dropout",
+    [
+        (None, False),            # No dropout case
+        (pd.Timedelta(0), True),  # Dropout exactly at t0
+        (pd.Timedelta("-5min"), True),
+        (pd.Timedelta("-10min"), True),
+    ],
+)
+def test_simulate_dropout_apply(t0, delta, expect_dropout):
+    """Test both dropout and no-dropout scenarios."""
+    # Create test data
+    times = pd.date_range(t0 - pd.Timedelta("10min"), t0 + pd.Timedelta("10min"), freq="5min")
+    ds = xr.DataArray(np.arange(len(times)), coords={"time_utc": times})
 
-    da_dropout = apply_dropout_time(da_sample, dropout_time)
+    if delta is None:
+        # Test no dropout configuration
+        ds_dropout = simulate_dropout(ds, t0, [], dropout_frac=0)
+    else:
+        # Test with forced dropout
+        ds_dropout = simulate_dropout(ds, t0, [delta], dropout_frac=1)
+        dropout_time = t0 + delta
 
-    assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
-    assert (
-        da_dropout.sel(time_utc=slice(dropout_time + pd.Timedelta(5, "min"), None)).isnull().all()
-    )
+    if expect_dropout:
+        # Verify post-dropout NaNs
+        after_time = dropout_time + pd.Timedelta("5min")
+        assert ds_dropout.sel(time_utc=slice(after_time, None)).isnull().all()
+        # Verify pre-dropout data intact
+        assert ds_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
+    else:
+        # Verify no modifications
+        assert ds_dropout.identical(ds)
+
+
+def test_simulate_dropout_invalid_positive_delta(t0):
+    """Test validation rejects positive timedeltas."""
+    with pytest.raises(ValueError, match="Dropout timedeltas must be negative"):
+        simulate_dropout(xr.DataArray([1]), t0, [pd.Timedelta("30min")], dropout_frac=1)
