@@ -135,14 +135,10 @@ def validation_config_file(tmp_path):
 def test_validate_sample(numpy_sample):
     """Test the validate_sample method with default config"""
     sample = UKRegionalSample(numpy_sample)
-    validation_result = sample.validate_sample()
 
     # Assert validation structure
-    assert isinstance(validation_result, dict)
-    assert "valid" in validation_result
-    assert "errors" in validation_result
-    assert validation_result["valid"] is True
-    assert len(validation_result["errors"]) == 0
+    result = sample.validate_sample()
+    assert result is True
 
 
 def test_validate_sample_with_custom_config(numpy_sample):
@@ -158,9 +154,9 @@ def test_validate_sample_with_custom_config(numpy_sample):
         "nwp_shape": (2, 2),
     }
 
-    validation_result = sample.validate_sample(custom_config)
-    assert validation_result["valid"] is True
-    assert len(validation_result["errors"]) == 0
+    # Assertion whether function returns True
+    result = sample.validate_sample(custom_config)
+    assert result is True
 
 
 def test_validate_sample_with_missing_keys(numpy_sample):
@@ -182,16 +178,13 @@ def test_validate_sample_with_missing_keys(numpy_sample):
         ],
     }
 
-    validation_result = sample.validate_sample(config)
-    assert validation_result["valid"] is False
-    assert any(
-        "Missing required key: satellite_actual" in error
-        for error in validation_result["errors"]
-    )
+    with pytest.raises(AssertionError, match="Missing required key: satellite_actual"):
+        sample.validate_sample(config)
+
 
 def test_validate_sample_with_wrong_shapes(numpy_sample):
     """Test validation with incorrect data shapes"""
-    # Create a copy of sample with wrong GSP shape
+    # Create copy of sample with wrong GSP shape
     modified_data = numpy_sample.copy()
     modified_data[GSPSampleKey.gsp] = np.random.rand(10)
 
@@ -203,6 +196,5 @@ def test_validate_sample_with_wrong_shapes(numpy_sample):
         },
     }
 
-    validation_result = sample.validate_sample(config)
-    assert validation_result["valid"] is False
-    assert any("Shape mismatch for gsp" in error for error in validation_result["errors"])
+    with pytest.raises(AssertionError, match="Shape mismatch for gsp at dimension 0"):
+        sample.validate_sample(config)

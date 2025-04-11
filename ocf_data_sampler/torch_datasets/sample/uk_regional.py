@@ -56,11 +56,6 @@ class UKRegionalSample(SampleBase):
         Returns:
             dict: Validation results with status and any validation errors.
         """
-        validation_result = {
-            "valid": True,
-            "errors": [],
-        }
-
         # Default config if none
         if config is None:
             config = {
@@ -73,14 +68,12 @@ class UKRegionalSample(SampleBase):
 
         # Check for required keys
         for key in config.get("required_keys", []):
-            if key not in self._data:
-                validation_result["valid"] = False
-                validation_result["errors"].append(f"Missing required key: {key}")
+            assert key in self._data, f"Missing required key: {key}"
 
         expected_shapes = config.get("expected_shapes", {}).copy()
 
+        # Calculate expected shapes from config if available
         if "input_data" in config:
-            # Calculate GSP shape if not in expected_shapes
             if GSPSampleKey.gsp not in expected_shapes and "gsp" in config["input_data"]:
                 gsp_config = config["input_data"]["gsp"]
                 time_span = (
@@ -126,72 +119,58 @@ class UKRegionalSample(SampleBase):
         for key, expected_shape in expected_shapes.items():
             if key in self._data:
                 actual_shape = self._data[key].shape
-                shape_valid = True
-                if len(actual_shape) != len(expected_shape):
-                    shape_valid = False
-                else:
-                    for actual_dim, expected_dim in zip(actual_shape, expected_shape, strict=False):
-                        if expected_dim is not None and actual_dim != expected_dim:
-                            shape_valid = False
-                            break
-
-                if not shape_valid:
-                    validation_result["valid"] = False
-                    validation_result["errors"].append(
-                        f"Shape mismatch for {key}: expected {expected_shape}, got {actual_shape}",
-                    )
+                
+                # Check dimensions match
+                assert len(actual_shape) == len(expected_shape), (
+                    f"Shape dimension mismatch for {key}: "
+                    f"expected {len(expected_shape)} dimensions, got {len(actual_shape)}"
+                )
+                
+                # Check each dimension matches
+                for i, (actual_dim, expected_dim) in enumerate(zip(actual_shape, expected_shape, strict=False)):
+                    if expected_dim is not None:
+                        assert actual_dim == expected_dim, (
+                            f"Shape mismatch for {key} at dimension {i}: "
+                            f"expected {expected_dim}, got {actual_dim}"
+                        )
 
         # Checks for NWP data - nested structure
         if NWPSampleKey.nwp in self._data:
             nwp_data = self._data[NWPSampleKey.nwp]
-            if not isinstance(nwp_data, dict):
-                validation_result["valid"] = False
-                validation_result["errors"].append("NWP data should be a dictionary")
-            else:
-                # Validate NWP data structure for each provider (ukv, ecmwf)
-                for provider, provider_data in nwp_data.items():
-                    if "nwp" not in provider_data:
-                        validation_result["valid"] = False
-                        validation_result["errors"].append(
-                            f"Missing 'nwp' key in NWP data for {provider}",
-                        )
+            assert isinstance(nwp_data, dict), "NWP data should be a dictionary"
+            
+            # Validate NWP data structure for each provider
+            for provider, provider_data in nwp_data.items():
+                assert "nwp" in provider_data, f"Missing 'nwp' key in NWP data for {provider}"
 
-                    # Check expected shape of NWP data if configured
-                    if config.get("nwp_shape") and "nwp" in provider_data:
-                        nwp_array = provider_data["nwp"]
-                        spatial_dims = nwp_array.shape[-2:]
+                # Check expected shape of NWP data if configured
+                if config.get("nwp_shape") and "nwp" in provider_data:
+                    nwp_array = provider_data["nwp"]
+                    spatial_dims = nwp_array.shape[-2:]
 
-                        if tuple(spatial_dims) != config.get("nwp_shape"):
-                            validation_result["valid"] = False
-                            validation_result["errors"].append(
-                                f"NWP shape mismatch for {provider}: "
-                                f"expected {config.get('nwp_shape')} for spatial dimensions, "
-                                f"got {spatial_dims}",
-                            )
+                    assert tuple(spatial_dims) == config.get("nwp_shape"), (
+                        f"NWP shape mismatch for {provider}: "
+                        f"expected {config.get('nwp_shape')} for spatial dimensions, "
+                        f"got {spatial_dims}"
+                    )
 
-        # Add satellite validation
+        # Validate satellite data
         if SatelliteSampleKey.satellite_actual in self._data:
             sat_data = self._data[SatelliteSampleKey.satellite_actual]
 
-            if len(sat_data.shape) >= 2:
-                spatial_dims = sat_data.shape[-2:]
-
-                # Check specific satellite shape if in config
-                if config.get("satellite_shape"):
-                    expected_spatial_dims = config.get("satellite_shape")[-2:]
-                    if spatial_dims != expected_spatial_dims:
-                        validation_result["valid"] = False
-                        validation_result["errors"].append(
-                            f"Satellite spatial dimensions mismatch: "
-                            f"expected {expected_spatial_dims}, got {spatial_dims}",
-                        )
-            else:
-                validation_result["valid"] = False
-                validation_result["errors"].append(
-                    f"Satellite data should have at least 2 dimensions, got shape {sat_data.shape}",
+            assert len(sat_data.shape) >= 2, (
+                f"Satellite data should have at least 2 dimensions, got shape {sat_data.shape}"
+            )
+            
+            spatial_dims = sat_data.shape[-2:]
+            if config.get("satellite_shape"):
+                expected_spatial_dims = config.get("satellite_shape")[-2:]
+                assert spatial_dims == expected_spatial_dims, (
+                    f"Satellite spatial dimensions mismatch: "
+                    f"expected {expected_spatial_dims}, got {spatial_dims}"
                 )
 
-        return validation_result
+        return True
 
     @override
     def plot(self) -> None:
