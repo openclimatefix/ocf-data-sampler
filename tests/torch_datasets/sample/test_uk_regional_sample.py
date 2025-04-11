@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from ocf_data_sampler.numpy_sample import GSPSampleKey, NWPSampleKey, SatelliteSampleKey
-from ocf_data_sampler.torch_datasets.sample.uk_regional import UKRegionalSample, validate_samples
+from ocf_data_sampler.torch_datasets.sample.uk_regional import UKRegionalSample
 
 
 @pytest.fixture
@@ -206,36 +206,3 @@ def test_validate_sample_with_wrong_shapes(numpy_sample):
     validation_result = sample.validate_sample(config)
     assert validation_result["valid"] is False
     assert any("Shape mismatch for gsp" in error for error in validation_result["errors"])
-
-
-def test_validate_samples_function(numpy_sample):
-    """Test the validate_samples function for batch validation"""
-    # Create one valid and one invalid sample
-    valid_sample = UKRegionalSample(numpy_sample)
-    modified_data = numpy_sample.copy()
-    modified_data[GSPSampleKey.gsp] = np.random.rand(10)
-    invalid_sample = UKRegionalSample(modified_data)
-
-    # Test batch validation with config instead of file
-    samples = [valid_sample, invalid_sample]
-    config = {
-        "required_keys": [
-            GSPSampleKey.gsp,
-            NWPSampleKey.nwp,
-            SatelliteSampleKey.satellite_actual,
-        ],
-        "expected_shapes": {
-            GSPSampleKey.gsp: (7,),
-        },
-    }
-
-    results = validate_samples(samples, config)
-
-    assert results["total_samples"] == 2
-    assert results["valid_samples"] == 1
-    assert results["invalid_samples"] == 1
-    assert len(results["error_summary"]) > 0
-
-    # Consider without a config
-    results = validate_samples(samples)
-    assert results["total_samples"] == 2

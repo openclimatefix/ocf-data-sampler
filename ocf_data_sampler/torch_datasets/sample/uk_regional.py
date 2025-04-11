@@ -1,11 +1,9 @@
 """PVNet UK Regional sample implementation for dataset handling and visualisation."""
 
-import logging
 
 import torch
 from typing_extensions import override
 
-from ocf_data_sampler.config.load import load_yaml_configuration
 from ocf_data_sampler.numpy_sample import (
     GSPSampleKey,
     NWPSampleKey,
@@ -229,49 +227,3 @@ class UKRegionalSample(SampleBase):
 
         plt.tight_layout()
         plt.show()
-
-
-def validate_samples(
-    samples: list[UKRegionalSample],
-    config_or_path: dict[str, object] | str | None = None,
-) -> dict[str, object]:
-    """Validates a collection of UKRegionalSample objects.
-
-    Args:
-        samples: List of UKRegionalSample objects
-        config_or_path: Either a configuration dictionary or path to a validation config file
-
-    Returns:
-        dict: Summary of validation results
-    """
-    # Determine if path or already a config dict
-    config = None
-    if config_or_path is not None:
-        if isinstance(config_or_path, dict):
-            config = config_or_path
-        else:
-            try:
-                config_obj = load_yaml_configuration(config_or_path)
-                config = config_obj.dict()
-            except Exception as e:
-                logging.warning(f"Failed to load config from {config_or_path}: {e}")
-
-    results = {
-        "total_samples": len(samples),
-        "valid_samples": 0,
-        "invalid_samples": 0,
-        "error_summary": {},
-    }
-
-    for i, sample in enumerate(samples):
-        validation = sample.validate_sample(config)
-        if validation["valid"]:
-            results["valid_samples"] += 1
-        else:
-            results["invalid_samples"] += 1
-            for error in validation["errors"]:
-                if error not in results["error_summary"]:
-                    results["error_summary"][error] = []
-                results["error_summary"][error].append(i)
-
-    return results
