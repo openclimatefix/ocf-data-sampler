@@ -178,7 +178,7 @@ def test_validate_sample_with_missing_keys(numpy_sample):
         ],
     }
 
-    with pytest.raises(AssertionError, match="Missing required key: satellite_actual"):
+    with pytest.raises(ValueError, match="Missing required key: satellite_actual"):
         sample.validate_sample(config)
 
 
@@ -196,5 +196,5 @@ def test_validate_sample_with_wrong_shapes(numpy_sample):
         },
     }
 
-    with pytest.raises(AssertionError, match="Shape mismatch for gsp at dimension 0"):
+    with pytest.raises(ValueError, match="Shape mismatch for gsp at dimension 0"):
         sample.validate_sample(config)

@@ -68,7 +68,8 @@ class UKRegionalSample(SampleBase):
 
         # Check for required keys
         for key in config.get("required_keys", []):
-            assert key in self._data, f"Missing required key: {key}"
+            if key not in self._data:
+                raise ValueError(f"Missing required key: {key}")
 
         expected_shapes = config.get("expected_shapes", {}).copy()
 
@@ -119,56 +120,63 @@ class UKRegionalSample(SampleBase):
         for key, expected_shape in expected_shapes.items():
             if key in self._data:
                 actual_shape = self._data[key].shape
-                
+
                 # Check dimensions match
-                assert len(actual_shape) == len(expected_shape), (
-                    f"Shape dimension mismatch for {key}: "
-                    f"expected {len(expected_shape)} dimensions, got {len(actual_shape)}"
-                )
-                
+                if len(actual_shape) != len(expected_shape):
+                    raise ValueError(
+                        f"Shape dimension mismatch for {key}: "
+                        f"expected {len(expected_shape)} dimensions, got {len(actual_shape)}",
+                    )
+
                 # Check each dimension matches
-                for i, (actual_dim, expected_dim) in enumerate(zip(actual_shape, expected_shape, strict=False)):
-                    if expected_dim is not None:
-                        assert actual_dim == expected_dim, (
+                zipped_dims = zip(actual_shape, expected_shape, strict=False)
+                for i, (actual_dim, expected_dim) in enumerate(zipped_dims):
+                    if expected_dim is not None and actual_dim != expected_dim:
+                        raise ValueError(
                             f"Shape mismatch for {key} at dimension {i}: "
-                            f"expected {expected_dim}, got {actual_dim}"
+                            f"expected {expected_dim}, got {actual_dim}",
                         )
 
         # Checks for NWP data - nested structure
         if NWPSampleKey.nwp in self._data:
             nwp_data = self._data[NWPSampleKey.nwp]
-            assert isinstance(nwp_data, dict), "NWP data should be a dictionary"
-            
+            if not isinstance(nwp_data, dict):
+                raise ValueError("NWP data should be a dictionary")
+
             # Validate NWP data structure for each provider
             for provider, provider_data in nwp_data.items():
-                assert "nwp" in provider_data, f"Missing 'nwp' key in NWP data for {provider}"
+                if "nwp" not in provider_data:
+                    raise ValueError(f"Missing 'nwp' key in NWP data for {provider}")
 
                 # Check expected shape of NWP data if configured
                 if config.get("nwp_shape") and "nwp" in provider_data:
                     nwp_array = provider_data["nwp"]
                     spatial_dims = nwp_array.shape[-2:]
 
-                    assert tuple(spatial_dims) == config.get("nwp_shape"), (
-                        f"NWP shape mismatch for {provider}: "
-                        f"expected {config.get('nwp_shape')} for spatial dimensions, "
-                        f"got {spatial_dims}"
-                    )
+                    if tuple(spatial_dims) != config.get("nwp_shape"):
+                        raise ValueError(
+                            f"NWP shape mismatch for {provider}: "
+                            f"expected {config.get('nwp_shape')} for spatial dimensions, "
+                            f"got {spatial_dims}",
+                        )
 
         # Validate satellite data
         if SatelliteSampleKey.satellite_actual in self._data:
             sat_data = self._data[SatelliteSampleKey.satellite_actual]
 
-            assert len(sat_data.shape) >= 2, (
-                f"Satellite data should have at least 2 dimensions, got shape {sat_data.shape}"
-            )
-            
+            if len(sat_data.shape) < 2:
+                raise ValueError(
+                    f"Satellite data should have at least 2 dimensions, got shape {sat_data.shape}",
+                )
+
             spatial_dims = sat_data.shape[-2:]
             if config.get("satellite_shape"):
                 expected_spatial_dims = config.get("satellite_shape")[-2:]
-                assert spatial_dims == expected_spatial_dims, (
-                    f"Satellite spatial dimensions mismatch: "
-                    f"expected {expected_spatial_dims}, got {spatial_dims}"
-                )
+                if spatial_dims != expected_spatial_dims:
+                    raise ValueError(
+                        f"Satellite spatial dimensions mismatch: "
+                        f"expected {expected_spatial_dims}, got {spatial_dims}",
+                    )
 
         return True
 
