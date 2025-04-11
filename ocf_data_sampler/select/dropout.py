@@ -18,23 +18,14 @@ def simulate_dropout(
     """Function that draws a dropout time and applies dropout.
 
     Args:
-        ds: Xarray DataArray with a 'time_utc' coordinate.
-        t0: Forecast initialization time.
-        dropout_timedeltas: List of negative timedeltas relative to t0.
-        dropout_frac: Probability that dropout will be applied (between 0 and 1).
+        ds: Xarray DataArray with a 'time_utc' coordinate
+        t0: Forecast initialization time
+        dropout_timedeltas: List of negative timedeltas relative to t0
+        dropout_frac: Probability that dropout will be applied (between 0 and 1)
 
     Returns:
-        A new DataArray with values after the chosen dropout time set to NaN.
-    """
-    # Validate inputs
-        ds: Xarray DataArray with a 'time_utc' coordinate.
-        t0: Forecast initialization time.
-        dropout_timedeltas: List of negative timedeltas relative to t0.
-        dropout_frac: Probability that dropout will be applied (between 0 and 1).
-
-    Returns:
-        A new DataArray with values after the chosen dropout time set to NaN.
-        If no dropout is applied, returns the original DataArray unmodified.
+        xr.DataArray: A new DataArray with values after the chosen dropout time set to NaN.
+                      If no dropout is applied, returns the original DataArray unmodified.
     """
     # Validate inputs
     if dropout_frac > 0 and len(dropout_timedeltas) == 0:
