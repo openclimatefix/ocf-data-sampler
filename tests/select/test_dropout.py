@@ -27,11 +27,17 @@ def test_simulate_dropout_draw_time(t0):
     times = pd.date_range(t0 - pd.Timedelta("1h"), t0 + pd.Timedelta("30min"), freq="10min")
     ds = xr.DataArray(np.arange(len(times)), coords={"time_utc": times})
 
-    ds_dropout = simulate_dropout(ds, t0, dropout_timedeltas, dropout_frac=1)
-    non_nan = ds_dropout.where(~xr.ufuncs.isnan(ds_dropout), drop=True)
-    dropout_time = non_nan.time_utc.values[-1]
-    offset = pd.Timestamp(dropout_time) - t0
-    assert offset in dropout_timedeltas
+    observed_offsets = set()
+    for _ in range(50):  # 50 trials for probabilistic validation
+        ds_dropout = simulate_dropout(ds, t0, dropout_timedeltas, dropout_frac=1)
+        non_nan = ds_dropout.where(~xr.ufuncs.isnan(ds_dropout), drop=True)
+        dropout_time = non_nan.time_utc.values[-1]
+        offset = pd.Timestamp(dropout_time) - t0
+        observed_offsets.add(offset)
+
+    # Verify all expected deltas were observed
+    assert observed_offsets == set(dropout_timedeltas), \
+        f"Missing offsets: {set(dropout_timedeltas) - observed_offsets}"
 
 
 def test_simulate_dropout_draw_time_none(t0):
