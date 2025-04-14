@@ -51,12 +51,6 @@ def calculate_expected_shapes(
     if config is None:
         return expected_shapes
 
-    # Start with configured expected shapes
-    if hasattr(config, "expected_shapes"):
-        expected_shapes.update(config.expected_shapes)
-    elif isinstance(config, dict) and "expected_shapes" in config:
-        expected_shapes.update(config["expected_shapes"])
-
     # Calculate expected shapes from input_data if available
     if hasattr(config, "input_data"):
         input_data = config.input_data

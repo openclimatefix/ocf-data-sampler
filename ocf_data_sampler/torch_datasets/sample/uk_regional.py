@@ -50,12 +50,11 @@ class UKRegionalSample(SampleBase):
         # TODO: We should move away from using torch.load(..., weights_only=False)
         return cls(torch.load(path, weights_only=False))
 
-    def validate_sample(self, config: Configuration | None = None) -> dict:
+    def validate_sample(self, config: Configuration) -> dict:
         """Validates that the sample has the expected structure and data shapes.
 
         Args:
-            config: Optional configuration dict with expected shapes and required fields.
-                If None, uses default validation rules.
+            config: Configuration dict with expected shapes and required fields.
 
         Returns:
             dict: Validation results with status and any validation errors.
