@@ -71,8 +71,9 @@ def custom_configuration():
         "required_keys": [GSPSampleKey.gsp, NWPSampleKey.nwp],
         "expected_shapes": {
             GSPSampleKey.gsp: (7,),
+            NWPSampleKey.nwp: (4, 1, 3, 3),
+            SatelliteSampleKey.satellite_actual: (7, 1, 2, 2),
         },
-        "nwp_shape": (3, 3),
     }
 
 
@@ -82,6 +83,35 @@ def shape_configuration():
     return {
         "expected_shapes": {
             GSPSampleKey.gsp: (7,),
+        },
+    }
+
+
+@pytest.fixture
+def input_data_configuration():
+    """Config for testing shape calculation"""
+    return {
+        "required_keys": [GSPSampleKey.gsp, NWPSampleKey.nwp],
+        "input_data": {
+            "gsp": {
+                "time_resolution_minutes": 30,
+                "interval_start_minutes": -180,
+                "interval_end_minutes": 0,
+            },
+            "nwp": {
+                "ukv": {
+                    "image_size_pixels_height": 3,
+                    "image_size_pixels_width": 3,
+                }
+            },
+            "satellite": {
+                "channels": ["HRV"],
+                "time_resolution_minutes": 30,
+                "interval_start_minutes": -180,
+                "interval_end_minutes": 0,
+                "image_size_pixels_height": 2,
+                "image_size_pixels_width": 2,
+            },
         },
     }
 
@@ -133,12 +163,12 @@ def test_to_numpy(numpy_sample):
     assert numpy_data[GSPSampleKey.gsp].shape == (7,)
 
 
-def test_validate_sample(numpy_sample):
-    """Test the validate_sample method with default config"""
+def test_validate_sample(numpy_sample, custom_configuration):
+    """Test the validate_sample method with config"""
     sample = UKRegionalSample(numpy_sample)
 
-    # Assert validation structure
-    result = sample.validate_sample()
+    # Assert validation with provided config
+    result = sample.validate_sample(custom_configuration)
     assert result is True
 
 
@@ -152,7 +182,16 @@ def test_validate_sample_with_custom_config(numpy_sample, custom_configuration):
     assert result is True
 
 
-def test_validate_sample_with_missing_keys(numpy_sample):
+def test_validate_sample_with_input_data_config(numpy_sample, input_data_configuration):
+    """Test the validate_sample method with input_data configuration"""
+    sample = UKRegionalSample(numpy_sample)
+
+    # Validate with the input_data config
+    result = sample.validate_sample(input_data_configuration)
+    assert result is True
+
+
+def test_validate_sample_with_missing_keys(numpy_sample, custom_configuration):
     """Test validation with missing required keys"""
     # Make a copy to avoid modifying fixture
     modified_data = numpy_sample.copy()
@@ -161,9 +200,16 @@ def test_validate_sample_with_missing_keys(numpy_sample):
     modified_data.pop(SatelliteSampleKey.satellite_actual)
     sample = UKRegionalSample(modified_data)
 
-    # Use default config which requires satellite data
+    # Use config that requires satellite data
+    config_with_satellite = custom_configuration.copy()
+    config_with_satellite["required_keys"] = [
+        GSPSampleKey.gsp, 
+        NWPSampleKey.nwp, 
+        SatelliteSampleKey.satellite_actual
+    ]
+    
     with pytest.raises(ValueError, match="Missing required key: satellite_actual"):
-        sample.validate_sample()
+        sample.validate_sample(config_with_satellite)
 
 
 def test_validate_sample_with_wrong_shapes(numpy_sample, shape_configuration):
