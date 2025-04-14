@@ -1,5 +1,9 @@
 """Validate sample shape against expected shape - utility function."""
 
+from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.numpy_sample import GSPSampleKey, NWPSampleKey, SatelliteSampleKey
+
+
 def check_dimensions(
     actual_shape: tuple[int, ...],
     expected_shape: tuple[int | None, ...],
@@ -28,3 +32,71 @@ def check_dimensions(
     for i, (actual_dim, expected_dim) in enumerate(zipped_dims):
         if expected_dim is not None and actual_dim != expected_dim:
             raise ValueError(f"{name} shape mismatch at dimension {i}")
+
+
+def calculate_expected_shapes(
+    config: Configuration | dict | None = None,
+) -> dict[str, tuple[int, ...]]:
+    """Calculate expected shapes from configuration.
+
+    Args:
+        config: Configuration object or dictionary with shape information.
+            If None, returns an empty dictionary.
+
+    Returns:
+        Dictionary mapping data keys to their expected shapes (tuples of integers).
+    """
+    expected_shapes = {}
+
+    if config is None:
+        return expected_shapes
+
+    # Start with configured expected shapes
+    if hasattr(config, "expected_shapes"):
+        expected_shapes.update(config.expected_shapes)
+    elif isinstance(config, dict) and "expected_shapes" in config:
+        expected_shapes.update(config["expected_shapes"])
+
+    # Calculate expected shapes from input_data if available
+    if hasattr(config, "input_data"):
+        input_data = config.input_data
+
+        # Calculate GSP shape
+        if hasattr(input_data, "gsp") and input_data.gsp is not None:
+            gsp_config = input_data.gsp
+            time_span = (
+                gsp_config.interval_end_minutes -
+                gsp_config.interval_start_minutes
+            )
+            resolution = gsp_config.time_resolution_minutes
+            expected_length = (time_span // resolution) + 1
+            expected_shapes[GSPSampleKey.gsp] = (expected_length,)
+
+        # Calculate NWP shape
+        if hasattr(input_data, "nwp") and input_data.nwp is not None:
+            for provider in input_data.nwp.values():
+                expected_shapes[NWPSampleKey.nwp] = (
+                    provider.image_size_pixels_height,
+                    provider.image_size_pixels_width,
+                )
+                break  # Just use the first provider's shape
+
+        # Calculate satellite shape
+        if hasattr(input_data, "satellite") and input_data.satellite is not None:
+            sat_config = input_data.satellite
+            channels = len(sat_config.channels)
+            time_span = (
+                sat_config.interval_end_minutes -
+                sat_config.interval_start_minutes
+            )
+            resolution = sat_config.time_resolution_minutes
+            time_steps = (time_span // resolution) + 1
+
+            expected_shapes[SatelliteSampleKey.satellite_actual] = (
+                time_steps,
+                channels,
+                sat_config.image_size_pixels_height,
+                sat_config.image_size_pixels_width,
+            )
+
+    return expected_shapes

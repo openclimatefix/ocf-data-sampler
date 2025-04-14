@@ -11,7 +11,10 @@ from ocf_data_sampler.numpy_sample import (
 )
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 from ocf_data_sampler.torch_datasets.sample.base import SampleBase
-from ocf_data_sampler.torch_datasets.utils.validation_utils import check_dimensions
+from ocf_data_sampler.torch_datasets.utils.validation_utils import (
+    calculate_expected_shapes,
+    check_dimensions,
+)
 
 
 class UKRegionalSample(SampleBase):
@@ -57,64 +60,18 @@ class UKRegionalSample(SampleBase):
         Returns:
             dict: Validation results with status and any validation errors.
         """
-
         # Check for required keys
         for key in config.get("required_keys", []):
             if key not in self._data:
                 raise ValueError(f"Missing required key: {key}")
 
-        # Start with configured expected shapes
-        expected_shapes = {}
-        if hasattr(config, "expected_shapes"):
-            expected_shapes.update(config.expected_shapes)
-        elif isinstance(config, dict) and "expected_shapes" in config:
-            expected_shapes.update(config["expected_shapes"])
-
-        # Calculate expected shapes from config if available
-        if hasattr(config, "input_data"):
-            input_data = config.input_data
-
-            # Calculate GSP shape
-            if hasattr(input_data, "gsp") and input_data.gsp is not None:
-                gsp_config = input_data.gsp
-                time_span = (
-                    gsp_config.interval_end_minutes -
-                    gsp_config.interval_start_minutes
-                )
-                resolution = gsp_config.time_resolution_minutes
-                expected_length = (time_span // resolution) + 1
-                expected_shapes[GSPSampleKey.gsp] = (expected_length,)
-
-            # Calculate NWP shape
-            if hasattr(input_data, "nwp") and input_data.nwp is not None:
-                for provider in input_data.nwp.values():
-                    expected_shapes[NWPSampleKey.nwp] = (
-                        provider.image_size_pixels_height,
-                        provider.image_size_pixels_width,
-                    )
-
-            # Calculate satellite shape
-            if hasattr(input_data, "satellite") and input_data.satellite is not None:
-                sat_config = input_data.satellite
-                channels = len(sat_config.channels)
-                time_span = (
-                    sat_config.interval_end_minutes -
-                    sat_config.interval_start_minutes
-                )
-                resolution = sat_config.time_resolution_minutes
-                time_steps = (time_span // resolution) + 1
-
-                expected_shapes[SatelliteSampleKey.satellite_actual] = (
-                    time_steps,
-                    channels,
-                    sat_config.image_size_pixels_height,
-                    sat_config.image_size_pixels_width,
-                )
+        # Calculate expected shapes from configuration
+        expected_shapes = calculate_expected_shapes(config)
 
         # Check GSP shape if specified
         if GSPSampleKey.gsp in self._data:
             gsp_data = self._data[GSPSampleKey.gsp]
-            
+
             # Check expected shape of GSP data if configured
             if GSPSampleKey.gsp in expected_shapes:
                 check_dimensions(

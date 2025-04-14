@@ -102,7 +102,7 @@ def input_data_configuration():
                 "ukv": {
                     "image_size_pixels_height": 3,
                     "image_size_pixels_width": 3,
-                }
+                },
             },
             "satellite": {
                 "channels": ["HRV"],
@@ -203,11 +203,11 @@ def test_validate_sample_with_missing_keys(numpy_sample, custom_configuration):
     # Use config that requires satellite data
     config_with_satellite = custom_configuration.copy()
     config_with_satellite["required_keys"] = [
-        GSPSampleKey.gsp, 
-        NWPSampleKey.nwp, 
-        SatelliteSampleKey.satellite_actual
+        GSPSampleKey.gsp,
+        NWPSampleKey.nwp,
+        SatelliteSampleKey.satellite_actual,
     ]
-    
+
     with pytest.raises(ValueError, match="Missing required key: satellite_actual"):
         sample.validate_sample(config_with_satellite)
 

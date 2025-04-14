@@ -320,17 +320,16 @@ class Configuration(Base):
     general: General = General()
     input_data: InputData = InputData()
     expected_shapes: dict = Field(default_factory=dict)
-    
+
     def get_expected_shapes(self) -> dict:
-        """
-        Returns dictionary of expected shapes based on configuration.
-        
+        """Returns dictionary of expected shapes based on configuration.
+
         This combines explicitly defined expected_shapes with those
         calculated from input_data configuration.
         """
         result = {}
-        
+
         if self.expected_shapes:
             result.update(self.expected_shapes)
-            
+
         return result
