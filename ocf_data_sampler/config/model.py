@@ -319,4 +319,3 @@ class Configuration(Base):
 
     general: General = General()
     input_data: InputData = InputData()
-    expected_shapes: dict = Field(default_factory=dict)

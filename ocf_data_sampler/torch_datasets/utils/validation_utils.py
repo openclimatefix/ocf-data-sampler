@@ -74,7 +74,10 @@ def calculate_expected_shapes(
 
         # Calculate NWP shape
         if hasattr(input_data, "nwp") and input_data.nwp is not None:
-            nwp_shapes = {}
+            if NWPSampleKey.nwp not in expected_shapes:
+                expected_shapes[NWPSampleKey.nwp] = {}
+
+            # Add shapes for each provider directly
             for provider_key, provider_config in input_data.nwp.items():
                 time_span = (
                     provider_config.interval_end_minutes -
@@ -95,10 +98,14 @@ def calculate_expected_shapes(
                 num_channels = num_non_accum + num_accum
                 height = provider_config.image_size_pixels_height
                 width = provider_config.image_size_pixels_width
-                nwp_shapes[provider_key] = (num_timesteps, num_channels, height, width)
 
-            if nwp_shapes:
-                expected_shapes[NWPSampleKey.nwp] = nwp_shapes
+                # Store shape directly in nested dictionary
+                expected_shapes[NWPSampleKey.nwp][provider_key] = (
+                    num_timesteps,
+                    num_channels,
+                    height,
+                    width,
+                )
 
         # Calculate satellite shape
         if hasattr(input_data, "satellite") and input_data.satellite is not None:
