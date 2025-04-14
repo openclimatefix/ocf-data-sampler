@@ -60,68 +60,76 @@ class UKRegionalSample(SampleBase):
         Returns:
             dict: Validation results with status and any validation errors.
         """
-        # Check for required keys
-        for key in config.get("required_keys", []):
-            if key not in self._data:
-                raise ValueError(f"Missing required key: {key}")
+        if config is None:
+            raise ValueError("Configuration object is required for validation.")
 
         # Calculate expected shapes from configuration
         expected_shapes = calculate_expected_shapes(config)
 
         # Check GSP shape if specified
-        if GSPSampleKey.gsp in self._data:
-            gsp_data = self._data[GSPSampleKey.gsp]
+        gsp_key = GSPSampleKey.gsp
+        # Check if GSP data is expected but missing
+        if gsp_key in expected_shapes and gsp_key not in self._data:
+            raise ValueError(f"Configuration expects GSP data ('{gsp_key}') but is missing.")
 
-            # Check expected shape of GSP data if configured
-            if GSPSampleKey.gsp in expected_shapes:
-                check_dimensions(
-                    actual_shape=gsp_data.shape,
-                    expected_shape=expected_shapes[GSPSampleKey.gsp],
-                    name="GSP",
-                )
+        # Check GSP shape if data exists and is expected
+        if gsp_key in self._data and gsp_key in expected_shapes:
+            gsp_data = self._data[gsp_key]
+            check_dimensions(
+                actual_shape=gsp_data.shape,
+                expected_shape=expected_shapes[gsp_key],
+                name="GSP",
+            )
 
         # Checks for NWP data - nested structure
-        if NWPSampleKey.nwp in self._data:
-            nwp_data = self._data[NWPSampleKey.nwp]
-            if not isinstance(nwp_data, dict):
-                raise ValueError("NWP data should be a dictionary")
+        nwp_key = NWPSampleKey.nwp
+        if nwp_key in expected_shapes and expected_shapes[nwp_key] and nwp_key not in self._data:
+             raise ValueError(f"Configuration expects NWP data ('{nwp_key}') but is missing.")
 
-            # Validate NWP data structure for each provider
-            for provider, provider_data in nwp_data.items():
+        # Check NWP structure and shapes if data exists
+        if nwp_key in self._data:
+            nwp_data_all_providers = self._data[nwp_key]
+            if not isinstance(nwp_data_all_providers, dict):
+                raise ValueError(f"NWP data ('{nwp_key}') should be a dictionary.")
+
+            # Loop through providers present in actual data
+            for provider, provider_data in nwp_data_all_providers.items():
                 if "nwp" not in provider_data:
-                    raise ValueError(f"Missing 'nwp' key in NWP data for {provider}")
+                    raise ValueError(f"Missing array key in NWP data for provider '{provider}'.")
 
-                # Check expected shape of NWP data if configured
-                if NWPSampleKey.nwp in expected_shapes and "nwp" in provider_data:
+                if nwp_key in expected_shapes and provider in expected_shapes[nwp_key]:
                     nwp_array = provider_data["nwp"]
                     actual_shape = nwp_array.shape
-                    expected_shape = expected_shapes[NWPSampleKey.nwp]
+                    expected_shape = expected_shapes[nwp_key][provider]
 
                     check_dimensions(
                         actual_shape=actual_shape,
                         expected_shape=expected_shape,
-                        name=f"NWP spatial ({provider})",
+                        name=f"NWP data ({provider})",
                     )
 
         # Validate satellite data
-        if SatelliteSampleKey.satellite_actual in self._data:
-            sat_data = self._data[SatelliteSampleKey.satellite_actual]
+        sat_key = SatelliteSampleKey.satellite_actual
+        # Check if Satellite data is expected but missing
+        if sat_key in expected_shapes and sat_key not in self._data:
+            raise ValueError(f"Configuration expects Satellite data ('{sat_key}') but is missing.")
 
+        # Check satellite shape if data exists and is expected
+        if sat_key in self._data and sat_key in expected_shapes:
+            sat_data = self._data[sat_key]
             if len(sat_data.shape) < 2:
                 raise ValueError(
-                    f"Satellite data should have at least 2 dimensions, got shape {sat_data.shape}",
+                    f"Satellite data ('{sat_key}') should have at least 2 dimensions, "
+                    f"got shape {sat_data.shape}",
                 )
+            actual_spatial_dims = sat_data.shape[-2:]
+            expected_spatial_dims = expected_shapes[sat_key][-2:]
 
-            if SatelliteSampleKey.satellite_actual in expected_shapes:
-                sat_data = self._data[SatelliteSampleKey.satellite_actual]
-                actual_spatial_dims = sat_data.shape[-2:]
-                expected_spatial_dims = expected_shapes[SatelliteSampleKey.satellite_actual][-2:]
-
-                check_dimensions(
-                    actual_shape=tuple(actual_spatial_dims),
-                    expected_shape=expected_spatial_dims,
-                    name="Satellite spatial",
-                )
+            check_dimensions(
+                actual_shape=tuple(actual_spatial_dims),
+                expected_shape=expected_spatial_dims,
+                name="Satellite spatial dims",
+            )
 
         return True
 

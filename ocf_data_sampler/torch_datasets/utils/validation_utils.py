@@ -74,12 +74,31 @@ def calculate_expected_shapes(
 
         # Calculate NWP shape
         if hasattr(input_data, "nwp") and input_data.nwp is not None:
-            for provider in input_data.nwp.values():
-                expected_shapes[NWPSampleKey.nwp] = (
-                    provider.image_size_pixels_height,
-                    provider.image_size_pixels_width,
+            nwp_shapes = {}
+            for provider_key, provider_config in input_data.nwp.items():
+                time_span = (
+                    provider_config.interval_end_minutes -
+                    provider_config.interval_start_minutes
                 )
-                break  # Just use the first provider's shape
+
+                resolution = provider_config.time_resolution_minutes
+                num_timesteps = (time_span // resolution) + 1
+
+                non_accum_channels = [
+                    c for c in provider_config.channels
+                    if c not in provider_config.accum_channels
+                ]
+
+                num_non_accum = len(non_accum_channels)
+                num_accum = len(provider_config.accum_channels)
+
+                num_channels = num_non_accum + num_accum
+                height = provider_config.image_size_pixels_height
+                width = provider_config.image_size_pixels_width
+                nwp_shapes[provider_key] = (num_timesteps, num_channels, height, width)
+
+            if nwp_shapes:
+                expected_shapes[NWPSampleKey.nwp] = nwp_shapes
 
         # Calculate satellite shape
         if hasattr(input_data, "satellite") and input_data.satellite is not None:
