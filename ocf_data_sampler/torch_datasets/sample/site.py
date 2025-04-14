@@ -3,8 +3,10 @@
 import xarray as xr
 from typing_extensions import override
 
-from ocf_data_sampler.sample.base import NumpySample, SampleBase
+from ocf_data_sampler.numpy_sample.common_types import NumpySample
 from ocf_data_sampler.torch_datasets.datasets.site import convert_netcdf_to_numpy_sample
+
+from .base import SampleBase
 
 
 class SiteSample(SampleBase):

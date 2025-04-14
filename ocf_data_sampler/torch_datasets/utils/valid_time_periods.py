@@ -28,7 +28,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         for nwp_key, nwp_config in config.input_data.nwp.items():
             da = datasets_dict["nwp"][nwp_key]
 
-            if nwp_config.dropout_timedeltas_minutes is None:
+            if nwp_config.dropout_timedeltas_minutes==[]:
                 max_dropout = minutes(0)
             else:
                 max_dropout = minutes(np.max(np.abs(nwp_config.dropout_timedeltas_minutes)))
@@ -80,7 +80,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
 
         time_periods = find_contiguous_t0_periods(
             pd.DatetimeIndex(datasets_dict["sat"]["time_utc"]),
-            sample_period_duration=minutes(sat_config.time_resolution_minutes),
+            time_resolution=minutes(sat_config.time_resolution_minutes),
             interval_start=minutes(sat_config.interval_start_minutes),
             interval_end=minutes(sat_config.interval_end_minutes),
         )
@@ -92,7 +92,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
 
         time_periods = find_contiguous_t0_periods(
             pd.DatetimeIndex(datasets_dict["gsp"]["time_utc"]),
-            sample_period_duration=minutes(gsp_config.time_resolution_minutes),
+            time_resolution=minutes(gsp_config.time_resolution_minutes),
             interval_start=minutes(gsp_config.interval_start_minutes),
             interval_end=minutes(gsp_config.interval_end_minutes),
         )

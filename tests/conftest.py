@@ -12,6 +12,28 @@ from ocf_data_sampler.config.model import Site
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
 
+uk_sat_area_string = """msg_seviri_rss_3km:
+    description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
+    projection:
+        proj: geos
+        lon_0: 9.5
+        h: 35785831
+        x_0: 0
+        y_0: 0
+        a: 6378169
+        rf: 295.488065897014
+        no_defs: null
+        type: crs
+    shape:
+        height: 298
+        width: 615
+    area_extent:
+        lower_left_xy: [28503.830075263977, 5090183.970808983]
+        upper_right_xy: [-1816744.1169023514, 4196063.827395439]
+        units: m
+    """
+
+
 @pytest.fixture()
 def test_config_filename():
     return f"{_top_test_directory}/test_data/configs/test_config.yaml"
@@ -47,27 +69,6 @@ def sat_zarr_path(session_tmp_path):
     y = np.linspace(start=4191563, stop=5304712, num=100)
     times = pd.date_range("2023-01-01 00:00", "2023-01-01 23:55", freq="5min")
 
-    area_string = """msg_seviri_rss_3km:
-        description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
-        projection:
-            proj: geos
-            lon_0: 9.5
-            h: 35785831
-            x_0: 0
-            y_0: 0
-            a: 6378169
-            rf: 295.488065897014
-            no_defs: null
-            type: crs
-        shape:
-            height: 298
-            width: 615
-        area_extent:
-            lower_left_xy: [28503.830075263977, 5090183.970808983]
-            upper_right_xy: [-1816744.1169023514, 4196063.827395439]
-            units: m
-        """
-
     # Create satellite-like data with some NaNs
     data = dask.array.zeros(
         shape=(len(variables), len(times), len(y), len(x)),
@@ -84,7 +85,7 @@ def sat_zarr_path(session_tmp_path):
             "y_geostationary": y,
             "x_geostationary": x,
         },
-        attrs={"area": area_string},
+        attrs={"area": uk_sat_area_string},
     ).to_dataset(name="data")
 
     # Save temporarily as a zarr
@@ -248,6 +249,45 @@ def icon_eu_zarr_path(session_tmp_path):
         paths.append(zarr_path)
 
     return paths
+
+
+@pytest.fixture(scope="session")
+def nwp_cloudcasting_zarr_path(session_tmp_path):
+
+    init_times = pd.date_range(start="2023-01-01 00:00", freq="1h", periods=2)
+    steps = pd.timedelta_range("15min", "180min", freq="15min")
+
+    variables = ["IR_097", "VIS008", "WV_073"]
+    x = np.linspace(start=15002, stop=-1824245, num=100)
+    y = np.linspace(start=4191563, stop=5304712, num=100)
+
+    coords = (
+        ("init_time", init_times),
+        ("variable", variables),
+        ("step", steps),
+        ("x_geostationary", x),
+        ("y_geostationary", y),
+    )
+
+    nwp_array_shape = tuple(len(coord_values) for _, coord_values in coords)
+
+    nwp_data = xr.DataArray(
+        np.random.uniform(0, 1, size=nwp_array_shape).astype(np.float32),
+        coords=coords,
+        attrs={"area": uk_sat_area_string},
+    ).to_dataset(name="sat_pred")
+
+    zarr_path = session_tmp_path / "cloudcasting.zarr"
+    nwp_data.chunk(
+        {
+            "init_time": 1,
+            "step": -1,
+            "variable": -1,
+            "x_geostationary": 50,
+            "y_geostationary": 50,
+        },
+    ).to_zarr(zarr_path)
+    yield zarr_path
 
 
 @pytest.fixture(scope="session")

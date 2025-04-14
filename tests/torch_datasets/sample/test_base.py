@@ -2,14 +2,16 @@
 Base class testing - SampleBase
 """
 
-from pathlib import Path
-from typing import override
-
 import numpy as np
 import pytest
 import torch
+from typing_extensions import override
 
-from ocf_data_sampler.sample.base import SampleBase, batch_to_tensor, copy_batch_to_device
+from ocf_data_sampler.torch_datasets.sample.base import (
+    SampleBase,
+    batch_to_tensor,
+    copy_batch_to_device,
+)
 
 
 class TestSample(SampleBase):
@@ -32,16 +34,13 @@ class TestSample(SampleBase):
 
     @override
     def save(self, path):
-        path = Path(path)
         with open(path, "wb") as f:
             f.write(b"test_data")
 
     @classmethod
     @override
     def load(cls, path):
-        path = Path(path)
-        instance = cls()
-        return instance
+        return cls()
 
 
 def test_sample_base_initialisation():
@@ -75,7 +74,6 @@ def test_sample_base_abstract_methods():
 
 def test_sample_base_to_numpy():
     """Test the to_numpy functionality"""
-    import numpy as np
 
     sample = TestSample()
     sample._data = {
@@ -149,7 +147,7 @@ def test_batch_to_tensor_multidimensional():
 
 def test_copy_batch_to_device():
     """Test moving tensors to a different device"""
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda", index=0) if torch.cuda.is_available() else  torch.device("cpu")
     batch = {
         "tensor_data": torch.tensor([1, 2, 3]),
         "nested": {

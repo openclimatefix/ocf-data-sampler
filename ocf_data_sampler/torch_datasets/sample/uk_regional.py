@@ -8,7 +8,9 @@ from ocf_data_sampler.numpy_sample import (
     NWPSampleKey,
     SatelliteSampleKey,
 )
-from ocf_data_sampler.sample.base import NumpySample, SampleBase
+from ocf_data_sampler.numpy_sample.common_types import NumpySample
+
+from .base import SampleBase
 
 
 class UKRegionalSample(SampleBase):
@@ -55,11 +57,11 @@ class UKRegionalSample(SampleBase):
             axes[0, 0].plot(self._data[GSPSampleKey.gsp])
             axes[0, 0].set_title("GSP Generation")
 
-        if GSPSampleKey.solar_azimuth in self._data and GSPSampleKey.solar_elevation in self._data:
-            axes[1, 1].plot(self._data[GSPSampleKey.solar_azimuth], label="Azimuth")
-            axes[1, 1].plot(self._data[GSPSampleKey.solar_elevation], label="Elevation")
-            axes[1, 1].set_title("Solar Position")
-            axes[1, 1].legend()
+        if "solar_azimuth" in self._data and "solar_elevation" in self._data:
+                    axes[1, 1].plot(self._data["solar_azimuth"], label="Azimuth")
+                    axes[1, 1].plot(self._data["solar_elevation"], label="Elevation")
+                    axes[1, 1].set_title("Solar Position")
+                    axes[1, 1].legend()
 
         if SatelliteSampleKey.satellite_actual in self._data:
             axes[1, 0].imshow(self._data[SatelliteSampleKey.satellite_actual])

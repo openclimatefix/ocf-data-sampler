@@ -5,11 +5,17 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 """
 
 from collections.abc import Iterator
-from typing import override
 
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
+from typing_extensions import override
 
-from ocf_data_sampler.constants import NWP_PROVIDERS
+NWP_PROVIDERS = [
+    "ukv",
+    "ecmwf",
+    "gfs",
+    "icon_eu",
+    "cloudcasting",
+]
 
 
 class Base(BaseModel):
@@ -125,7 +131,35 @@ class SpatialWindowMixin(Base):
     )
 
 
-class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
+class NormalisationValues(Base):
+    """Normalisation mean and standard deviation."""
+    mean: float = Field(..., description="Mean value for normalization")
+    std: float = Field(..., gt=0, description="Standard deviation (must be positive)")
+
+
+class NormalisationConstantsMixin(Base):
+    """Normalisation constants for multiple channels."""
+    normalisation_constants: dict[str, NormalisationValues]
+
+    @property
+    def channel_means(self) -> dict[str, float]:
+        """Return the channel means."""
+        return {
+            channel: norm_values.mean
+            for channel, norm_values in self.normalisation_constants.items()
+        }
+
+
+    @property
+    def channel_stds(self) -> dict[str, float]:
+        """Return the channel standard deviations."""
+        return {
+            channel: norm_values.std
+            for channel, norm_values in self.normalisation_constants.items()
+        }
+
+
+class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
     """Satellite configuration model."""
 
     zarr_path: str | tuple[str] | list[str] = Field(
@@ -139,8 +173,20 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         description="the satellite channels that are used",
     )
 
+    @model_validator(mode="after")
+    def check_all_channel_have_normalisation_constants(self) -> "Satellite":
+        """Check that all the channels have normalisation constants."""
+        normalisation_channels = set(self.normalisation_constants.keys())
+        missing_norm_values = set(self.channels) - set(normalisation_channels)
+        if len(missing_norm_values)>0:
+            raise ValueError(
+                "Normalsation constants must be provided for all channels. Missing values for "
+                f"channels: {missing_norm_values}",
+            )
+        return self
 
-class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
+
+class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
     """NWP configuration model."""
 
     zarr_path: str | tuple[str] | list[str] = Field(
@@ -171,6 +217,31 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         if v.lower() not in NWP_PROVIDERS:
             raise OSError(f"NWP provider {v} is not in {NWP_PROVIDERS}")
         return v
+
+
+    @model_validator(mode="after")
+    def check_all_channel_have_normalisation_constants(self) -> "NWP":
+        """Check that all the channels have normalisation constants."""
+        normalisation_channels = set(self.normalisation_constants.keys())
+        non_accum_channels = [c for c in self.channels if c not in self.accum_channels]
+        accum_channel_names = [f"diff_{c}" for c in self.accum_channels]
+
+        missing_norm_values = set(non_accum_channels) - set(normalisation_channels)
+        if len(missing_norm_values)>0:
+            raise ValueError(
+                "Normalsation constants must be provided for all channels. Missing values for "
+                f"channels: {missing_norm_values}",
+            )
+
+        missing_norm_values = set(accum_channel_names) - set(normalisation_channels)
+        if len(missing_norm_values)>0:
+            raise ValueError(
+                "Normalsation constants must be provided for all channels. Accumulated "
+                "channels which will be diffed require normalisation constant names which "
+                "start with the prefix 'diff_'. The following channels were missing: "
+                f"{missing_norm_values}.",
+            )
+        return self
 
 
 class MultiNWP(RootModel):
@@ -229,6 +300,10 @@ class Site(TimeWindowMixin, DropoutMixin):
     # TODO validate the csv for metadata
 
 
+class SolarPosition(TimeWindowMixin):
+    """Solar position configuration model."""
+
+
 class InputData(Base):
     """Input data model."""
 
@@ -236,6 +311,7 @@ class InputData(Base):
     nwp: MultiNWP | None = None
     gsp: GSP | None = None
     site: Site | None = None
+    solar_position: SolarPosition | None = None
 
 
 class Configuration(Base):

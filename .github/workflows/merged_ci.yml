@@ -1,14 +1,12 @@
-name: Default Branch Push CI
+name: Merged CI
+run-name: 'Bump tag with merge #${{ github.event.number }} "${{ github.event.pull_request.title }}"'
 
 on:
   pull_request_target:
-    types: [ "closed" ]
+    types: ["closed"]
     branches: [ "main" ]
 
 jobs:
-  merged-ci:
-    uses: openclimatefix/.github/.github/workflows/default_branch_pr_merged_ci.yml@main
+  bump-tag:
+    uses: openclimatefix/.github/.github/workflows/bump_tag.yml@main
     secrets: inherit
-    with:
-      containerfile: 'None'
-

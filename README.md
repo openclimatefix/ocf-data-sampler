@@ -12,13 +12,11 @@
 We are currently migrating to this repo from [ocf_datapipes](https://github.com/openclimatefix/ocf_datapipes/), which performs the same functions but is built around `PyTorch DataPipes`, which are quite cumbersome to work with and are no longer maintained by PyTorch. **ocf-data-sampler** uses `PyTorch Datasets`, and we've taken the opportunity to make the code much cleaner and more manageable.
 
 > [!Note]
-> This repository is in development and is replacing [ocf_datapipes](https://github.com/openclimatefix/ocf_datapipes/).
-> It might not be ready for use out of the box! We would really appreciate any help to let us make the transition faster.
+> This repository is still in early development development and large changes to the user facing functions may still occur.
 
 ## Documentation
 
 **ocf-data-sampler** doesn't have external documentation _yet_; you can read a bit about how our torch datasets work in the README [here](ocf_data_sampler/torch_datasets/README.md).
-
 
 ## FAQ
 
