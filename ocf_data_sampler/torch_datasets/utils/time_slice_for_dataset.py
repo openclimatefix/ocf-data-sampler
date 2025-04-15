@@ -108,7 +108,27 @@ def slice_datasets_by_time(
             interval_end=minutes(site_config.interval_end_minutes),
         )
 
-        # Randomly sample dropout
+        # Use the initial capacity value in time slice and set as coordinate
+        if site_config.capacity_mode == "variable":
+            # Get first capacity value at t0 and set as coordinate
+            # Get the first capacity value at t0 by selecting the first time index
+            first_capacity = sliced_datasets_dict["site"].capacity_kwp.isel(time_utc=0)
+            
+            # Convert the capacity from a data variable with (time_utc, site_id) dimensions
+            # to a coordinate with just (site_id) dimension, using the first capacity value
+            sliced_datasets_dict["site"] = sliced_datasets_dict["site"].assign_coords(
+                capacity_kwp=("site_id", first_capacity.values)
+            )
+            
+            # Keep only the generation_kw variable, dropping the capacity_kwp data variable
+            # since it is now stored as a coordinate
+            sliced_datasets_dict["site"] = sliced_datasets_dict["site"].generation_kw
+
+        # Use the capacity value assigned in load sites function 
+        elif site_config.capacity_mode == "static":
+            sliced_datasets_dict["site"] = sliced_datasets_dict["site"].generation_kw
+        
+        # Draw dropout times
         site_dropout_time = draw_dropout_time(
             t0,
             dropout_timedeltas=minutes(site_config.dropout_timedeltas_minutes),
