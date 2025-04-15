@@ -48,9 +48,9 @@ def open_site(generation_file_path: str, metadata_file_path: str, capacity_mode:
         if "capacity_kwp" not in generation_ds:
             raise ValueError("capacity_kwp must exist in generation file when capacity_mode='variable'")
 
-        if generation_ds.capacity_kwp.dims != ("site_id", "time_utc"):
+        if set(generation_ds.capacity_kwp.dims) != {"time_utc", "site_id"}:
             raise ValueError(
-                f"capacity_kwp must have dimensions (site_id, time_utc) when capacity_mode='variable', "
+                f"capacity_kwp must have dimensions (time_utc, site_id) when capacity_mode='variable', "
                 f"but got dimensions {generation_ds.capacity_kwp.dims}"
             )
 
