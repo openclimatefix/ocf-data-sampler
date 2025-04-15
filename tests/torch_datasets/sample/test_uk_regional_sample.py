@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from ocf_data_sampler.numpy_sample import GSPSampleKey, NWPSampleKey, SatelliteSampleKey
-from ocf_data_sampler.sample.uk_regional import UKRegionalSample
+from ocf_data_sampler.torch_datasets.sample.uk_regional import UKRegionalSample
 
 
 @pytest.fixture
