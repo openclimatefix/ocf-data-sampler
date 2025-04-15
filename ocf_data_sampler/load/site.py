@@ -1,10 +1,11 @@
-"""Funcitons for loading site data."""
+"""Functions for loading site data."""
+
+import logging
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 
-import logging
 
 def open_site(generation_file_path: str, metadata_file_path: str, capacity_mode: str) -> xr.Dataset:
     """Open a site's generation data and metadata.
@@ -37,7 +38,7 @@ def open_site(generation_file_path: str, metadata_file_path: str, capacity_mode:
     if capacity_mode == "static":
         logging.info("Using static capacity from metadata file")
         generation_ds = generation_ds.assign_coords(
-            capacity_kwp=("site_id", metadata_df["capacity_kwp"].values)
+            capacity_kwp=("site_id", metadata_df["capacity_kwp"].values),
         )
 
     # Use variable capacity from generation file and keep as a data variable
@@ -46,12 +47,14 @@ def open_site(generation_file_path: str, metadata_file_path: str, capacity_mode:
 
         # Check that capacity is in expected format
         if "capacity_kwp" not in generation_ds:
-            raise ValueError("capacity_kwp must exist in generation file when capacity_mode='variable'")
+            raise ValueError(
+                "capacity_kwp must exist in generation file when capacity_mode='variable'",
+            )
 
         if set(generation_ds.capacity_kwp.dims) != {"time_utc", "site_id"}:
             raise ValueError(
-                f"capacity_kwp must have dimensions (time_utc, site_id) when capacity_mode='variable', "
-                f"but got dimensions {generation_ds.capacity_kwp.dims}"
+                "capacity_kwp must have dimensions (time_utc, site_id) when "
+                f"capacity_mode='variable', but got dimensions {generation_ds.capacity_kwp.dims}",
             )
 
     # Sanity checks
