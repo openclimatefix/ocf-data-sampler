@@ -56,6 +56,7 @@ def test_site(tmp_path, site_config_filename):
         "satellite__time_utc",
         "nwp-ukv__channel",
         "nwp-ukv__y_osgb",
+        "solar_time_utc",
     }
 
     expected_coords_subset = {
