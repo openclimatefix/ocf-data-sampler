@@ -116,22 +116,18 @@ class UKRegionalSample(SampleBase):
         # Check satellite shape if data exists and is expected
         if sat_key in self._data and sat_key in expected_shapes:
             sat_data = self._data[sat_key]
-            if len(sat_data.shape) < 2:
-                raise ValueError(
-                    f"Satellite data ('{sat_key}') should have at least 2 dimensions, "
-                    f"got shape {sat_data.shape}",
-                )
-
-            actual_spatial_dims = sat_data.shape
-            expected_spatial_dims = expected_shapes[sat_key]
-
             check_dimensions(
-                actual_shape=tuple(actual_spatial_dims),
-                expected_shape=expected_spatial_dims,
-                name="Satellite spatial dims",
+                actual_shape=sat_data.shape,
+                expected_shape=expected_shapes[sat_key],
+                name="Satellite data",
             )
 
-        return True
+        result = {
+            "status": "success",
+            "message": "Sample validated successfully with provided configuration.",
+        }
+
+        return result
 
     @override
     def plot(self) -> None:

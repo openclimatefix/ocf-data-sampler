@@ -35,7 +35,7 @@ def check_dimensions(
 
 
 def calculate_expected_shapes(
-    config: Configuration | dict | None = None,
+    config: Configuration,
 ) -> dict[str, tuple[int, ...]]:
     """Calculate expected shapes from configuration.
 
@@ -47,9 +47,6 @@ def calculate_expected_shapes(
         Dictionary mapping data keys to their expected shapes (tuples of integers).
     """
     expected_shapes = {}
-
-    if config is None:
-        return expected_shapes
 
     # Calculate expected shapes from input_data if available
     if hasattr(config, "input_data"):
@@ -81,15 +78,7 @@ def calculate_expected_shapes(
                 resolution = provider_config.time_resolution_minutes
                 num_timesteps = (time_span // resolution) + 1
 
-                non_accum_channels = [
-                    c for c in provider_config.channels
-                    if c not in provider_config.accum_channels
-                ]
-
-                num_non_accum = len(non_accum_channels)
-                num_accum = len(provider_config.accum_channels)
-
-                num_channels = num_non_accum + num_accum
+                num_channels = len(provider_config.channels)
                 height = provider_config.image_size_pixels_height
                 width = provider_config.image_size_pixels_width
 
