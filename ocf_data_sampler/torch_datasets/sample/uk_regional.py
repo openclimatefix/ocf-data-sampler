@@ -50,17 +50,17 @@ class UKRegionalSample(SampleBase):
         # TODO: We should move away from using torch.load(..., weights_only=False)
         return cls(torch.load(path, weights_only=False))
 
-    def validate_sample(self, config: Configuration) -> dict:
+    def validate_sample(self, config: Configuration) -> bool:
         """Validates that the sample has the expected structure and data shapes.
 
         Args:
             config: Configuration dict with expected shapes and required fields.
 
         Returns:
-            dict: Validation results with status and any validation errors.
+            bool: True if validation passes, otherwise raises an exception.
         """
-        if config is None:
-            raise ValueError("Configuration object is required for validation.")
+        if not isinstance(config, Configuration):
+            raise TypeError("config must be Configuration object")
 
         # Calculate expected shapes from configuration
         expected_shapes = calculate_expected_shapes(config)
@@ -122,12 +122,7 @@ class UKRegionalSample(SampleBase):
                 name="Satellite data",
             )
 
-        result = {
-            "status": "success",
-            "message": "Sample validated successfully with provided configuration.",
-        }
-
-        return result
+        return True
 
     @override
     def plot(self) -> None:

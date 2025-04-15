@@ -95,9 +95,7 @@ def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration
     sample = UKRegionalSample(numpy_sample)
     result = sample.validate_sample(pvnet_configuration_object)
 
-    # Assert success with config object
-    assert isinstance(result, dict)
-    assert result["status"] == "success"
+    assert result is True
 
 
 def test_validate_sample_with_missing_keys(numpy_sample, pvnet_configuration_object: Configuration):
@@ -123,6 +121,5 @@ def test_validate_sample_with_wrong_shapes(numpy_sample, pvnet_configuration_obj
 
     sample = UKRegionalSample(modified_data)
 
-    # Depends on GSP shape calculated from pvnet_configuration_object
-    with pytest.raises(ValueError, match="GSP shape mismatch at dimension 0"):
+    with pytest.raises(ValueError, match="'GSP' shape mismatch: Actual shape:"):
         sample.validate_sample(pvnet_configuration_object)
