@@ -121,8 +121,9 @@ class UKRegionalSample(SampleBase):
                     f"Satellite data ('{sat_key}') should have at least 2 dimensions, "
                     f"got shape {sat_data.shape}",
                 )
-            actual_spatial_dims = sat_data.shape[-2:]
-            expected_spatial_dims = expected_shapes[sat_key][-2:]
+
+            actual_spatial_dims = sat_data.shape
+            expected_spatial_dims = expected_shapes[sat_key]
 
             check_dimensions(
                 actual_shape=tuple(actual_spatial_dims),
