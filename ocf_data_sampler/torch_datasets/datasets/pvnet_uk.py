@@ -95,7 +95,7 @@ class AbstractPVNetUKDataset(Dataset):
             gsp_ids: List of GSP IDs to create samples for. Defaults to all
         """
         config = load_yaml_configuration(config_filename)
-        datasets_dict = get_dataset_dict(config.input_data)
+        datasets_dict = get_dataset_dict(config.input_data, gsp_ids=gsp_ids)
 
         # Get t0 times where all input data is available
         valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
