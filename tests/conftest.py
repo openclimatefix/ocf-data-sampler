@@ -211,6 +211,7 @@ def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
     ds.to_zarr(zarr_path)
     yield zarr_path
 
+
 @pytest.fixture(scope="session")
 def icon_eu_zarr_path(session_tmp_path):
     date = "20211101"
@@ -253,7 +254,6 @@ def icon_eu_zarr_path(session_tmp_path):
 
 @pytest.fixture(scope="session")
 def nwp_cloudcasting_zarr_path(session_tmp_path):
-
     init_times = pd.date_range(start="2023-01-01 00:00", freq="1h", periods=2)
     steps = pd.timedelta_range("15min", "180min", freq="15min")
 
@@ -379,6 +379,7 @@ def data_sites(session_tmp_path) -> Site:
         interval_start_minutes=-30,
         interval_end_minutes=60,
         time_resolution_minutes=30,
+        capacity_mode="static",
     )
 
     yield site
