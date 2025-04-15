@@ -19,8 +19,8 @@ def numpy_sample():
     expected_gsp_shape = (7,)
     expected_nwp_ukv_shape = (4, 1, 2, 2)
     expected_sat_shape = (7, 1, 2, 2)
+    expected_solar_shape = (7,)
 
-    # Create NWP data with the expected shape
     nwp_data = {
         "nwp": np.random.rand(*expected_nwp_ukv_shape),
         "x": np.array([1, 2]),
@@ -34,6 +34,8 @@ def numpy_sample():
         },
         GSPSampleKey.gsp: np.random.rand(*expected_gsp_shape),
         SatelliteSampleKey.satellite_actual: np.random.rand(*expected_sat_shape),
+        "solar_azimuth": np.random.rand(*expected_solar_shape),
+        "solar_elevation": np.random.rand(*expected_solar_shape),
     }
 
 
@@ -88,6 +90,10 @@ def test_to_numpy(numpy_sample):
     assert "nwp" in numpy_data
     assert isinstance(numpy_data["nwp"]["ukv"]["nwp"], np.ndarray)
     assert numpy_data[GSPSampleKey.gsp].shape == (7,)
+    assert "solar_azimuth" in numpy_data
+    assert "solar_elevation" in numpy_data
+    assert numpy_data["solar_azimuth"].shape == (7,)
+    assert numpy_data["solar_elevation"].shape == (7,)
 
 
 def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration):
@@ -98,7 +104,10 @@ def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration
     assert result is True
 
 
-def test_validate_sample_with_missing_keys(numpy_sample, pvnet_configuration_object: Configuration):
+def test_validate_sample_with_missing_keys(
+    numpy_sample,
+    pvnet_configuration_object: Configuration,
+):
     """Test validation raises ValueError when configured satellite data is missing."""
     modified_data = numpy_sample.copy()
     sat_key = SatelliteSampleKey.satellite_actual
@@ -114,7 +123,10 @@ def test_validate_sample_with_missing_keys(numpy_sample, pvnet_configuration_obj
         sample.validate_sample(pvnet_configuration_object)
 
 
-def test_validate_sample_with_wrong_shapes(numpy_sample, pvnet_configuration_object: Configuration):
+def test_validate_sample_with_wrong_shapes(
+    numpy_sample,
+    pvnet_configuration_object: Configuration,
+):
     """Test validation raises ValueError when data shape is incorrect (GSP)."""
     modified_data = numpy_sample.copy()
     modified_data[GSPSampleKey.gsp] = np.random.rand(10)
@@ -122,4 +134,32 @@ def test_validate_sample_with_wrong_shapes(numpy_sample, pvnet_configuration_obj
     sample = UKRegionalSample(modified_data)
 
     with pytest.raises(ValueError, match="'GSP' shape mismatch: Actual shape:"):
+        sample.validate_sample(pvnet_configuration_object)
+
+
+def test_validate_sample_with_missing_solar_coors(
+    numpy_sample,
+    pvnet_configuration_object: Configuration,
+):
+    """Test validation raises ValueError when solar data is missing."""
+    modified_data = numpy_sample.copy()
+    solar_key = "solar_azimuth"
+    modified_data.pop(solar_key)
+    sample = UKRegionalSample(modified_data)
+    expected_error_pattern = f"^Configuration expects {solar_key} data but is missing"
+
+    with pytest.raises(ValueError, match=expected_error_pattern):
+        sample.validate_sample(pvnet_configuration_object)
+
+
+def test_validate_sample_with_wrong_solar_shapes(
+    numpy_sample,
+    pvnet_configuration_object: Configuration,
+):
+    """Test validation raises ValueError when solar data shape is incorrect."""
+    modified_data = numpy_sample.copy()
+    modified_data["solar_azimuth"] = np.random.rand(10)
+    sample = UKRegionalSample(modified_data)
+
+    with pytest.raises(ValueError, match="'Solar Azimuth data' shape mismatch: Actual shape:"):
         sample.validate_sample(pvnet_configuration_object)

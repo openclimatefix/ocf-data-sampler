@@ -82,8 +82,8 @@ class UKRegionalSample(SampleBase):
 
         # Checks for NWP data - nested structure
         nwp_key = NWPSampleKey.nwp
-        if nwp_key in expected_shapes and expected_shapes[nwp_key] and nwp_key not in self._data:
-             raise ValueError(f"Configuration expects NWP data ('{nwp_key}') but is missing.")
+        if nwp_key in expected_shapes and nwp_key not in self._data:
+            raise ValueError(f"Configuration expects NWP data ('{nwp_key}') but is missing.")
 
         # Check NWP structure and shapes if data exists
         if nwp_key in self._data:
@@ -121,6 +121,22 @@ class UKRegionalSample(SampleBase):
                 expected_shape=expected_shapes[sat_key],
                 name="Satellite data",
             )
+
+        # Validate solar coordinates data
+        solar_keys = ["solar_azimuth", "solar_elevation"]
+        # Check if solar coordinate is expected but missing
+        for solar_key in solar_keys:
+            if solar_key in expected_shapes and solar_key not in self._data:
+                raise ValueError(f"Configuration expects {solar_key} data but is missing.")
+
+            # Check solar coordinate shape if data exists and is expected
+            if solar_key in self._data and solar_key in expected_shapes:
+                solar_data = self._data[solar_key]
+                check_dimensions(
+                    actual_shape=solar_data.shape,
+                    expected_shape=expected_shapes[solar_key],
+                    name=f"{solar_key.replace('_', ' ').title()} data",
+                )
 
         return True
 

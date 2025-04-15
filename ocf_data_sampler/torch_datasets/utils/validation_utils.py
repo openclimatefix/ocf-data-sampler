@@ -77,6 +77,19 @@ def calculate_expected_shapes(
         sat_config.image_size_pixels_width,
     )
 
+    # Calculate solar coordinates shapes
+    solar_config = input_data.solar_position
+    # For solar azimuth
+    expected_shapes["solar_azimuth"] = (
+        _calculate_time_steps(
+            solar_config.interval_start_minutes,
+            solar_config.interval_end_minutes,
+            solar_config.time_resolution_minutes,
+        ),
+    )
+    # For solar elevation
+    expected_shapes["solar_elevation"] = expected_shapes["solar_azimuth"]
+
     return expected_shapes
 
 
