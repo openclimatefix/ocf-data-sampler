@@ -93,8 +93,8 @@ def test_to_numpy(numpy_sample):
 def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration):
     """Test the validate_sample method succeeds with a loaded Configuration object."""
     sample = UKRegionalSample(numpy_sample)
-    result = sample.validate_sample(pvnet_configuration_object)    
-    
+    result = sample.validate_sample(pvnet_configuration_object)
+
     # Assert success with config object
     assert isinstance(result, dict)
     assert result["status"] == "success"
