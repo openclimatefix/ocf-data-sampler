@@ -45,6 +45,7 @@ def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | 
         da_sites = open_site(
             generation_file_path=input_config.site.file_path,
             metadata_file_path=input_config.site.metadata_file_path,
+            capacity_mode=input_config.site.capacity_mode,
         )
 
         datasets_dict["site"] = da_sites
