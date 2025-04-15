@@ -295,9 +295,11 @@ class Site(TimeWindowMixin, DropoutMixin):
         ...,
         description="The CSV files describing power system",
     )
+    capacity_mode: str = Field(
+        ...,
+        description="Mode for handling capacity values. Must be either 'variable' or 'static'.",
+    )
 
-    # TODO validate the netcdf for sites
-    # TODO validate the csv for metadata
 
 
 class SolarPosition(TimeWindowMixin):
