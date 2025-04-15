@@ -140,6 +140,7 @@ def test_pvnet_uk_regional_dataset_limit_gsp_ids(pvnet_config_filename):
     dataset = PVNetUKRegionalDataset(pvnet_config_filename, gsp_ids=[1, 2, 3])
 
     assert len(dataset.locations) == 3  # Number of regional GSPs
+    assert len(dataset.datasets_dict['gsp'].gsp_id) == 3
 
 
 def test_pvnet_no_gsp(tmp_path, pvnet_config_filename):
