@@ -4,16 +4,18 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+import logging
 
-def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArray:
+def open_site(generation_file_path: str, metadata_file_path: str, capacity_mode: str) -> xr.Dataset:
     """Open a site's generation data and metadata.
 
     Args:
         generation_file_path: Path to the site generation netcdf data
         metadata_file_path: Path to the site csv metadata
+        capacity_mode: Set to use static or variable capacity
 
     Returns:
-        xr.DataArray: The opened site generation data
+        xr.Dataset: The opened site generation data containing both generation_kw and capacity_kwp
     """
     generation_ds = xr.open_dataset(generation_file_path)
 
@@ -29,8 +31,28 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     generation_ds = generation_ds.assign_coords(
         latitude=("site_id", metadata_df["latitude"].values),
         longitude=("site_id", metadata_df["longitude"].values),
-        capacity_kwp=("site_id", metadata_df["capacity_kwp"].values),
     )
+
+    # Use static capacity from metadata file and assign as a coordinate
+    if capacity_mode == "static":
+        logging.info("Using static capacity from metadata file")
+        generation_ds = generation_ds.assign_coords(
+            capacity_kwp=("site_id", metadata_df["capacity_kwp"].values)
+        )
+
+    # Use variable capacity from generation file and keep as a data variable
+    elif capacity_mode == "variable":
+        logging.info("Using variable capacity from generation file")
+
+        # Check that capacity is in expected format
+        if "capacity_kwp" not in generation_ds:
+            raise ValueError("capacity_kwp must exist in generation file when capacity_mode='variable'")
+
+        if generation_ds.capacity_kwp.dims != ("site_id", "time_utc"):
+            raise ValueError(
+                f"capacity_kwp must have dimensions (site_id, time_utc) when capacity_mode='variable', "
+                f"but got dimensions {generation_ds.capacity_kwp.dims}"
+            )
 
     # Sanity checks
     if not np.isfinite(generation_ds.generation_kw.values).all():
@@ -38,4 +60,4 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     if not (generation_ds.capacity_kwp.values > 0).all():
         raise ValueError("capacity_kwp contains non-positive values")
 
-    return generation_ds.generation_kw
+    return generation_ds
