@@ -65,8 +65,7 @@ def calculate_expected_shapes(
 
         # Calculate NWP shape
         if hasattr(input_data, "nwp") and input_data.nwp is not None:
-            if NWPSampleKey.nwp not in expected_shapes:
-                expected_shapes[NWPSampleKey.nwp] = {}
+            expected_shapes[NWPSampleKey.nwp] = {}
 
             # Add shapes for each provider directly
             for provider_key, provider_config in input_data.nwp.items():
