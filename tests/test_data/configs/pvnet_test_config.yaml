@@ -46,3 +46,8 @@ input_data:
       IR_016:
         mean: 0.17594202
         std: 0.21462157
+
+  solar_position:
+    interval_start_minutes: -15
+    interval_end_minutes: 15
+    time_resolution_minutes: 5
