@@ -168,26 +168,25 @@ class UKRegionalSample(SampleBase):
 
         # Validate solar coordinates data
         solar_keys = ["solar_azimuth", "solar_elevation"]
-        # Check if solar coordinate is expected but missing
         for solar_key in solar_keys:
+            solar_name = solar_key.replace("_", " ").title()
             if solar_key in expected_shapes and solar_key not in self._data:
                 raise ValueError(f"Configuration expects {solar_key} data but is missing.")
 
-            # Check solar coordinate shape if data exists and is expected
+            # Check solar coordinate shape if data exists
             if solar_key in self._data:
                 if solar_key in expected_shapes:
                     solar_data = self._data[solar_key]
                     check_dimensions(
                         actual_shape=solar_data.shape,
                         expected_shape=expected_shapes[solar_key],
-                        name=f"{solar_key.replace('_', ' ').title()} data",
+                        name=f"{solar_name} data",
                     )
                 else:
-                    component_title = solar_key.replace("_", " ").title()
                     record_validation_warning(
                         warning_list=validation_warnings,
                         message=(
-                            f"{component_title} data is present but not expected "
+                            f"{solar_name} data is present but not expected "
                             "in configuration."
                         ),
                         warning_type="unexpected_component",
