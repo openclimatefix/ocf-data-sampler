@@ -8,7 +8,7 @@ import xarray as xr
 
 
 def open_site(
-    generation_file_path: str, metadata_file_path: str, capacity_mode: str
+    generation_file_path: str, metadata_file_path: str, capacity_mode: str,
 ) -> xr.Dataset:
     """Open a site's generation data and metadata.
 
@@ -27,7 +27,7 @@ def open_site(
     if "site_id" not in metadata_df.columns:
         raise ValueError(
             f"Metadata file is missing required column: site_id. "
-            f"Found columns: {set(metadata_df.columns)}"
+            f"Found columns: {set(metadata_df.columns)}",
         )
     metadata_df = metadata_df.set_index("site_id")
 
@@ -35,7 +35,7 @@ def open_site(
     if missing_columns:
         raise ValueError(
             f"Metadata file is missing required columns: {missing_columns}. "
-            f"Found columns: {set(metadata_df.columns)}"
+            f"Found columns: {set(metadata_df.columns)}",
         )
 
     if not metadata_df.index.is_unique:

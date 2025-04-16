@@ -302,7 +302,7 @@ def ds_uk_gsp():
     gsp_ids = np.arange(0, 318)
     capacity = np.ones((len(times), len(gsp_ids)))
     generation = np.random.uniform(0, 200, size=(len(times), len(gsp_ids))).astype(
-        np.float32
+        np.float32,
     )
 
     coords = (
@@ -343,7 +343,7 @@ def data_sites(session_tmp_path) -> Site:
     latitude = np.arange(51, 52, 0.1)
 
     generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(
-        np.float32
+        np.float32,
     )
 
     coords = (
@@ -402,12 +402,12 @@ def data_sites_var_capacity(session_tmp_path):
     latitude = np.arange(51, 52, 0.1)
 
     generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(
-        np.float32
+        np.float32,
     )
 
     # Create variable capacity for all sites with random values
     capacity_kwp = np.random.uniform(3.0, 5.0, size=(len(times), len(site_ids))).astype(
-        np.float32
+        np.float32,
     )
 
     coords = {
@@ -436,7 +436,7 @@ def data_sites_var_capacity(session_tmp_path):
         {
             "capacity_kwp": da_cap,
             "generation_kw": da_gen,
-        }
+        },
     )
 
     filename = f"{session_tmp_path}/sites_var_capacity.netcdf"
