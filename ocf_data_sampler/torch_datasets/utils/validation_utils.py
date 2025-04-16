@@ -1,6 +1,5 @@
 """Validate sample shape against expected shape - utility function."""
 
-import warnings
 from typing import Any
 
 from ocf_data_sampler.config import Configuration
@@ -97,29 +96,29 @@ def calculate_expected_shapes(
 
 
 def record_validation_warning(
-    warning_list: list[dict[str, Any]],
     message: str,
     warning_type: str,
     *,
     component: str | None = None,
     providers: list[str] | None = None,
-) -> None:
-    """Emits a warning and appends its details to the provided list.
+) -> dict[str, Any]:
+    """Constructs and returns a dictionary containing warning details.
 
     Args:
-        warning_list: The list to append warning information to.
         message: The warning message string.
         warning_type: The category of the warning (e.g., 'unexpected_component').
         component: Optional component identifier (e.g., 'gsp').
         providers: Optional list of provider names (e.g., ['ukv']).
+
+    Returns:
+        A dictionary containing the structured warning information.
     """
-    warnings.warn(message, stacklevel=3)
     warning_info: dict[str, Any] = {"type": warning_type, "message": message}
     if component is not None:
         warning_info["component"] = component
     if providers is not None:
         warning_info["providers"] = providers
-    warning_list.append(warning_info)
+    return warning_info
 
 
 def _calculate_time_steps(start_minutes: int, end_minutes: int, resolution_minutes: int) -> int:

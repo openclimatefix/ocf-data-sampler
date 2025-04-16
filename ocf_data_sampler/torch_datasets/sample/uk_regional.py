@@ -95,50 +95,66 @@ class UKRegionalSample(SampleBase):
                     name="GSP",
                 )
             else:
-                record_validation_warning(
-                    warning_list=validation_warnings,
+                validation_warnings.append(record_validation_warning(
                     message=f"GSP data ('{gsp_key}') is present but not expected in configuration.",
                     warning_type="unexpected_component",
                     component=str(gsp_key),
-                )
+                ))
 
         # Checks for NWP data - nested structure
         nwp_key = NWPSampleKey.nwp
         if nwp_key in expected_shapes and nwp_key not in self._data:
             raise ValueError(f"Configuration expects NWP data ('{nwp_key}') but is missing.")
 
-        # Check NWP structure and shapes if data exists
         if nwp_key in self._data:
             nwp_data_all_providers = self._data[nwp_key]
             if not isinstance(nwp_data_all_providers, dict):
                 raise ValueError(f"NWP data ('{nwp_key}') should be a dictionary.")
 
+            # Check NWP shape if data exists and is expected
             if nwp_key in expected_shapes:
                 expected_providers = set(expected_shapes[nwp_key].keys())
                 actual_providers = set(nwp_data_all_providers.keys())
+
                 unexpected_providers = actual_providers - expected_providers
                 if unexpected_providers:
-                    record_validation_warning(
-                        warning_list=validation_warnings,
+                    validation_warnings.append(record_validation_warning(
                         message=f"Unexpected NWP providers found: {list(unexpected_providers)}",
                         warning_type="unexpected_provider",
                         providers=list(unexpected_providers),
+                    ))
+
+                missing_expected_providers = expected_providers - actual_providers
+                if missing_expected_providers:
+                    raise ValueError(
+                        f"Expected NWP providers are missing from the data: "
+                        f"{list(missing_expected_providers)}",
                     )
 
-            for provider, provider_data in nwp_data_all_providers.items():
-                if "nwp" not in provider_data:
-                     error_msg = (
-                         f"Missing array key 'nwp' in NWP data for provider '{provider}'."
-                     )
-                     raise ValueError(error_msg)
+                for provider in expected_shapes[nwp_key]:
+                    provider_data = nwp_data_all_providers[provider]
 
-                if nwp_key in expected_shapes and provider in expected_shapes[nwp_key]:
+                    if "nwp" not in provider_data:
+                         error_msg = (
+                             f"Missing array key 'nwp' in NWP data for provider '{provider}'."
+                         )
+                         raise ValueError(error_msg)
+
                     nwp_array = provider_data["nwp"]
                     check_dimensions(
                         actual_shape=nwp_array.shape,
                         expected_shape=expected_shapes[nwp_key][provider],
                         name=f"NWP data ({provider})",
                     )
+            else:
+                validation_warnings.append(record_validation_warning(
+                    message=(
+                        f"NWP data ('{nwp_key}') is present but not expected "
+                        "in configuration."
+                    ),
+                    warning_type="unexpected_component",
+                    component=str(nwp_key),
+                ))
 
         # Validate satellite data
         sat_key = SatelliteSampleKey.satellite_actual
@@ -156,15 +172,14 @@ class UKRegionalSample(SampleBase):
                     name="Satellite data",
                 )
             else:
-                record_validation_warning(
-                    warning_list=validation_warnings,
+                validation_warnings.append(record_validation_warning(
                     message=(
                         f"Satellite data ('{sat_key}') is present but not expected "
                         "in configuration."
                     ),
                     warning_type="unexpected_component",
                     component=str(sat_key),
-                )
+                ))
 
         # Validate solar coordinates data
         solar_keys = ["solar_azimuth", "solar_elevation"]
@@ -183,15 +198,14 @@ class UKRegionalSample(SampleBase):
                         name=f"{solar_name} data",
                     )
                 else:
-                    record_validation_warning(
-                        warning_list=validation_warnings,
+                    validation_warnings.append(record_validation_warning(
                         message=(
                             f"{solar_name} data is present but not expected "
                             "in configuration."
                         ),
                         warning_type="unexpected_component",
                         component=solar_key,
-                    )
+                    ))
 
         # Check for other unexpected components
         checked_keys = {gsp_key, nwp_key, sat_key} | set(solar_keys)
@@ -200,15 +214,14 @@ class UKRegionalSample(SampleBase):
         other_unexpected_keys = all_present_keys - checked_keys - expected_config_keys
 
         for key in other_unexpected_keys:
-            record_validation_warning(
-                warning_list=validation_warnings,
+            validation_warnings.append(record_validation_warning(
                 message=(
                     f"Unexpected component '{key}' is present but not expected "
                     "in configuration."
                 ),
                 warning_type="unexpected_component",
                 component=str(key),
-            )
+            ))
 
         return {
             "valid": True,
