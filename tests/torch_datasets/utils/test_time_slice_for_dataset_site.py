@@ -87,7 +87,7 @@ def test_slice_datasets_by_time_sites_variable(data_sites_var_capacity, t0_str):
 
 
 @pytest.mark.parametrize("t0_str", ["12:30", "12:40", "12:00"])
-def test_slice_datasets_by_time_sing_site_variable(data_single_site_var_capacity, t0_str):
+def test_slice_datasets_by_time_single_site_variable(data_single_site_var_capacity, t0_str):
     """Test that slice_datasets_by_time correctly handles variable capacity mode for single site.
 
     In variable capacity mode:
