@@ -114,13 +114,11 @@ def slice_datasets_by_time(
             # Get the first capacity value at t0 by selecting the first time index
             first_capacity = sliced_datasets_dict["site"].capacity_kwp.isel(time_utc=0)
 
-            # Convert the capacity from a data variable with (time_utc, site_id) dimensions
-            # to a coordinate with just (site_id) dimension, using the first capacity value
+            # Remove capacity_kwp from data vars and add it as a coordinate
+            del sliced_datasets_dict["site"]["capacity_kwp"]
             sliced_datasets_dict["site"] = sliced_datasets_dict["site"].assign_coords(
-                capacity_kwp=("site_id", first_capacity.values),
-            )
-            # Keep only the generation_kw variable, dropping the capacity_kwp data variable
-            # since it is now stored as a coordinate
+                capacity_kwp=("site_id", first_capacity.values))
+
             sliced_datasets_dict["site"] = sliced_datasets_dict["site"].generation_kw
         # Use the capacity value assigned in load sites function
         elif site_config.capacity_mode == "static":
