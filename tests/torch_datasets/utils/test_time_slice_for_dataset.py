@@ -1,6 +1,6 @@
+import numpy as np
 import pandas as pd
 import pytest
-import numpy as np
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.load.site import open_site
@@ -19,7 +19,7 @@ def test_slice_datasets_by_time_sites_static(data_sites, t0_str):
     """
 
     da_sites = open_site(
-        data_sites.file_path, data_sites.metadata_file_path, data_sites.capacity_mode
+        data_sites.file_path, data_sites.metadata_file_path, data_sites.capacity_mode,
     )
 
     # Create a config with the Site object
