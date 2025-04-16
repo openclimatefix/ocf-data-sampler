@@ -22,10 +22,16 @@ def open_site(
     """
     generation_ds = xr.open_dataset(generation_file_path)
 
-    # Validate metadata file has required columns
-    metadata_df = pd.read_csv(metadata_file_path, index_col="site_id")
+    # Validate metadata file has site_id col columns
+    metadata_df = pd.read_csv(metadata_file_path)
+    if "site_id" not in metadata_df.columns:
+        raise ValueError(
+            f"Metadata file is missing required column: site_id. "
+            f"Found columns: {set(metadata_df.columns)}"
+        )
+    metadata_df = metadata_df.set_index("site_id")
 
-    missing_columns = {"latitude", "longitude", "site_id"} - set(metadata_df.columns)
+    missing_columns = {"latitude", "longitude"} - set(metadata_df.columns)
     if missing_columns:
         raise ValueError(
             f"Metadata file is missing required columns: {missing_columns}. "
