@@ -53,6 +53,7 @@ def get_dataset_dict(input_config: InputData, gsp_ids: list[int] | None = None)\
         da_sites = open_site(
             generation_file_path=input_config.site.file_path,
             metadata_file_path=input_config.site.metadata_file_path,
+            capacity_mode=input_config.site.capacity_mode,
         )
 
         datasets_dict["site"] = da_sites
