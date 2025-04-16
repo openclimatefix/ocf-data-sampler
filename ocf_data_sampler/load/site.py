@@ -7,7 +7,9 @@ import pandas as pd
 import xarray as xr
 
 
-def open_site(generation_file_path: str, metadata_file_path: str, capacity_mode: str) -> xr.Dataset:
+def open_site(
+    generation_file_path: str, metadata_file_path: str, capacity_mode: str
+) -> xr.Dataset:
     """Open a site's generation data and metadata.
 
     Args:
@@ -20,7 +22,15 @@ def open_site(generation_file_path: str, metadata_file_path: str, capacity_mode:
     """
     generation_ds = xr.open_dataset(generation_file_path)
 
+    # Validate metadata file has required columns
     metadata_df = pd.read_csv(metadata_file_path, index_col="site_id")
+
+    missing_columns = {"latitude", "longitude", "site_id"} - set(metadata_df.columns)
+    if missing_columns:
+        raise ValueError(
+            f"Metadata file is missing required columns: {missing_columns}. "
+            f"Found columns: {set(metadata_df.columns)}"
+        )
 
     if not metadata_df.index.is_unique:
         raise ValueError("site_id is not unique in metadata")
@@ -37,6 +47,12 @@ def open_site(generation_file_path: str, metadata_file_path: str, capacity_mode:
     # Use static capacity from metadata file and assign as a coordinate
     if capacity_mode == "static":
         logging.info("Using static capacity from metadata file")
+
+        if "capacity_kwp" not in metadata_df.columns:
+            raise ValueError(
+                "capacity_kwp must exist in metadata file when capacity_mode='static'",
+            )
+
         generation_ds = generation_ds.assign_coords(
             capacity_kwp=("site_id", metadata_df["capacity_kwp"].values),
         )
