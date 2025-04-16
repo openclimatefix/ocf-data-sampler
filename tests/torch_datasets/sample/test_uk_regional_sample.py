@@ -3,6 +3,7 @@ UK Regional class testing - UKRegionalSample
 """
 
 import tempfile
+import warnings
 
 import numpy as np
 import pytest
@@ -101,7 +102,10 @@ def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration
     sample = UKRegionalSample(numpy_sample)
     result = sample.validate_sample(pvnet_configuration_object)
 
-    assert result is True
+    assert isinstance(result, dict)
+    assert result["valid"] is True
+    assert isinstance(result["warnings"], list)
+    assert not result["warnings"]
 
 
 def test_validate_sample_with_missing_keys(
@@ -163,3 +167,85 @@ def test_validate_sample_with_wrong_solar_shapes(
 
     with pytest.raises(ValueError, match="'Solar Azimuth data' shape mismatch: Actual shape:"):
         sample.validate_sample(pvnet_configuration_object)
+
+
+def test_validate_sample_with_unexpected_provider(
+    numpy_sample,
+    pvnet_configuration_object: Configuration,
+):
+    """Test that validation warns but passes when an unexpected NWP provider is present."""
+    modified_data = numpy_sample.copy()
+
+    # Add unexpected provider
+    unexpected_provider = "unexpected_provider"
+    nwp_data = {
+        "nwp": np.random.rand(4, 1, 2, 2),
+        "x": np.array([1, 2]),
+        "y": np.array([1, 2]),
+        NWPSampleKey.channel_names: ["t"],
+    }
+    modified_data["nwp"][unexpected_provider] = nwp_data
+    sample = UKRegionalSample(modified_data)
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        result = sample.validate_sample(pvnet_configuration_object)
+
+        # Validation should still pass
+        assert isinstance(result, dict)
+        assert result["valid"] is True
+        assert isinstance(result["warnings"], list)
+
+        assert len(w) > 0
+        assert len(result["warnings"]) > 0
+        assert any("Unexpected NWP providers found" in str(warning.message) for warning in w)
+        assert any(
+            "unexpected_provider" in warning_dict.get("message", "")
+            for warning_dict in result["warnings"]
+        )
+        assert any(
+            warning_dict.get("type") == "unexpected_provider"
+            for warning_dict in result["warnings"]
+        )
+
+def test_validate_sample_with_unexpected_component(
+    numpy_sample,
+    pvnet_configuration_object: Configuration,
+):
+    """Test that validation warns but passes when an unexpected component is present."""
+    modified_data = numpy_sample.copy()
+
+    # Add unexpected component
+    unexpected_key = "unexpected_component_key_xyz"
+    modified_data[unexpected_key] = np.random.rand(7)
+    sample = UKRegionalSample(modified_data)
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always")
+        result = sample.validate_sample(pvnet_configuration_object)
+
+        # Assert valid structure present
+        assert isinstance(result, dict), "validate_sample should return a dictionary"
+        assert result["valid"] is True, (
+            "Validation should pass (return valid=True) even with warnings"
+        )
+        assert isinstance(result["warnings"], list), "The 'warnings' key should hold a list"
+
+        assert len(caught_warnings) > 0, "At least one warning should have been emitted"
+        assert any(
+            f"Unexpected component '{unexpected_key}'" in str(w.message)
+            for w in caught_warnings
+        ), f"Expected warning message about '{unexpected_key}' not found in caught warnings"
+
+        assert len(result["warnings"]) > 0, "The returned warnings list should not be empty"
+        found_in_result = False
+        for warning_dict in result["warnings"]:
+            if (warning_dict.get("type") == "unexpected_component" and
+                warning_dict.get("component") == unexpected_key and
+                f"Unexpected component '{unexpected_key}'" in warning_dict.get("message", "")):
+                found_in_result = True
+                break
+        assert found_in_result, (
+            f"Expected warning about '{unexpected_key}' not found "
+            f"in result['warnings'] list"
+        )
