@@ -95,7 +95,7 @@ def calculate_expected_shapes(
     return expected_shapes
 
 
-def record_validation_warning(
+def validation_warning(
     message: str,
     warning_type: str,
     *,

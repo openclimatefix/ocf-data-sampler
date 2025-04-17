@@ -1,6 +1,6 @@
 """PVNet UK Regional sample implementation for dataset handling and visualisation."""
 
-from typing import Any
+import logging
 
 import torch
 from typing_extensions import override
@@ -16,8 +16,10 @@ from ocf_data_sampler.torch_datasets.sample.base import SampleBase
 from ocf_data_sampler.torch_datasets.utils.validation_utils import (
     calculate_expected_shapes,
     check_dimensions,
-    record_validation_warning,
+    validation_warning,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UKRegionalSample(SampleBase):
@@ -54,25 +56,27 @@ class UKRegionalSample(SampleBase):
         return cls(torch.load(path, weights_only=False))
 
     def validate_sample(self, config: Configuration) -> dict:
-        """Validates that the sample has the expected structure and data shapes.
+        """Validates the sample, logging warnings and raising errors.
+
+        Checks that the sample has the expected structure and data shapes based
+        on the provided configuration. Critical issues (missing required data,
+        shape mismatches) will raise a ValueError. Non-critical issues (e.g.,
+        unexpected data components found) will be logged as warnings using
+        the standard Python logging module.
 
         Args:
-            config: Configuration dict with expected shapes and required fields.
+            config: Configuration object defining expected shapes and required fields.
 
         Returns:
-            dict: A dictionary containing validation results:
-                {
-                    "valid": bool,  # True if validation passes
-                    "warnings": list  # List of warning dictionaries
-                }
-            If validation fails, an exception is raised.
+            dict: A dictionary indicating success: `{"valid": True}`.
+                  If validation fails due to a critical issue, an exception is raised
+                  instead of returning. Warnings encountered are logged.
 
-        Note:
-            This method emits warnings for non-critical issues while also
-            collecting them in the returned dictionary.
+        Raises:
+            TypeError: If `config` is not a Configuration object.
+            ValueError: For critical validation failures like missing expected data,
+                        incorrect data shapes, or missing required NWP providers.
         """
-        validation_warnings: list[dict[str, Any]] = []
-
         if not isinstance(config, Configuration):
             raise TypeError("config must be Configuration object")
 
@@ -81,11 +85,9 @@ class UKRegionalSample(SampleBase):
 
         # Check GSP shape if specified
         gsp_key = GSPSampleKey.gsp
-        # Check if GSP data is expected but missing
         if gsp_key in expected_shapes and gsp_key not in self._data:
             raise ValueError(f"Configuration expects GSP data ('{gsp_key}') but is missing.")
 
-        # Check GSP shape if data exists and is expected
         if gsp_key in self._data:
             if gsp_key in expected_shapes:
                 gsp_data = self._data[gsp_key]
@@ -95,13 +97,17 @@ class UKRegionalSample(SampleBase):
                     name="GSP",
                 )
             else:
-                validation_warnings.append(record_validation_warning(
+                warning_info = validation_warning(
                     message=f"GSP data ('{gsp_key}') is present but not expected in configuration.",
                     warning_type="unexpected_component",
                     component=str(gsp_key),
-                ))
+                )
+                logger.warning(
+                    f"{warning_info['message']} (Type: {warning_info['type']}, "
+                    f"Component: {warning_info.get('component')})",
+                )
 
-        # Checks for NWP data - nested structure
+        # Checks for NWP data
         nwp_key = NWPSampleKey.nwp
         if nwp_key in expected_shapes and nwp_key not in self._data:
             raise ValueError(f"Configuration expects NWP data ('{nwp_key}') but is missing.")
@@ -111,18 +117,21 @@ class UKRegionalSample(SampleBase):
             if not isinstance(nwp_data_all_providers, dict):
                 raise ValueError(f"NWP data ('{nwp_key}') should be a dictionary.")
 
-            # Check NWP shape if data exists and is expected
             if nwp_key in expected_shapes:
                 expected_providers = set(expected_shapes[nwp_key].keys())
                 actual_providers = set(nwp_data_all_providers.keys())
 
                 unexpected_providers = actual_providers - expected_providers
                 if unexpected_providers:
-                    validation_warnings.append(record_validation_warning(
+                    warning_info = validation_warning(
                         message=f"Unexpected NWP providers found: {list(unexpected_providers)}",
                         warning_type="unexpected_provider",
                         providers=list(unexpected_providers),
-                    ))
+                    )
+                    logger.warning(
+                        f"{warning_info['message']} (Type: {warning_info['type']}, "
+                        f"Providers: {warning_info.get('providers')})",
+                    )
 
                 missing_expected_providers = expected_providers - actual_providers
                 if missing_expected_providers:
@@ -135,10 +144,10 @@ class UKRegionalSample(SampleBase):
                     provider_data = nwp_data_all_providers[provider]
 
                     if "nwp" not in provider_data:
-                         error_msg = (
-                             f"Missing array key 'nwp' in NWP data for provider '{provider}'."
-                         )
-                         raise ValueError(error_msg)
+                        error_msg = (
+                            f"Missing array key 'nwp' in NWP data for provider '{provider}'."
+                        )
+                        raise ValueError(error_msg)
 
                     nwp_array = provider_data["nwp"]
                     check_dimensions(
@@ -147,22 +156,24 @@ class UKRegionalSample(SampleBase):
                         name=f"NWP data ({provider})",
                     )
             else:
-                validation_warnings.append(record_validation_warning(
+                warning_info = validation_warning(
                     message=(
                         f"NWP data ('{nwp_key}') is present but not expected "
                         "in configuration."
                     ),
                     warning_type="unexpected_component",
                     component=str(nwp_key),
-                ))
+                )
+                logger.warning(
+                    f"{warning_info['message']} (Type: {warning_info['type']}, "
+                    f"Component: {warning_info.get('component')})",
+                )
 
         # Validate satellite data
         sat_key = SatelliteSampleKey.satellite_actual
-        # Check if Satellite data is expected but missing
         if sat_key in expected_shapes and sat_key not in self._data:
             raise ValueError(f"Configuration expects Satellite data ('{sat_key}') but is missing.")
 
-        # Check satellite shape if data exists and is expected
         if sat_key in self._data:
             if sat_key in expected_shapes:
                 sat_data = self._data[sat_key]
@@ -172,14 +183,18 @@ class UKRegionalSample(SampleBase):
                     name="Satellite data",
                 )
             else:
-                validation_warnings.append(record_validation_warning(
+                warning_info = validation_warning(
                     message=(
                         f"Satellite data ('{sat_key}') is present but not expected "
                         "in configuration."
                     ),
                     warning_type="unexpected_component",
                     component=str(sat_key),
-                ))
+                )
+                logger.warning(
+                    f"{warning_info['message']} (Type: {warning_info['type']}, "
+                    f"Component: {warning_info.get('component')})",
+                )
 
         # Validate solar coordinates data
         solar_keys = ["solar_azimuth", "solar_elevation"]
@@ -188,7 +203,6 @@ class UKRegionalSample(SampleBase):
             if solar_key in expected_shapes and solar_key not in self._data:
                 raise ValueError(f"Configuration expects {solar_key} data but is missing.")
 
-            # Check solar coordinate shape if data exists
             if solar_key in self._data:
                 if solar_key in expected_shapes:
                     solar_data = self._data[solar_key]
@@ -198,35 +212,43 @@ class UKRegionalSample(SampleBase):
                         name=f"{solar_name} data",
                     )
                 else:
-                    validation_warnings.append(record_validation_warning(
+                    warning_info = validation_warning(
                         message=(
                             f"{solar_name} data is present but not expected "
                             "in configuration."
                         ),
                         warning_type="unexpected_component",
                         component=solar_key,
-                    ))
+                    )
+                    logger.warning(
+                        f"{warning_info['message']} (Type: {warning_info['type']}, "
+                        f"Component: {warning_info.get('component')})",
+                    )
 
-        # Check for other unexpected components
+        # Check for potentially unexpected components
         checked_keys = {gsp_key, nwp_key, sat_key} | set(solar_keys)
         all_present_keys = set(self._data.keys())
-        expected_config_keys = set(expected_shapes.keys())
-        other_unexpected_keys = all_present_keys - checked_keys - expected_config_keys
+        unexpected_present_keys = all_present_keys - set(expected_shapes.keys())
 
-        for key in other_unexpected_keys:
-            validation_warnings.append(record_validation_warning(
-                message=(
-                    f"Unexpected component '{key}' is present but not expected "
-                    "in configuration."
-                ),
-                warning_type="unexpected_component",
-                component=str(key),
-            ))
+        for key in unexpected_present_keys:
+            if key not in checked_keys:
+                warning_info = validation_warning(
+                    message=(
+                        f"Unexpected component '{key}' is present in data but not defined "
+                        "in configuration's expected shapes."
+                    ),
+                    warning_type="unexpected_component",
+                    component=str(key),
+                )
+                logger.warning(
+                    f"{warning_info['message']} (Type: {warning_info['type']}, "
+                    f"Component: {warning_info.get('component')})",
+                )
 
         return {
             "valid": True,
-            "warnings": validation_warnings,
         }
+
 
     @override
     def plot(self) -> None:
