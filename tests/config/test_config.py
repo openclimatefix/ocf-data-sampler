@@ -120,3 +120,46 @@ def test_inconsistent_dropout_use(test_config_filename):
         match="To use dropout timedeltas dropout fraction should be > 0",
     ):
         _ = Configuration(**configuration.model_dump())
+
+
+def test_valid_accum_channels(test_config_filename):
+    """Test valid accum_channels with required normalization constants."""
+    configuration = load_yaml_configuration(test_config_filename)
+
+    # Get first NWP config
+    nwp_name = next(iter(configuration.input_data.nwp.root.keys()))
+    original_nwp = configuration.input_data.nwp[nwp_name]
+
+    # Create updated configuration
+    new_config_dict = configuration.model_dump()
+
+    # 1. Set valid accum_channel
+    target_channel = original_nwp.channels[0]
+    new_config_dict["input_data"]["nwp"][nwp_name]["accum_channels"] = [target_channel]
+
+    # 2. Add required diff_ normalization constants (split line)
+    norm_constants = new_config_dict["input_data"]["nwp"][nwp_name]["normalisation_constants"]
+    norm_constants[f"diff_{target_channel}"] = {
+        "mean": 0.0,  # Example values
+        "std": 1.0,
+    }
+
+    # Should now validate successfully
+    _ = Configuration(**new_config_dict)
+
+def test_invalid_accum_channels(test_config_filename):
+    """Test accum_channels with non-existent channel raises error."""
+    configuration = load_yaml_configuration(test_config_filename)
+
+    # Get first NWP config name
+    nwp_name = next(iter(configuration.input_data.nwp.root.keys()))
+
+    # Create invalid configuration
+    new_config_dict = configuration.model_dump()
+    new_config_dict["input_data"]["nwp"][nwp_name]["accum_channels"] = ["invalid_channel"]
+
+    with pytest.raises(
+        ValueError,
+        match=r"accum_channels contains channels not present in 'channels': {'invalid_channel'}",
+    ):
+        _ = Configuration(**new_config_dict)
