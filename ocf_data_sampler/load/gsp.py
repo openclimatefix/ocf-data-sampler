@@ -15,8 +15,10 @@ def get_gsp_boundaries(version: str) -> pd.DataFrame:
     Returns:
         pd.DataFrame: The GSP boundaries
     """
-
-    assert version in ["20220314", "20250109"]
+    if version not in ["20220314", "20250109"]:
+        raise ValueError(
+            "Invalid version. Options are '20220314' or '20250109'.",
+        )
 
     return pd.read_csv(
         files("ocf_data_sampler.data").joinpath(f"uk_gsp_locations_{version}.csv"),
@@ -29,13 +31,12 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArr
 
     Args:
         zarr_path: Path to the GSP zarr data
-        boundaries_version: Version of the GSP boundaries to use. Options are "20220314" or 
+        boundaries_version: Version of the GSP boundaries to use. Options are "20220314" or
         "20250109".
 
     Returns:
         xr.DataArray: The opened GSP data
     """
-
     # Load UK GSP locations
     df_gsp_loc = get_gsp_boundaries(boundaries_version)
 
@@ -49,7 +50,7 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArr
         raise ValueError(
             "Some GSP IDs in the GSP generation data are available in the locations file.",
         )
-    
+
     # Select the locations by the GSP IDs in the generation data
     df_gsp_loc = df_gsp_loc.loc[ds.gsp_id.values]
 

@@ -7,7 +7,7 @@ from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
 
 
 def get_dataset_dict(
-    input_config: InputData, 
+    input_config: InputData,
     gsp_ids: list[int] | None = None,
 ) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
     """Construct dictionary of all of the input data sources.

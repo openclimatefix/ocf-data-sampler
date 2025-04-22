@@ -7,8 +7,8 @@ from torch.utils.data import Dataset
 from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.load.gsp import get_gsp_boundaries
+from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.numpy_sample import (
     convert_gsp_to_numpy_sample,
     convert_nwp_to_numpy_sample,
@@ -47,8 +47,8 @@ def compute(xarray_dict: dict) -> dict:
 
 
 def get_gsp_locations(
-    gsp_ids: list[int] | None = None, 
-    version: str = "20220314"
+    gsp_ids: list[int] | None = None,
+    version: str = "20220314",
 ) -> list[Location]:
     """Get list of locations of all GSPs.
 
@@ -56,7 +56,6 @@ def get_gsp_locations(
         gsp_ids: List of GSP IDs to include. Defaults to all GSPs except national
         version: Version of GSP boundaries to use. Defaults to "20220314"
     """
-
     df_gsp_loc = get_gsp_boundaries(version)
 
     # Default GSP IDs is all except national (gsp_id=0)
@@ -67,7 +66,7 @@ def get_gsp_locations(
     df_gsp_loc = df_gsp_loc.loc[gsp_ids]
 
     locations = []
-    
+
     for gsp_id in gsp_ids:
         locations.append(
             Location(
@@ -113,8 +112,8 @@ class AbstractPVNetUKDataset(Dataset):
 
         # Construct list of locations to sample from
         self.locations = get_gsp_locations(
-            gsp_ids, 
-            version=config.input_data.gsp.boundaries_version
+            gsp_ids,
+            version=config.input_data.gsp.boundaries_version,
         )
         self.valid_t0_times = valid_t0_times
 
