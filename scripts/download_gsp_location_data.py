@@ -19,6 +19,8 @@ GSP_REGIONS_URL = (
     "https://api.neso.energy/dataset/2810092e-d4b2-472f-b955-d8bea01f9ec0/"
     "resource/d95e8c1b-9cd9-41dd-aacb-4b53b8c07c20/download/gsp_regions_20250109.zip"
 )
+# This is the path to the OSBG version of the boundaries. The lon-lats version can be found at:
+#   Proj_4326/GSP_regions_4326_20250109.geojson
 GSP_REGIONS_GEOJSON_PATH_IN_ZIP = "Proj_27700/GSP_regions_27700_20250109.geojson"
 GSP_NAME_MAP_URL = "https://api.pvlive.uk/pvlive/api/v4/gsp_list"
 SAVE_PATH = "uk_gsp_locations_20250109.csv"
