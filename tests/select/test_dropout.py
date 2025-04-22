@@ -19,7 +19,7 @@ def da_sample(t0):
                         t0 + pd.Timedelta("1h"),
                         freq="5min")
     return xr.DataArray(
-        np.arange(len(times)),  # Simple predictable values
+        np.arange(len(times)),
         coords={"time_utc": times},
         dims=["time_utc"],
         name="test_data",

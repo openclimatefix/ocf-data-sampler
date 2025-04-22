@@ -26,7 +26,7 @@ def simulate_dropout(
     Returns:
         DataArray with NaN values after the dropout time (if applied)
     """
-    # Validate input parameters in correct order
+    # Validate input parameters
     if not 0 <= dropout_frac <= 1:
         raise ValueError("dropout_frac must be between 0 and 1")
 
