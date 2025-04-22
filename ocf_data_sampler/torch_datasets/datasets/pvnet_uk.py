@@ -1,7 +1,5 @@
 """Torch dataset for UK PVNet."""
 
-from importlib.resources import files
-
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -10,6 +8,7 @@ from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
+from ocf_data_sampler.load.gsp import get_gsp_boundaries
 from ocf_data_sampler.numpy_sample import (
     convert_gsp_to_numpy_sample,
     convert_nwp_to_numpy_sample,
@@ -47,23 +46,28 @@ def compute(xarray_dict: dict) -> dict:
     return xarray_dict
 
 
-def get_gsp_locations(gsp_ids: list[int] | None = None) -> list[Location]:
+def get_gsp_locations(
+    gsp_ids: list[int] | None = None, 
+    version: str = "20220314"
+) -> list[Location]:
     """Get list of locations of all GSPs.
 
     Args:
-        gsp_ids: List of GSP IDs to include. Defaults to all
+        gsp_ids: List of GSP IDs to include. Defaults to all GSPs except national
+        version: Version of GSP boundaries to use. Defaults to "20220314"
     """
+
+    df_gsp_loc = get_gsp_boundaries(version)
+
+    # Default GSP IDs is all except national (gsp_id=0)
     if gsp_ids is None:
-        gsp_ids = list(range(1, 318))
+        gsp_ids = df_gsp_loc.index.values
+        gsp_ids = gsp_ids[gsp_ids != 0]
+
+    df_gsp_loc = df_gsp_loc.loc[gsp_ids]
 
     locations = []
-
-    # Load UK GSP locations
-    df_gsp_loc = pd.read_csv(
-        files("ocf_data_sampler.data").joinpath("uk_gsp_locations.csv"),
-        index_col="gsp_id",
-    )
-
+    
     for gsp_id in gsp_ids:
         locations.append(
             Location(
@@ -108,7 +112,10 @@ class AbstractPVNetUKDataset(Dataset):
             valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
-        self.locations = get_gsp_locations(gsp_ids)
+        self.locations = get_gsp_locations(
+            gsp_ids, 
+            version=config.input_data.gsp.boundaries_version
+        )
         self.valid_t0_times = valid_t0_times
 
         # Assign config and input data to self

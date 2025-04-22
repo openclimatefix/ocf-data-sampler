@@ -8,6 +8,7 @@ from collections.abc import Iterator
 
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
+from typing import Literal
 
 NWP_PROVIDERS = [
     "ukv",
@@ -281,6 +282,11 @@ class GSP(TimeWindowMixin, DropoutMixin):
         ...,
         description="Absolute or relative zarr filepath. Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
+    )
+
+    boundaries_version: Literal["20220314", "20250109"] = Field(
+        "20220314",
+        description="Version of the GSP boundaries to use. Options are '20220314' or '20250109'.",
     )
 
 

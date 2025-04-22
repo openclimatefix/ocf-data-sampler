@@ -6,8 +6,10 @@ from ocf_data_sampler.config import InputData
 from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
 
 
-def get_dataset_dict(input_config: InputData, gsp_ids: list[int] | None = None)\
-        -> dict[str, dict[xr.DataArray] | xr.DataArray]:
+def get_dataset_dict(
+    input_config: InputData, 
+    gsp_ids: list[int] | None = None,
+) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
     """Construct dictionary of all of the input data sources.
 
     Args:
@@ -19,7 +21,10 @@ def get_dataset_dict(input_config: InputData, gsp_ids: list[int] | None = None)\
     # Load GSP data unless the path is None
     if input_config.gsp and input_config.gsp.zarr_path:
 
-        da_gsp = open_gsp(zarr_path=input_config.gsp.zarr_path).compute()
+        da_gsp = open_gsp(
+            zarr_path=input_config.gsp.zarr_path,
+            boundaries_version=input_config.gsp.boundaries_version,
+        ).compute()
 
         if gsp_ids is None:
             # Remove national (gsp_id=0)
