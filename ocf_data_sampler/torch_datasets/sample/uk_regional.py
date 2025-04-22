@@ -97,14 +97,10 @@ class UKRegionalSample(SampleBase):
                     name="GSP",
                 )
             else:
-                warning_info = validation_warning(
+                validation_warning(
                     message=f"GSP data ('{gsp_key}') is present but not expected in configuration.",
                     warning_type="unexpected_component",
                     component=str(gsp_key),
-                )
-                logger.warning(
-                    f"{warning_info['message']} (Type: {warning_info['type']}, "
-                    f"Component: {warning_info.get('component')})",
                 )
 
         # Checks for NWP data
@@ -123,14 +119,10 @@ class UKRegionalSample(SampleBase):
 
                 unexpected_providers = actual_providers - expected_providers
                 if unexpected_providers:
-                    warning_info = validation_warning(
+                    validation_warning(
                         message=f"Unexpected NWP providers found: {list(unexpected_providers)}",
                         warning_type="unexpected_provider",
                         providers=list(unexpected_providers),
-                    )
-                    logger.warning(
-                        f"{warning_info['message']} (Type: {warning_info['type']}, "
-                        f"Providers: {warning_info.get('providers')})",
                     )
 
                 missing_expected_providers = expected_providers - actual_providers
@@ -156,17 +148,13 @@ class UKRegionalSample(SampleBase):
                         name=f"NWP data ({provider})",
                     )
             else:
-                warning_info = validation_warning(
+                validation_warning(
                     message=(
                         f"NWP data ('{nwp_key}') is present but not expected "
                         "in configuration."
                     ),
                     warning_type="unexpected_component",
                     component=str(nwp_key),
-                )
-                logger.warning(
-                    f"{warning_info['message']} (Type: {warning_info['type']}, "
-                    f"Component: {warning_info.get('component')})",
                 )
 
         # Validate satellite data
@@ -183,17 +171,13 @@ class UKRegionalSample(SampleBase):
                     name="Satellite data",
                 )
             else:
-                warning_info = validation_warning(
+                validation_warning(
                     message=(
                         f"Satellite data ('{sat_key}') is present but not expected "
                         "in configuration."
                     ),
                     warning_type="unexpected_component",
                     component=str(sat_key),
-                )
-                logger.warning(
-                    f"{warning_info['message']} (Type: {warning_info['type']}, "
-                    f"Component: {warning_info.get('component')})",
                 )
 
         # Validate solar coordinates data
@@ -212,17 +196,13 @@ class UKRegionalSample(SampleBase):
                         name=f"{solar_name} data",
                     )
                 else:
-                    warning_info = validation_warning(
+                    validation_warning(
                         message=(
                             f"{solar_name} data is present but not expected "
                             "in configuration."
                         ),
                         warning_type="unexpected_component",
                         component=solar_key,
-                    )
-                    logger.warning(
-                        f"{warning_info['message']} (Type: {warning_info['type']}, "
-                        f"Component: {warning_info.get('component')})",
                     )
 
         # Check for potentially unexpected components
@@ -232,17 +212,13 @@ class UKRegionalSample(SampleBase):
 
         for key in unexpected_present_keys:
             if key not in checked_keys:
-                warning_info = validation_warning(
+                validation_warning(
                     message=(
                         f"Unexpected component '{key}' is present in data but not defined "
                         "in configuration's expected shapes."
                     ),
                     warning_type="unexpected_component",
                     component=str(key),
-                )
-                logger.warning(
-                    f"{warning_info['message']} (Type: {warning_info['type']}, "
-                    f"Component: {warning_info.get('component')})",
                 )
 
         return {

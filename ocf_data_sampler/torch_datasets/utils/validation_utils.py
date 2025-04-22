@@ -1,9 +1,12 @@
 """Validate sample shape against expected shape - utility function."""
 
+import logging
 from typing import Any
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.numpy_sample import GSPSampleKey, NWPSampleKey, SatelliteSampleKey
+
+logger = logging.getLogger(__name__)
 
 
 def check_dimensions(
@@ -102,23 +105,31 @@ def validation_warning(
     component: str | None = None,
     providers: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Constructs and returns a dictionary containing warning details.
+    """Constructs warning details and logs a standard warning message.
 
     Args:
-        message: The warning message string.
+        message: The base warning message string.
         warning_type: The category of the warning (e.g., 'unexpected_component').
         component: Optional component identifier (e.g., 'gsp').
         providers: Optional list of provider names (e.g., ['ukv']).
 
     Returns:
-        A dictionary containing the structured warning information.
+        None - This function now directly logs the warning.
     """
     warning_info: dict[str, Any] = {"type": warning_type, "message": message}
+    log_message_parts = [message]
+    log_message_parts.append(f"(Type: {warning_type}")
+
     if component is not None:
         warning_info["component"] = component
+        log_message_parts.append(f", Component: {component}")
     if providers is not None:
         warning_info["providers"] = providers
-    return warning_info
+        log_message_parts.append(f", Providers: {providers}")
+
+    log_message_parts.append(")")
+    log_message = " ".join(log_message_parts)
+    logger.warning(log_message)
 
 
 def _calculate_time_steps(start_minutes: int, end_minutes: int, resolution_minutes: int) -> int:
