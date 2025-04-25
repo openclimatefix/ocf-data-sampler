@@ -2,6 +2,7 @@
 UK Regional class testing - UKRegionalSample
 """
 
+import logging
 import tempfile
 
 import numpy as np
@@ -96,12 +97,15 @@ def test_to_numpy(numpy_sample):
     assert numpy_data["solar_elevation"].shape == (7,)
 
 
-def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration):
-    """Test the validate_sample method succeeds with a loaded Configuration object."""
+def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration, caplog):
+    """Test the validate_sample method succeeds with no warnings for a valid sample."""
     sample = UKRegionalSample(numpy_sample)
+    caplog.set_level(logging.WARNING)
     result = sample.validate_sample(pvnet_configuration_object)
 
-    assert result is True
+    assert isinstance(result, dict)
+    assert result["valid"] is True
+    assert len(caplog.records) == 0, "No warnings should be logged for a valid sample"
 
 
 def test_validate_sample_with_missing_keys(
@@ -163,3 +167,64 @@ def test_validate_sample_with_wrong_solar_shapes(
 
     with pytest.raises(ValueError, match="'Solar Azimuth data' shape mismatch: Actual shape:"):
         sample.validate_sample(pvnet_configuration_object)
+
+
+def test_validate_sample_with_unexpected_provider(
+    numpy_sample,
+    pvnet_configuration_object: Configuration,
+    caplog,
+):
+    """Test validation passes and logs a warning for an unexpected NWP provider."""
+    modified_data = numpy_sample.copy()
+    unexpected_provider = "unexpected_provider"
+    nwp_data = {
+        "nwp": np.random.rand(4, 1, 2, 2).astype(np.float32),
+        "x": np.array([1, 2], dtype=np.int32),
+        "y": np.array([1, 2], dtype=np.int32),
+        NWPSampleKey.channel_names: ["t"],
+    }
+    if NWPSampleKey.nwp not in modified_data:
+         modified_data[NWPSampleKey.nwp] = {}
+    modified_data[NWPSampleKey.nwp][unexpected_provider] = nwp_data
+
+    sample = UKRegionalSample(modified_data)
+
+    with caplog.at_level(logging.WARNING):
+        result = sample.validate_sample(pvnet_configuration_object)
+
+    # Validation should still pass
+    assert isinstance(result, dict)
+    assert result["valid"] is True
+
+    warning_logs = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warning_logs) == 1, "Expected exactly one warning log"
+
+    log_message = warning_logs[0].message
+    assert "Unexpected NWP providers found" in log_message
+    assert unexpected_provider in log_message
+
+
+def test_validate_sample_with_unexpected_component(
+    numpy_sample,
+    pvnet_configuration_object: Configuration,
+    caplog,
+):
+    """Test validation passes and logs a warning for an unexpected component."""
+    modified_data = numpy_sample.copy()
+    unexpected_key = "unexpected_component_key_xyz"
+    modified_data[unexpected_key] = np.random.rand(7).astype(np.float32)
+    sample = UKRegionalSample(modified_data)
+
+    with caplog.at_level(logging.WARNING):
+        result = sample.validate_sample(pvnet_configuration_object)
+
+    # Validation should still pass
+    assert isinstance(result, dict), "validate_sample should return a dictionary"
+    assert result["valid"] is True, "Validation should pass even with warnings"
+
+    warning_logs = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warning_logs) == 1, "Expected exactly one warning log"
+
+    log_message = warning_logs[0].message
+    expected_substring = f"Unexpected component '{unexpected_key}'"
+    assert expected_substring in log_message
