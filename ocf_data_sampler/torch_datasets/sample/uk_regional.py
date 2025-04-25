@@ -1,5 +1,7 @@
 """PVNet UK Regional sample implementation for dataset handling and visualisation."""
 
+import logging
+
 import torch
 from typing_extensions import override
 
@@ -14,7 +16,10 @@ from ocf_data_sampler.torch_datasets.sample.base import SampleBase
 from ocf_data_sampler.torch_datasets.utils.validation_utils import (
     calculate_expected_shapes,
     check_dimensions,
+    validation_warning,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UKRegionalSample(SampleBase):
@@ -50,14 +55,27 @@ class UKRegionalSample(SampleBase):
         # TODO: We should move away from using torch.load(..., weights_only=False)
         return cls(torch.load(path, weights_only=False))
 
-    def validate_sample(self, config: Configuration) -> bool:
-        """Validates that the sample has the expected structure and data shapes.
+    def validate_sample(self, config: Configuration) -> dict:
+        """Validates the sample, logging warnings and raising errors.
+
+        Checks that the sample has the expected structure and data shapes based
+        on the provided configuration. Critical issues (missing required data,
+        shape mismatches) will raise a ValueError. Non-critical issues (e.g.,
+        unexpected data components found) will be logged as warnings using
+        the standard Python logging module.
 
         Args:
-            config: Configuration dict with expected shapes and required fields.
+            config: Configuration object defining expected shapes and required fields.
 
         Returns:
-            bool: True if validation passes, otherwise raises an exception.
+            dict: A dictionary indicating success: `{"valid": True}`.
+                  If validation fails due to a critical issue, an exception is raised
+                  instead of returning. Warnings encountered are logged.
+
+        Raises:
+            TypeError: If `config` is not a Configuration object.
+            ValueError: For critical validation failures like missing expected data,
+                        incorrect data shapes, or missing required NWP providers.
         """
         if not isinstance(config, Configuration):
             raise TypeError("config must be Configuration object")
@@ -67,78 +85,146 @@ class UKRegionalSample(SampleBase):
 
         # Check GSP shape if specified
         gsp_key = GSPSampleKey.gsp
-        # Check if GSP data is expected but missing
         if gsp_key in expected_shapes and gsp_key not in self._data:
             raise ValueError(f"Configuration expects GSP data ('{gsp_key}') but is missing.")
 
-        # Check GSP shape if data exists and is expected
-        if gsp_key in self._data and gsp_key in expected_shapes:
-            gsp_data = self._data[gsp_key]
-            check_dimensions(
-                actual_shape=gsp_data.shape,
-                expected_shape=expected_shapes[gsp_key],
-                name="GSP",
-            )
+        if gsp_key in self._data:
+            if gsp_key in expected_shapes:
+                gsp_data = self._data[gsp_key]
+                check_dimensions(
+                    actual_shape=gsp_data.shape,
+                    expected_shape=expected_shapes[gsp_key],
+                    name="GSP",
+                )
+            else:
+                validation_warning(
+                    message=f"GSP data ('{gsp_key}') is present but not expected in configuration.",
+                    warning_type="unexpected_component",
+                    component=str(gsp_key),
+                )
 
-        # Checks for NWP data - nested structure
+        # Checks for NWP data
         nwp_key = NWPSampleKey.nwp
         if nwp_key in expected_shapes and nwp_key not in self._data:
             raise ValueError(f"Configuration expects NWP data ('{nwp_key}') but is missing.")
 
-        # Check NWP structure and shapes if data exists
         if nwp_key in self._data:
             nwp_data_all_providers = self._data[nwp_key]
             if not isinstance(nwp_data_all_providers, dict):
                 raise ValueError(f"NWP data ('{nwp_key}') should be a dictionary.")
 
-            # Loop through providers present in actual data
-            for provider, provider_data in nwp_data_all_providers.items():
-                if "nwp" not in provider_data:
-                    raise ValueError(f"Missing array key in NWP data for provider '{provider}'.")
+            if nwp_key in expected_shapes:
+                expected_providers = set(expected_shapes[nwp_key].keys())
+                actual_providers = set(nwp_data_all_providers.keys())
 
-                if nwp_key in expected_shapes and provider in expected_shapes[nwp_key]:
+                unexpected_providers = actual_providers - expected_providers
+                if unexpected_providers:
+                    validation_warning(
+                        message=f"Unexpected NWP providers found: {list(unexpected_providers)}",
+                        warning_type="unexpected_provider",
+                        providers=list(unexpected_providers),
+                    )
+
+                missing_expected_providers = expected_providers - actual_providers
+                if missing_expected_providers:
+                    raise ValueError(
+                        f"Expected NWP providers are missing from the data: "
+                        f"{list(missing_expected_providers)}",
+                    )
+
+                for provider in expected_shapes[nwp_key]:
+                    provider_data = nwp_data_all_providers[provider]
+
+                    if "nwp" not in provider_data:
+                        error_msg = (
+                            f"Missing array key 'nwp' in NWP data for provider '{provider}'."
+                        )
+                        raise ValueError(error_msg)
+
                     nwp_array = provider_data["nwp"]
-                    actual_shape = nwp_array.shape
-                    expected_shape = expected_shapes[nwp_key][provider]
-
                     check_dimensions(
-                        actual_shape=actual_shape,
-                        expected_shape=expected_shape,
+                        actual_shape=nwp_array.shape,
+                        expected_shape=expected_shapes[nwp_key][provider],
                         name=f"NWP data ({provider})",
                     )
+            else:
+                validation_warning(
+                    message=(
+                        f"NWP data ('{nwp_key}') is present but not expected "
+                        "in configuration."
+                    ),
+                    warning_type="unexpected_component",
+                    component=str(nwp_key),
+                )
 
         # Validate satellite data
         sat_key = SatelliteSampleKey.satellite_actual
-        # Check if Satellite data is expected but missing
         if sat_key in expected_shapes and sat_key not in self._data:
             raise ValueError(f"Configuration expects Satellite data ('{sat_key}') but is missing.")
 
-        # Check satellite shape if data exists and is expected
-        if sat_key in self._data and sat_key in expected_shapes:
-            sat_data = self._data[sat_key]
-            check_dimensions(
-                actual_shape=sat_data.shape,
-                expected_shape=expected_shapes[sat_key],
-                name="Satellite data",
-            )
+        if sat_key in self._data:
+            if sat_key in expected_shapes:
+                sat_data = self._data[sat_key]
+                check_dimensions(
+                    actual_shape=sat_data.shape,
+                    expected_shape=expected_shapes[sat_key],
+                    name="Satellite data",
+                )
+            else:
+                validation_warning(
+                    message=(
+                        f"Satellite data ('{sat_key}') is present but not expected "
+                        "in configuration."
+                    ),
+                    warning_type="unexpected_component",
+                    component=str(sat_key),
+                )
 
         # Validate solar coordinates data
         solar_keys = ["solar_azimuth", "solar_elevation"]
-        # Check if solar coordinate is expected but missing
         for solar_key in solar_keys:
+            solar_name = solar_key.replace("_", " ").title()
             if solar_key in expected_shapes and solar_key not in self._data:
                 raise ValueError(f"Configuration expects {solar_key} data but is missing.")
 
-            # Check solar coordinate shape if data exists and is expected
-            if solar_key in self._data and solar_key in expected_shapes:
-                solar_data = self._data[solar_key]
-                check_dimensions(
-                    actual_shape=solar_data.shape,
-                    expected_shape=expected_shapes[solar_key],
-                    name=f"{solar_key.replace('_', ' ').title()} data",
+            if solar_key in self._data:
+                if solar_key in expected_shapes:
+                    solar_data = self._data[solar_key]
+                    check_dimensions(
+                        actual_shape=solar_data.shape,
+                        expected_shape=expected_shapes[solar_key],
+                        name=f"{solar_name} data",
+                    )
+                else:
+                    validation_warning(
+                        message=(
+                            f"{solar_name} data is present but not expected "
+                            "in configuration."
+                        ),
+                        warning_type="unexpected_component",
+                        component=solar_key,
+                    )
+
+        # Check for potentially unexpected components
+        checked_keys = {gsp_key, nwp_key, sat_key} | set(solar_keys)
+        all_present_keys = set(self._data.keys())
+        unexpected_present_keys = all_present_keys - set(expected_shapes.keys())
+
+        for key in unexpected_present_keys:
+            if key not in checked_keys:
+                validation_warning(
+                    message=(
+                        f"Unexpected component '{key}' is present in data but not defined "
+                        "in configuration's expected shapes."
+                    ),
+                    warning_type="unexpected_component",
+                    component=str(key),
                 )
 
-        return True
+        return {
+            "valid": True,
+        }
+
 
     @override
     def plot(self) -> None:
