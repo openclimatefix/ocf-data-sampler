@@ -122,37 +122,27 @@ def test_inconsistent_dropout_use(test_config_filename):
         _ = Configuration(**configuration.model_dump())
 
 
-def test_valid_accum_channels(test_config_filename):
-    """Test valid accum_channels with required normalization constants."""
-    configuration = load_yaml_configuration(test_config_filename)
+def test_accum_channels_validation(test_config_filename):
+    """Test accum_channels validation with required normalization constants."""
+    config = load_yaml_configuration(test_config_filename)
+    nwp_name, nwp_config = next(iter(config.input_data.nwp.root.items()))
 
-    nwp_name = next(iter(configuration.input_data.nwp.root.keys()))
-    original_nwp = configuration.input_data.nwp[nwp_name]
+    # Test valid case with normalization constants
+    valid_config = config.model_copy(deep=True)
+    valid_nwp = valid_config.input_data.nwp.root[nwp_name]
+    valid_channel = valid_nwp.channels[0]
+    valid_nwp.accum_channels = [valid_channel]
+    valid_nwp.normalisation_constants[f"diff_{valid_channel}"] = {"mean": 0.0, "std": 1.0}
+    _ = Configuration(**valid_config.model_dump())  # Should pass
 
-    new_config_dict = configuration.model_dump()
+    # Test invalid channel
+    invalid_config = config.model_copy(deep=True)
+    invalid_nwp = invalid_config.input_data.nwp.root[nwp_name]
+    invalid_nwp.accum_channels = ["invalid_channel"]
+    with pytest.raises(ValueError) as err:
+        _ = Configuration(**invalid_config.model_dump())
 
-    target_channel = original_nwp.channels[0]
-    new_config_dict["input_data"]["nwp"][nwp_name]["accum_channels"] = [target_channel]
-
-    norm_constants = new_config_dict["input_data"]["nwp"][nwp_name]["normalisation_constants"]
-    norm_constants[f"diff_{target_channel}"] = {
-        "mean": 0.0,  # Example values
-        "std": 1.0,
-    }
-
-    _ = Configuration(**new_config_dict) #should validate
-
-def test_invalid_accum_channels(test_config_filename):
-    """Test accum_channels with non-existent channel raises error."""
-    configuration = load_yaml_configuration(test_config_filename)
-
-    nwp_name = next(iter(configuration.input_data.nwp.root.keys()))
-
-    new_config_dict = configuration.model_dump()
-    new_config_dict["input_data"]["nwp"][nwp_name]["accum_channels"] = ["invalid_channel"]
-
-    with pytest.raises(
-        ValueError,
-        match=r"accum_channels contains channels not present in 'channels': {'invalid_channel'}",
-    ):
-        _ = Configuration(**new_config_dict)
+    error_msg = str(err.value)
+    assert "invalid_channel" in error_msg
+    assert nwp_name in error_msg
+    assert "accum_channels contains" in error_msg or "Invalid accum_channels" in error_msg
