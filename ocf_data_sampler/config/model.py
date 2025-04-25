@@ -7,7 +7,7 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 from collections.abc import Iterator
 from typing import Literal
 
-from pydantic import BaseModel, Field, RootModel, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
 
 NWP_PROVIDERS = [
@@ -212,16 +212,16 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         " the maximum forecast horizon of the NWP and the requested forecast length.",
     )
 
-    @field_validator("accum_channels")
-    def validate_accum_channels_subset(cls, v: list[str], values: ValidationInfo) -> list[str]:
+    @model_validator(mode="after")
+    def validate_accum_channels_subset(self) -> "NWP":
         """Validate accum_channels is subset of channels."""
-        channels = values.data.get("channels", [])
-        invalid_channels = set(v) - set(channels)
+        invalid_channels = set(self.accum_channels) - set(self.channels)
         if invalid_channels:
             raise ValueError(
-                f"accum_channels contains channels not present in 'channels': {invalid_channels}",
+                f"NWP provider '{self.provider}': accum_channels contains "
+                f"invalid channels: {invalid_channels}",
             )
-        return v
+        return self
 
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:
