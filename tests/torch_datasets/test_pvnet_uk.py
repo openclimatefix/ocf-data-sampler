@@ -1,16 +1,20 @@
 import dask.array
 import numpy as np
 import pandas as pd
+import torch
 import xarray as xr
+from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
+from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
     PVNetUKConcurrentDataset,
     PVNetUKRegionalDataset,
     compute,
 )
+from ocf_data_sampler.torch_datasets.sample.base import batch_to_tensor
 
 
 def test_process_and_combine_datasets(pvnet_config_filename):
@@ -85,54 +89,62 @@ def test_compute():
 
 
 def test_pvnet_uk_regional_dataset(pvnet_config_filename):
+    """
+    Tests the PVNetUKRegionalDataset, generating sample via PyTorch DataLoader.
+    """
     # Create dataset object
     dataset = PVNetUKRegionalDataset(pvnet_config_filename)
 
-    assert len(dataset.locations) == 317  # Number of regional GSPs
-    # NB. I have not checked the value (39 below) is in fact correct
+    assert len(dataset.locations) == 317
     assert len(dataset.valid_t0_times) == 39
     assert len(dataset) == 317 * 39
 
-    # Generate a sample
-    sample = dataset[0]
+    dataloader = DataLoader(
+        dataset,
+        batch_size=1,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=lambda dict_list: batch_to_tensor(
+            stack_np_samples_into_batch(dict_list),
+        ),
+    )
 
+    sample = next(iter(dataloader))
     assert isinstance(sample, dict)
 
-    # These keys should always be present
+    # Keys should always be present
     required_keys = ["nwp", "satellite_actual", "gsp"]
     for key in required_keys:
         assert key in sample
 
-    solar_keys = ["solar_azimuth", "solar_elevation"]
-    if dataset.config.input_data.solar_position is not None:
-        # Test that solar position keys are present when configured
-        for key in solar_keys:
-            assert key in sample, f"Solar position key {key} should be present in sample"
+    # Check shape and type
+    assert isinstance(sample["satellite_actual"], torch.Tensor)
+    assert sample["satellite_actual"].shape == (1, 7, 1, 2, 2)
 
-        # Get expected time steps from configuration
-        expected_time_steps = (
-            dataset.config.input_data.solar_position.interval_end_minutes
-            - dataset.config.input_data.solar_position.interval_start_minutes
-        ) // dataset.config.input_data.solar_position.time_resolution_minutes + 1
-
-        # Test solar angle shapes based on config
-        assert sample["solar_azimuth"].shape == (expected_time_steps,)
-        assert sample["solar_elevation"].shape == (expected_time_steps,)
-    else:
-        # Test that solar position keys are not present
-        for key in solar_keys:
-            assert key not in sample, f"Solar position key {key} should not be present"
-
+    # Check for NWP sources and structure
     for nwp_source in ["ukv"]:
         assert nwp_source in sample["nwp"]
+    assert isinstance(sample["nwp"]["ukv"]["nwp"], torch.Tensor)
+    assert sample["nwp"]["ukv"]["nwp"].shape == (1, 4, 1, 2, 2)
+    assert isinstance(sample["nwp"]["ukv"]["nwp_channel_names"], np.ndarray)
 
-    # Check the shape of the data is correct
-    # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["satellite_actual"].shape == (7, 1, 2, 2)
-    # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
-    # 3 hours of 30 minute data (inclusive)
-    assert sample["gsp"].shape == (7,)
+    assert isinstance(sample["gsp"], torch.Tensor)
+    assert sample["gsp"].shape == (1, 7)
+
+    # Check solar position keys and shapes
+    solar_keys = ["solar_azimuth", "solar_elevation"]
+    solar_config = dataset.config.input_data.solar_position
+
+    expected_time_steps = (
+        solar_config.interval_end_minutes
+        - solar_config.interval_start_minutes
+    ) // solar_config.time_resolution_minutes + 1
+
+    # Assert solar position keys are present and have correct type and shape
+    for key in solar_keys:
+        assert key in sample, f"DataLoader Sample: Solar key {key} should be present"
+        assert isinstance(sample[key], torch.Tensor)
+        assert sample[key].shape == (1, expected_time_steps)
 
 
 def test_pvnet_uk_regional_dataset_limit_gsp_ids(pvnet_config_filename):
