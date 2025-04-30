@@ -1,36 +1,19 @@
 import numpy as np
 import pandas as pd
-import pytest
+import torch
 import xarray as xr
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
+from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.torch_datasets.datasets.site import (
     SitesDataset,
     coarsen_data,
     convert_from_dataset_to_dict_datasets,
     convert_netcdf_to_numpy_sample,
 )
-
-
-@pytest.fixture()
-def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites):
-    # adjust config to point to the zarr file
-    config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.site = data_sites
-    config.input_data.gsp = None
-
-    filename = f"{tmp_path}/configuration.yaml"
-    save_yaml_configuration(config, filename)
-    yield filename
-
-
-@pytest.fixture()
-def sites_dataset(site_config_filename):
-    return SitesDataset(site_config_filename)
+from ocf_data_sampler.torch_datasets.sample.base import batch_to_tensor
 
 
 def test_site(tmp_path, site_config_filename):
@@ -118,22 +101,62 @@ def test_convert_from_dataset_to_dict_datasets(sites_dataset):
         assert key in sample
 
 
+def site_collate_fn(batch_xr_datasets):
+    batch_np_dicts = [convert_netcdf_to_numpy_sample(xr_ds) for xr_ds in batch_xr_datasets]
+    stacked_batch = stack_np_samples_into_batch(batch_np_dicts)
+    return batch_to_tensor(stacked_batch)
+
+
 def test_site_dataset_with_dataloader(sites_dataset) -> None:
-    expected_coods = {
-        "site__date_cos",
-        "site__time_cos",
-        "site__time_sin",
-        "site__date_sin",
-    }
+    """Test SitesDataset integration with DataLoader using custom collate_fn."""
 
-    dataloader = DataLoader(sites_dataset, collate_fn=None, batch_size=None)
+    batch_size = 2
+    dataloader = DataLoader(
+        sites_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=site_collate_fn,
+    )
 
+    # Obtain batch
     sample = next(iter(dataloader))
+    assert isinstance(sample, dict)
 
-    # check that expected_dims is in the sample
-    for key in expected_coods:
-        assert key in sample
+    # Verify keys against actual output of site_collate_fn
+    expected_top_level_keys = [
+        "nwp", "satellite_actual", "site", "solar_azimuth", "solar_elevation",
+        "site_id",
+    ]
+    for key in expected_top_level_keys:
+         assert key in sample, f"Expected key '{key}' not found in DataLoader batch"
 
+    assert isinstance(sample["satellite_actual"], torch.Tensor)
+    assert sample["satellite_actual"].shape == (batch_size, 7, 1, 2, 2)
+
+    assert "ukv" in sample["nwp"]
+    assert isinstance(sample["nwp"]["ukv"]["nwp"], torch.Tensor)
+    assert sample["nwp"]["ukv"]["nwp"].shape == (batch_size, 4, 1, 2, 2)
+    assert isinstance(sample["nwp"]["ukv"]["nwp_channel_names"], np.ndarray)
+
+    assert isinstance(sample["site"], torch.Tensor)
+    assert sample["site"].shape == (batch_size, 4)
+
+    # Solar position data basic assertiob
+    assert isinstance(sample["solar_azimuth"], torch.Tensor)
+    assert isinstance(sample["solar_elevation"], torch.Tensor)
+    solar_config = sites_dataset.config.input_data.solar_position
+
+    # Values to match SolarPosition config
+    expected_solar_steps = (
+        solar_config.interval_end_minutes - solar_config.interval_start_minutes
+     ) // solar_config.time_resolution_minutes + 1
+    assert sample["solar_azimuth"].shape == (batch_size, expected_solar_steps)
+    assert sample["solar_elevation"].shape == (batch_size, expected_solar_steps)
+
+    # Site ID - assert shape
+    assert isinstance(sample["site_id"], torch.Tensor)
+    assert sample["site_id"].shape == (batch_size,)
 
 def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     # Specify minimal structure for testing

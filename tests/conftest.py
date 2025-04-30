@@ -7,7 +7,8 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
-from ocf_data_sampler.config.model import Site
+from ocf_data_sampler.config.model import Site, SolarPosition
+from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -408,3 +409,27 @@ def pvnet_config_filename(
     filename = f"{tmp_path}/configuration.yaml"
     save_yaml_configuration(config, filename)
     return filename
+
+
+@pytest.fixture()
+def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites):
+    # adjust config to point to the zarr file
+    config = load_yaml_configuration(config_filename)
+    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.input_data.satellite.zarr_path = sat_zarr_path
+    config.input_data.site = data_sites
+    config.input_data.gsp = None
+
+    config.input_data.solar_position = SolarPosition(
+        time_resolution_minutes=30,
+        interval_start_minutes=-60,
+        interval_end_minutes=120,
+    )
+
+    filename = f"{tmp_path}/configuration_site_test.yaml"
+    save_yaml_configuration(config, filename)
+    yield filename
+
+@pytest.fixture()
+def sites_dataset(site_config_filename):
+    return SitesDataset(site_config_filename)
