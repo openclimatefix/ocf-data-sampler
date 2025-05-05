@@ -218,8 +218,8 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         invalid_channels = set(self.accum_channels) - set(self.channels)
         if invalid_channels:
             raise ValueError(
-                f"NWP provider '{self.provider}': accum_channels contains "
-                f"invalid channels: {invalid_channels}",
+                f"NWP provider '{self.provider}': all values in 'accum_channels' should "
+                f"be present in 'channels'. Extra values found: {invalid_channels}",
             )
         return self
 
