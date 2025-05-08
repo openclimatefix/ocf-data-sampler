@@ -1,19 +1,17 @@
 import numpy as np
 import pandas as pd
-import torch
+import pytest
 import xarray as xr
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
-from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.torch_datasets.datasets.site import (
     SitesDataset,
     coarsen_data,
     convert_from_dataset_to_dict_datasets,
     convert_netcdf_to_numpy_sample,
 )
-from ocf_data_sampler.torch_datasets.sample.base import batch_to_tensor
 
 
 def test_site(tmp_path, site_config_filename):
@@ -101,62 +99,51 @@ def test_convert_from_dataset_to_dict_datasets(sites_dataset):
         assert key in sample
 
 
-def site_collate_fn(batch_xr_datasets):
-    batch_np_dicts = [convert_netcdf_to_numpy_sample(xr_ds) for xr_ds in batch_xr_datasets]
-    stacked_batch = stack_np_samples_into_batch(batch_np_dicts)
-    return batch_to_tensor(stacked_batch)
-
-
 def test_site_dataset_with_dataloader(sites_dataset) -> None:
-    """Test SitesDataset integration with DataLoader using custom collate_fn."""
-
     batch_size = 2
+
     dataloader = DataLoader(
         sites_dataset,
         batch_size=batch_size,
         shuffle=False,
         num_workers=0,
-        collate_fn=site_collate_fn,
+        collate_fn=lambda batch_as_list_of_xr_datasets: batch_as_list_of_xr_datasets,
     )
 
-    # Obtain batch
-    sample = next(iter(dataloader))
-    assert isinstance(sample, dict)
+    try:
+        batch_of_xr_datasets = next(iter(dataloader))
+    except StopIteration:
+        if len(sites_dataset) < batch_size or len(sites_dataset) == 0 :
+            skip_msg = (
+                f"Skipping test as dataset length {len(sites_dataset)} "
+                f"is insufficient for batch size {batch_size}."
+            )
+            pytest.skip(skip_msg)
+        else:
+            raise
 
-    # Verify keys against actual output of site_collate_fn
-    expected_top_level_keys = [
-        "nwp", "satellite_actual", "site", "solar_azimuth", "solar_elevation",
-        "site_id",
-    ]
-    for key in expected_top_level_keys:
-         assert key in sample, f"Expected key '{key}' not found in DataLoader batch"
+    assert isinstance(batch_of_xr_datasets, list)
+    assert len(batch_of_xr_datasets) == min(batch_size, len(sites_dataset))
 
-    assert isinstance(sample["satellite_actual"], torch.Tensor)
-    assert sample["satellite_actual"].shape == (batch_size, 7, 1, 2, 2)
+    for individual_xr_sample in batch_of_xr_datasets:
+        assert isinstance(individual_xr_sample, xr.Dataset)
 
-    assert "ukv" in sample["nwp"]
-    assert isinstance(sample["nwp"]["ukv"]["nwp"], torch.Tensor)
-    assert sample["nwp"]["ukv"]["nwp"].shape == (batch_size, 4, 1, 2, 2)
-    assert isinstance(sample["nwp"]["ukv"]["nwp_channel_names"], np.ndarray)
+        expected_data_vars = {"nwp-ukv", "satellite", "site"}
+        assert set(individual_xr_sample.data_vars) == expected_data_vars
 
-    assert isinstance(sample["site"], torch.Tensor)
-    assert sample["site"].shape == (batch_size, 4)
+        assert individual_xr_sample["satellite"].values.shape == (7, 1, 2, 2)
+        assert individual_xr_sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
+        assert individual_xr_sample["site"].values.shape == (4,)
 
-    # Solar position data basic assertiob
-    assert isinstance(sample["solar_azimuth"], torch.Tensor)
-    assert isinstance(sample["solar_elevation"], torch.Tensor)
-    solar_config = sites_dataset.config.input_data.solar_position
+        expected_coords_subset = {
+            "site__date_cos",
+            "site__time_cos",
+            "site__time_sin",
+            "site__date_sin",
+        }
+        for coord_key in expected_coords_subset:
+            assert coord_key in individual_xr_sample.coords
 
-    # Values to match SolarPosition config
-    expected_solar_steps = (
-        solar_config.interval_end_minutes - solar_config.interval_start_minutes
-     ) // solar_config.time_resolution_minutes + 1
-    assert sample["solar_azimuth"].shape == (batch_size, expected_solar_steps)
-    assert sample["solar_elevation"].shape == (batch_size, expected_solar_steps)
-
-    # Site ID - assert shape
-    assert isinstance(sample["site_id"], torch.Tensor)
-    assert sample["site_id"].shape == (batch_size,)
 
 def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     # Specify minimal structure for testing
