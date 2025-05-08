@@ -263,3 +263,56 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
     # Sample with solar config should have solar position data
     for key in solar_keys:
         assert key in sample_with_solar, f"Solar key {key} should be in sample"
+
+
+def test_pvnet_uk_regional_dataset_raw_sample_iteration(pvnet_config_filename):
+    """
+    Tests iterating raw samples (dict of tensors) from PVNetUKRegionalDataset
+    """
+
+    # Create dataset object
+    dataset = PVNetUKRegionalDataset(pvnet_config_filename)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=None,
+        collate_fn=None,
+        shuffle=False,
+        num_workers=0,
+    )
+
+    raw_sample = next(iter(dataloader))
+
+    # Assertions for the raw sample
+    assert isinstance(raw_sample, dict), \
+        "Sample yielded by DataLoader with batch_size=None should be a dict"
+
+    # Check for expected keys directly
+    required_keys = ["nwp", "satellite_actual", "gsp", "solar_azimuth", "solar_elevation", "gsp_id"]
+    for key in required_keys:
+        assert key in raw_sample, f"Raw Sample: Expected key '{key}' not found"
+
+    # Check types are primarily torch.Tensor
+    assert isinstance(raw_sample["satellite_actual"], torch.Tensor)
+    assert isinstance(raw_sample["gsp"], torch.Tensor)
+    assert isinstance(raw_sample["solar_azimuth"], torch.Tensor)
+    assert isinstance(raw_sample["solar_elevation"], torch.Tensor)
+    assert isinstance(raw_sample["nwp"], dict)
+    assert "ukv" in raw_sample["nwp"]
+    assert isinstance(raw_sample["nwp"]["ukv"]["nwp"], torch.Tensor)
+    assert isinstance(raw_sample["nwp"]["ukv"]["nwp_channel_names"], np.ndarray)
+
+    # Check shapes
+    assert raw_sample["satellite_actual"].shape == (7, 1, 2, 2)
+    assert raw_sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
+    assert raw_sample["gsp"].shape == (7,)
+
+    # Check solar position shapes (no batch dimension)
+    solar_config = dataset.config.input_data.solar_position
+    expected_time_steps = (
+        solar_config.interval_end_minutes
+        - solar_config.interval_start_minutes
+    ) // solar_config.time_resolution_minutes + 1
+    assert raw_sample["solar_azimuth"].shape == (expected_time_steps,)
+    assert raw_sample["solar_elevation"].shape == (expected_time_steps,)
+
+    assert isinstance(raw_sample["gsp_id"], int | np.integer)
