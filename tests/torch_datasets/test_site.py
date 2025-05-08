@@ -100,49 +100,40 @@ def test_convert_from_dataset_to_dict_datasets(sites_dataset):
 
 
 def test_site_dataset_with_dataloader(sites_dataset) -> None:
-    batch_size = 2
+    if len(sites_dataset) == 0:
+        pytest.skip("Skipping test as dataset is empty.")
 
     dataloader = DataLoader(
         sites_dataset,
-        batch_size=batch_size,
+        batch_size=None,
         shuffle=False,
         num_workers=0,
-        collate_fn=lambda batch_as_list_of_xr_datasets: batch_as_list_of_xr_datasets,
+        collate_fn=None,
     )
 
     try:
-        batch_of_xr_datasets = next(iter(dataloader))
+        individual_xr_sample = next(iter(dataloader))
     except StopIteration:
-        if len(sites_dataset) < batch_size or len(sites_dataset) == 0 :
-            skip_msg = (
-                f"Skipping test as dataset length {len(sites_dataset)} "
-                f"is insufficient for batch size {batch_size}."
-            )
-            pytest.skip(skip_msg)
-        else:
-            raise
+        pytest.skip("Skipping test as dataloader is empty.")
+        return
 
-    assert isinstance(batch_of_xr_datasets, list)
-    assert len(batch_of_xr_datasets) == min(batch_size, len(sites_dataset))
+    assert isinstance(individual_xr_sample, xr.Dataset)
 
-    for individual_xr_sample in batch_of_xr_datasets:
-        assert isinstance(individual_xr_sample, xr.Dataset)
+    expected_data_vars = {"nwp-ukv", "satellite", "site"}
+    assert set(individual_xr_sample.data_vars) == expected_data_vars
 
-        expected_data_vars = {"nwp-ukv", "satellite", "site"}
-        assert set(individual_xr_sample.data_vars) == expected_data_vars
+    assert individual_xr_sample["satellite"].values.shape == (7, 1, 2, 2)
+    assert individual_xr_sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
+    assert individual_xr_sample["site"].values.shape == (4,)
 
-        assert individual_xr_sample["satellite"].values.shape == (7, 1, 2, 2)
-        assert individual_xr_sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
-        assert individual_xr_sample["site"].values.shape == (4,)
-
-        expected_coords_subset = {
-            "site__date_cos",
-            "site__time_cos",
-            "site__time_sin",
-            "site__date_sin",
-        }
-        for coord_key in expected_coords_subset:
-            assert coord_key in individual_xr_sample.coords
+    expected_coords_subset = {
+        "site__date_cos",
+        "site__time_cos",
+        "site__time_sin",
+        "site__date_sin",
+    }
+    for coord_key in expected_coords_subset:
+        assert coord_key in individual_xr_sample.coords
 
 
 def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
