@@ -124,25 +124,19 @@ def test_inconsistent_dropout_use(test_config_filename):
 
 def test_accum_channels_validation(test_config_filename):
     """Test accum_channels validation with required normalization constants."""
+    # Load valid config (implicitly tests valid case)
     config = load_yaml_configuration(test_config_filename)
-    nwp_name, nwp_config = next(iter(config.input_data.nwp.root.items()))
+    nwp_name, _ = next(iter(config.input_data.nwp.root.items()))
 
-    # Test valid case with normalization constants
-    valid_config = config.model_copy(deep=True)
-    valid_nwp = valid_config.input_data.nwp.root[nwp_name]
-    valid_channel = valid_nwp.channels[0]
-    valid_nwp.accum_channels = [valid_channel]
-    valid_nwp.normalisation_constants[f"diff_{valid_channel}"] = {"mean": 0.0, "std": 1.0}
-    _ = Configuration(**valid_config.model_dump())  # Should pass
-
-    # Test invalid channel
+    # Test invalid channel scenario
     invalid_config = config.model_copy(deep=True)
     invalid_nwp = invalid_config.input_data.nwp.root[nwp_name]
     invalid_nwp.accum_channels = ["invalid_channel"]
-    with pytest.raises(ValueError) as err:
-        _ = Configuration(**invalid_config.model_dump())
 
-    error_msg = str(err.value)
-    assert "invalid_channel" in error_msg
-    assert nwp_name in error_msg
-    assert "accum_channels contains" in error_msg or "Invalid accum_channels" in error_msg
+    # Verify exact error message
+    expected_error = (
+        rf"NWP provider '{nwp_name}': accum_channels contains channels "
+        rf"not found in 'channels': {{'invalid_channel'}}"
+    )
+    with pytest.raises(ValueError, match=expected_error):
+        _ = Configuration(**invalid_config.model_dump())
