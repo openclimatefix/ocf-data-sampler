@@ -135,8 +135,10 @@ def test_accum_channels_validation(test_config_filename):
 
     # Verify exact error message
     expected_error = (
-        rf"NWP provider '{nwp_name}': accum_channels contains channels "
-        rf"not found in 'channels': {{'invalid_channel'}}"
+        r"input_data.nwp.ukv\n"
+        r"  Value error, NWP provider 'ukv': all values in 'accum_channels' "
+        r"should be present in 'channels'\. "
+        r"Extra values found: {'invalid_channel'}.*"
     )
-    with pytest.raises(ValueError, match=expected_error):
+    with pytest.raises(ValidationError, match=expected_error):
         _ = Configuration(**invalid_config.model_dump())
