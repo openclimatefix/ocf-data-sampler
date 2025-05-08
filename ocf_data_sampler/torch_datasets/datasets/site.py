@@ -104,8 +104,8 @@ class SitesDataset(Dataset):
             t0: init-time for sample
             location: location for sample
         """
-        sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
-        sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
+        sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
+        sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
 
         sample = self.process_and_combine_site_sample_dict(sample_dict, t0)
         return sample.compute()
@@ -277,16 +277,23 @@ class SitesDataset(Dataset):
                 lat=combined_sample_dataset.site__latitude.values,
             )
 
-            # Dimension state for solar position data
-            solar_dim_name = "solar_time_utc"
-            combined_sample_dataset = combined_sample_dataset.assign_coords(
-                {solar_dim_name: solar_datetimes},
-            )
-
-            # Assign solar position values
+            # Check if all solar_datetimes are in site__time_utc
+            site_times = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
+            if not all(dt in site_times for dt in solar_datetimes):
+                raise ValueError(
+                    "solar_time_utc values must be contained within site__time_utc values. "
+                    "Ensure solar_position configuration times are a subset of site data times."
+                )
+            
+            # Create a solar dataset with features indexed by solar time
+            solar_ds = xr.Dataset(coords={"solar_time_utc": solar_datetimes})
             for key, values in sun_position_features.items():
+                solar_ds[key] = ("solar_time_utc", values)
+                
+            # add solar features as coordinates to the main dataset
+            for key in sun_position_features.keys():
                 combined_sample_dataset = combined_sample_dataset.assign_coords(
-                    {key: (solar_dim_name, values)},
+                    {key: ("site__time_utc", solar_ds[key].values)}
                 )
 
         # TODO include t0_index in xr dataset?
