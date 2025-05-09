@@ -57,7 +57,10 @@ def test_process_and_combine_datasets(pvnet_config_filename):
     dataset_dict = {"nwp": {"ukv": ukv_data}, "sat": sat_data}
 
     sample = PVNetUKRegionalDataset.process_and_combine_datasets(
-        dataset_dict, config, t0, location
+        dataset_dict,
+        config,
+        t0,
+        location,
     )
 
     assert isinstance(sample, dict)
@@ -241,7 +244,8 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
 
     # Create datasets with both configurations
     dataset_without_solar = PVNetUKRegionalDataset(
-        config_without_solar_path, gsp_ids=[1]
+        config_without_solar_path,
+        gsp_ids=[1],
     )
     dataset_with_solar = PVNetUKRegionalDataset(config_with_solar_path, gsp_ids=[1])
 

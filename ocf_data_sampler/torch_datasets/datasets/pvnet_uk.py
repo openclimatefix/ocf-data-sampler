@@ -164,10 +164,10 @@ class AbstractPVNetUKDataset(Dataset):
 
             # Standardise and convert to NumpyBatch
             da_channel_means = channel_dict_to_dataarray(
-                config.input_data.satellite.channel_means
+                config.input_data.satellite.channel_means,
             )
             da_channel_stds = channel_dict_to_dataarray(
-                config.input_data.satellite.channel_stds
+                config.input_data.satellite.channel_stds,
             )
 
             da_sat = (da_sat - da_channel_means) / da_channel_stds
@@ -227,7 +227,8 @@ class AbstractPVNetUKDataset(Dataset):
 
     @staticmethod
     def find_valid_t0_times(
-        datasets_dict: dict, config: Configuration
+        datasets_dict: dict,
+        config: Configuration,
     ) -> pd.DatetimeIndex:
         """Find the t0 times where all of the requested input data is available.
 
@@ -343,7 +344,9 @@ class PVNetUKConcurrentDataset(AbstractPVNetUKDataset):
         # Prepare sample for each GSP
         for location in self.locations:
             gsp_sample_dict = slice_datasets_by_space(
-                sample_dict, location, self.config
+                sample_dict,
+                location,
+                self.config,
             )
             gsp_numpy_sample = self.process_and_combine_datasets(
                 gsp_sample_dict,

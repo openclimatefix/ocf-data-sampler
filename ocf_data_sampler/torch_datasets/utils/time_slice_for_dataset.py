@@ -99,7 +99,8 @@ def slice_datasets_by_time(
         )
 
         sliced_datasets_dict["gsp"] = xr.concat(
-            [da_gsp_past, da_gsp_future], dim="time_utc"
+            [da_gsp_past, da_gsp_future],
+            dim="time_utc",
         )
 
     if "site" in datasets_dict:

@@ -303,7 +303,7 @@ def ds_uk_gsp():
     gsp_ids = np.arange(0, 318)
     capacity = np.ones((len(times), len(gsp_ids)))
     generation = np.random.uniform(0, 200, size=(len(times), len(gsp_ids))).astype(
-        np.float32
+        np.float32,
     )
 
     coords = (
@@ -344,7 +344,7 @@ def data_sites(session_tmp_path) -> Site:
     latitude = np.arange(51, 52, 0.1)
 
     generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(
-        np.float32
+        np.float32,
     )
 
     # repeat capacity in new dims len(times) times

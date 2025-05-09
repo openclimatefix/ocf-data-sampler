@@ -13,7 +13,9 @@ def check_time_unique_increasing(datetimes: xr.DataArray) -> None:
 
 
 def make_spatial_coords_increasing(
-    ds: xr.Dataset, x_coord: str, y_coord: str
+    ds: xr.Dataset,
+    x_coord: str,
+    y_coord: str,
 ) -> xr.Dataset:
     """Make sure the spatial coordinates are in increasing order.
 
@@ -52,6 +54,6 @@ def get_xr_data_array_from_xr_dataset(ds: xr.Dataset) -> xr.DataArray:
     datavars = list(ds.var())
     if len(datavars) != 1:
         raise ValueError(
-            "Cannot open as xr.DataArray: dataset contains multiple variables"
+            "Cannot open as xr.DataArray: dataset contains multiple variables",
         )
     return ds[datavars[0]]

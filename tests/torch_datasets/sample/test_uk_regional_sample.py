@@ -98,7 +98,9 @@ def test_to_numpy(numpy_sample):
 
 
 def test_validate_sample(
-    numpy_sample, pvnet_configuration_object: Configuration, caplog
+    numpy_sample,
+    pvnet_configuration_object: Configuration,
+    caplog,
 ):
     """Test the validate_sample method succeeds with no warnings for a valid sample."""
     sample = UKRegionalSample(numpy_sample)
@@ -121,7 +123,7 @@ def test_validate_sample_with_missing_keys(
         modified_data.pop(sat_key)
     else:
         pytest.fail(
-            f"Fixture 'numpy_sample' did not contain the key to be removed: {sat_key}"
+            f"Fixture 'numpy_sample' did not contain the key to be removed: {sat_key}",
         )
 
     sample = UKRegionalSample(modified_data)
@@ -172,7 +174,8 @@ def test_validate_sample_with_wrong_solar_shapes(
     sample = UKRegionalSample(modified_data)
 
     with pytest.raises(
-        ValueError, match="'Solar Azimuth data' shape mismatch: Actual shape:"
+        ValueError,
+        match="'Solar Azimuth data' shape mismatch: Actual shape:",
     ):
         sample.validate_sample(pvnet_configuration_object)
 

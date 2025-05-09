@@ -133,7 +133,9 @@ def validation_warning(
 
 
 def _calculate_time_steps(
-    start_minutes: int, end_minutes: int, resolution_minutes: int
+    start_minutes: int,
+    end_minutes: int,
+    resolution_minutes: int,
 ) -> int:
     """Calculate number of time steps based on interval and resolution.
 

@@ -110,12 +110,12 @@ class DropoutMixin(Base):
         if self.dropout_fraction == 0:
             if self.dropout_timedeltas_minutes != []:
                 raise ValueError(
-                    "To use dropout timedeltas dropout fraction should be > 0"
+                    "To use dropout timedeltas dropout fraction should be > 0",
                 )
         else:
             if self.dropout_timedeltas_minutes == []:
                 raise ValueError(
-                    "To dropout fraction > 0 requires a list of dropout timedeltas"
+                    "To dropout fraction > 0 requires a list of dropout timedeltas",
                 )
         return self
 
@@ -166,7 +166,10 @@ class NormalisationConstantsMixin(Base):
 
 
 class Satellite(
-    TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin
+    TimeWindowMixin,
+    DropoutMixin,
+    SpatialWindowMixin,
+    NormalisationConstantsMixin,
 ):
     """Satellite configuration model."""
 
@@ -195,7 +198,10 @@ class Satellite(
 
 
 class NWP(
-    TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin
+    TimeWindowMixin,
+    DropoutMixin,
+    SpatialWindowMixin,
+    NormalisationConstantsMixin,
 ):
     """NWP configuration model."""
 
@@ -213,7 +219,8 @@ class NWP(
     provider: str = Field(..., description="The provider of the NWP data")
 
     accum_channels: list[str] = Field(
-        [], description="the nwp channels which need to be diffed"
+        [],
+        description="the nwp channels which need to be diffed",
     )
 
     max_staleness_minutes: int | None = Field(

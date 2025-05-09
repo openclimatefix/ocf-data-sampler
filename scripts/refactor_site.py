@@ -34,7 +34,7 @@ def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
         or "capacity_kwp" not in metadata_df.columns
     ):
         raise ValueError(
-            "Metadata is missing required columns: 'site_id' and 'capacity_kwp'."
+            "Metadata is missing required columns: 'site_id' and 'capacity_kwp'.",
         )
 
     # Step 2: Transform the dataset
@@ -84,7 +84,7 @@ def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
             {
                 "generation_kw": generation_da,
                 "capacity_kwp": capacity_da,
-            }
+            },
         )
 
     return data_ds

@@ -209,13 +209,15 @@ def intersection_of_multiple_dataframes_of_periods(
     intersection = time_periods[0]
     for time_period in time_periods[1:]:
         intersection = intersection_of_2_dataframes_of_periods(
-            intersection, time_period
+            intersection,
+            time_period,
         )
     return intersection
 
 
 def intersection_of_2_dataframes_of_periods(
-    a: pd.DataFrame, b: pd.DataFrame
+    a: pd.DataFrame,
+    b: pd.DataFrame,
 ) -> pd.DataFrame:
     """Find the intersection of two pd.DataFrames of time periods.
 

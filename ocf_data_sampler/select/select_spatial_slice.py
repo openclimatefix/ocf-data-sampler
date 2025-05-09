@@ -238,7 +238,13 @@ def select_spatial_slice_pixels(
     if pad_required:
         if allow_partial_slice:
             da = _select_padded_slice(
-                da, left_idx, right_idx, bottom_idx, top_idx, x_dim, y_dim
+                da,
+                left_idx,
+                right_idx,
+                bottom_idx,
+                top_idx,
+                x_dim,
+                y_dim,
             )
         else:
             raise ValueError(
@@ -248,7 +254,7 @@ def select_spatial_slice_pixels(
     else:
         # Standard selection - without padding
         da = da.isel(
-            {x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)}
+            {x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)},
         )
 
     if len(da[x_dim]) != width_pixels:

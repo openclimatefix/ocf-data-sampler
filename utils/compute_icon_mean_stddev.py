@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Add argument parser
 parser = argparse.ArgumentParser(
-    description="Compute normalization constants from NWP data"
+    description="Compute normalization constants from NWP data",
 )
 parser.add_argument(
     "--data-path",
@@ -69,7 +69,8 @@ ICON_EU_STD = {}
 for var in available_channels:
     if var not in available_channels:
         logger.warning(
-            "Variable '%s' not found in the channel coordinate; skipping.", var
+            "Variable '%s' not found in the channel coordinate; skipping.",
+            var,
         )
         continue
     var_data = samples_stack.sel(channel=var)

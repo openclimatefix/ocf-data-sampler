@@ -42,7 +42,9 @@ def test_calculate_azimuth_and_elevation_random():
 
         # Calculate sun angles
         azimuth, elevation = calculate_azimuth_and_elevation(
-            datetimes, lon=lon, lat=lat
+            datetimes,
+            lon=lon,
+            lat=lat,
         )
 
         azimuths.append(azimuth.item())

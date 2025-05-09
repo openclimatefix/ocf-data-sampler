@@ -87,7 +87,7 @@ class UKRegionalSample(SampleBase):
         gsp_key = GSPSampleKey.gsp
         if gsp_key in expected_shapes and gsp_key not in self._data:
             raise ValueError(
-                f"Configuration expects GSP data ('{gsp_key}') but is missing."
+                f"Configuration expects GSP data ('{gsp_key}') but is missing.",
             )
 
         if gsp_key in self._data:
@@ -109,7 +109,7 @@ class UKRegionalSample(SampleBase):
         nwp_key = NWPSampleKey.nwp
         if nwp_key in expected_shapes and nwp_key not in self._data:
             raise ValueError(
-                f"Configuration expects NWP data ('{nwp_key}') but is missing."
+                f"Configuration expects NWP data ('{nwp_key}') but is missing.",
             )
 
         if nwp_key in self._data:
@@ -163,7 +163,7 @@ class UKRegionalSample(SampleBase):
         sat_key = SatelliteSampleKey.satellite_actual
         if sat_key in expected_shapes and sat_key not in self._data:
             raise ValueError(
-                f"Configuration expects Satellite data ('{sat_key}') but is missing."
+                f"Configuration expects Satellite data ('{sat_key}') but is missing.",
             )
 
         if sat_key in self._data:
@@ -190,7 +190,7 @@ class UKRegionalSample(SampleBase):
             solar_name = solar_key.replace("_", " ").title()
             if solar_key in expected_shapes and solar_key not in self._data:
                 raise ValueError(
-                    f"Configuration expects {solar_key} data but is missing."
+                    f"Configuration expects {solar_key} data but is missing.",
                 )
 
             if solar_key in self._data:

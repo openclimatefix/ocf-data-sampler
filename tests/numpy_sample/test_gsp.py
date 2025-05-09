@@ -22,7 +22,8 @@ def test_convert_gsp_to_numpy_sample(uk_gsp_zarr_path):
 
     # Assert data content and capacity values
     assert np.array_equal(
-        numpy_sample[GSPSampleKey.gsp], da.values
+        numpy_sample[GSPSampleKey.gsp],
+        da.values,
     ), "GSP values mismatch"
     assert isinstance(
         numpy_sample[GSPSampleKey.time_utc],

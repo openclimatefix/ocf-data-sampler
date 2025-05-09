@@ -33,7 +33,7 @@ def test_find_contiguous_t0_periods():
     interval_end = pd.Timedelta(15, "min")
 
     datetimes = pd.date_range("2023-01-01 12:00", "2023-01-01 17:00", freq=freq).delete(
-        [5, 6, 30]
+        [5, 6, 30],
     )
 
     periods = find_contiguous_t0_periods(
@@ -101,7 +101,9 @@ def test_find_contiguous_t0_periods_nwp():
     freq = pd.Timedelta(3, "h")
 
     init_times = pd.date_range(
-        "2023-01-01 03:00", "2023-01-02 21:00", freq=freq
+        "2023-01-01 03:00",
+        "2023-01-02 21:00",
+        freq=freq,
     ).delete(
         [1, 4, 5, 6, 7, 9, 10],
     )
@@ -137,86 +139,104 @@ def test_intersection_of_2_dataframes_of_periods():
     # a: |----|
     # b:  |--|
     a = construct_time_periods_df(
-        start_dt=["2025-01-01 00:00"], end_dt=["2025-01-01 12:00"]
+        start_dt=["2025-01-01 00:00"],
+        end_dt=["2025-01-01 12:00"],
     )
     b = construct_time_periods_df(
-        start_dt=["2025-01-01 03:00"], end_dt=["2025-01-01 06:00"]
+        start_dt=["2025-01-01 03:00"],
+        end_dt=["2025-01-01 06:00"],
     )
     assert_expected_result_with_reverse(a, b, expected_result=b)
 
     # a:   |----|
     # b: |--|
     a = construct_time_periods_df(
-        start_dt=["2025-01-01 12:00"], end_dt=["2025-01-01 18:00"]
+        start_dt=["2025-01-01 12:00"],
+        end_dt=["2025-01-01 18:00"],
     )
     b = construct_time_periods_df(
-        start_dt=["2025-01-01 03:00"], end_dt=["2025-01-01 15:00"]
+        start_dt=["2025-01-01 03:00"],
+        end_dt=["2025-01-01 15:00"],
     )
     exp_res = construct_time_periods_df(
-        start_dt=["2025-01-01 12:00"], end_dt=["2025-01-01 15:00"]
+        start_dt=["2025-01-01 12:00"],
+        end_dt=["2025-01-01 15:00"],
     )
     assert_expected_result_with_reverse(a, b, expected_result=exp_res)
 
     # a:      |--|
     # b:   |--|
     a = construct_time_periods_df(
-        start_dt=["2025-01-01 12:00"], end_dt=["2025-01-01 18:00"]
+        start_dt=["2025-01-01 12:00"],
+        end_dt=["2025-01-01 18:00"],
     )
     b = construct_time_periods_df(
-        start_dt=["2025-01-01 00:00"], end_dt=["2025-01-01 12:00"]
+        start_dt=["2025-01-01 00:00"],
+        end_dt=["2025-01-01 12:00"],
     )
     exp_res = construct_time_periods_df(
-        start_dt=["2025-01-01 12:00"], end_dt=["2025-01-01 12:00"]
+        start_dt=["2025-01-01 12:00"],
+        end_dt=["2025-01-01 12:00"],
     )
     assert_expected_result_with_reverse(a, b, expected_result=exp_res)
 
     # a:      |
     # b:   |--|
     a = construct_time_periods_df(
-        start_dt=["2025-01-01 12:00"], end_dt=["2025-01-01 12:00"]
+        start_dt=["2025-01-01 12:00"],
+        end_dt=["2025-01-01 12:00"],
     )
     b = construct_time_periods_df(
-        start_dt=["2025-01-01 00:00"], end_dt=["2025-01-01 12:00"]
+        start_dt=["2025-01-01 00:00"],
+        end_dt=["2025-01-01 12:00"],
     )
     exp_res = construct_time_periods_df(
-        start_dt=["2025-01-01 12:00"], end_dt=["2025-01-01 12:00"]
+        start_dt=["2025-01-01 12:00"],
+        end_dt=["2025-01-01 12:00"],
     )
     assert_expected_result_with_reverse(a, b, expected_result=exp_res)
 
     # a:      |
     # b:   |----|
     a = construct_time_periods_df(
-        start_dt=["2025-01-01 12:00"], end_dt=["2025-01-01 12:00"]
+        start_dt=["2025-01-01 12:00"],
+        end_dt=["2025-01-01 12:00"],
     )
     b = construct_time_periods_df(
-        start_dt=["2025-01-01 00:00"], end_dt=["2025-01-01 18:00"]
+        start_dt=["2025-01-01 00:00"],
+        end_dt=["2025-01-01 18:00"],
     )
     assert_expected_result_with_reverse(a, b, expected_result=a)
 
     # a:   |
     # b:   |----|
     a = construct_time_periods_df(
-        start_dt=["2025-01-01 00:00"], end_dt=["2025-01-01 00:00"]
+        start_dt=["2025-01-01 00:00"],
+        end_dt=["2025-01-01 00:00"],
     )
     b = construct_time_periods_df(
-        start_dt=["2025-01-01 00:00"], end_dt=["2025-01-01 18:00"]
+        start_dt=["2025-01-01 00:00"],
+        end_dt=["2025-01-01 18:00"],
     )
     assert_expected_result_with_reverse(a, b, expected_result=a)
 
     # a:   |
     # b:   |
     a = construct_time_periods_df(
-        start_dt=["2025-01-01 00:00"], end_dt=["2025-01-01 00:00"]
+        start_dt=["2025-01-01 00:00"],
+        end_dt=["2025-01-01 00:00"],
     )
     assert_expected_result_with_reverse(a=a, b=a, expected_result=a)
 
     # a:     |
     # b:   |
     a = construct_time_periods_df(
-        start_dt=["2025-01-01 00:00"], end_dt=["2025-01-01 00:00"]
+        start_dt=["2025-01-01 00:00"],
+        end_dt=["2025-01-01 00:00"],
     )
     b = construct_time_periods_df(
-        start_dt=["2025-01-01 06:00"], end_dt=["2025-01-01 06:00"]
+        start_dt=["2025-01-01 06:00"],
+        end_dt=["2025-01-01 06:00"],
     )
     exp_res = construct_time_periods_df([], [])  # no intersection
     assert_expected_result_with_reverse(a, b, expected_result=exp_res)
@@ -244,7 +264,7 @@ def test_intersection_of_multiple_dataframes_of_periods():
     )
 
     result = intersection_of_multiple_dataframes_of_periods(
-        [periods_1, periods_2, periods_3]
+        [periods_1, periods_2, periods_3],
     )
 
     # Check if results are as expected

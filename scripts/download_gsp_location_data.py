@@ -48,7 +48,8 @@ with tempfile.TemporaryDirectory() as tmpdirname:
     # Load the GSP name mapping
     gsp_name_map = response_map.json()
     df_gsp_name_map = pd.DataFrame(
-        data=gsp_name_map["data"], columns=gsp_name_map["meta"]
+        data=gsp_name_map["data"],
+        columns=gsp_name_map["meta"],
     ).drop("pes_id", axis=1)
 
 
@@ -70,7 +71,8 @@ df_bound = (
 
 # Add the PVLive GSP ID for each GSP
 df_bound = df_bound.merge(df_gsp_name_map, left_on="GSPs", right_on="gsp_name").drop(
-    "GSPs", axis=1
+    "GSPs",
+    axis=1,
 )
 
 # Add the national GSP - this is the union of all GSPs

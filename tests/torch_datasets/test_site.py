@@ -16,7 +16,11 @@ from ocf_data_sampler.torch_datasets.datasets.site import (
 
 @pytest.fixture()
 def site_config_filename(
-    tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites
+    tmp_path,
+    config_filename,
+    nwp_ukv_zarr_path,
+    sat_zarr_path,
+    data_sites,
 ):
     # adjust config to point to the zarr file
     config = load_yaml_configuration(config_filename)
@@ -149,7 +153,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
                 coords={
                     "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
                     "channel": list(
-                        sites_dataset.config.input_data.nwp["ukv"].channels
+                        sites_dataset.config.input_data.nwp["ukv"].channels,
                     ),
                 },
             ),
@@ -159,7 +163,9 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
             dims=["time_utc"],
             coords={
                 "time_utc": pd.date_range(
-                    "2024-01-01 00:00", periods=197, freq="15min"
+                    "2024-01-01 00:00",
+                    periods=197,
+                    freq="15min",
                 ),
                 "capacity_kwp": 1000,
                 "site_id": 1,
