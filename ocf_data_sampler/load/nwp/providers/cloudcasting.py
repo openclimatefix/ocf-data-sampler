@@ -1,7 +1,5 @@
 """Cloudcasting provider loader."""
 
-from pathlib import Path
-
 import xarray as xr
 
 from ocf_data_sampler.config.model import NWP

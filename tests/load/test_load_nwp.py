@@ -1,7 +1,6 @@
 import numpy as np
 from xarray import DataArray
 
-from ocf_data_sampler.config.model import NWP
 from ocf_data_sampler.load.nwp import open_nwp
 
 
