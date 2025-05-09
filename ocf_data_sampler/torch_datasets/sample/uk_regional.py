@@ -140,7 +140,7 @@ class UKRegionalSample(SampleBase):
                     provider_data = nwp_data_all_providers[provider]
 
                     if "nwp" not in provider_data:
-                        error_msg = f"Missing array key 'nwp' in NWP data for provider '{provider}'."
+                        error_msg = f"Missing array key 'nwp' in NWP data for provider '{provider}'"
                         raise ValueError(error_msg)
 
                     nwp_array = provider_data["nwp"]
