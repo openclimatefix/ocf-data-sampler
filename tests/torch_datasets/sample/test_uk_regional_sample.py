@@ -97,7 +97,9 @@ def test_to_numpy(numpy_sample):
     assert numpy_data["solar_elevation"].shape == (7,)
 
 
-def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration, caplog):
+def test_validate_sample(
+    numpy_sample, pvnet_configuration_object: Configuration, caplog
+):
     """Test the validate_sample method succeeds with no warnings for a valid sample."""
     sample = UKRegionalSample(numpy_sample)
     caplog.set_level(logging.WARNING)
@@ -118,10 +120,14 @@ def test_validate_sample_with_missing_keys(
     if sat_key in modified_data:
         modified_data.pop(sat_key)
     else:
-        pytest.fail(f"Fixture 'numpy_sample' did not contain the key to be removed: {sat_key}")
+        pytest.fail(
+            f"Fixture 'numpy_sample' did not contain the key to be removed: {sat_key}"
+        )
 
     sample = UKRegionalSample(modified_data)
-    expected_error_pattern = f"^Configuration expects Satellite data \\('{sat_key}'\\).*missing"
+    expected_error_pattern = (
+        f"^Configuration expects Satellite data \\('{sat_key}'\\).*missing"
+    )
 
     with pytest.raises(ValueError, match=expected_error_pattern):
         sample.validate_sample(pvnet_configuration_object)
@@ -165,7 +171,9 @@ def test_validate_sample_with_wrong_solar_shapes(
     modified_data["solar_azimuth"] = np.random.rand(10)
     sample = UKRegionalSample(modified_data)
 
-    with pytest.raises(ValueError, match="'Solar Azimuth data' shape mismatch: Actual shape:"):
+    with pytest.raises(
+        ValueError, match="'Solar Azimuth data' shape mismatch: Actual shape:"
+    ):
         sample.validate_sample(pvnet_configuration_object)
 
 
@@ -184,7 +192,7 @@ def test_validate_sample_with_unexpected_provider(
         NWPSampleKey.channel_names: ["t"],
     }
     if NWPSampleKey.nwp not in modified_data:
-         modified_data[NWPSampleKey.nwp] = {}
+        modified_data[NWPSampleKey.nwp] = {}
     modified_data[NWPSampleKey.nwp][unexpected_provider] = nwp_data
 
     sample = UKRegionalSample(modified_data)

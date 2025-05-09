@@ -5,7 +5,9 @@ import xarray as xr
 from ocf_data_sampler.load.gsp import get_gsp_boundaries, open_gsp
 
 
-@pytest.mark.parametrize("version, expected_length", [("20220314", 318), ("20250109", 332)])
+@pytest.mark.parametrize(
+    "version, expected_length", [("20220314", 318), ("20250109", 332)]
+)
 def test_get_gsp_boundaries(version, expected_length):
     df = get_gsp_boundaries(version)
 
@@ -28,5 +30,3 @@ def test_open_gsp(uk_gsp_zarr_path):
     assert "x_osgb" in da.coords
     assert "y_osgb" in da.coords
     assert da.shape == (49, 318)
-
-

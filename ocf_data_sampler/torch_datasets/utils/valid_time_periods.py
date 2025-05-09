@@ -28,10 +28,12 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         for nwp_key, nwp_config in config.input_data.nwp.items():
             da = datasets_dict["nwp"][nwp_key]
 
-            if nwp_config.dropout_timedeltas_minutes==[]:
+            if nwp_config.dropout_timedeltas_minutes == []:
                 max_dropout = minutes(0)
             else:
-                max_dropout = minutes(np.max(np.abs(nwp_config.dropout_timedeltas_minutes)))
+                max_dropout = minutes(
+                    np.max(np.abs(nwp_config.dropout_timedeltas_minutes))
+                )
 
             if nwp_config.max_staleness_minutes is None:
                 max_staleness = None

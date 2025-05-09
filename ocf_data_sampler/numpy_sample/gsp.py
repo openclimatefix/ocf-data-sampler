@@ -18,7 +18,9 @@ class GSPSampleKey:
     y_osgb = "gsp_y_osgb"
 
 
-def convert_gsp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> NumpySample:
+def convert_gsp_to_numpy_sample(
+    da: xr.DataArray, t0_idx: int | None = None
+) -> NumpySample:
     """Convert from Xarray to NumpySample.
 
     Args:
@@ -27,8 +29,12 @@ def convert_gsp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> 
     """
     sample = {
         GSPSampleKey.gsp: da.values,
-        GSPSampleKey.nominal_capacity_mwp: da.isel(time_utc=0)["nominal_capacity_mwp"].values,
-        GSPSampleKey.effective_capacity_mwp: da.isel(time_utc=0)["effective_capacity_mwp"].values,
+        GSPSampleKey.nominal_capacity_mwp: da.isel(time_utc=0)[
+            "nominal_capacity_mwp"
+        ].values,
+        GSPSampleKey.effective_capacity_mwp: da.isel(time_utc=0)[
+            "effective_capacity_mwp"
+        ].values,
         GSPSampleKey.time_utc: da["time_utc"].values.astype(float),
     }
 

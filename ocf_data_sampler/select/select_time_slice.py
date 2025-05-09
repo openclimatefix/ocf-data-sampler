@@ -58,7 +58,7 @@ def select_time_slice_nwp(
     if dropout_timedeltas is None:
         dropout_timedeltas = []
 
-    if len(dropout_timedeltas)>0:
+    if len(dropout_timedeltas) > 0:
         if not all(t < pd.Timedelta(0) for t in dropout_timedeltas):
             raise ValueError("dropout timedeltas must be negative")
         if len(dropout_timedeltas) < 1:
@@ -120,7 +120,9 @@ def select_time_slice_nwp(
 
         # Slice out the data which does not need to be diffed
         da_non_accum = da_min.sel(channel=non_accum_channels)
-        da_sel_non_accum = da_non_accum.sel(step=step_indexer, init_time_utc=init_time_indexer)
+        da_sel_non_accum = da_non_accum.sel(
+            step=step_indexer, init_time_utc=init_time_indexer
+        )
 
         # Slice out the channels which need to be diffed
         da_accum = da_min.sel(channel=accum_channels)

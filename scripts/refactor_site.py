@@ -29,8 +29,13 @@ def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
         metadata_df["capacity_kwp"] = metadata_df["capacity_megawatts"] * 1000
 
     # Quick sanity check to ensure we have what we need
-    if "site_id" not in metadata_df.columns or "capacity_kwp" not in metadata_df.columns:
-        raise ValueError("Metadata is missing required columns: 'site_id' and 'capacity_kwp'.")
+    if (
+        "site_id" not in metadata_df.columns
+        or "capacity_kwp" not in metadata_df.columns
+    ):
+        raise ValueError(
+            "Metadata is missing required columns: 'site_id' and 'capacity_kwp'."
+        )
 
     # Step 2: Transform the dataset
     # Check if we actually have site data in the expected format
@@ -56,7 +61,10 @@ def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
 
         # Broadcast capacities across all timestamps
         capacity_df = pd.DataFrame(
-            {site_id: [capacities[site_id]] * len(site_data_df) for site_id in site_ids},
+            {
+                site_id: [capacities[site_id]] * len(site_data_df)
+                for site_id in site_ids
+            },
             index=site_data_df.index,
         )
 
@@ -72,9 +80,11 @@ def legacy_format(data_ds: xr.Dataset, metadata_df: pd.DataFrame) -> xr.Dataset:
         )
 
         # Finally, bundle everything into a single Dataset
-        data_ds = xr.Dataset({
-            "generation_kw": generation_da,
-            "capacity_kwp": capacity_da,
-        })
+        data_ds = xr.Dataset(
+            {
+                "generation_kw": generation_da,
+                "capacity_kwp": capacity_da,
+            }
+        )
 
     return data_ds

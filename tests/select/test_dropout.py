@@ -51,7 +51,9 @@ def test_draw_dropout_time_none():
 
     # Dropout fraction is 0
     dropout_timedeltas = [pd.Timedelta(-30, "min")]
-    dropout_time = draw_dropout_time(t0, dropout_timedeltas=dropout_timedeltas, dropout_frac=0)
+    dropout_time = draw_dropout_time(
+        t0, dropout_timedeltas=dropout_timedeltas, dropout_frac=0
+    )
     assert dropout_time is None
 
     # No dropout timedeltas and dropout fraction is 0
@@ -67,5 +69,7 @@ def test_apply_dropout_time(da_sample, t0_str):
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
     assert (
-        da_dropout.sel(time_utc=slice(dropout_time + pd.Timedelta(5, "min"), None)).isnull().all()
+        da_dropout.sel(time_utc=slice(dropout_time + pd.Timedelta(5, "min"), None))
+        .isnull()
+        .all()
     )

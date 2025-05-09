@@ -91,11 +91,15 @@ def test_incorrect_dropout_fraction(test_config_filename):
 
     configuration.input_data.nwp["ukv"].dropout_fraction = 1.1
 
-    with pytest.raises(ValidationError, match="Input should be less than or equal to 1"):
+    with pytest.raises(
+        ValidationError, match="Input should be less than or equal to 1"
+    ):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp["ukv"].dropout_fraction = -0.1
-    with pytest.raises(ValidationError, match="Input should be greater than or equal to 0"):
+    with pytest.raises(
+        ValidationError, match="Input should be greater than or equal to 0"
+    ):
         _ = Configuration(**configuration.model_dump())
 
 

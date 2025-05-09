@@ -109,10 +109,14 @@ class DropoutMixin(Base):
         """Validator for dropout instructions."""
         if self.dropout_fraction == 0:
             if self.dropout_timedeltas_minutes != []:
-                raise ValueError("To use dropout timedeltas dropout fraction should be > 0")
+                raise ValueError(
+                    "To use dropout timedeltas dropout fraction should be > 0"
+                )
         else:
             if self.dropout_timedeltas_minutes == []:
-                raise ValueError("To dropout fraction > 0 requires a list of dropout timedeltas")
+                raise ValueError(
+                    "To dropout fraction > 0 requires a list of dropout timedeltas"
+                )
         return self
 
 
@@ -134,12 +138,14 @@ class SpatialWindowMixin(Base):
 
 class NormalisationValues(Base):
     """Normalisation mean and standard deviation."""
+
     mean: float = Field(..., description="Mean value for normalization")
     std: float = Field(..., gt=0, description="Standard deviation (must be positive)")
 
 
 class NormalisationConstantsMixin(Base):
     """Normalisation constants for multiple channels."""
+
     normalisation_constants: dict[str, NormalisationValues]
 
     @property
@@ -150,7 +156,6 @@ class NormalisationConstantsMixin(Base):
             for channel, norm_values in self.normalisation_constants.items()
         }
 
-
     @property
     def channel_stds(self) -> dict[str, float]:
         """Return the channel standard deviations."""
@@ -160,7 +165,9 @@ class NormalisationConstantsMixin(Base):
         }
 
 
-class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
+class Satellite(
+    TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin
+):
     """Satellite configuration model."""
 
     zarr_path: str | tuple[str] | list[str] = Field(
@@ -179,7 +186,7 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
         """Check that all the channels have normalisation constants."""
         normalisation_channels = set(self.normalisation_constants.keys())
         missing_norm_values = set(self.channels) - set(normalisation_channels)
-        if len(missing_norm_values)>0:
+        if len(missing_norm_values) > 0:
             raise ValueError(
                 "Normalsation constants must be provided for all channels. Missing values for "
                 f"channels: {missing_norm_values}",
@@ -187,7 +194,9 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
         return self
 
 
-class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
+class NWP(
+    TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin
+):
     """NWP configuration model."""
 
     zarr_path: str | tuple[str] | list[str] = Field(
@@ -203,7 +212,9 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
 
     provider: str = Field(..., description="The provider of the NWP data")
 
-    accum_channels: list[str] = Field([], description="the nwp channels which need to be diffed")
+    accum_channels: list[str] = Field(
+        [], description="the nwp channels which need to be diffed"
+    )
 
     max_staleness_minutes: int | None = Field(
         None,
@@ -219,7 +230,6 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
             raise OSError(f"NWP provider {v} is not in {NWP_PROVIDERS}")
         return v
 
-
     @model_validator(mode="after")
     def check_all_channel_have_normalisation_constants(self) -> "NWP":
         """Check that all the channels have normalisation constants."""
@@ -228,14 +238,14 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         accum_channel_names = [f"diff_{c}" for c in self.accum_channels]
 
         missing_norm_values = set(non_accum_channels) - set(normalisation_channels)
-        if len(missing_norm_values)>0:
+        if len(missing_norm_values) > 0:
             raise ValueError(
                 "Normalsation constants must be provided for all channels. Missing values for "
                 f"channels: {missing_norm_values}",
             )
 
         missing_norm_values = set(accum_channel_names) - set(normalisation_channels)
-        if len(missing_norm_values)>0:
+        if len(missing_norm_values) > 0:
             raise ValueError(
                 "Normalsation constants must be provided for all channels. Accumulated "
                 "channels which will be diffed require normalisation constant names which "

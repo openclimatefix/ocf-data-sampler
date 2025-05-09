@@ -2,7 +2,11 @@
 
 import os
 
-from ocf_data_sampler.config import Configuration, load_yaml_configuration, save_yaml_configuration
+from ocf_data_sampler.config import (
+    Configuration,
+    load_yaml_configuration,
+    save_yaml_configuration,
+)
 
 
 def test_save_yaml_configuration_basic(tmp_path):

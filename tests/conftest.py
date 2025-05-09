@@ -211,6 +211,7 @@ def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
     ds.to_zarr(zarr_path)
     yield zarr_path
 
+
 @pytest.fixture(scope="session")
 def icon_eu_zarr_path(session_tmp_path):
     date = "20211101"
@@ -228,12 +229,18 @@ def icon_eu_zarr_path(session_tmp_path):
                 "time": pd.Timestamp(f"2021-11-01T{hour}:00:00"),
             },
             data_vars={
-                "t": (("step", "isobaricInhPa", "latitude", "longitude"),
-                      np.random.rand(93, 6, 100, 100).astype(np.float32)),
-                "u_10m": (("step", "latitude", "longitude"),
-                         np.random.rand(93, 100, 100).astype(np.float32)),
-                "v_10m": (("step", "latitude", "longitude"),
-                         np.random.rand(93, 100, 100).astype(np.float32)),
+                "t": (
+                    ("step", "isobaricInhPa", "latitude", "longitude"),
+                    np.random.rand(93, 6, 100, 100).astype(np.float32),
+                ),
+                "u_10m": (
+                    ("step", "latitude", "longitude"),
+                    np.random.rand(93, 100, 100).astype(np.float32),
+                ),
+                "v_10m": (
+                    ("step", "latitude", "longitude"),
+                    np.random.rand(93, 100, 100).astype(np.float32),
+                ),
             },
             attrs={
                 "Conventions": "CF-1.7",
@@ -295,7 +302,9 @@ def ds_uk_gsp():
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
     gsp_ids = np.arange(0, 318)
     capacity = np.ones((len(times), len(gsp_ids)))
-    generation = np.random.uniform(0, 200, size=(len(times), len(gsp_ids))).astype(np.float32)
+    generation = np.random.uniform(0, 200, size=(len(times), len(gsp_ids))).astype(
+        np.float32
+    )
 
     coords = (
         ("datetime_gmt", times),
@@ -334,7 +343,9 @@ def data_sites(session_tmp_path) -> Site:
     longitude = np.arange(-4, -3, 0.1)
     latitude = np.arange(51, 52, 0.1)
 
-    generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(np.float32)
+    generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(
+        np.float32
+    )
 
     # repeat capacity in new dims len(times) times
     capacity_kwp = (np.tile(capacity_kwp_1d, len(times))).reshape(len(times), 10)

@@ -47,16 +47,15 @@ with tempfile.TemporaryDirectory() as tmpdirname:
 
     # Load the GSP name mapping
     gsp_name_map = response_map.json()
-    df_gsp_name_map = (
-        pd.DataFrame(data=gsp_name_map["data"], columns=gsp_name_map["meta"])
-        .drop("pes_id", axis=1)
-    )
+    df_gsp_name_map = pd.DataFrame(
+        data=gsp_name_map["data"], columns=gsp_name_map["meta"]
+    ).drop("pes_id", axis=1)
 
 
 def combine_gsps(gdf: gpd.GeoDataFrame) -> gpd.GeoSeries:
     """Combine GSPs which have been split into mutliple rows."""
     # If only one row for the GSP name then just return the row
-    if len(gdf)==0:
+    if len(gdf) == 0:
         return gdf.iloc[0]
 
     # If multiple rows for the GSP then get union of the GSP shapes
@@ -66,15 +65,12 @@ def combine_gsps(gdf: gpd.GeoDataFrame) -> gpd.GeoSeries:
 
 # Combine GSPs which have been split into multiple rows
 df_bound = (
-    df_bound.groupby("GSPs")
-    .apply(combine_gsps, include_groups=False)
-    .reset_index()
+    df_bound.groupby("GSPs").apply(combine_gsps, include_groups=False).reset_index()
 )
 
 # Add the PVLive GSP ID for each GSP
-df_bound = (
-    df_bound.merge(df_gsp_name_map, left_on="GSPs", right_on="gsp_name")
-    .drop("GSPs", axis=1)
+df_bound = df_bound.merge(df_gsp_name_map, left_on="GSPs", right_on="gsp_name").drop(
+    "GSPs", axis=1
 )
 
 # Add the national GSP - this is the union of all GSPs

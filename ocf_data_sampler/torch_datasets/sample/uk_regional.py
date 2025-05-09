@@ -86,7 +86,9 @@ class UKRegionalSample(SampleBase):
         # Check GSP shape if specified
         gsp_key = GSPSampleKey.gsp
         if gsp_key in expected_shapes and gsp_key not in self._data:
-            raise ValueError(f"Configuration expects GSP data ('{gsp_key}') but is missing.")
+            raise ValueError(
+                f"Configuration expects GSP data ('{gsp_key}') but is missing."
+            )
 
         if gsp_key in self._data:
             if gsp_key in expected_shapes:
@@ -106,7 +108,9 @@ class UKRegionalSample(SampleBase):
         # Checks for NWP data
         nwp_key = NWPSampleKey.nwp
         if nwp_key in expected_shapes and nwp_key not in self._data:
-            raise ValueError(f"Configuration expects NWP data ('{nwp_key}') but is missing.")
+            raise ValueError(
+                f"Configuration expects NWP data ('{nwp_key}') but is missing."
+            )
 
         if nwp_key in self._data:
             nwp_data_all_providers = self._data[nwp_key]
@@ -136,9 +140,7 @@ class UKRegionalSample(SampleBase):
                     provider_data = nwp_data_all_providers[provider]
 
                     if "nwp" not in provider_data:
-                        error_msg = (
-                            f"Missing array key 'nwp' in NWP data for provider '{provider}'."
-                        )
+                        error_msg = f"Missing array key 'nwp' in NWP data for provider '{provider}'."
                         raise ValueError(error_msg)
 
                     nwp_array = provider_data["nwp"]
@@ -160,7 +162,9 @@ class UKRegionalSample(SampleBase):
         # Validate satellite data
         sat_key = SatelliteSampleKey.satellite_actual
         if sat_key in expected_shapes and sat_key not in self._data:
-            raise ValueError(f"Configuration expects Satellite data ('{sat_key}') but is missing.")
+            raise ValueError(
+                f"Configuration expects Satellite data ('{sat_key}') but is missing."
+            )
 
         if sat_key in self._data:
             if sat_key in expected_shapes:
@@ -185,7 +189,9 @@ class UKRegionalSample(SampleBase):
         for solar_key in solar_keys:
             solar_name = solar_key.replace("_", " ").title()
             if solar_key in expected_shapes and solar_key not in self._data:
-                raise ValueError(f"Configuration expects {solar_key} data but is missing.")
+                raise ValueError(
+                    f"Configuration expects {solar_key} data but is missing."
+                )
 
             if solar_key in self._data:
                 if solar_key in expected_shapes:
@@ -224,7 +230,6 @@ class UKRegionalSample(SampleBase):
         return {
             "valid": True,
         }
-
 
     @override
     def plot(self) -> None:

@@ -5,7 +5,11 @@ from abc import ABC, abstractmethod
 import numpy as np
 import torch
 
-from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample, TensorBatch
+from ocf_data_sampler.numpy_sample.common_types import (
+    NumpyBatch,
+    NumpySample,
+    TensorBatch,
+)
 
 
 class SampleBase(ABC):

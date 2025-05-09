@@ -15,7 +15,9 @@ from ocf_data_sampler.torch_datasets.datasets.site import (
 
 
 @pytest.fixture()
-def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites):
+def site_config_filename(
+    tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites
+):
     # adjust config to point to the zarr file
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
@@ -72,13 +74,13 @@ def test_site(tmp_path, site_config_filename):
     sample = xr.open_dataset(f"{tmp_path}/sample.nc")
 
     # Check dimensions
-    assert set(sample.dims) == expected_dims, (
-        f"Missing or extra dimensions: {set(sample.dims) ^ expected_dims}"
-    )
+    assert (
+        set(sample.dims) == expected_dims
+    ), f"Missing or extra dimensions: {set(sample.dims) ^ expected_dims}"
     # Check data variables
-    assert set(sample.data_vars) == expected_data_vars, (
-        f"Missing or extra data variables: {set(sample.data_vars) ^ expected_data_vars}"
-    )
+    assert (
+        set(sample.data_vars) == expected_data_vars
+    ), f"Missing or extra data variables: {set(sample.data_vars) ^ expected_data_vars}"
 
     for coords in expected_coords_subset:
         assert coords in sample.coords
@@ -146,7 +148,9 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
                 dims=["time_utc", "channel", "y", "x"],
                 coords={
                     "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
-                    "channel": list(sites_dataset.config.input_data.nwp["ukv"].channels),
+                    "channel": list(
+                        sites_dataset.config.input_data.nwp["ukv"].channels
+                    ),
                 },
             ),
         },
@@ -154,7 +158,9 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
             fake_site_values,
             dims=["time_utc"],
             coords={
-                "time_utc": pd.date_range("2024-01-01 00:00", periods=197, freq="15min"),
+                "time_utc": pd.date_range(
+                    "2024-01-01 00:00", periods=197, freq="15min"
+                ),
                 "capacity_kwp": 1000,
                 "site_id": 1,
                 "longitude": -3.5,
@@ -175,14 +181,21 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     # Validate variable via assertion and shape of such
     expected_variables = ["nwp-ukv", "site"]
     for expected_variable in expected_variables:
-        assert expected_variable in result.data_vars, (
-            f"Expected variable '{expected_variable}' not found"
-        )
+        assert (
+            expected_variable in result.data_vars
+        ), f"Expected variable '{expected_variable}' not found"
 
     nwp_result = result["nwp-ukv"]
-    assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
+    assert nwp_result.shape == (
+        4,
+        1,
+        2,
+        2,
+    ), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
     site_result = result["site"]
-    assert site_result.shape == (197,), f"Unexpected shape for site: {site_result.shape}"
+    assert site_result.shape == (
+        197,
+    ), f"Unexpected shape for site: {site_result.shape}"
 
 
 def test_potentially_coarsen(ds_nwp_ecmwf):
@@ -234,7 +247,9 @@ def test_solar_position_decoupling_site(tmp_path, site_config_filename):
 
     # Sample without solar config should not have solar position data
     for key in solar_keys:
-        assert key not in sample_without_solar.coords, f"Solar key {key} should not be in sample"
+        assert (
+            key not in sample_without_solar.coords
+        ), f"Solar key {key} should not be in sample"
 
     # Sample with solar config should have solar position data
     for key in solar_keys:
@@ -261,7 +276,9 @@ def test_convert_from_dataset_to_dict_solar_handling(tmp_path, site_config_filen
     # Verify solar position data exists in original sample
     solar_keys = ["solar_azimuth", "solar_elevation"]
     for key in solar_keys:
-        assert key in sample_with_solar.coords, f"Solar key {key} not found in original sample"
+        assert (
+            key in sample_with_solar.coords
+        ), f"Solar key {key} not found in original sample"
 
     # Conversion and subsequent verification
     converted_dict = convert_from_dataset_to_dict_datasets(sample_with_solar)
@@ -294,7 +311,9 @@ def test_convert_netcdf_to_numpy_solar_handling(tmp_path, site_config_filename):
     # Verify solar position data exists in sample
     solar_keys = ["solar_azimuth", "solar_elevation"]
     for key in solar_keys:
-        assert key in loaded_sample.coords, f"Solar key {key} not found in loaded netCDF"
+        assert (
+            key in loaded_sample.coords
+        ), f"Solar key {key} not found in loaded netCDF"
 
     # Conversion and subsequent assertion
     numpy_sample = convert_netcdf_to_numpy_sample(loaded_sample)

@@ -141,7 +141,8 @@ def test_select_spatial_slice_pixels(da):
     assert (da_sliced.y_osgb.values == np.arange(-105, -55)).all()
     # Data has been padded on right by 15 pixels and bottom by 5 NaN pixels
     assert (
-        da_sliced.isnull().sum() == 15 * len(da_sliced.y_osgb) + 5 * len(da_sliced.x_osgb) - 15 * 5
+        da_sliced.isnull().sum()
+        == 15 * len(da_sliced.y_osgb) + 5 * len(da_sliced.x_osgb) - 15 * 5
     )
 
 

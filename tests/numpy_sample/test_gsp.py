@@ -21,12 +21,16 @@ def test_convert_gsp_to_numpy_sample(uk_gsp_zarr_path):
     ), "Unexpected keys"
 
     # Assert data content and capacity values
-    assert np.array_equal(numpy_sample[GSPSampleKey.gsp], da.values), "GSP values mismatch"
+    assert np.array_equal(
+        numpy_sample[GSPSampleKey.gsp], da.values
+    ), "GSP values mismatch"
     assert isinstance(
         numpy_sample[GSPSampleKey.time_utc],
         np.ndarray,
     ), "Time UTC should be numpy array"
-    assert numpy_sample[GSPSampleKey.time_utc].dtype == float, "Time UTC should be float type"
+    assert (
+        numpy_sample[GSPSampleKey.time_utc].dtype == float
+    ), "Time UTC should be float type"
     assert (
         numpy_sample[GSPSampleKey.nominal_capacity_mwp]
         == da.isel(time_utc=0)["nominal_capacity_mwp"].values
@@ -39,4 +43,6 @@ def test_convert_gsp_to_numpy_sample(uk_gsp_zarr_path):
     # Test with t0_idx
     t0_idx = 5
     numpy_sample_with_t0 = convert_gsp_to_numpy_sample(da, t0_idx=t0_idx)
-    assert numpy_sample_with_t0[GSPSampleKey.t0_idx] == t0_idx, "t0_idx not correctly set"
+    assert (
+        numpy_sample_with_t0[GSPSampleKey.t0_idx] == t0_idx
+    ), "t0_idx not correctly set"

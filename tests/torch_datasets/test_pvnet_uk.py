@@ -56,7 +56,9 @@ def test_process_and_combine_datasets(pvnet_config_filename):
 
     dataset_dict = {"nwp": {"ukv": ukv_data}, "sat": sat_data}
 
-    sample = PVNetUKRegionalDataset.process_and_combine_datasets(dataset_dict, config, t0, location)
+    sample = PVNetUKRegionalDataset.process_and_combine_datasets(
+        dataset_dict, config, t0, location
+    )
 
     assert isinstance(sample, dict)
     assert "nwp" in sample
@@ -107,7 +109,9 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
     if dataset.config.input_data.solar_position is not None:
         # Test that solar position keys are present when configured
         for key in solar_keys:
-            assert key in sample, f"Solar position key {key} should be present in sample"
+            assert (
+                key in sample
+            ), f"Solar position key {key} should be present in sample"
 
         # Get expected time steps from configuration
         expected_time_steps = (
@@ -184,7 +188,9 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     if dataset.config.input_data.solar_position is not None:
         # Solar position keys should be present when configured
         for key in solar_keys:
-            assert key in sample, f"Solar position key {key} should be present in sample"
+            assert (
+                key in sample
+            ), f"Solar position key {key} should be present in sample"
 
         # Get expected time steps from configuration
         expected_time_steps = (
@@ -234,7 +240,9 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
     save_yaml_configuration(config_with_solar, config_with_solar_path)
 
     # Create datasets with both configurations
-    dataset_without_solar = PVNetUKRegionalDataset(config_without_solar_path, gsp_ids=[1])
+    dataset_without_solar = PVNetUKRegionalDataset(
+        config_without_solar_path, gsp_ids=[1]
+    )
     dataset_with_solar = PVNetUKRegionalDataset(config_with_solar_path, gsp_ids=[1])
 
     # Generate samples
@@ -246,7 +254,9 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
 
     # Sample without solar config should not have solar position data
     for key in solar_keys:
-        assert key not in sample_without_solar, f"Solar key {key} should not be in sample"
+        assert (
+            key not in sample_without_solar
+        ), f"Solar key {key} should not be in sample"
 
     # Sample with solar config should have solar position data
     for key in solar_keys:

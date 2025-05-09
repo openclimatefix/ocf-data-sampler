@@ -41,7 +41,9 @@ def test_calculate_azimuth_and_elevation_random():
         lat = np.random.uniform(low=-90, high=90)
 
         # Calculate sun angles
-        azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon=lon, lat=lat)
+        azimuth, elevation = calculate_azimuth_and_elevation(
+            datetimes, lon=lon, lat=lat
+        )
 
         azimuths.append(azimuth.item())
         elevations.append(elevation.item())

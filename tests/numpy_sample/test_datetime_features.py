@@ -6,7 +6,9 @@ from ocf_data_sampler.numpy_sample.datetime_features import make_datetime_numpy_
 
 def test_calculate_azimuth_and_elevation():
     # Pick the day of the summer solstice
-    datetimes = pd.to_datetime(["2024-06-20 12:00", "2024-06-20 12:30", "2024-06-20 13:00"])
+    datetimes = pd.to_datetime(
+        ["2024-06-20 12:00", "2024-06-20 12:30", "2024-06-20 13:00"]
+    )
 
     # Calculate sun angles
     datetime_features = make_datetime_numpy_dict(datetimes)
@@ -14,7 +16,9 @@ def test_calculate_azimuth_and_elevation():
     assert len(datetime_features) == 4
 
     assert len(datetime_features["wind_date_sin"]) == len(datetimes)
-    assert (datetime_features["wind_date_cos"] != datetime_features["wind_date_sin"]).all()
+    assert (
+        datetime_features["wind_date_cos"] != datetime_features["wind_date_sin"]
+    ).all()
 
     # assert all values are between -1 and 1
     assert all(np.abs(datetime_features["wind_date_sin"]) <= 1)
@@ -25,7 +29,9 @@ def test_calculate_azimuth_and_elevation():
 
 def test_make_datetime_numpy_batch_custom_key_prefix():
     # Test function correctly applies custom prefix to dict keys
-    datetimes = pd.to_datetime(["2024-06-20 12:00", "2024-06-20 12:30", "2024-06-20 13:00"])
+    datetimes = pd.to_datetime(
+        ["2024-06-20 12:00", "2024-06-20 12:30", "2024-06-20 13:00"]
+    )
     key_prefix = "solar"
 
     datetime_features = make_datetime_numpy_dict(datetimes, key_prefix=key_prefix)

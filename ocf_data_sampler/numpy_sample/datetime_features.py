@@ -24,7 +24,9 @@ def _get_date_time_in_pi(dt: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
     return date_in_pi, time_in_pi
 
 
-def make_datetime_numpy_dict(datetimes: pd.DatetimeIndex, key_prefix: str = "wind") -> NumpySample:
+def make_datetime_numpy_dict(
+    datetimes: pd.DatetimeIndex, key_prefix: str = "wind"
+) -> NumpySample:
     """Creates dictionary of cyclical datetime features - encoded."""
     date_in_pi, time_in_pi = _get_date_time_in_pi(datetimes)
 

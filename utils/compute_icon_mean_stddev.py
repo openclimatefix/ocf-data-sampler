@@ -14,11 +14,21 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Add argument parser
-parser = argparse.ArgumentParser(description="Compute normalization constants from NWP data")
-parser.add_argument("--data-path", type=str, required=True,
-                    help='Path pattern to zarr files (e.g., "/path/to/data/*.zarr.zip")')
-parser.add_argument("--n-samples", type=int, default=2000,
-                    help="Number of random samples to use (default: 2000)")
+parser = argparse.ArgumentParser(
+    description="Compute normalization constants from NWP data"
+)
+parser.add_argument(
+    "--data-path",
+    type=str,
+    required=True,
+    help='Path pattern to zarr files (e.g., "/path/to/data/*.zarr.zip")',
+)
+parser.add_argument(
+    "--n-samples",
+    type=int,
+    default=2000,
+    help="Number of random samples to use (default: 2000)",
+)
 
 args = parser.parse_args()
 
@@ -39,10 +49,12 @@ random_steps = np.random.choice(n_steps, size=n_samples, replace=True)
 
 samples = []
 for i in range(n_samples):
-    sample = ds.isel(init_time_utc=random_init_times[i],
-                    latitude=random_lats[i],
-                    longitude=random_longs[i],
-                    step=random_steps[i])
+    sample = ds.isel(
+        init_time_utc=random_init_times[i],
+        latitude=random_lats[i],
+        longitude=random_longs[i],
+        step=random_steps[i],
+    )
     samples.append(sample)
 
 samples_stack = xr.concat(samples, dim="samples")
@@ -56,7 +68,9 @@ ICON_EU_STD = {}
 
 for var in available_channels:
     if var not in available_channels:
-        logger.warning("Variable '%s' not found in the channel coordinate; skipping.", var)
+        logger.warning(
+            "Variable '%s' not found in the channel coordinate; skipping.", var
+        )
         continue
     var_data = samples_stack.sel(channel=var)
     var_mean = float(var_data.mean().compute())
@@ -69,4 +83,3 @@ for var in available_channels:
 
 logger.info("\nMean values:\n%s", ICON_EU_MEAN)
 logger.info("\nStandard deviations:\n%s", ICON_EU_STD)
-

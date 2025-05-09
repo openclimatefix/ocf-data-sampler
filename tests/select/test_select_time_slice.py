@@ -3,7 +3,10 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
+from ocf_data_sampler.select.select_time_slice import (
+    select_time_slice,
+    select_time_slice_nwp,
+)
 
 NWP_FREQ = pd.Timedelta("3h")
 
@@ -37,7 +40,9 @@ def da_nwp_like():
     channels = ["t", "dswrf"]
 
     da_nwp = xr.DataArray(
-        np.random.normal(size=(len(datetimes), len(steps), len(channels), len(x), len(y))),
+        np.random.normal(
+            size=(len(datetimes), len(steps), len(channels), len(x), len(y))
+        ),
         coords={
             "init_time_utc": (["init_time_utc"], datetimes),
             "step": (["step"], steps),
@@ -60,7 +65,9 @@ def test_select_time_slice(da_sat_like, t0_str):
     freq = pd.Timedelta("5min")
 
     # Expect to return these timestamps from the selection
-    expected_datetimes = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
+    expected_datetimes = pd.date_range(
+        t0 + interval_start, t0 + interval_end, freq=freq
+    )
 
     # Make the selection
     sat_sample = select_time_slice(
@@ -111,11 +118,15 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
     # Check all the values before the first timestamp available in the data are NaN
     all_nan_space = sat_sample.isnull().all(dim=("x_geostationary", "y_geostationary"))
     if expected_datetimes[0] < min_time:
-        assert all_nan_space.sel(time_utc=slice(None, min_time - freq)).all(dim="time_utc")
+        assert all_nan_space.sel(time_utc=slice(None, min_time - freq)).all(
+            dim="time_utc"
+        )
 
     # Check all the values before the first timestamp available in the data are NaN
     if expected_datetimes[-1] > max_time:
-        assert all_nan_space.sel(time_utc=slice(max_time + freq, None)).all(dim="time_utc")
+        assert all_nan_space.sel(time_utc=slice(max_time + freq, None)).all(
+            dim="time_utc"
+        )
 
     # Check that none of the values between the first and last available timestamp are NaN
     any_nan_space = sat_sample.isnull().any(dim=("x_geostationary", "y_geostationary"))
@@ -145,7 +156,9 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
     )
 
     # Check the target-times are as expected
-    expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
+    expected_target_times = pd.date_range(
+        t0 + interval_start, t0 + interval_end, freq=freq
+    )
     assert (da_slice.target_time_utc == expected_target_times).all()
 
     # Check the init-times are as expected
@@ -178,7 +191,9 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
     )
 
     # Check the target-times are as expected
-    expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
+    expected_target_times = pd.date_range(
+        t0 + interval_start, t0 + interval_end, freq=freq
+    )
     assert (da_slice.target_time_utc == expected_target_times).all()
 
     # Check the init-times are as expected considering the delay
@@ -214,7 +229,9 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
     )
 
     # Check the target-times are as expected
-    expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
+    expected_target_times = pd.date_range(
+        t0 + interval_start, t0 + interval_end, freq=freq
+    )
     assert (da_slice.target_time_utc == expected_target_times).all()
 
     # Check the init-times are as expected considering the delay
@@ -242,7 +259,9 @@ def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
             channel="dswrf",
         )
         .diff(dim="step", label="lower")
-        .sel(step=slice(t0 - t0_delayed + interval_start, t0 - t0_delayed + interval_end))
+        .sel(
+            step=slice(t0 - t0_delayed + interval_start, t0 - t0_delayed + interval_end)
+        )
     )
 
     # Check the values are the same

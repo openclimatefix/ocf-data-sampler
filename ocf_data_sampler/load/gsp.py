@@ -41,10 +41,7 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArr
     df_gsp_loc = get_gsp_boundaries(boundaries_version)
 
     # Open the GSP generation data
-    ds = (
-        xr.open_zarr(zarr_path)
-        .rename({"datetime_gmt": "time_utc"})
-    )
+    ds = xr.open_zarr(zarr_path).rename({"datetime_gmt": "time_utc"})
 
     if not (ds.gsp_id.isin(df_gsp_loc.index)).all():
         raise ValueError(

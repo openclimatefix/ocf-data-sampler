@@ -44,8 +44,12 @@ def open_cloudcasting(zarr_path: Path | str | list[Path] | list[str]) -> xr.Data
     check_time_unique_increasing(ds.init_time_utc)
 
     # Make sure the spatial coords are in increasing order
-    ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
+    ds = make_spatial_coords_increasing(
+        ds, x_coord="x_geostationary", y_coord="y_geostationary"
+    )
 
-    ds = ds.transpose("init_time_utc", "step", "channel", "x_geostationary", "y_geostationary")
+    ds = ds.transpose(
+        "init_time_utc", "step", "channel", "x_geostationary", "y_geostationary"
+    )
 
     return get_xr_data_array_from_xr_dataset(ds)

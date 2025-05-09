@@ -31,7 +31,13 @@ def test_load_icon_eu(icon_eu_zarr_path):
 def test_load_cloudcasting(nwp_cloudcasting_zarr_path):
     da = open_nwp(zarr_path=nwp_cloudcasting_zarr_path, provider="cloudcasting")
     assert isinstance(da, DataArray)
-    assert da.dims == ("init_time_utc", "step", "channel", "x_geostationary", "y_geostationary")
+    assert da.dims == (
+        "init_time_utc",
+        "step",
+        "channel",
+        "x_geostationary",
+        "y_geostationary",
+    )
     assert "area" in da.attrs
     assert da.shape == (2, 12, 3, 100, 100)
     assert np.issubdtype(da.dtype, np.number)

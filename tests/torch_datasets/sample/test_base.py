@@ -147,7 +147,11 @@ def test_batch_to_tensor_multidimensional():
 
 def test_copy_batch_to_device():
     """Test moving tensors to a different device"""
-    device = torch.device("cuda", index=0) if torch.cuda.is_available() else  torch.device("cpu")
+    device = (
+        torch.device("cuda", index=0)
+        if torch.cuda.is_available()
+        else torch.device("cpu")
+    )
     batch = {
         "tensor_data": torch.tensor([1, 2, 3]),
         "nested": {
@@ -158,4 +162,6 @@ def test_copy_batch_to_device():
     moved_batch = copy_batch_to_device(batch, device)
     assert moved_batch["tensor_data"].device == device
     assert moved_batch["nested"]["matrix"].device == device
-    assert moved_batch["non_tensor"] == "unchanged"  # Non-tensors should remain unchanged
+    assert (
+        moved_batch["non_tensor"] == "unchanged"
+    )  # Non-tensors should remain unchanged

@@ -3,7 +3,10 @@
 import xarray as xr
 
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
-from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
+from ocf_data_sampler.load.utils import (
+    check_time_unique_increasing,
+    make_spatial_coords_increasing,
+)
 
 
 def remove_isobaric_lelvels_from_coords(nwp: xr.Dataset) -> xr.Dataset:
@@ -15,7 +18,9 @@ def remove_isobaric_lelvels_from_coords(nwp: xr.Dataset) -> xr.Dataset:
     Returns:
         NWP data without isobaric levels in the coordinates
     """
-    variables_to_drop = [var for var in nwp.data_vars if "isobaricInhPa" in nwp[var].dims]
+    variables_to_drop = [
+        var for var in nwp.data_vars if "isobaricInhPa" in nwp[var].dims
+    ]
     return nwp.drop_vars(["isobaricInhPa", *variables_to_drop])
 
 

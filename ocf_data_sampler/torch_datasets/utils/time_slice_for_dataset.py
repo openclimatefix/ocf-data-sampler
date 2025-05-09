@@ -5,7 +5,10 @@ import xarray as xr
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.dropout import apply_dropout_time, draw_dropout_time
-from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
+from ocf_data_sampler.select.select_time_slice import (
+    select_time_slice,
+    select_time_slice_nwp,
+)
 from ocf_data_sampler.utils import minutes
 
 
@@ -95,7 +98,9 @@ def slice_datasets_by_time(
             interval_end=minutes(gsp_config.interval_end_minutes),
         )
 
-        sliced_datasets_dict["gsp"] = xr.concat([da_gsp_past, da_gsp_future], dim="time_utc")
+        sliced_datasets_dict["gsp"] = xr.concat(
+            [da_gsp_past, da_gsp_future], dim="time_utc"
+        )
 
     if "site" in datasets_dict:
         site_config = config.input_data.site

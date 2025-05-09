@@ -17,7 +17,9 @@ class NWPSampleKey:
     t0_idx = "nwp_t0_idx"
 
 
-def convert_nwp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> NumpySample:
+def convert_nwp_to_numpy_sample(
+    da: xr.DataArray, t0_idx: int | None = None
+) -> NumpySample:
     """Convert from Xarray to NWP NumpySample.
 
     Args:

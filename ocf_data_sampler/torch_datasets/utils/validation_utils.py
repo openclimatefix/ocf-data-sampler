@@ -132,7 +132,9 @@ def validation_warning(
     logger.warning(log_message)
 
 
-def _calculate_time_steps(start_minutes: int, end_minutes: int, resolution_minutes: int) -> int:
+def _calculate_time_steps(
+    start_minutes: int, end_minutes: int, resolution_minutes: int
+) -> int:
     """Calculate number of time steps based on interval and resolution.
 
     Args:
