@@ -279,16 +279,19 @@ class SitesDataset(Dataset):
 
             # Check if all solar_datetimes are in site__time_utc
             site_times = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
-            if not all(dt in site_times for dt in solar_datetimes):
-                raise ValueError(
-                    "solar_time_utc values must be contained within site__time_utc values. "
-                    "Ensure solar_position configuration times are a subset of site data times."
-                )
+            # if not all(dt in site_times for dt in solar_datetimes):
+            #     raise ValueError(
+            #         "solar_time_utc values must be contained within site__time_utc values. "
+            #         "Ensure solar_position configuration times are a subset of site data times."
+            #     )
             
             # Create a solar dataset with features indexed by solar time
             solar_ds = xr.Dataset(coords={"solar_time_utc": solar_datetimes})
             for key, values in sun_position_features.items():
                 solar_ds[key] = ("solar_time_utc", values)
+
+            # Reindex solar features by site__time_utc
+            solar_ds = solar_ds.reindex(solar_time_utc=site_times)
                 
             # add solar features as coordinates to the main dataset
             for key in sun_position_features.keys():
