@@ -2,6 +2,7 @@
 
 import xarray as xr
 
+from ocf_data_sampler.config.model import NWP
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
@@ -10,16 +11,16 @@ from ocf_data_sampler.load.utils import (
 )
 
 
-def open_ifs(zarr_path: str | list[str]) -> xr.DataArray:
+def open_ifs(nwp_config: NWP) -> xr.DataArray:
     """Opens the ECMWF IFS NWP data.
 
     Args:
-        zarr_path: Path to the zarr to open
+        nwp_config: NWP configuration object
 
     Returns:
         Xarray DataArray of the NWP data
     """
-    ds = open_zarr_paths(zarr_path)
+    ds = open_zarr_paths(nwp_config)
 
     # LEGACY SUPPORT - rename variable to channel if it exists
     ds = ds.rename({"init_time": "init_time_utc", "variable": "channel"})

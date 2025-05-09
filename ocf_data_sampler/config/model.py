@@ -211,6 +211,7 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         " used to construct an example. If set to None, then the max staleness is set according to"
         " the maximum forecast horizon of the NWP and the requested forecast length.",
     )
+    public: bool = Field(False, description="Whether the NWP data is public or private")
 
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:

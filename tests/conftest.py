@@ -45,6 +45,12 @@ def config_filename():
     return f"{_top_test_directory}/test_data/configs/pvnet_test_config.yaml"
 
 
+@pytest.fixture()
+def nwp_ukv_config(test_config_filename):
+    config = load_yaml_configuration(test_config_filename)
+    return config.input_data.nwp['ukv']
+
+
 @pytest.fixture(scope="session")
 def session_tmp_path(tmp_path_factory):
     return tmp_path_factory.mktemp("data")
