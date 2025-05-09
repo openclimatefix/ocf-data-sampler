@@ -123,7 +123,6 @@ class SitesDataset(Dataset):
 
         return self._get_sample(t0, location)
 
-
     def find_valid_t0_and_site_ids(
         self,
         datasets_dict: dict,
@@ -159,8 +158,10 @@ class SitesDataset(Dataset):
                 interval_start=minutes(site_config.interval_start_minutes),
                 interval_end=minutes(site_config.interval_end_minutes),
             )
-            valid_time_periods_per_site = intersection_of_multiple_dataframes_of_periods(
-                [valid_time_periods, time_periods],
+            valid_time_periods_per_site = (
+                intersection_of_multiple_dataframes_of_periods(
+                    [valid_time_periods, time_periods],
+                )
             )
 
             # Fill out contiguous time periods to get t0 times
@@ -176,7 +177,6 @@ class SitesDataset(Dataset):
         valid_t0_and_site_ids = pd.concat(valid_t0_and_site_ids)
         valid_t0_and_site_ids.index.name = "t0"
         return valid_t0_and_site_ids.reset_index()
-
 
     def get_locations(self, site_xr: xr.Dataset) -> list[Location]:
         """Get list of locations of all sites.
@@ -249,15 +249,17 @@ class SitesDataset(Dataset):
 
         # add datetime features
         datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
-        datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site_")
+        datetime_features = make_datetime_numpy_dict(
+            datetimes=datetimes, key_prefix="site_"
+        )
         combined_sample_dataset = combined_sample_dataset.assign_coords(
             {k: ("site__time_utc", v) for k, v in datetime_features.items()},
         )
 
         # Only add solar position if explicitly configured
         has_solar_config = (
-            hasattr(self.config.input_data, "solar_position") and
-            self.config.input_data.solar_position is not None
+            hasattr(self.config.input_data, "solar_position")
+            and self.config.input_data.solar_position is not None
         )
 
         if has_solar_config:
@@ -284,7 +286,7 @@ class SitesDataset(Dataset):
             #         "solar_time_utc values must be contained within site__time_utc values. "
             #         "Ensure solar_position configuration times are a subset of site data times."
             #     )
-            
+
             # Create a solar dataset with features indexed by solar time
             solar_ds = xr.Dataset(coords={"solar_time_utc": solar_datetimes})
             for key, values in sun_position_features.items():
@@ -292,7 +294,7 @@ class SitesDataset(Dataset):
 
             # Reindex solar features by site__time_utc
             solar_ds = solar_ds.reindex(solar_time_utc=site_times)
-                
+
             # add solar features as coordinates to the main dataset
             for key in sun_position_features.keys():
                 combined_sample_dataset = combined_sample_dataset.assign_coords(
@@ -323,7 +325,10 @@ class SitesDataset(Dataset):
         for key, data_array in normalised_data_arrays:
             # Ensure all attributes are strings for consistency
             data_array = data_array.assign_attrs(
-                {attr_key: str(attr_value) for attr_key, attr_value in data_array.attrs.items()},
+                {
+                    attr_key: str(attr_value)
+                    for attr_key, attr_value in data_array.attrs.items()
+                },
             )
 
             # Convert DataArray to Dataset with the variable name as the key
@@ -331,7 +336,11 @@ class SitesDataset(Dataset):
 
             # Prepend key name to all dimension and coordinate names for uniqueness
             dataset = dataset.rename(
-                {dim: f"{key}__{dim}" for dim in dataset.dims if dim not in dataset.coords},
+                {
+                    dim: f"{key}__{dim}"
+                    for dim in dataset.dims
+                    if dim not in dataset.coords
+                },
             )
             dataset = dataset.rename(
                 {coord: f"{key}__{coord}" for coord in dataset.coords},
@@ -347,8 +356,12 @@ class SitesDataset(Dataset):
             if f"{key}__init_time_utc" in dataset.coords:
                 init_coord = f"{key}__init_time_utc"
                 if dataset[init_coord].ndim == 0:  # Check if scalar
-                    expanded_init_times = [dataset[init_coord].values] * len(dataset[concat_dim])
-                    dataset = dataset.assign_coords({init_coord: (concat_dim, expanded_init_times)})
+                    expanded_init_times = [dataset[init_coord].values] * len(
+                        dataset[concat_dim]
+                    )
+                    dataset = dataset.assign_coords(
+                        {init_coord: (concat_dim, expanded_init_times)}
+                    )
 
             datasets.append(dataset)
 
@@ -397,7 +410,9 @@ def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
     return sample
 
 
-def convert_from_dataset_to_dict_datasets(combined_dataset: xr.Dataset) -> dict[str, xr.DataArray]:
+def convert_from_dataset_to_dict_datasets(
+    combined_dataset: xr.Dataset,
+) -> dict[str, xr.DataArray]:
     """Convert a combined sample dataset to a dict of datasets for each input.
 
     Args:
@@ -416,7 +431,11 @@ def convert_from_dataset_to_dict_datasets(combined_dataset: xr.Dataset) -> dict[
             if f"{key}__" not in dim:
                 dataset = dataset.drop_vars(dim)
         dataset = dataset.rename(
-            {dim: dim.split(f"{key}__")[1] for dim in dataset.dims if dim not in dataset.coords},
+            {
+                dim: dim.split(f"{key}__")[1]
+                for dim in dataset.dims
+                if dim not in dataset.coords
+            },
         )
         dataset = dataset.rename(
             {coord: coord.split(f"{key}__")[1] for coord in dataset.coords},
