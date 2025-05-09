@@ -27,8 +27,12 @@ def open_gfs(zarr_path: str | list[str]) -> xr.DataArray:
     nwp = nwp.rename({"variable": "channel"})  # `variable` appears when using `to_array`
 
     del gfs
+
     if "init_time" in nwp.dims:
         nwp = nwp.rename({"init_time": "init_time_utc"})
+    if "init_time_utc" not in nwp.dims:
+        raise ValueError("init_time_utc dimension not found in the gfs data. "
+                         "Note that init_time is rename to init_time_utc.")
 
     check_time_unique_increasing(nwp.init_time_utc)
     nwp = make_spatial_coords_increasing(nwp, x_coord="longitude", y_coord="latitude")
