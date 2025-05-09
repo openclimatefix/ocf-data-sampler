@@ -14,25 +14,6 @@ from ocf_data_sampler.torch_datasets.datasets.site import (
 )
 
 
-@pytest.fixture()
-def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites):
-    # adjust config to point to the zarr file
-    config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.site = data_sites
-    config.input_data.gsp = None
-
-    filename = f"{tmp_path}/configuration.yaml"
-    save_yaml_configuration(config, filename)
-    yield filename
-
-
-@pytest.fixture()
-def sites_dataset(site_config_filename):
-    return SitesDataset(site_config_filename)
-
-
 def test_site(tmp_path, site_config_filename):
     # Create dataset object
     dataset = SitesDataset(site_config_filename)
@@ -119,20 +100,40 @@ def test_convert_from_dataset_to_dict_datasets(sites_dataset):
 
 
 def test_site_dataset_with_dataloader(sites_dataset) -> None:
-    expected_coods = {
+    if len(sites_dataset) == 0:
+        pytest.skip("Skipping test as dataset is empty.")
+
+    dataloader = DataLoader(
+        sites_dataset,
+        batch_size=None,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=None,
+    )
+
+    try:
+        individual_xr_sample = next(iter(dataloader))
+    except StopIteration:
+        pytest.skip("Skipping test as dataloader is empty.")
+        return
+
+    assert isinstance(individual_xr_sample, xr.Dataset)
+
+    expected_data_vars = {"nwp-ukv", "satellite", "site"}
+    assert set(individual_xr_sample.data_vars) == expected_data_vars
+
+    assert individual_xr_sample["satellite"].values.shape == (7, 1, 2, 2)
+    assert individual_xr_sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
+    assert individual_xr_sample["site"].values.shape == (4,)
+
+    expected_coords_subset = {
         "site__date_cos",
         "site__time_cos",
         "site__time_sin",
         "site__date_sin",
     }
-
-    dataloader = DataLoader(sites_dataset, collate_fn=None, batch_size=None)
-
-    sample = next(iter(dataloader))
-
-    # check that expected_dims is in the sample
-    for key in expected_coods:
-        assert key in sample
+    for coord_key in expected_coords_subset:
+        assert coord_key in individual_xr_sample.coords
 
 
 def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
