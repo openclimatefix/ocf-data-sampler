@@ -296,9 +296,9 @@ class SitesDataset(Dataset):
             solar_ds = solar_ds.reindex(solar_time_utc=site_times)
 
             # add solar features as coordinates to the main dataset
-            for key in sun_position_features.keys():
+            for key in sun_position_features:
                 combined_sample_dataset = combined_sample_dataset.assign_coords(
-                    {key: ("site__time_utc", solar_ds[key].values)}
+                    {key: ("site__time_utc", solar_ds[key].values)},
                 )
 
         # TODO include t0_index in xr dataset?
@@ -360,7 +360,7 @@ class SitesDataset(Dataset):
                         dataset[concat_dim]
                     )
                     dataset = dataset.assign_coords(
-                        {init_coord: (concat_dim, expanded_init_times)}
+                        {init_coord: (concat_dim, expanded_init_times)},
                     )
 
             datasets.append(dataset)
@@ -431,11 +431,7 @@ def convert_from_dataset_to_dict_datasets(
             if f"{key}__" not in dim:
                 dataset = dataset.drop_vars(dim)
         dataset = dataset.rename(
-            {
-                dim: dim.split(f"{key}__")[1]
-                for dim in dataset.dims
-                if dim not in dataset.coords
-            },
+            {dim: dim.split(f"{key}__")[1] for dim in dataset.dims if dim not in dataset.coords},
         )
         dataset = dataset.rename(
             {coord: coord.split(f"{key}__")[1] for coord in dataset.coords},
