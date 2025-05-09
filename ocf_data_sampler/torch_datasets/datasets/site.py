@@ -250,7 +250,7 @@ class SitesDataset(Dataset):
         # add datetime features
         datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
         datetime_features = make_datetime_numpy_dict(
-            datetimes=datetimes, key_prefix="site_"
+            datetimes=datetimes, key_prefix="site_",
         )
         combined_sample_dataset = combined_sample_dataset.assign_coords(
             {k: ("site__time_utc", v) for k, v in datetime_features.items()},
@@ -357,7 +357,7 @@ class SitesDataset(Dataset):
                 init_coord = f"{key}__init_time_utc"
                 if dataset[init_coord].ndim == 0:  # Check if scalar
                     expanded_init_times = [dataset[init_coord].values] * len(
-                        dataset[concat_dim]
+                        dataset[concat_dim],
                     )
                     dataset = dataset.assign_coords(
                         {init_coord: (concat_dim, expanded_init_times)},
