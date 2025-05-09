@@ -15,7 +15,6 @@ def open_zarr_paths(nwp_config: NWP, time_dim: str = "init_time") -> xr.Dataset:
     Returns:
         The opened Xarray Dataset
     """
-
     general_kwargs = {
         "engine": "zarr",
         "chunks": "auto",

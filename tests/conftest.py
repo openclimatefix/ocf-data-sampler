@@ -48,7 +48,7 @@ def config_filename():
 @pytest.fixture()
 def nwp_ukv_config(test_config_filename):
     config = load_yaml_configuration(test_config_filename)
-    return config.input_data.nwp['ukv']
+    return config.input_data.nwp["ukv"]
 
 
 @pytest.fixture(scope="session")
