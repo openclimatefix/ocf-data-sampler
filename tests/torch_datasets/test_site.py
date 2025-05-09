@@ -87,8 +87,8 @@ def test_site(tmp_path, site_config_filename):
     assert sample["satellite"].values.shape == (7, 1, 2, 2)
     # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
     assert sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
-    # site_id and 1.5 hours of 30 minute data (inclusive)
-    assert sample["site"].values.shape == (1, 4)
+    # 1.5 hours of 30 minute data (inclusive)
+    assert sample["site"].values.shape == (4,)
 
 
 def test_site_time_filter_start(site_config_filename):
