@@ -41,7 +41,7 @@ def get_dataset_dict(
             da_nwp = open_nwp(
                 zarr_path=nwp_config.zarr_path,
                 provider=nwp_config.provider,
-                public=nwp_config.public
+                public=nwp_config.public,
             )
 
             da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
