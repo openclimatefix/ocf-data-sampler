@@ -44,7 +44,6 @@ def test_config_filename():
 def config_filename():
     return f"{_top_test_directory}/test_data/configs/pvnet_test_config.yaml"
 
-
 @pytest.fixture(scope="session")
 def session_tmp_path(tmp_path_factory):
     return tmp_path_factory.mktemp("data")

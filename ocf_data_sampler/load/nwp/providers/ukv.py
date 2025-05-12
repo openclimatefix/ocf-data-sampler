@@ -14,7 +14,7 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
     """Opens the NWP data.
 
     Args:
-        zarr_path: Path to the zarr to open
+        zarr_path: Path to the zarr(s) to open
 
     Returns:
         Xarray DataArray of the NWP data

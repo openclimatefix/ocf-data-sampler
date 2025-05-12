@@ -19,7 +19,7 @@ def remove_isobaric_lelvels_from_coords(nwp: xr.Dataset) -> xr.Dataset:
     return nwp.drop_vars(["isobaricInhPa", *variables_to_drop])
 
 
-def open_icon_eu(zarr_path: str) -> xr.Dataset:
+def open_icon_eu(zarr_path: str | list[str]) -> xr.Dataset:
     """Opens the ICON data.
 
     ICON EU Data is on a regular lat/lon grid
@@ -27,7 +27,7 @@ def open_icon_eu(zarr_path: str) -> xr.Dataset:
     Each of the variables is its own data variable
 
     Args:
-        zarr_path: Path to the zarr to open
+        zarr_path: Path to the zarr(s) to open
 
     Returns:
         Xarray DataArray of the NWP data

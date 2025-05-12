@@ -1,7 +1,5 @@
 """Cloudcasting provider loader."""
 
-from pathlib import Path
-
 import xarray as xr
 
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
@@ -12,14 +10,14 @@ from ocf_data_sampler.load.utils import (
 )
 
 
-def open_cloudcasting(zarr_path: Path | str | list[Path] | list[str]) -> xr.DataArray:
+def open_cloudcasting(zarr_path: str | list[str]) -> xr.DataArray:
     """Opens the satellite predictions from cloudcasting.
 
     Cloudcasting is a OCF forecast product. We forecast future satellite images from recent
     satellite images. More information can be found in the references below.
 
     Args:
-        zarr_path: Path to the zarr to open
+        zarr_path: Path to the zarr(s) to open
 
     Returns:
         Xarray DataArray of the cloudcasting data
