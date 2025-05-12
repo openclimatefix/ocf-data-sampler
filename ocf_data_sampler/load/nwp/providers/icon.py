@@ -2,7 +2,6 @@
 
 import xarray as xr
 
-from ocf_data_sampler.config.model import NWP
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
 from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
 
@@ -20,7 +19,7 @@ def remove_isobaric_lelvels_from_coords(nwp: xr.Dataset) -> xr.Dataset:
     return nwp.drop_vars(["isobaricInhPa", *variables_to_drop])
 
 
-def open_icon_eu(nwp_config: NWP) -> xr.Dataset:
+def open_icon_eu(zarr_path: str | list[str]) -> xr.Dataset:
     """Opens the ICON data.
 
     ICON EU Data is on a regular lat/lon grid
@@ -28,13 +27,13 @@ def open_icon_eu(nwp_config: NWP) -> xr.Dataset:
     Each of the variables is its own data variable
 
     Args:
-        nwp_config: NWP configuration object
+        zarr_path: Path to the zarr(s) to open
 
     Returns:
         Xarray DataArray of the NWP data
     """
     # Open the data
-    nwp = open_zarr_paths(nwp_config, time_dim="time")
+    nwp = open_zarr_paths(zarr_path, time_dim="time")
     nwp = nwp.rename({"time": "init_time_utc"})
     # Sanity checks.
     check_time_unique_increasing(nwp.init_time_utc)

@@ -4,18 +4,18 @@ import logging
 
 import xarray as xr
 
-from ocf_data_sampler.config.model import NWP
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
 from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
 
 _log = logging.getLogger(__name__)
 
 
-def open_gfs(nwp_config: NWP) -> xr.DataArray:
+def open_gfs(zarr_path: str | list[str], public: bool = False) -> xr.DataArray:
     """Opens the GFS data.
 
     Args:
-        nwp_config: NWP configuration object
+        zarr_path: Path to the zarr(s) to open
+        public: Whether the data is public or private
 
     Returns:
         Xarray DataArray of the NWP data
@@ -23,7 +23,7 @@ def open_gfs(nwp_config: NWP) -> xr.DataArray:
     _log.info("Loading NWP GFS data")
 
     # Open data
-    gfs: xr.Dataset = open_zarr_paths(nwp_config, time_dim="init_time_utc")
+    gfs: xr.Dataset = open_zarr_paths(zarr_path, time_dim="init_time_utc", public=public)
     nwp: xr.DataArray = gfs.to_array()
 
     del gfs

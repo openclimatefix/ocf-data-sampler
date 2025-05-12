@@ -2,15 +2,14 @@
 
 import xarray as xr
 
-from ocf_data_sampler.config.model import NWP
 
-
-def open_zarr_paths(nwp_config: NWP, time_dim: str = "init_time") -> xr.Dataset:
+def open_zarr_paths(zarr_path: str | list[str], time_dim: str = "init_time", public: bool = False) -> xr.Dataset:
     """Opens the NWP data.
 
     Args:
-        nwp_config: NWP configuration object
+        zarr_path: Path to the zarr(s) to open
         time_dim: Name of the time dimension
+        public: Whether the data is public or private
 
     Returns:
         The opened Xarray Dataset
@@ -21,11 +20,10 @@ def open_zarr_paths(nwp_config: NWP, time_dim: str = "init_time") -> xr.Dataset:
         "decode_timedelta": True,
     }
 
-    if nwp_config.public:
+    if public:
         # note this only works for s3 zarr paths at the moment
         general_kwargs["storage_options"] = {"anon": True}
 
-    zarr_path = nwp_config.zarr_path
     if type(zarr_path) in [list, tuple] or "*" in str(zarr_path):  # Multi-file dataset
         ds = xr.open_mfdataset(
             zarr_path,
