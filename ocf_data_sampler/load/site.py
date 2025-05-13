@@ -58,6 +58,10 @@ def open_site(
             raise ValueError(
                 "capacity_kwp must exist in metadata file when capacity_mode='static'",
             )
+        
+        # Check that capacity_kwp values are numeric, not strings
+        if np.issubdtype(metadata_df["capacity_kwp"].dtype, np.character):
+            raise ValueError("capacity_kwp values must be numeric, not strings")
 
         generation_ds = generation_ds.assign_coords(
             capacity_kwp=("site_id", metadata_df["capacity_kwp"].values),
@@ -67,12 +71,16 @@ def open_site(
     elif capacity_mode == "variable":
         logging.info("Using variable capacity from generation file")
 
-        # Check that capacity is in expected format
+        # Check that capacity exists
         if "capacity_kwp" not in generation_ds:
             raise ValueError(
                 "capacity_kwp must exist in generation file when capacity_mode='variable'",
             )
-
+        
+        # Check that capacity_kwp values are numeric, not strings
+        if np.issubdtype(generation_ds.capacity_kwp.dtype, np.character):
+            raise ValueError("capacity_kwp values must be numeric, not strings")
+        
         if set(generation_ds.capacity_kwp.dims) != {"time_utc", "site_id"}:
             raise ValueError(
                 "capacity_kwp must have dimensions (time_utc, site_id) when "
