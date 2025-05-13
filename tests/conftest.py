@@ -211,6 +211,7 @@ def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
     ds.to_zarr(zarr_path)
     yield zarr_path
 
+
 @pytest.fixture(scope="session")
 def icon_eu_zarr_path(session_tmp_path):
     date = "20211101"
@@ -228,12 +229,18 @@ def icon_eu_zarr_path(session_tmp_path):
                 "time": pd.Timestamp(f"2021-11-01T{hour}:00:00"),
             },
             data_vars={
-                "t": (("step", "isobaricInhPa", "latitude", "longitude"),
-                      np.random.rand(93, 6, 100, 100).astype(np.float32)),
-                "u_10m": (("step", "latitude", "longitude"),
-                         np.random.rand(93, 100, 100).astype(np.float32)),
-                "v_10m": (("step", "latitude", "longitude"),
-                         np.random.rand(93, 100, 100).astype(np.float32)),
+                "t": (
+                    ("step", "isobaricInhPa", "latitude", "longitude"),
+                    np.random.rand(93, 6, 100, 100).astype(np.float32),
+                ),
+                "u_10m": (
+                    ("step", "latitude", "longitude"),
+                    np.random.rand(93, 100, 100).astype(np.float32),
+                ),
+                "v_10m": (
+                    ("step", "latitude", "longitude"),
+                    np.random.rand(93, 100, 100).astype(np.float32),
+                ),
             },
             attrs={
                 "Conventions": "CF-1.7",
@@ -253,7 +260,6 @@ def icon_eu_zarr_path(session_tmp_path):
 
 @pytest.fixture(scope="session")
 def nwp_cloudcasting_zarr_path(session_tmp_path):
-
     init_times = pd.date_range(start="2023-01-01 00:00", freq="1h", periods=2)
     steps = pd.timedelta_range("15min", "180min", freq="15min")
 
@@ -295,7 +301,9 @@ def ds_uk_gsp():
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
     gsp_ids = np.arange(0, 318)
     capacity = np.ones((len(times), len(gsp_ids)))
-    generation = np.random.uniform(0, 200, size=(len(times), len(gsp_ids))).astype(np.float32)
+    generation = np.random.uniform(0, 200, size=(len(times), len(gsp_ids))).astype(
+        np.float32,
+    )
 
     coords = (
         ("datetime_gmt", times),
@@ -322,9 +330,9 @@ def ds_uk_gsp():
 
 
 @pytest.fixture(scope="session")
-def data_sites(session_tmp_path) -> Site:
+def data_sites(session_tmp_path):
     """
-    Make fake data for sites
+    Make fake data for sites with static capacity
     Returns: filename for netcdf file, and csv metadata
     """
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
@@ -334,15 +342,78 @@ def data_sites(session_tmp_path) -> Site:
     longitude = np.arange(-4, -3, 0.1)
     latitude = np.arange(51, 52, 0.1)
 
-    generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(np.float32)
-
-    # repeat capacity in new dims len(times) times
-    capacity_kwp = (np.tile(capacity_kwp_1d, len(times))).reshape(len(times), 10)
+    generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(
+        np.float32,
+    )
 
     coords = (
         ("time_utc", times),
         ("site_id", site_ids),
     )
+
+    da_gen = xr.DataArray(
+        generation,
+        coords=coords,
+    )
+
+    # metadata
+    meta_df = pd.DataFrame(columns=[], data=[])
+    meta_df["site_id"] = site_ids
+    meta_df["capacity_kwp"] = capacity_kwp_1d
+    meta_df["longitude"] = longitude
+    meta_df["latitude"] = latitude
+
+    generation = xr.Dataset(
+        {
+            # "capacity_kwp": da_cap,
+            "generation_kw": da_gen,
+        },
+    )
+
+    filename = f"{session_tmp_path}/sites.netcdf"
+    filename_csv = f"{session_tmp_path}/sites_metadata.csv"
+    generation.to_netcdf(filename)
+    meta_df.to_csv(filename_csv)
+
+    site = Site(
+        file_path=filename,
+        metadata_file_path=filename_csv,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
+        time_resolution_minutes=30,
+        capacity_mode="static",
+    )
+
+    yield site
+
+
+@pytest.fixture(scope="session")
+def data_sites_var_capacity(session_tmp_path):
+    """
+    Make fake data for sites with variable capacity
+    Returns: filename for netcdf file, and csv metadata
+    """
+
+    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
+    site_ids = list(range(0, 10))
+    capacity_kwp_1d = np.array([0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 4])
+    # these are quite specific for the fake satellite data
+    longitude = np.arange(-4, -3, 0.1)
+    latitude = np.arange(51, 52, 0.1)
+
+    generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(
+        np.float32,
+    )
+
+    # Create variable capacity for all sites with random values
+    capacity_kwp = np.random.uniform(3.0, 5.0, size=(len(times), len(site_ids))).astype(
+        np.float32,
+    )
+
+    coords = {
+        "time_utc": times,
+        "site_id": site_ids,
+    }
 
     da_cap = xr.DataArray(
         capacity_kwp,
@@ -361,16 +432,16 @@ def data_sites(session_tmp_path) -> Site:
     meta_df["longitude"] = longitude
     meta_df["latitude"] = latitude
 
-    generation = xr.Dataset(
+    generation_ds = xr.Dataset(
         {
             "capacity_kwp": da_cap,
             "generation_kw": da_gen,
         },
     )
 
-    filename = f"{session_tmp_path}/sites.netcdf"
-    filename_csv = f"{session_tmp_path}/sites_metadata.csv"
-    generation.to_netcdf(filename)
+    filename = f"{session_tmp_path}/sites_var_capacity.netcdf"
+    filename_csv = f"{session_tmp_path}/sites_var_capacity_metadata.csv"
+    generation_ds.to_netcdf(filename)
     meta_df.to_csv(filename_csv)
 
     site = Site(
@@ -379,10 +450,79 @@ def data_sites(session_tmp_path) -> Site:
         interval_start_minutes=-30,
         interval_end_minutes=60,
         time_resolution_minutes=30,
+        capacity_mode="variable",
     )
 
     yield site
 
+
+@pytest.fixture(scope="session")
+def data_single_site_var_capacity(session_tmp_path):
+    """
+    Make fake data for sites with variable capacity
+    Returns: filename for netcdf file, and csv metadata
+    """
+
+    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
+    site_ids = [0]
+    capacity_kwp_1d = [1]
+    # these are quite specific for the fake satellite data
+    longitude = [-3.5]
+    latitude = [51.5]
+
+    generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(
+        np.float32,
+    )
+
+    # Create variable capacity for all sites with random values
+    capacity_kwp = np.random.uniform(3.0, 5.0, size=(len(times), len(site_ids))).astype(
+        np.float32,
+    )
+
+    coords = {
+        "time_utc": times,
+        "site_id": site_ids,
+    }
+
+    da_cap = xr.DataArray(
+        capacity_kwp,
+        coords=coords,
+    )
+
+    da_gen = xr.DataArray(
+        generation,
+        coords=coords,
+    )
+
+    # metadata
+    meta_df = pd.DataFrame(columns=[], data=[])
+    meta_df["site_id"] = site_ids
+    meta_df["capacity_kwp"] = capacity_kwp_1d
+    meta_df["longitude"] = longitude
+    meta_df["latitude"] = latitude
+
+    generation_ds = xr.Dataset(
+        {
+            "capacity_kwp": da_cap,
+            "generation_kw": da_gen,
+        },
+    )
+
+    filename = f"{session_tmp_path}/single_site_var_capacity.netcdf"
+    filename_csv = f"{session_tmp_path}/single_site_var_capacity_metadata.csv"
+    generation_ds.to_netcdf(filename)
+    meta_df.to_csv(filename_csv)
+
+    site = Site(
+        file_path=filename,
+        metadata_file_path=filename_csv,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
+        time_resolution_minutes=30,
+        capacity_mode="variable",
+    )
+
+    yield site
 
 @pytest.fixture(scope="session")
 def uk_gsp_zarr_path(session_tmp_path, ds_uk_gsp):
