@@ -257,22 +257,12 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         # Construct a lookup for locations - useful for users to construct sample by GSP ID
         location_lookup = {loc.id: loc for loc in self.locations}
 
-        # Construct indices for sampling
-        t_index, loc_index = np.meshgrid(
-            np.arange(len(self.valid_t0_times)),
-            np.arange(len(self.locations)),
-        )
-
-        # Make array of all possible (t0, location) coordinates. Each row is a single coordinate
-        index_pairs = np.stack((t_index.ravel(), loc_index.ravel())).T
-
         # Assign coords and indices to self
         self.location_lookup = location_lookup
-        self.index_pairs = index_pairs
 
     @override
     def __len__(self) -> int:
-        return len(self.index_pairs)
+        return len(self.locations)*len(self.valid_t0_times)
 
     def _get_sample(self, t0: pd.Timestamp, location: Location) -> NumpySample:
         """Generate the PVNet sample for given coordinates.
@@ -290,7 +280,13 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
     @override
     def __getitem__(self, idx: int) -> NumpySample:
         # Get the coordinates of the sample
-        t_index, loc_index = self.index_pairs[idx]
+
+        if idx >= len(self):
+            raise ValueError(f"Index {idx} out of range for dataset of length {len(self)}")
+
+        t_index = idx % len(self.valid_t0_times)
+        loc_index = idx // len(self.valid_t0_times)
+
         location = self.locations[loc_index]
         t0 = self.valid_t0_times[t_index]
 
