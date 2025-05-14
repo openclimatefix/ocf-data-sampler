@@ -19,7 +19,8 @@ input_data:
       time_resolution_minutes: 60
       channels:
         - t
-      accum_channels: ["t"]
+      accum_channels:
+        - t
       image_size_pixels_height: 2
       image_size_pixels_width: 2
       dropout_timedeltas_minutes: [-180]
