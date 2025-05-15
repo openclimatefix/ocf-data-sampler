@@ -1,6 +1,5 @@
 """Torch dataset for UK PVNet."""
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
