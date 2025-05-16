@@ -91,20 +91,30 @@ def slice_datasets_by_time(
     if "site" in datasets_dict:
         site_config = config.input_data.site
 
-        sliced_datasets_dict["site"] = select_time_slice(
+        da_site_past = select_time_slice(
             datasets_dict["site"],
             t0,
             time_resolution=minutes(site_config.time_resolution_minutes),
             interval_start=minutes(site_config.interval_start_minutes),
-            interval_end=minutes(site_config.interval_end_minutes),
+            interval_end=minutes(0),
         )
 
-        # Apply the randomly sampled dropout
-        sliced_datasets_dict["site"] = apply_sampled_dropout_time(
+        # Apply the randomly sampled dropout on the past site not the future
+        da_site_past = apply_sampled_dropout_time(
             t0,
             dropout_timedeltas=minutes(site_config.dropout_timedeltas_minutes),
             dropout_frac=site_config.dropout_fraction,
-            da=sliced_datasets_dict["site"],
+            da=da_site_past,
         )
+
+        da_site_future = select_time_slice(
+            datasets_dict["site"],
+            t0,
+            time_resolution=minutes(site_config.time_resolution_minutes),
+            interval_start=minutes(site_config.time_resolution_minutes),
+            interval_end=minutes(site_config.interval_end_minutes),
+        )
+
+        sliced_datasets_dict["site"] = xr.concat([da_site_past, da_site_future], dim="time_utc")
 
     return sliced_datasets_dict
