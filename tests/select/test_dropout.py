@@ -21,7 +21,29 @@ def da_sample():
     return da_sat
 
 
-def test_draw_dropout_time_none(da_sample):
+def test_apply_sampled_dropout_time_multiple_timedeltas(da_sample):
+    t0 = pd.Timestamp("2024-01-01 13:00:00")
+
+    dropout_timedeltas = pd.to_timedelta([-30, -45], unit="min")
+    da_sample_dropout = apply_sampled_dropout_time(
+        t0,
+        dropout_timedeltas=dropout_timedeltas,
+        dropout_frac=1,
+        da=da_sample,
+    )
+
+    latest_expected_cut_off = t0 + pd.Timedelta(-30, "min")
+
+    assert (
+        da_sample_dropout.sel(
+            time_utc=slice(latest_expected_cut_off + pd.Timedelta(5, "min"), None),
+        )
+        .isnull()
+        .all()
+    )
+
+
+def test_apply_sampled_dropout_time_none(da_sample):
     t0 = pd.Timestamp("2021-01-01 04:00:00")
 
     # Dropout fraction is 0
