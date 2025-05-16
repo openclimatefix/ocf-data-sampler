@@ -48,7 +48,7 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArr
 
     if not (ds.gsp_id.isin(df_gsp_loc.index)).all():
         raise ValueError(
-            "Some GSP IDs in the GSP generation data are available in the locations file.",
+            "Some GSP IDs in the GSP generation data are not available in the locations file.",
         )
 
     # Select the locations by the GSP IDs in the generation data
