@@ -27,7 +27,10 @@ def test_draw_dropout_time_none(da_sample):
     # Dropout fraction is 0
     dropout_timedeltas = [pd.Timedelta(-30, "min")]
     da_sample_dropout = apply_sampled_dropout_time(
-        t0, dropout_timedeltas=dropout_timedeltas, dropout_frac=0, da=da_sample
+        t0,
+        dropout_timedeltas=dropout_timedeltas,
+        dropout_frac=0,
+        da=da_sample,
     )
 
     # Check data arrays are equal as dropout time would be None
@@ -35,7 +38,10 @@ def test_draw_dropout_time_none(da_sample):
 
     # No dropout timedeltas and dropout fraction is 0
     da_sample_dropout = apply_sampled_dropout_time(
-        t0, dropout_timedeltas=[], dropout_frac=0, da=da_sample
+        t0,
+        dropout_timedeltas=[],
+        dropout_frac=0,
+        da=da_sample,
     )
 
     # Check data arrays are equal as dropout time would be None
@@ -48,7 +54,10 @@ def test_apply_sampled_dropout_time(da_sample, t0_str):
     dropout_time = t0_time + pd.Timedelta(minutes=-30)
 
     da_dropout = apply_sampled_dropout_time(
-        t0_time, dropout_timedeltas=[pd.Timedelta(minutes=-30)], dropout_frac=1.0, da=da_sample
+        t0_time,
+        dropout_timedeltas=[pd.Timedelta(minutes=-30)],
+        dropout_frac=1.0,
+        da=da_sample,
     )
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
