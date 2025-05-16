@@ -4,7 +4,7 @@ import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.select.dropout import apply_dropout_time, draw_dropout_time
+from ocf_data_sampler.select.dropout import apply_sampled_dropout_time
 from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
 from ocf_data_sampler.utils import minutes
 
@@ -51,17 +51,12 @@ def slice_datasets_by_time(
             interval_end=minutes(sat_config.interval_end_minutes),
         )
 
-        # Randomly sample dropout
-        sat_dropout_time = draw_dropout_time(
+        # Apply the randomly sampled dropout
+        sliced_datasets_dict["sat"] = apply_sampled_dropout_time(
             t0,
             dropout_timedeltas=minutes(sat_config.dropout_timedeltas_minutes),
             dropout_frac=sat_config.dropout_fraction,
-        )
-
-        # Apply the dropout
-        sliced_datasets_dict["sat"] = apply_dropout_time(
-            sliced_datasets_dict["sat"],
-            sat_dropout_time,
+            da=sliced_datasets_dict["sat"],
         )
 
     if "gsp" in datasets_dict:
@@ -76,15 +71,11 @@ def slice_datasets_by_time(
         )
 
         # Dropout on the past GSP, but not the future GSP
-        gsp_dropout_time = draw_dropout_time(
+        da_gsp_past = apply_sampled_dropout_time(
             t0,
             dropout_timedeltas=minutes(gsp_config.dropout_timedeltas_minutes),
             dropout_frac=gsp_config.dropout_fraction,
-        )
-
-        da_gsp_past = apply_dropout_time(
-            da_gsp_past,
-            gsp_dropout_time,
+            da=da_gsp_past,
         )
 
         da_gsp_future = select_time_slice(
@@ -100,25 +91,30 @@ def slice_datasets_by_time(
     if "site" in datasets_dict:
         site_config = config.input_data.site
 
-        sliced_datasets_dict["site"] = select_time_slice(
+        da_site_past = select_time_slice(
             datasets_dict["site"],
             t0,
             time_resolution=minutes(site_config.time_resolution_minutes),
             interval_start=minutes(site_config.interval_start_minutes),
-            interval_end=minutes(site_config.interval_end_minutes),
+            interval_end=minutes(0),
         )
 
-        # Randomly sample dropout
-        site_dropout_time = draw_dropout_time(
+        # Apply the randomly sampled dropout on the past site not the future
+        da_site_past = apply_sampled_dropout_time(
             t0,
             dropout_timedeltas=minutes(site_config.dropout_timedeltas_minutes),
             dropout_frac=site_config.dropout_fraction,
+            da=da_site_past,
         )
 
-        # Apply the dropout
-        sliced_datasets_dict["site"] = apply_dropout_time(
-            sliced_datasets_dict["site"],
-            site_dropout_time,
+        da_site_future = select_time_slice(
+            datasets_dict["site"],
+            t0,
+            time_resolution=minutes(site_config.time_resolution_minutes),
+            interval_start=minutes(site_config.time_resolution_minutes),
+            interval_end=minutes(site_config.interval_end_minutes),
         )
+
+        sliced_datasets_dict["site"] = xr.concat([da_site_past, da_site_future], dim="time_utc")
 
     return sliced_datasets_dict

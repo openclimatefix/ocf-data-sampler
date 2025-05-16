@@ -9,19 +9,22 @@ import pandas as pd
 import xarray as xr
 
 
-def draw_dropout_time(
+def apply_sampled_dropout_time(
     t0: pd.Timestamp,
     dropout_timedeltas: list[pd.Timedelta],
     dropout_frac: float,
-) -> pd.Timestamp:
-    """Randomly pick a dropout time from a list of timedeltas.
+    da: xr.DataArray,
+) -> xr.DataArray:
+    """Randomly pick a dropout time from a list of timedeltas and apply dropout time to the data.
 
     Args:
         t0: The forecast init-time
         dropout_timedeltas: List of timedeltas relative to t0 to pick from
         dropout_frac: Probability that dropout will be applied.
             This should be between 0 and 1 inclusive
+        da: Xarray DataArray with 'time_utc' coordinate
     """
+    # sample dropout time
     if dropout_frac > 0 and len(dropout_timedeltas) == 0:
         raise ValueError("To apply dropout, dropout_timedeltas must be provided")
 
@@ -37,21 +40,8 @@ def draw_dropout_time(
     else:
         dropout_time = t0 + np.random.choice(dropout_timedeltas)
 
-    return dropout_time
-
-
-def apply_dropout_time(
-    ds: xr.DataArray,
-    dropout_time: pd.Timestamp | None,
-) -> xr.DataArray:
-    """Apply dropout time to the data.
-
-    Args:
-        ds: Xarray DataArray with 'time_utc' coordinate
-        dropout_time: Time after which data is set to NaN
-    """
+    # apply dropout time
     if dropout_time is None:
-        return ds
-    else:
-        # This replaces the times after the dropout with NaNs
-        return ds.where(ds.time_utc <= dropout_time)
+        return da
+    # This replaces the times after the dropout with NaNs
+    return da.where(da.time_utc <= dropout_time)
