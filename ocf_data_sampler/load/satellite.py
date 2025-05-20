@@ -8,7 +8,8 @@ from ocf_data_sampler.load.utils import (
     make_spatial_coords_increasing,
 )
 
-from . open_tensorstore_zarrs import open_zarr, open_zarrs
+from . open_tensorstore_zarrs import open_zarrs
+from xarray_tensorstore import open_zarr
 
 
 def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:

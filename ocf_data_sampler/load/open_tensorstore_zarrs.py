@@ -2,7 +2,6 @@ from xarray_tensorstore import (
     _zarr_spec_from_path, 
     _TensorStoreAdapter, 
     _raise_if_mask_and_scale_used_for_data_vars,
-    open_zarr,
 )
 import tensorstore as ts
 import xarray as xr

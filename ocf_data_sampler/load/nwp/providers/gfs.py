@@ -23,7 +23,7 @@ def open_gfs(zarr_path: str | list[str], public: bool = False) -> xr.DataArray:
     _log.info("Loading NWP GFS data")
 
     # Open data
-    gfs: xr.Dataset = open_zarr_paths(zarr_path, time_dim="init_time_utc", public=public)
+    gfs: xr.Dataset = open_zarr_paths(zarr_path, time_dim="init_time_utc", public=public, backend="dask")
     nwp: xr.DataArray = gfs.to_array()
     nwp = nwp.rename({"variable": "channel"})  # `variable` appears when using `to_array`
 

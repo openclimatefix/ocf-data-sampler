@@ -19,7 +19,7 @@ def open_ifs(zarr_path: str | list[str]) -> xr.DataArray:
     Returns:
         Xarray DataArray of the NWP data
     """
-    ds = open_zarr_paths(zarr_path)
+    ds = open_zarr_paths(zarr_path, backend="tensorstore")
 
     # LEGACY SUPPORT - rename variable to channel if it exists
     ds = ds.rename({"init_time": "init_time_utc", "variable": "channel"})
