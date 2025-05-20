@@ -1,16 +1,16 @@
 """Utility functions for the NWP data processing."""
 
 import xarray as xr
+from xarray_tensorstore import open_zarr
 
 from ocf_data_sampler.load.open_tensorstore_zarrs import open_zarrs
-from xarray_tensorstore import open_zarr
 
 
 def open_zarr_paths(
-    zarr_path: str | list[str], 
-    time_dim: str = "init_time", 
+    zarr_path: str | list[str],
+    time_dim: str = "init_time",
     public: bool = False,
-    backend: str = "dask"
+    backend: str = "dask",
 ) -> xr.Dataset:
     """Opens the NWP data.
 
@@ -23,22 +23,20 @@ def open_zarr_paths(
     Returns:
         The opened Xarray Dataset
     """
-
     if backend not in ["dask", "tensorstore"]:
         raise ValueError(
-            f"Unsupported backend: {backend}. Supported backends are 'dask' and 'tensorstore'."
+            f"Unsupported backend: {backend}. Supported backends are 'dask' and 'tensorstore'.",
         )
-    
-    if public:
-        if backend == "tensorstore":
-            raise ValueError("Public data is only supported with the 'dask' backend.")
-        
+
+    if public and backend == "tensorstore":
+        raise ValueError("Public data is only supported with the 'dask' backend.")
+
     if backend == "tensorstore":
         ds = _tensostore_open_zarr_paths(zarr_path, time_dim)
-    
+
     elif backend == "dask":
         ds = _dask_open_zarr_paths(zarr_path, time_dim, public)
-    
+
     return ds
 
 

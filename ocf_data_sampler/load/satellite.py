@@ -1,6 +1,7 @@
 """Satellite loader."""
 
 import xarray as xr
+from xarray_tensorstore import open_zarr
 
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
@@ -8,8 +9,7 @@ from ocf_data_sampler.load.utils import (
     make_spatial_coords_increasing,
 )
 
-from . open_tensorstore_zarrs import open_zarrs
-from xarray_tensorstore import open_zarr
+from .open_tensorstore_zarrs import open_zarrs
 
 
 def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
