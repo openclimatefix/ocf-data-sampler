@@ -1,6 +1,5 @@
 """Torch dataset for UK PVNet."""
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
@@ -284,7 +283,10 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         if idx >= len(self):
             raise ValueError(f"Index {idx} out of range for dataset of length {len(self)}")
 
+        # t_index will be between 0 and len(self.valid_t0_times)-1
         t_index = idx % len(self.valid_t0_times)
+
+        # For each location, there are len(self.valid_t0_times) possible samples
         loc_index = idx // len(self.valid_t0_times)
 
         location = self.locations[loc_index]
