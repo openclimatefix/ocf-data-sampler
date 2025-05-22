@@ -28,7 +28,7 @@ def open_nwp(zarr_path: str | list[str], provider: str, public: bool = False) ->
 
     if provider == "ukv":
         _open_nwp = open_ukv
-    elif provider == ["ecmwf", "mo_global"]:
+    elif provider in ["ecmwf", "mo_global"]:
         _open_nwp = open_ifs
     elif provider == "icon-eu":
         _open_nwp = open_icon_eu
