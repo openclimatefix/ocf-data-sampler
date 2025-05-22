@@ -13,6 +13,7 @@ from typing_extensions import override
 NWP_PROVIDERS = [
     "ukv",
     "ecmwf",
+    "mo_global",
     "gfs",
     "icon_eu",
     "cloudcasting",
