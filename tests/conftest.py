@@ -1,10 +1,10 @@
+import hashlib
 import os
 
 import dask.array
 import numpy as np
 import pandas as pd
 import pytest
-import hashlib
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
@@ -325,69 +325,6 @@ def ds_uk_gsp():
     )
 
 
-# @pytest.fixture(scope="session")
-# def data_sites(session_tmp_path) -> Site:
-#     """
-#     Make fake data for sites
-#     Returns: filename for netcdf file, and csv metadata
-#     """
-#     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-#     site_ids = list(range(0, 10))
-#     capacity_kwp_1d = np.array([0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 4])
-#     # these are quite specific for the fake satellite data
-#     longitude = np.arange(-4, -3, 0.1)
-#     latitude = np.arange(51, 52, 0.1)
-
-#     generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(np.float32)
-
-#     # repeat capacity in new dims len(times) times
-#     capacity_kwp = (np.tile(capacity_kwp_1d, len(times))).reshape(len(times), 10)
-
-#     coords = (
-#         ("time_utc", times),
-#         ("site_id", site_ids),
-#     )
-
-#     da_cap = xr.DataArray(
-#         capacity_kwp,
-#         coords=coords,
-#     )
-
-#     da_gen = xr.DataArray(
-#         generation,
-#         coords=coords,
-#     )
-
-#     # metadata
-#     meta_df = pd.DataFrame(columns=[], data=[])
-#     meta_df["site_id"] = site_ids
-#     meta_df["capacity_kwp"] = capacity_kwp_1d
-#     meta_df["longitude"] = longitude
-#     meta_df["latitude"] = latitude
-
-#     generation = xr.Dataset(
-#         {
-#             "capacity_kwp": da_cap,
-#             "generation_kw": da_gen,
-#         },
-#     )
-
-#     filename = f"{session_tmp_path}/sites.netcdf"
-#     filename_csv = f"{session_tmp_path}/sites_metadata.csv"
-#     generation.to_netcdf(filename)
-#     meta_df.to_csv(filename_csv)
-
-#     site = Site(
-#         file_path=filename,
-#         metadata_file_path=filename_csv,
-#         interval_start_minutes=-30,
-#         interval_end_minutes=60,
-#         time_resolution_minutes=30,
-#     )
-
-#     yield site
-
-
 @pytest.fixture(scope="session")
 def data_sites_factory(session_tmp_path):
     created_files = {}
@@ -398,14 +335,14 @@ def data_sites_factory(session_tmp_path):
         end_time_str: str = "2023-01-02 00:00",
         time_freq: str = "30min",
         site_interval_start_minutes: int = -30,
-        site_interval_end_minutes: int = 60,  # <<< ENSURE THIS IS 60
+        site_interval_end_minutes: int = 60,
         site_time_resolution_minutes: int = 30,
     ) -> Site:
-        # ... (rest of your factory function)
+
         param_tuple = (num_sites, start_time_str, end_time_str, time_freq,
                        site_interval_start_minutes, site_interval_end_minutes,
                        site_time_resolution_minutes)
-        param_key = hashlib.md5(str(param_tuple).encode()).hexdigest()
+        param_key = hashlib.sha256(str(param_tuple).encode()).hexdigest()
 
         if param_key in created_files:
             return created_files[param_key]
@@ -416,7 +353,7 @@ def data_sites_factory(session_tmp_path):
         base_capacity_kwp_1d = np.array([0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 5, 7, 10, 12, 1, 0.5])
         base_longitude = np.round(np.linspace(-4, -3, 15), 2)
         base_latitude = np.round(np.linspace(51, 52, 15), 2)
-        
+
         if num_sites == 0:
             capacity_kwp_1d = np.array([])
             longitude = np.array([])
@@ -430,9 +367,10 @@ def data_sites_factory(session_tmp_path):
             capacity_kwp_1d = np.tile(base_capacity_kwp_1d, factor)[:num_sites]
             longitude = np.tile(base_longitude, factor)[:num_sites]
             latitude = np.tile(base_latitude, factor)[:num_sites]
-        
+
         if num_sites > 0:
-            generation_data = np.random.uniform(0, 200, size=(len(times), num_sites)).astype(np.float32)
+            data_shape = (len(times), num_sites)
+            generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
             capacity_kwp_data = np.tile(capacity_kwp_1d, (len(times), 1)).astype(np.float32)
         else:
             generation_data = np.empty((len(times), 0), dtype=np.float32)
@@ -496,26 +434,6 @@ def pvnet_config_filename(
     save_yaml_configuration(config, filename)
     return filename
 
-
-# @pytest.fixture()
-# def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites):
-#     # adjust config to point to the zarr file
-#     config = load_yaml_configuration(config_filename)
-#     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-#     config.input_data.satellite.zarr_path = sat_zarr_path
-#     config.input_data.site = data_sites
-#     config.input_data.gsp = None
-
-#     config.input_data.solar_position = SolarPosition(
-#         time_resolution_minutes=30,
-#         interval_start_minutes=-60,
-#         interval_end_minutes=120,
-#     )
-
-#     filename = f"{tmp_path}/configuration_site_test.yaml"
-#     save_yaml_configuration(config, filename)
-#     yield filename
-
 @pytest.fixture()
 def site_config_filename(
     tmp_path,
@@ -528,7 +446,7 @@ def site_config_filename(
     config.input_data.nwp["ukv"].zarr_path = str(nwp_ukv_zarr_path)
     config.input_data.satellite.zarr_path = str(sat_zarr_path)
     config.input_data.site = default_data_site_model
-    
+
     config_output_path = tmp_path / "configuration_site_test.yaml"
     save_yaml_configuration(config, str(config_output_path))
     yield str(config_output_path)
@@ -568,7 +486,7 @@ def site_config_derived_from_pvnet_base(
 
     if hasattr(config.input_data, "satellite") and config.input_data.satellite is not None:
         config.input_data.satellite.zarr_path = str(sat_zarr_path)
-    
+
     if "ukv" in config.input_data.nwp:
         nwp_conf = config.input_data.nwp["ukv"]
         nwp_conf.interval_start_minutes = -180
@@ -576,31 +494,30 @@ def site_config_derived_from_pvnet_base(
         nwp_conf.image_size_pixels_height = 2
         nwp_conf.image_size_pixels_width = 2
         nwp_conf.channels = ["t"]
-        # Ensure dropout is effectively off for t0 calculation consistency
-        nwp_conf.dropout_timedeltas_minutes = [] # ADD THIS OVERRIDE
-        nwp_conf.dropout_fraction = 0.0          # Optionally ensure this too
-        
+        nwp_conf.dropout_timedeltas_minutes = []
+        nwp_conf.dropout_fraction = 0.0
+
         if not hasattr(nwp_conf, "max_staleness_minutes") or nwp_conf.max_staleness_minutes is None:
             nwp_conf.max_staleness_minutes = 180
-        if not hasattr(nwp_conf, "normalisation_constants") or \
-           (nwp_conf.normalisation_constants is None or "t" not in nwp_conf.normalisation_constants):
-            if not hasattr(nwp_conf, "normalisation_constants") or nwp_conf.normalisation_constants is None:
-                nwp_conf.normalisation_constants = {}
-            nwp_conf.normalisation_constants["t"] = {"mean": 283.15, "std": 5.0}
+
+        if getattr(nwp_conf, "normalisation_constants", None) is None:
+            nwp_conf.normalisation_constants = {}
+        if "t" not in nwp_conf.normalisation_constants:
+             nwp_conf.normalisation_constants["t"] = {"mean": 283.15, "std": 5.0}
 
     if hasattr(config.input_data, "satellite") and config.input_data.satellite is not None:
         sat_conf = config.input_data.satellite
-        sat_conf.time_resolution_minutes = 5 # ADD THIS OVERRIDE
+        sat_conf.time_resolution_minutes = 5
         sat_conf.interval_start_minutes = -30
         sat_conf.interval_end_minutes = 0
         sat_conf.image_size_pixels_height = 2
         sat_conf.image_size_pixels_width = 2
         sat_conf.channels = ["IR_016"]
-        if not hasattr(sat_conf, "normalisation_constants") or \
-           (sat_conf.normalisation_constants is None or "IR_016" not in sat_conf.normalisation_constants):
-            if not hasattr(sat_conf, "normalisation_constants") or sat_conf.normalisation_constants is None:
-                sat_conf.normalisation_constants = {}
-            sat_conf.normalisation_constants["IR_016"] = {"mean": 250.0, "std": 20.0}
+
+        if getattr(sat_conf, "normalisation_constants", None) is None:
+            sat_conf.normalisation_constants = {}
+        if "IR_016" not in sat_conf.normalisation_constants:
+             sat_conf.normalisation_constants["IR_016"] = {"mean": 250.0, "std": 20.0}
 
     temp_config_path = tmp_path / "site_config_from_pvnet_base.yaml"
     save_yaml_configuration(config, str(temp_config_path))
