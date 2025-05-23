@@ -1,0 +1,47 @@
+general:
+  name: "site_dataset_test_run"
+  description: "Test configuration specifically for SitesDataset"
+
+input_data:
+  nwp:
+    ukv:
+      zarr_path: "PLACEHOLDER_NWP_UKV_ZARR_PATH"
+      provider: "ukv"
+      interval_start_minutes: -180
+      interval_end_minutes: 0
+      time_resolution_minutes: 60
+      max_staleness_minutes: 180
+      channels:
+        - t
+      image_size_pixels_height: 2
+      image_size_pixels_width: 2
+      normalisation_constants:
+        t:
+          mean: 283.15
+          std: 5.0
+
+  satellite:
+    zarr_path: "PLACEHOLDER_SATELLITE_ZARR_PATH"
+    interval_start_minutes: -30
+    interval_end_minutes: 0
+    time_resolution_minutes: 5
+    channels:
+      - IR_016
+    image_size_pixels_height: 2
+    image_size_pixels_width: 2
+    normalisation_constants:
+      IR_016:
+        mean: 250.0
+        std: 20.0
+      VIS006:
+        mean: 0.3
+        std: 0.2
+
+  site: null
+
+  gsp: null
+
+  solar_position:
+    time_resolution_minutes: 30
+    interval_start_minutes: -60
+    interval_end_minutes: 120
