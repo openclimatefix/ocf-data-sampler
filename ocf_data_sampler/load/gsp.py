@@ -26,13 +26,17 @@ def get_gsp_boundaries(version: str) -> pd.DataFrame:
     )
 
 
-def open_gsp(zarr_path: str, boundaries_version: str = "20220314", public: bool=False) -> xr.DataArray:
+def open_gsp(zarr_path: str,
+             boundaries_version: str = "20220314",
+             public: bool = False,
+    ) -> xr.DataArray:
     """Open the GSP data.
 
     Args:
         zarr_path: Path to the GSP zarr data
         boundaries_version: Version of the GSP boundaries to use. Options are "20220314" or
         "20250109".
+        public: Whether the data is public or private.
 
     Returns:
         xr.DataArray: The opened GSP data
