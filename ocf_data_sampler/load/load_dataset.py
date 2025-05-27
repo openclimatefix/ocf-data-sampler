@@ -24,7 +24,7 @@ def get_dataset_dict(
         da_gsp = open_gsp(
             zarr_path=input_config.gsp.zarr_path,
             boundaries_version=input_config.gsp.boundaries_version,
-            public=input_config.gsp.public
+            public=input_config.gsp.public,
         ).compute()
 
         if gsp_ids is None:

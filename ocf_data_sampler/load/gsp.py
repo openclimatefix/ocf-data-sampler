@@ -43,7 +43,7 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314", public: bool=
     # Open the GSP generation data
     if public:
         ds = (
-        xr.open_dataset(zarr_path, engine='zarr', backend_kwargs={"storage_options":{"anon": True}})
+        xr.open_dataset(zarr_path, engine="zarr", backend_kwargs={"storage_options":{"anon": True}})
         .rename({"datetime_gmt": "time_utc"})
     )
     else:
@@ -51,7 +51,7 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314", public: bool=
         xr.open_zarr(zarr_path)
         .rename({"datetime_gmt": "time_utc"})
     )
-    
+
 
     if not (ds.gsp_id.isin(df_gsp_loc.index)).all():
         raise ValueError(
