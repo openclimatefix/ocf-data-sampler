@@ -291,6 +291,8 @@ class GSP(TimeWindowMixin, DropoutMixin):
         description="Version of the GSP boundaries to use. Options are '20220314' or '20250109'.",
     )
 
+    public: bool = Field(False, description="Whether the NWP data is public or private")
+
 
 class Site(TimeWindowMixin, DropoutMixin):
     """Site configuration model."""

@@ -26,7 +26,7 @@ def get_gsp_boundaries(version: str) -> pd.DataFrame:
     )
 
 
-def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArray:
+def open_gsp(zarr_path: str, boundaries_version: str = "20220314", public: bool=False) -> xr.DataArray:
     """Open the GSP data.
 
     Args:
@@ -41,10 +41,17 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArr
     df_gsp_loc = get_gsp_boundaries(boundaries_version)
 
     # Open the GSP generation data
-    ds = (
+    if public:
+        ds = (
+        xr.open_dataset(zarr_path, engine='zarr', backend_kwargs={"storage_options":{"anon": True}})
+        .rename({"datetime_gmt": "time_utc"})
+    )
+    else:
+        ds = (
         xr.open_zarr(zarr_path)
         .rename({"datetime_gmt": "time_utc"})
     )
+    
 
     if not (ds.gsp_id.isin(df_gsp_loc.index)).all():
         raise ValueError(
