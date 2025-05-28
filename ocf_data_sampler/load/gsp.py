@@ -26,13 +26,17 @@ def get_gsp_boundaries(version: str) -> pd.DataFrame:
     )
 
 
-def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArray:
+def open_gsp(zarr_path: str,
+             boundaries_version: str = "20220314",
+             public: bool = False,
+    ) -> xr.DataArray:
     """Open the GSP data.
 
     Args:
         zarr_path: Path to the GSP zarr data
         boundaries_version: Version of the GSP boundaries to use. Options are "20220314" or
         "20250109".
+        public: Whether the data is public or private.
 
     Returns:
         xr.DataArray: The opened GSP data
@@ -40,11 +44,17 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArr
     # Load UK GSP locations
     df_gsp_loc = get_gsp_boundaries(boundaries_version)
 
+    backend_kwargs ={}
     # Open the GSP generation data
+    if public:
+        backend_kwargs ={"storage_options":{"anon": True}}
+        # Currently only compatible with S3 bucket.
+
     ds = (
-        xr.open_zarr(zarr_path)
+        xr.open_dataset(zarr_path,engine="zarr",backend_kwargs=backend_kwargs)
         .rename({"datetime_gmt": "time_utc"})
     )
+
 
     if not (ds.gsp_id.isin(df_gsp_loc.index)).all():
         raise ValueError(
