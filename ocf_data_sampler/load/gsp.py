@@ -47,7 +47,8 @@ def open_gsp(zarr_path: str,
     backend_kwargs ={}
     # Open the GSP generation data
     if public:
-        backend_kwargs ={"storage_options":{"anon": True}} # Currently only compatible with S3 bucket.
+        backend_kwargs ={"storage_options":{"anon": True}}
+        # Currently only compatible with S3 bucket.
 
     ds = (
         xr.open_dataset(zarr_path,engine="zarr",backend_kwargs=backend_kwargs)
