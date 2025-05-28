@@ -44,15 +44,13 @@ def open_gsp(zarr_path: str,
     # Load UK GSP locations
     df_gsp_loc = get_gsp_boundaries(boundaries_version)
 
+    backend_kwargs ={}
     # Open the GSP generation data
     if public:
-        ds = (
-        xr.open_dataset(zarr_path, engine="zarr", backend_kwargs={"storage_options":{"anon": True}})
-        .rename({"datetime_gmt": "time_utc"})
-    )
-    else:
-        ds = (
-        xr.open_zarr(zarr_path)
+        backend_kwargs ={"storage_options":{"anon": True}} # Currently only compatible with S3 bucket.
+
+    ds = (
+        xr.open_dataset(zarr_path,engine="zarr",backend_kwargs=backend_kwargs)
         .rename({"datetime_gmt": "time_utc"})
     )
 
