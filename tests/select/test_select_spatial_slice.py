@@ -147,7 +147,7 @@ def test_select_spatial_slice_pixels(da):
 
 def test_select_spatial_slice_pixels_no_partial(da):
     """Test that ValueError is raised when allow_partial_slice=False and padding is needed."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as excinfo:
         select_spatial_slice_pixels(
             da,
             location=Location(x=-90, y=-80, coordinate_system="osgb"),
@@ -155,8 +155,11 @@ def test_select_spatial_slice_pixels_no_partial(da):
             height_pixels=30,
             allow_partial_slice=False,
         )
+    msg = str(excinfo.value)
+    assert "Padding required" in msg
+    assert "left_idx" in msg or "bottom_idx" in msg or "right_idx" in msg or "top_idx" in msg
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as excinfo:
         select_spatial_slice_pixels(
             da,
             location=Location(x=90, y=90, coordinate_system="osgb"),
@@ -164,3 +167,6 @@ def test_select_spatial_slice_pixels_no_partial(da):
             height_pixels=40,
             allow_partial_slice=False,
         )
+    msg = str(excinfo.value)
+    assert "Padding required" in msg
+    assert "left_idx" in msg or "bottom_idx" in msg or "right_idx" in msg or "top_idx" in msg
