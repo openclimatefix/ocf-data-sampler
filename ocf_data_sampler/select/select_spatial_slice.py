@@ -239,8 +239,19 @@ def select_spatial_slice_pixels(
         if allow_partial_slice:
             da = _select_padded_slice(da, left_idx, right_idx, bottom_idx, top_idx, x_dim, y_dim)
         else:
+            issues = []
+            if left_idx < 0:
+                issues.append(f"left_idx ({left_idx}) < 0")
+            if right_idx > data_width_pixels:
+                issues.append(f"right_idx ({right_idx}) > data_width_pixels ({data_width_pixels})")
+            if bottom_idx < 0:
+                issues.append(f"bottom_idx ({bottom_idx}) < 0")
+            if top_idx > data_height_pixels:
+                issues.append(f"top_idx ({top_idx}) > data_height_pixels ({data_height_pixels})")
+            issue_details = "\n".join(issues)
             raise ValueError(
-                f"Window for location {location} not available.  Padding required. "
+                f"Window for location {location} not available.  Padding required due to: \n"
+                f"{issue_details}\n"
                 "You may wish to set `allow_partial_slice=True`",
             )
     else:
