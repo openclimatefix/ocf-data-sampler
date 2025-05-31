@@ -33,7 +33,7 @@ def open_icon_eu(zarr_path: str | list[str]) -> xr.Dataset:
         Xarray DataArray of the NWP data
     """
     # Open the data
-    nwp = open_zarr_paths(zarr_path, time_dim="time")
+    nwp = open_zarr_paths(zarr_path, time_dim="time", backend="dask")
     nwp = nwp.rename({"time": "init_time_utc"})
     # Sanity checks.
     check_time_unique_increasing(nwp.init_time_utc)

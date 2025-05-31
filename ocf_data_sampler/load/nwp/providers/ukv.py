@@ -19,7 +19,7 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
     Returns:
         Xarray DataArray of the NWP data
     """
-    ds = open_zarr_paths(zarr_path)
+    ds = open_zarr_paths(zarr_path, backend="tensorstore")
 
     ds = ds.rename(
         {

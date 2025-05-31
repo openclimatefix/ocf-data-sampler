@@ -28,7 +28,7 @@ def open_cloudcasting(zarr_path: str | list[str]) -> xr.DataArray:
             [3] https://github.com/openclimatefix/sat_pred
     """
     # Open the data
-    ds = open_zarr_paths(zarr_path)
+    ds = open_zarr_paths(zarr_path, backend="tensorstore")
 
     # Rename
     ds = ds.rename(
