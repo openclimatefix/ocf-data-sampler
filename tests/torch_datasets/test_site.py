@@ -45,7 +45,7 @@ def test_site(tmp_path, site_config_filename):
         "site__time_sin",
         "site__date_sin",
         "solar_azimuth",
-        "solar_elevation"
+        "solar_elevation",
     }
 
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
@@ -62,7 +62,6 @@ def test_site(tmp_path, site_config_filename):
         f"Missing or extra data variables: {set(sample.data_vars) ^ expected_data_vars}"
     )
 
-    print(sample.coords, "Sample coords")
     for coords in expected_coords_subset:
         assert coords in sample.coords
 
@@ -134,7 +133,7 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
         "site__time_sin",
         "site__date_sin",
         "solar_azimuth",
-        "solar_elevation"
+        "solar_elevation",
     }
     for coord_key in expected_coords_subset:
         assert coord_key in individual_xr_sample.coords
@@ -160,7 +159,9 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
             fake_site_values,
             dims=["time_utc"],
             coords={
-                "time_utc": pd.date_range("2024-01-01 00:00", periods=number_of_site_values, freq="15min"),
+                "time_utc": pd.date_range(
+                    "2024-01-01 00:00", periods=number_of_site_values, freq="15min"
+                ),
                 "capacity_kwp": 1000,
                 "site_id": 1,
                 "longitude": -3.5,
@@ -188,7 +189,9 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     nwp_result = result["nwp-ukv"]
     assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
     site_result = result["site"]
-    assert site_result.shape == (number_of_site_values,), f"Unexpected shape for site: {site_result.shape}"
+    assert site_result.shape == (number_of_site_values,), (
+        f"Unexpected shape for site: {site_result.shape}"
+    )
 
 
 def test_potentially_coarsen(ds_nwp_ecmwf):
