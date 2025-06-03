@@ -434,6 +434,7 @@ def pvnet_config_filename(
     save_yaml_configuration(config, filename)
     return filename
 
+
 @pytest.fixture()
 def site_config_filename(
     tmp_path,
@@ -447,17 +448,26 @@ def site_config_filename(
     config.input_data.satellite.zarr_path = str(sat_zarr_path)
     config.input_data.site = default_data_site_model
 
+    config.input_data.solar_position = SolarPosition(
+        time_resolution_minutes=30,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
+    )
+
     config_output_path = tmp_path / "configuration_site_test.yaml"
     save_yaml_configuration(config, str(config_output_path))
     yield str(config_output_path)
+
 
 @pytest.fixture(scope="session")
 def default_data_site_model(data_sites):
     return data_sites()
 
+
 @pytest.fixture()
 def sites_dataset(site_config_filename):
     return SitesDataset(site_config_filename)
+
 
 @pytest.fixture()
 def site_config_derived_from_pvnet_base(
