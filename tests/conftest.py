@@ -326,7 +326,7 @@ def ds_uk_gsp():
 
 
 @pytest.fixture(scope="session")
-def data_sites_factory(session_tmp_path):
+def data_sites(session_tmp_path):
     created_files = {}
 
     def _create_data_sites(
@@ -452,8 +452,8 @@ def site_config_filename(
     yield str(config_output_path)
 
 @pytest.fixture(scope="session")
-def default_data_site_model(data_sites_factory):
-    return data_sites_factory()
+def default_data_site_model(data_sites):
+    return data_sites()
 
 @pytest.fixture()
 def sites_dataset(site_config_filename):
