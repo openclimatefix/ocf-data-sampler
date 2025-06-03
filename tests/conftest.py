@@ -421,8 +421,8 @@ def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_
 
     config.input_data.solar_position = SolarPosition(
         time_resolution_minutes=30,
-        interval_start_minutes=-60,
-        interval_end_minutes=120,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
     )
 
     filename = f"{tmp_path}/configuration_site_test.yaml"
