@@ -160,7 +160,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
             dims=["time_utc"],
             coords={
                 "time_utc": pd.date_range(
-                    "2024-01-01 00:00", periods=number_of_site_values, freq="15min"
+                    "2024-01-01 00:00", periods=number_of_site_values, freq="15min",
                 ),
                 "capacity_kwp": 1000,
                 "site_id": 1,
