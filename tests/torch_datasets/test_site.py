@@ -37,7 +37,6 @@ def test_site(tmp_path, site_config_filename):
         "satellite__time_utc",
         "nwp-ukv__channel",
         "nwp-ukv__y_osgb",
-        "solar_time_utc",
     }
 
     expected_coords_subset = {
@@ -45,6 +44,8 @@ def test_site(tmp_path, site_config_filename):
         "site__time_cos",
         "site__time_sin",
         "site__date_sin",
+        "solar_azimuth",
+        "solar_elevation"
     }
 
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
@@ -61,6 +62,7 @@ def test_site(tmp_path, site_config_filename):
         f"Missing or extra data variables: {set(sample.data_vars) ^ expected_data_vars}"
     )
 
+    print(sample.coords, "Sample coords")
     for coords in expected_coords_subset:
         assert coords in sample.coords
 
@@ -131,6 +133,8 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
         "site__time_cos",
         "site__time_sin",
         "site__date_sin",
+        "solar_azimuth",
+        "solar_elevation"
     }
     for coord_key in expected_coords_subset:
         assert coord_key in individual_xr_sample.coords
@@ -139,7 +143,8 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
 def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     # Specify minimal structure for testing
     raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
-    fake_site_values = np.random.rand(197)
+    number_of_site_values = 4
+    fake_site_values = np.random.rand(number_of_site_values)
     site_dict = {
         "nwp": {
             "ukv": xr.DataArray(
@@ -155,7 +160,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
             fake_site_values,
             dims=["time_utc"],
             coords={
-                "time_utc": pd.date_range("2024-01-01 00:00", periods=197, freq="15min"),
+                "time_utc": pd.date_range("2024-01-01 00:00", periods=number_of_site_values, freq="15min"),
                 "capacity_kwp": 1000,
                 "site_id": 1,
                 "longitude": -3.5,
@@ -183,7 +188,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     nwp_result = result["nwp-ukv"]
     assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
     site_result = result["site"]
-    assert site_result.shape == (197,), f"Unexpected shape for site: {site_result.shape}"
+    assert site_result.shape == (number_of_site_values,), f"Unexpected shape for site: {site_result.shape}"
 
 
 def test_potentially_coarsen(ds_nwp_ecmwf):
@@ -212,8 +217,8 @@ def test_solar_position_decoupling_site(tmp_path, site_config_filename):
     config_with_solar = config.model_copy(deep=True)
     config_with_solar.input_data.solar_position = SolarPosition(
         time_resolution_minutes=30,
-        interval_start_minutes=0,
-        interval_end_minutes=180,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
     )
 
     # Save both testing configurations
@@ -248,8 +253,8 @@ def test_convert_from_dataset_to_dict_solar_handling(tmp_path, site_config_filen
     config = load_yaml_configuration(site_config_filename)
     config.input_data.solar_position = SolarPosition(
         time_resolution_minutes=30,
-        interval_start_minutes=0,
-        interval_end_minutes=180,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
     )
 
     config_with_solar_path = tmp_path / "site_config_with_solar_for_dict.yaml"
@@ -276,8 +281,8 @@ def test_convert_netcdf_to_numpy_solar_handling(tmp_path, site_config_filename):
     config = load_yaml_configuration(site_config_filename)
     config.input_data.solar_position = SolarPosition(
         time_resolution_minutes=30,
-        interval_start_minutes=0,
-        interval_end_minutes=180,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
     )
 
     config_with_solar_path = tmp_path / "site_config_with_solar_for_numpy.yaml"
