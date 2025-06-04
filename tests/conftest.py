@@ -1,5 +1,6 @@
 import hashlib
 import os
+from pathlib import Path
 
 import dask.array
 import numpy as np
@@ -325,63 +326,65 @@ def ds_uk_gsp():
     )
 
 
+def create_site_data(
+    tmp_path_base: Path,
+    num_sites: int = 10,
+    start_time_str: str = "2023-01-01 00:00",
+    end_time_str: str = "2023-01-02 00:00",
+    time_freq: str = "30min",
+    site_interval_start_minutes: int = -30,
+    site_interval_end_minutes: int = 60,
+    site_time_resolution_minutes: int = 30,
+) -> Site:
+    param_tuple = (num_sites, start_time_str, end_time_str, time_freq,
+                   site_interval_start_minutes, site_interval_end_minutes,
+                   site_time_resolution_minutes)
+    param_key = hashlib.sha256(str(param_tuple).encode()).hexdigest()
+
+    times = pd.date_range(start_time_str, end_time_str, freq=time_freq)
+    site_ids = list(range(num_sites))
+
+    base_capacity_kwp_1d = np.array([0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 5, 7, 10, 12, 1, 0.5])
+    base_longitude = np.round(np.linspace(-4, -3, 15), 2)
+    base_latitude = np.round(np.linspace(51, 52, 15), 2)
+
+    capacity_kwp_1d = base_capacity_kwp_1d[:num_sites]
+    longitude = base_longitude[:num_sites]
+    latitude = base_latitude[:num_sites]
+
+    data_shape = (len(times), num_sites)
+    generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
+    capacity_kwp_data = np.tile(capacity_kwp_1d, (len(times), 1)).astype(np.float32)
+
+    coords = (("time_utc", times), ("site_id", site_ids))
+    da_cap = xr.DataArray(capacity_kwp_data, coords=coords)
+    da_gen = xr.DataArray(generation_data, coords=coords)
+
+    meta_df = pd.DataFrame()
+    meta_df["site_id"] = site_ids
+    meta_df["capacity_kwp"] = capacity_kwp_1d
+    meta_df["longitude"] = longitude
+    meta_df["latitude"] = latitude
+
+    generation_ds = xr.Dataset({"capacity_kwp": da_cap, "generation_kw": da_gen})
+    filename_data_path = tmp_path_base / f"sites_data_{param_key}.netcdf"
+    filename_csv_path = tmp_path_base / f"sites_metadata_{param_key}.csv"
+    generation_ds.to_netcdf(filename_data_path)
+    meta_df.to_csv(filename_csv_path, index=False)
+
+    site_model = Site(
+        file_path=str(filename_data_path),
+        metadata_file_path=str(filename_csv_path),
+        interval_start_minutes=site_interval_start_minutes,
+        interval_end_minutes=site_interval_end_minutes,
+        time_resolution_minutes=site_time_resolution_minutes,
+    )
+    return site_model
+
+
 @pytest.fixture(scope="session")
 def data_sites(session_tmp_path):
-    def _create_data_sites(
-        num_sites: int = 10,
-        start_time_str: str = "2023-01-01 00:00",
-        end_time_str: str = "2023-01-02 00:00",
-        time_freq: str = "30min",
-        site_interval_start_minutes: int = -30,
-        site_interval_end_minutes: int = 60,
-        site_time_resolution_minutes: int = 30,
-    ) -> Site:
-
-        param_tuple = (num_sites, start_time_str, end_time_str, time_freq,
-                       site_interval_start_minutes, site_interval_end_minutes,
-                       site_time_resolution_minutes)
-        param_key = hashlib.sha256(str(param_tuple).encode()).hexdigest()
-
-        times = pd.date_range(start_time_str, end_time_str, freq=time_freq)
-        site_ids = list(range(num_sites))
-
-        base_capacity_kwp_1d = np.array([0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 5, 7, 10, 12, 1, 0.5])
-        base_longitude = np.round(np.linspace(-4, -3, 15), 2)
-        base_latitude = np.round(np.linspace(51, 52, 15), 2)
-
-        capacity_kwp_1d = base_capacity_kwp_1d[:num_sites]
-        longitude = base_longitude[:num_sites]
-        latitude = base_latitude[:num_sites]
-
-        data_shape = (len(times), num_sites)
-        generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
-        capacity_kwp_data = np.tile(capacity_kwp_1d, (len(times), 1)).astype(np.float32)
-
-        coords = (("time_utc", times), ("site_id", site_ids))
-        da_cap = xr.DataArray(capacity_kwp_data, coords=coords)
-        da_gen = xr.DataArray(generation_data, coords=coords)
-
-        meta_df = pd.DataFrame()
-        meta_df["site_id"] = site_ids
-        meta_df["capacity_kwp"] = capacity_kwp_1d
-        meta_df["longitude"] = longitude
-        meta_df["latitude"] = latitude
-
-        generation_ds = xr.Dataset({"capacity_kwp": da_cap, "generation_kw": da_gen})
-        filename_data_path = session_tmp_path / f"sites_data_{param_key}.netcdf"
-        filename_csv_path = session_tmp_path / f"sites_metadata_{param_key}.csv"
-        generation_ds.to_netcdf(filename_data_path)
-        meta_df.to_csv(filename_csv_path, index=False)
-
-        site_model = Site(
-            file_path=str(filename_data_path),
-            metadata_file_path=str(filename_csv_path),
-            interval_start_minutes=site_interval_start_minutes,
-            interval_end_minutes=site_interval_end_minutes,
-            time_resolution_minutes=site_time_resolution_minutes,
-        )
-        return site_model
-    return _create_data_sites
+    return create_site_data(tmp_path_base=session_tmp_path)
 
 
 @pytest.fixture(scope="session")
@@ -430,7 +433,7 @@ def site_config_filename(
 
 @pytest.fixture(scope="session")
 def default_data_site_model(data_sites):
-    return data_sites()
+    return data_sites
 
 
 @pytest.fixture()
@@ -439,7 +442,7 @@ def sites_dataset(site_config_filename):
 
 
 @pytest.fixture()
-def site_config_pvnet(
+def site_config(
     tmp_path,
     config_filename,
     nwp_ukv_zarr_path,
