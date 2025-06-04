@@ -8,7 +8,7 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
-from ocf_data_sampler.config.model import Site, SolarPosition
+from ocf_data_sampler.config.model import Site
 from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
