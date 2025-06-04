@@ -344,9 +344,6 @@ def data_sites(session_tmp_path):
                        site_time_resolution_minutes)
         param_key = hashlib.sha256(str(param_tuple).encode()).hexdigest()
 
-        if param_key in created_files:
-            return created_files[param_key]
-
         times = pd.date_range(start_time_str, end_time_str, freq=time_freq)
         site_ids = list(range(num_sites))
 
@@ -354,15 +351,9 @@ def data_sites(session_tmp_path):
         base_longitude = np.round(np.linspace(-4, -3, 15), 2)
         base_latitude = np.round(np.linspace(51, 52, 15), 2)
 
-        if num_sites <= len(base_capacity_kwp_1d):
-            capacity_kwp_1d = base_capacity_kwp_1d[:num_sites]
-            longitude = base_longitude[:num_sites]
-            latitude = base_latitude[:num_sites]
-        else:
-            factor = (num_sites // len(base_capacity_kwp_1d)) + 1
-            capacity_kwp_1d = np.tile(base_capacity_kwp_1d, factor)[:num_sites]
-            longitude = np.tile(base_longitude, factor)[:num_sites]
-            latitude = np.tile(base_latitude, factor)[:num_sites]
+        capacity_kwp_1d = base_capacity_kwp_1d[:num_sites]
+        longitude = base_longitude[:num_sites]
+        latitude = base_latitude[:num_sites]
 
         data_shape = (len(times), num_sites)
         generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
@@ -451,64 +442,27 @@ def sites_dataset(site_config_filename):
 
 
 @pytest.fixture()
-def site_config_derived_from_pvnet_base(
+def site_config_pvnet(
     tmp_path,
     config_filename,
     nwp_ukv_zarr_path,
     sat_zarr_path,
     default_data_site_model,
 ):
+    """
+    Loads pvnet_test_config.yaml, adds site data, removes GSP,
+    and points Zarr paths to temporary test data,
+    relying on the YAML for all other parameters.
+    """
     config = load_yaml_configuration(config_filename)
-
     config.input_data.site = default_data_site_model
 
     if hasattr(config.input_data, "gsp"):
         config.input_data.gsp = None
-
-    if not hasattr(config.input_data, "solar_position") or config.input_data.solar_position is None:
-        config.input_data.solar_position = SolarPosition(
-            time_resolution_minutes=30,
-            interval_start_minutes=-60,
-            interval_end_minutes=120,
-        )
-
     if "ukv" in config.input_data.nwp:
         config.input_data.nwp["ukv"].zarr_path = str(nwp_ukv_zarr_path)
-
     if hasattr(config.input_data, "satellite") and config.input_data.satellite is not None:
         config.input_data.satellite.zarr_path = str(sat_zarr_path)
-
-    if "ukv" in config.input_data.nwp:
-        nwp_conf = config.input_data.nwp["ukv"]
-        nwp_conf.interval_start_minutes = -180
-        nwp_conf.interval_end_minutes = 0
-        nwp_conf.image_size_pixels_height = 2
-        nwp_conf.image_size_pixels_width = 2
-        nwp_conf.channels = ["t"]
-        nwp_conf.dropout_timedeltas_minutes = []
-        nwp_conf.dropout_fraction = 0.0
-
-        if not hasattr(nwp_conf, "max_staleness_minutes") or nwp_conf.max_staleness_minutes is None:
-            nwp_conf.max_staleness_minutes = 180
-
-        if getattr(nwp_conf, "normalisation_constants", None) is None:
-            nwp_conf.normalisation_constants = {}
-        if "t" not in nwp_conf.normalisation_constants:
-             nwp_conf.normalisation_constants["t"] = {"mean": 283.15, "std": 5.0}
-
-    if hasattr(config.input_data, "satellite") and config.input_data.satellite is not None:
-        sat_conf = config.input_data.satellite
-        sat_conf.time_resolution_minutes = 5
-        sat_conf.interval_start_minutes = -30
-        sat_conf.interval_end_minutes = 0
-        sat_conf.image_size_pixels_height = 2
-        sat_conf.image_size_pixels_width = 2
-        sat_conf.channels = ["IR_016"]
-
-        if getattr(sat_conf, "normalisation_constants", None) is None:
-            sat_conf.normalisation_constants = {}
-        if "IR_016" not in sat_conf.normalisation_constants:
-             sat_conf.normalisation_constants["IR_016"] = {"mean": 250.0, "std": 20.0}
 
     temp_config_path = tmp_path / "site_config_from_pvnet_base.yaml"
     save_yaml_configuration(config, str(temp_config_path))
