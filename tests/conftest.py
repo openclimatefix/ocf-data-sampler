@@ -390,10 +390,6 @@ def create_site_data(
 
 @pytest.fixture(scope="session")
 def data_sites(session_tmp_path):
-    """
-    Make fake data for sites using the robust creation function.
-    Returns: filename for netcdf file, and csv metadata
-    """
     return create_site_data(tmp_path_base=session_tmp_path)
 
 
