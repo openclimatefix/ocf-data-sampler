@@ -327,8 +327,6 @@ def ds_uk_gsp():
 
 @pytest.fixture(scope="session")
 def data_sites(session_tmp_path):
-    created_files = {}
-
     def _create_data_sites(
         num_sites: int = 10,
         start_time_str: str = "2023-01-01 00:00",
@@ -382,7 +380,6 @@ def data_sites(session_tmp_path):
             interval_end_minutes=site_interval_end_minutes,
             time_resolution_minutes=site_time_resolution_minutes,
         )
-        created_files[param_key] = site_model
         return site_model
     return _create_data_sites
 
