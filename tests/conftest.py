@@ -41,6 +41,9 @@ uk_sat_area_string = """msg_seviri_rss_3km:
 def test_config_filename():
     return f"{_top_test_directory}/test_data/configs/test_config.yaml"
 
+@pytest.fixture(scope="session")
+def site_test_config_path():
+    return f"{_top_test_directory}/test_data/configs/site_test_config.yaml"
 
 @pytest.fixture(scope="session")
 def config_filename():
@@ -419,13 +422,24 @@ def pvnet_config_filename(
     return filename
 
 
+@pytest.fixture(scope="session")
+def default_data_site_model(data_sites):
+    return data_sites
+
+
 @pytest.fixture()
-def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_path, data_sites):
+def site_config_filename(
+    tmp_path,
+    site_test_config_path,
+    nwp_ukv_zarr_path,
+    sat_zarr_path,
+    default_data_site_model,
+):
     # adjust config to point to the zarr file
-    config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.site = data_sites
+    config = load_yaml_configuration(site_test_config_path)
+    config.input_data.nwp["ukv"].zarr_path = str(nwp_ukv_zarr_path)
+    config.input_data.satellite.zarr_path = str(sat_zarr_path)
+    config.input_data.site = default_data_site_model
     config.input_data.gsp = None
 
     config.input_data.solar_position = SolarPosition(
@@ -434,9 +448,10 @@ def site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path, sat_zarr_
         interval_end_minutes=60,
     )
 
-    filename = f"{tmp_path}/configuration_site_test.yaml"
-    save_yaml_configuration(config, filename)
-    yield filename
+    config_output_path = tmp_path / "configuration_site_test.yaml"
+    save_yaml_configuration(config, str(config_output_path))
+    yield str(config_output_path)
+
 
 @pytest.fixture()
 def sites_dataset(site_config_filename):
