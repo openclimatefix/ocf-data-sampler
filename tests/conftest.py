@@ -354,11 +354,7 @@ def data_sites(session_tmp_path):
         base_longitude = np.round(np.linspace(-4, -3, 15), 2)
         base_latitude = np.round(np.linspace(51, 52, 15), 2)
 
-        if num_sites == 0:
-            capacity_kwp_1d = np.array([])
-            longitude = np.array([])
-            latitude = np.array([])
-        elif num_sites <= len(base_capacity_kwp_1d):
+        if num_sites <= len(base_capacity_kwp_1d):
             capacity_kwp_1d = base_capacity_kwp_1d[:num_sites]
             longitude = base_longitude[:num_sites]
             latitude = base_latitude[:num_sites]
@@ -368,13 +364,9 @@ def data_sites(session_tmp_path):
             longitude = np.tile(base_longitude, factor)[:num_sites]
             latitude = np.tile(base_latitude, factor)[:num_sites]
 
-        if num_sites > 0:
-            data_shape = (len(times), num_sites)
-            generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
-            capacity_kwp_data = np.tile(capacity_kwp_1d, (len(times), 1)).astype(np.float32)
-        else:
-            generation_data = np.empty((len(times), 0), dtype=np.float32)
-            capacity_kwp_data = np.empty((len(times), 0), dtype=np.float32)
+        data_shape = (len(times), num_sites)
+        generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
+        capacity_kwp_data = np.tile(capacity_kwp_1d, (len(times), 1)).astype(np.float32)
 
         coords = (("time_utc", times), ("site_id", site_ids))
         da_cap = xr.DataArray(capacity_kwp_data, coords=coords)
@@ -382,14 +374,9 @@ def data_sites(session_tmp_path):
 
         meta_df = pd.DataFrame()
         meta_df["site_id"] = site_ids
-        if num_sites > 0 :
-            meta_df["capacity_kwp"] = capacity_kwp_1d
-            meta_df["longitude"] = longitude
-            meta_df["latitude"] = latitude
-        else:
-            meta_df["capacity_kwp"] = []
-            meta_df["longitude"] = []
-            meta_df["latitude"] = []
+        meta_df["capacity_kwp"] = capacity_kwp_1d
+        meta_df["longitude"] = longitude
+        meta_df["latitude"] = latitude
 
         generation_ds = xr.Dataset({"capacity_kwp": da_cap, "generation_kw": da_gen})
         filename_data_path = session_tmp_path / f"sites_data_{param_key}.netcdf"
@@ -447,12 +434,6 @@ def site_config_filename(
     config.input_data.nwp["ukv"].zarr_path = str(nwp_ukv_zarr_path)
     config.input_data.satellite.zarr_path = str(sat_zarr_path)
     config.input_data.site = default_data_site_model
-
-    config.input_data.solar_position = SolarPosition(
-        time_resolution_minutes=30,
-        interval_start_minutes=-30,
-        interval_end_minutes=60,
-    )
 
     config_output_path = tmp_path / "configuration_site_test.yaml"
     save_yaml_configuration(config, str(config_output_path))
