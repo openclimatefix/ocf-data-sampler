@@ -144,7 +144,7 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
 
 def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     # Specify minimal structure for testing
-    # NWP: Based on site_config_filename, (480 - (-60)) / 60 + 1 = 10 time steps; 1 channel (t); 24x24 pixels
+    # NWP: Based on site_config_filename, (480 - (-60)) / 60 + 1 = 10 time steps
     raw_nwp_values = np.random.rand(10, 1, 24, 24)
     # Site: Based on site_config_filename, (60 - (-30)) / 30 + 1 = 4 time steps
     number_of_site_values = 4 # CORRECTED: Changed from 7 to 4
@@ -165,7 +165,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
             dims=["time_utc"],
             coords={
                 "time_utc": pd.date_range(
-                    "2024-01-01 00:00", periods=number_of_site_values, freq="30min", # CORRECTED: Changed freq from 15min to 30min
+                    "2024-01-01 00:00", periods=number_of_site_values, freq="30min",
                 ),
                 "capacity_kwp": 1000,
                 "site_id": 1,
