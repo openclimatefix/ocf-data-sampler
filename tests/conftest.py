@@ -1,4 +1,6 @@
+import hashlib
 import os
+from pathlib import Path
 
 import dask.array
 import numpy as np
@@ -231,9 +233,9 @@ def icon_eu_zarr_path(session_tmp_path):
                 "t": (("step", "isobaricInhPa", "latitude", "longitude"),
                       np.random.rand(93, 6, 100, 100).astype(np.float32)),
                 "u_10m": (("step", "latitude", "longitude"),
-                         np.random.rand(93, 100, 100).astype(np.float32)),
+                          np.random.rand(93, 100, 100).astype(np.float32)),
                 "v_10m": (("step", "latitude", "longitude"),
-                         np.random.rand(93, 100, 100).astype(np.float32)),
+                          np.random.rand(93, 100, 100).astype(np.float32)),
             },
             attrs={
                 "Conventions": "CF-1.7",
@@ -321,67 +323,78 @@ def ds_uk_gsp():
     )
 
 
-@pytest.fixture(scope="session")
-def data_sites(session_tmp_path) -> Site:
+def create_site_data(
+    tmp_path_base: Path,
+    num_sites: int = 10,
+    start_time_str: str = "2023-01-01 00:00",
+    end_time_str: str = "2023-01-02 00:00",
+    time_freq: str = "30min",
+    site_interval_start_minutes: int = -30,
+    site_interval_end_minutes: int = 60,
+    site_time_resolution_minutes: int = 30,
+) -> Site:
     """
     Make fake data for sites
     Returns: filename for netcdf file, and csv metadata
     """
-    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    site_ids = list(range(0, 10))
-    capacity_kwp_1d = np.array([0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 4])
-    # these are quite specific for the fake satellite data
-    longitude = np.arange(-4, -3, 0.1)
-    latitude = np.arange(51, 52, 0.1)
+    param_tuple = (num_sites, start_time_str, end_time_str, time_freq,
+                   site_interval_start_minutes, site_interval_end_minutes,
+                   site_time_resolution_minutes)
+    param_key = hashlib.sha256(str(param_tuple).encode()).hexdigest()
 
-    generation = np.random.uniform(0, 200, size=(len(times), len(site_ids))).astype(np.float32)
+    times = pd.date_range(start_time_str, end_time_str, freq=time_freq)
+    site_ids = list(range(num_sites))
 
-    # repeat capacity in new dims len(times) times
-    capacity_kwp = (np.tile(capacity_kwp_1d, len(times))).reshape(len(times), 10)
+    base_capacity_kwp_1d = np.array([0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 5, 7, 10, 12, 1, 0.5])
+    base_longitude = np.round(np.linspace(-4, -3, 15), 2)
+    base_latitude = np.round(np.linspace(51, 52, 15), 2)
 
-    coords = (
-        ("time_utc", times),
-        ("site_id", site_ids),
-    )
+    capacity_kwp_1d = base_capacity_kwp_1d[:num_sites]
+    longitude = base_longitude[:num_sites]
+    latitude = base_latitude[:num_sites]
 
-    da_cap = xr.DataArray(
-        capacity_kwp,
-        coords=coords,
-    )
+    data_shape = (len(times), num_sites)
+    generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
+    capacity_kwp_data = np.tile(capacity_kwp_1d, (len(times), 1)).astype(np.float32)
 
-    da_gen = xr.DataArray(
-        generation,
-        coords=coords,
-    )
+    coords = (("time_utc", times), ("site_id", site_ids))
+    da_cap = xr.DataArray(capacity_kwp_data, coords=coords)
+    da_gen = xr.DataArray(generation_data, coords=coords)
 
-    # metadata
-    meta_df = pd.DataFrame(columns=[], data=[])
+    meta_df = pd.DataFrame()
     meta_df["site_id"] = site_ids
     meta_df["capacity_kwp"] = capacity_kwp_1d
     meta_df["longitude"] = longitude
     meta_df["latitude"] = latitude
 
-    generation = xr.Dataset(
+    generation_ds = xr.Dataset(
         {
             "capacity_kwp": da_cap,
             "generation_kw": da_gen,
         },
     )
+    filename_data_path = tmp_path_base / f"sites_data_{param_key}.netcdf"
+    filename_csv_path = tmp_path_base / f"sites_metadata_{param_key}.csv"
+    generation_ds.to_netcdf(filename_data_path)
+    meta_df.to_csv(filename_csv_path, index=False)
 
-    filename = f"{session_tmp_path}/sites.netcdf"
-    filename_csv = f"{session_tmp_path}/sites_metadata.csv"
-    generation.to_netcdf(filename)
-    meta_df.to_csv(filename_csv)
-
-    site = Site(
-        file_path=filename,
-        metadata_file_path=filename_csv,
-        interval_start_minutes=-30,
-        interval_end_minutes=60,
-        time_resolution_minutes=30,
+    site_model = Site(
+        file_path=str(filename_data_path),
+        metadata_file_path=str(filename_csv_path),
+        interval_start_minutes=site_interval_start_minutes,
+        interval_end_minutes=site_interval_end_minutes,
+        time_resolution_minutes=site_time_resolution_minutes,
     )
+    return site_model
 
-    yield site
+
+@pytest.fixture(scope="session")
+def data_sites(session_tmp_path):
+    """
+    Make fake data for sites using the robust creation function.
+    Returns: filename for netcdf file, and csv metadata
+    """
+    return create_site_data(tmp_path_base=session_tmp_path)
 
 
 @pytest.fixture(scope="session")
