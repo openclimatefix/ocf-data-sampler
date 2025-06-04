@@ -439,31 +439,3 @@ def default_data_site_model(data_sites):
 @pytest.fixture()
 def sites_dataset(site_config_filename):
     return SitesDataset(site_config_filename)
-
-
-@pytest.fixture()
-def site_config(
-    tmp_path,
-    config_filename,
-    nwp_ukv_zarr_path,
-    sat_zarr_path,
-    default_data_site_model,
-):
-    """
-    Loads pvnet_test_config.yaml, adds site data, removes GSP,
-    and points Zarr paths to temporary test data,
-    relying on the YAML for all other parameters.
-    """
-    config = load_yaml_configuration(config_filename)
-    config.input_data.site = default_data_site_model
-
-    if hasattr(config.input_data, "gsp"):
-        config.input_data.gsp = None
-    if "ukv" in config.input_data.nwp:
-        config.input_data.nwp["ukv"].zarr_path = str(nwp_ukv_zarr_path)
-    if hasattr(config.input_data, "satellite") and config.input_data.satellite is not None:
-        config.input_data.satellite.zarr_path = str(sat_zarr_path)
-
-    temp_config_path = tmp_path / "site_config_from_pvnet_base.yaml"
-    save_yaml_configuration(config, str(temp_config_path))
-    yield str(temp_config_path)

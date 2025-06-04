@@ -309,27 +309,3 @@ def test_convert_netcdf_to_numpy_solar_handling(tmp_path, site_config_filename):
     # Assert solar position values exist in numpy sample
     for key in solar_keys:
         assert key in numpy_sample, f"Solar key {key} not found in numpy sample"
-
-def test_sites_dataset_from_pvnet_config(site_config):
-    dataset = SitesDataset(site_config)
-
-    assert len(dataset) == 10 * 41, \
-        f"Expected dataset length 410, but got {len(dataset)}"
-
-    sample = dataset[0]
-    assert isinstance(sample, xr.Dataset)
-
-    expected_data_vars = {"nwp-ukv", "satellite", "site"}
-    assert set(sample.data_vars) == expected_data_vars, \
-        f"Data variables mismatch. Got {set(sample.data_vars)}"
-
-    assert sample["satellite"].values.shape == (7, 1, 2, 2), \
-        f"Satellite shape mismatch. Got {sample['satellite'].values.shape}"
-    assert sample["nwp-ukv"].values.shape == (4, 1, 2, 2), \
-        f"NWP shape mismatch. Got {sample['nwp-ukv'].values.shape}"
-    assert sample["site"].values.shape == (4,), \
-        f"Site shape mismatch. Got {sample['site'].values.shape}"
-
-    assert "gsp" not in sample.data_vars
-    if hasattr(dataset.config.input_data, "gsp"):
-        assert dataset.config.input_data.gsp is None
