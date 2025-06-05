@@ -214,6 +214,17 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
     )
     public: bool = Field(False, description="Whether the NWP data is public or private")
 
+    @model_validator(mode="after")
+    def validate_accum_channels_subset(self) -> "NWP":
+        """Validate accum_channels is subset of channels."""
+        invalid_channels = set(self.accum_channels) - set(self.channels)
+        if invalid_channels:
+            raise ValueError(
+                f"NWP provider '{self.provider}': all values in 'accum_channels' should "
+                f"be present in 'channels'. Extra values found: {invalid_channels}",
+            )
+        return self
+
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:
         """Validator for 'provider'."""
