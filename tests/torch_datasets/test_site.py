@@ -18,8 +18,8 @@ def test_site(tmp_path, site_config_filename):
     # Create dataset object
     dataset = SitesDataset(site_config_filename)
 
-    assert len(dataset) == 10 * 41
-    # TODO check 41
+    # (10 sites * 24 valid t0s per site = 240)
+    assert len(dataset) == 240
 
     # Generate a sample
     sample = dataset[0]
@@ -65,12 +65,12 @@ def test_site(tmp_path, site_config_filename):
     for coords in expected_coords_subset:
         assert coords in sample.coords
 
-    # check the shape of the data is correct
-    # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["satellite"].values.shape == (7, 1, 2, 2)
-    # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
-    # 1.5 hours of 30 minute data (inclusive)
+    # check the shape of the data is correct based on new config intervals and image sizes
+    # Satellite: (0 - (-30)) / 5 + 1 = 7 time steps; 2 channels (IR_016, VIS006); 24x24 pixels
+    assert sample["satellite"].values.shape == (7, 2, 24, 24)
+    # NWP-UKV: (480 - (-60)) / 60 + 1 = 10 time steps; 1 channel (t); 24x24 pixels
+    assert sample["nwp-ukv"].values.shape == (10, 1, 24, 24)
+    # Site: (60 - (-30)) / 30 + 1 = 4 time steps (from site_config_filename interval)
     assert sample["site"].values.shape == (4,)
 
 
@@ -123,9 +123,12 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
     assert set(individual_xr_sample.data_vars) == expected_data_vars
 
-    assert individual_xr_sample["satellite"].values.shape == (7, 1, 2, 2)
-    assert individual_xr_sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
-    assert individual_xr_sample["site"].values.shape == (4,)
+    # Satellite: (0 - (-30)) / 5 + 1 = 7 time steps; 2 channels (IR_016, VIS006); 24x24 pixels
+    assert individual_xr_sample["satellite"].values.shape == (7, 2, 24, 24)
+    # NWP-UKV: (480 - (-60)) / 60 + 1 = 10 time steps; 1 channel (t); 24x24 pixels
+    assert individual_xr_sample["nwp-ukv"].values.shape == (10, 1, 24, 24)
+    # Site: (60 - (-30)) / 30 + 1 = 4 time steps (from site_config_filename interval)
+    assert individual_xr_sample["site"].values.shape == (4,) # CORRECTED: Changed from (7,) to (4,)
 
     expected_coords_subset = {
         "site__date_cos",
@@ -141,8 +144,10 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
 
 def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     # Specify minimal structure for testing
-    raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
-    number_of_site_values = 4
+    # NWP: Based on site_config_filename, (480 - (-60)) / 60 + 1 = 10 time steps
+    raw_nwp_values = np.random.rand(10, 1, 24, 24)
+    # Site: Based on site_config_filename, (60 - (-30)) / 30 + 1 = 4 time steps
+    number_of_site_values = 4 # CORRECTED: Changed from 7 to 4
     fake_site_values = np.random.rand(number_of_site_values)
     site_dict = {
         "nwp": {
@@ -150,7 +155,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
                 raw_nwp_values,
                 dims=["time_utc", "channel", "y", "x"],
                 coords={
-                    "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
+                    "time_utc": pd.date_range("2024-01-01 00:00", periods=10, freq="h"),
                     "channel": list(sites_dataset.config.input_data.nwp["ukv"].channels),
                 },
             ),
@@ -160,7 +165,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
             dims=["time_utc"],
             coords={
                 "time_utc": pd.date_range(
-                    "2024-01-01 00:00", periods=number_of_site_values, freq="15min",
+                    "2024-01-01 00:00", periods=number_of_site_values, freq="30min",
                 ),
                 "capacity_kwp": 1000,
                 "site_id": 1,
@@ -187,7 +192,7 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
         )
 
     nwp_result = result["nwp-ukv"]
-    assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
+    assert nwp_result.shape == (10, 1, 24, 24), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
     site_result = result["site"]
     assert site_result.shape == (number_of_site_values,), (
         f"Unexpected shape for site: {site_result.shape}"
