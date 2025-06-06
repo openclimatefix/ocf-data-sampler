@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
@@ -29,4 +30,24 @@ def test_open_gsp(uk_gsp_zarr_path):
     assert "y_osgb" in da.coords
     assert da.shape == (49, 318)
 
+    assert np.issubdtype(da.dtype, np.floating)
 
+    assert np.issubdtype(da.coords["time_utc"].dtype, np.datetime64)
+    assert np.issubdtype(da.coords["gsp_id"].dtype, np.integer)
+    assert np.issubdtype(da.coords["nominal_capacity_mwp"].dtype, np.floating)
+    assert np.issubdtype(da.coords["effective_capacity_mwp"].dtype, np.floating)
+    assert np.issubdtype(da.coords["x_osgb"].dtype, np.floating)
+    assert np.issubdtype(da.coords["y_osgb"].dtype, np.floating)
+
+    assert not da.isnull().any()
+    assert not da.coords["nominal_capacity_mwp"].isnull().any()
+    assert not da.coords["effective_capacity_mwp"].isnull().any()
+    assert not da.coords["x_osgb"].isnull().any()
+    assert not da.coords["y_osgb"].isnull().any()
+
+    expected_freq = pd.to_timedelta("30 minutes")
+    time_diffs = da.coords["time_utc"].diff("time_utc")
+    if len(time_diffs) > 0:
+        assert (time_diffs == expected_freq).all()
+
+    assert len(np.unique(da.coords["gsp_id"])) == da.shape[1]
