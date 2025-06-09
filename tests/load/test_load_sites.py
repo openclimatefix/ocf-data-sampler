@@ -1,8 +1,9 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-import xarray as xr
 import pytest
-from pathlib import Path
+import xarray as xr
 
 from ocf_data_sampler.load.site import open_site
 
@@ -37,7 +38,7 @@ def test_open_site_bad_dtype(tmp_path: Path):
 
     bad_ds = xr.Dataset(
         data_vars={
-            "generation_kw": (("time_utc", "site_id"), np.random.rand(10, 2))
+            "generation_kw": (("time_utc", "site_id"), np.random.rand(10, 2)),
         },
         coords={
             "time_utc": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30T")),
@@ -52,7 +53,7 @@ def test_open_site_bad_dtype(tmp_path: Path):
             "latitude": [51.0, 52.0],
             "longitude": [0.0, 1.0],
             "capacity_kwp": [100.0, 120.0],
-        }
+        },
     )
     metadata.to_csv(meta_path)
 
