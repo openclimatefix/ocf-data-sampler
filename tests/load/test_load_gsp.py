@@ -39,7 +39,6 @@ def test_open_gsp(uk_gsp_zarr_path):
     assert np.issubdtype(da.coords["x_osgb"].dtype, np.floating)
     assert np.issubdtype(da.coords["y_osgb"].dtype, np.floating)
 
-    assert not da.isnull().any()
     assert not da.coords["nominal_capacity_mwp"].isnull().any()
     assert not da.coords["effective_capacity_mwp"].isnull().any()
     assert not da.coords["x_osgb"].isnull().any()

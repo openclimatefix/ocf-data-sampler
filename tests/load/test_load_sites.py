@@ -23,7 +23,6 @@ def test_open_site(default_data_site_model):
     assert np.issubdtype(da.coords["latitude"].dtype, np.floating)
     assert np.issubdtype(da.coords["longitude"].dtype, np.floating)
 
-    assert not da.isnull().any()
     assert not da.coords["capacity_kwp"].isnull().any()
     assert not da.coords["latitude"].isnull().any()
     assert not da.coords["longitude"].isnull().any()

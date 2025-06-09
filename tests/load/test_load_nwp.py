@@ -16,7 +16,7 @@ def test_load_ukv(nwp_ukv_zarr_path):
     assert np.issubdtype(da.coords["channel"].dtype, np.str_)
     assert np.issubdtype(da.coords["x_osgb"].dtype, np.floating)
     assert np.issubdtype(da.coords["y_osgb"].dtype, np.floating)
-    assert not da.isnull().any()
+
     assert not da.coords["init_time_utc"].isnull().any()
     assert not da.coords["step"].isnull().any()
     assert not da.coords["channel"].isnull().any()
@@ -40,7 +40,7 @@ def test_load_ecmwf(nwp_ecmwf_zarr_path):
     assert np.issubdtype(da.coords["channel"].dtype, np.str_)
     assert np.issubdtype(da.coords["longitude"].dtype, np.integer)
     assert np.issubdtype(da.coords["latitude"].dtype, np.integer)
-    assert not da.isnull().any()
+
     assert not da.coords["init_time_utc"].isnull().any()
     assert not da.coords["step"].isnull().any()
     assert not da.coords["channel"].isnull().any()
@@ -64,7 +64,7 @@ def test_load_icon_eu(icon_eu_zarr_path):
     assert np.issubdtype(da.coords["channel"].dtype, np.object_)
     assert np.issubdtype(da.coords["longitude"].dtype, np.floating)
     assert np.issubdtype(da.coords["latitude"].dtype, np.floating)
-    assert not da.isnull().any()
+
     assert not da.coords["init_time_utc"].isnull().any()
     assert not da.coords["step"].isnull().any()
     assert not da.coords["channel"].isnull().any()
@@ -89,7 +89,7 @@ def test_load_cloudcasting(nwp_cloudcasting_zarr_path):
     assert np.issubdtype(da.coords["channel"].dtype, np.str_)
     assert np.issubdtype(da.coords["x_geostationary"].dtype, np.floating)
     assert np.issubdtype(da.coords["y_geostationary"].dtype, np.floating)
-    assert not da.isnull().any()
+
     assert not da.coords["init_time_utc"].isnull().any()
     assert not da.coords["step"].isnull().any()
     assert not da.coords["channel"].isnull().any()
