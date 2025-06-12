@@ -1,6 +1,5 @@
 """Convert NWP to NumpySample."""
 
-import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
