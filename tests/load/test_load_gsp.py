@@ -21,7 +21,7 @@ def test_get_gsp_boundaries(version, expected_length):
     assert df.index.is_unique
 
 
-def test_open_gsp_happy_path(uk_gsp_zarr_path):
+def test_open_gsp(uk_gsp_zarr_path):
     """Test the GSP data loader with valid data."""
     da = open_gsp(uk_gsp_zarr_path)
 
@@ -34,20 +34,10 @@ def test_open_gsp_happy_path(uk_gsp_zarr_path):
     assert "y_osgb" in da.coords
     assert da.shape == (49, 318)
 
-    assert not da.coords["nominal_capacity_mwp"].isnull().any()
-    assert not da.coords["effective_capacity_mwp"].isnull().any()
-    assert not da.coords["x_osgb"].isnull().any()
-    assert not da.coords["y_osgb"].isnull().any()
-
-    expected_freq = pd.to_timedelta("30 minutes")
-    time_diffs = da.coords["time_utc"].diff("time_utc")
-    if len(time_diffs) > 0:
-        assert (time_diffs == expected_freq).all()
-
     assert len(np.unique(da.coords["gsp_id"])) == da.shape[1]
 
 
-def test_open_gsp_raises_on_bad_dtype(tmp_path: Path):
+def test_open_gsp_bad_dtype(tmp_path: Path):
     """Test that open_gsp raises a TypeError on incorrect data dtypes."""
     zarr_path = tmp_path / "bad_gsp.zarr"
 

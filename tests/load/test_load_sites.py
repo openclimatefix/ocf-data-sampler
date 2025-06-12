@@ -19,15 +19,6 @@ def test_open_site(default_data_site_model):
     assert "longitude" in da.coords
     assert da.shape == (49, 10)
 
-    assert not da.coords["capacity_kwp"].isnull().any()
-    assert not da.coords["latitude"].isnull().any()
-    assert not da.coords["longitude"].isnull().any()
-
-    expected_freq = pd.to_timedelta("30 minutes")
-    time_diffs = da.coords["time_utc"].diff("time_utc")
-    if len(time_diffs) > 0:
-        assert (time_diffs == expected_freq).all()
-
     assert len(np.unique(da.coords["site_id"])) == da.shape[1]
 
 

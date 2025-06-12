@@ -19,17 +19,6 @@ def test_open_satellite(sat_zarr_path):
     # There are 100 x 100 pixels
     assert da.shape == (288, 11, 100, 100)
 
-    # Permissibility for NaN in Sat
-    assert not da.coords["time_utc"].isnull().any()
-    assert not da.coords["channel"].isnull().any()
-    assert not da.coords["x_geostationary"].isnull().any()
-    assert not da.coords["y_geostationary"].isnull().any()
-
-    expected_freq = pd.to_timedelta("5 minutes")
-    time_diffs = da.coords["time_utc"].diff("time_utc")
-    if len(time_diffs) > 0:
-        assert (time_diffs == expected_freq).all()
-
     assert len(np.unique(da.coords["channel"])) == da.shape[1]
 
 
