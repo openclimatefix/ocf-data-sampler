@@ -14,8 +14,6 @@ def open_nwp(
     zarr_path: str | list[str],
     provider: str,
     public: bool = False,
-    *,
-    _test_data: xr.DataArray = None,
 ) -> xr.DataArray:
     """Opens NWP zarr and validates its structure and data types.
 
@@ -23,34 +21,29 @@ def open_nwp(
         zarr_path: path to the zarr file
         provider: NWP provider
         public: Whether the data is public or private (only for GFS)
-        _test_data: Used internally for testing to inject data without file IO.
     """
     provider = provider.lower()
 
-    if _test_data is not None:
-        data_array = _test_data
+    kwargs = {
+        "zarr_path": zarr_path,
+    }
+    if provider == "ukv":
+        _open_nwp = open_ukv
+    elif provider in ["ecmwf", "mo_global"]:
+        provider = "ecmwf"
+        _open_nwp = open_ifs
+    elif provider == "icon-eu":
+        _open_nwp = open_icon_eu
+    elif provider == "gfs":
+        _open_nwp = open_gfs
+        if public:
+            kwargs["public"] = True
+    elif provider == "cloudcasting":
+        _open_nwp = open_cloudcasting
     else:
-        kwargs = {
-            "zarr_path": zarr_path,
-        }
-        if provider == "ukv":
-            _open_nwp = open_ukv
-        elif provider in ["ecmwf", "mo_global"]:
-            provider = "ecmwf"
-            _open_nwp = open_ifs
-        elif provider == "icon-eu":
-            _open_nwp = open_icon_eu
-        elif provider == "gfs":
-            _open_nwp = open_gfs
-            if public:
-                kwargs["public"] = True
-        elif provider == "cloudcasting":
-            _open_nwp = open_cloudcasting
-        else:
-            raise ValueError(f"Unknown provider: {provider}")
+        raise ValueError(f"Unknown provider: {provider}")
 
-        # Load data using provider-specific function
-        data_array = _open_nwp(**kwargs)
+    data_array = _open_nwp(**kwargs)
 
     # Validate loaded data array
     if not np.issubdtype(data_array.dtype, np.number):
@@ -69,8 +62,8 @@ def open_nwp(
             "init_time_utc": np.datetime64,
             "step": np.timedelta64,
             "channel": np.str_,
-            "latitude": np.integer,
-            "longitude": np.integer,
+            "latitude": np.floating,
+            "longitude": np.floating,
         }
     elif provider == "icon-eu":
         expected_dtypes = {

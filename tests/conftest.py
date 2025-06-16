@@ -179,8 +179,8 @@ def ds_nwp_ecmwf():
     init_times = pd.date_range(start="2023-01-01 00:00", freq="6h", periods=24 * 7)
     steps = pd.timedelta_range("0h", "14h", freq="1h")
 
-    lons = np.arange(-12, 3)
-    lats = np.arange(48, 60)
+    lons = np.arange(-12, 3, dtype=np.float32)
+    lats = np.arange(48.0, 60.0)
     variables = ["t2m", "dswrf", "mcc"]
 
     coords = (
