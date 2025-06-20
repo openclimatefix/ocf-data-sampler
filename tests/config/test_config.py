@@ -135,7 +135,7 @@ def test_accum_channels_validation(test_config_filename):
 
     # Verify exact error message
     expected_error = (
-        r"input_data.nwp.ukv\n"
+        rf"input_data.nwp.{nwp_name}\n"
         fr"  Value error, NWP provider '{nwp_name}': all values in 'accum_channels' "
         r"should be present in 'channels'\. "
         r"Extra values found: {'invalid_channel'}.*"
