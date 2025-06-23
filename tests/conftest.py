@@ -199,7 +199,7 @@ def ds_nwp_ecmwf():
         nwp_data_raw,
         coords=coords,
     )
-    
+
     return nwp_data.astype(np.float32).to_dataset(name="ECMWF_UK")
 
 
