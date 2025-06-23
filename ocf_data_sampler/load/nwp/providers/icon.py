@@ -19,6 +19,7 @@ def open_icon_eu(zarr_path: str | list[str]) -> xr.DataArray:
     Returns:
         Xarray DataArray of the NWP data
     """
+    # Open and check initially
     ds = open_zarr_paths(zarr_path, time_dim="init_time_utc")
 
     if "icon_eu_data" in ds.data_vars:
@@ -28,6 +29,7 @@ def open_icon_eu(zarr_path: str | list[str]) -> xr.DataArray:
 
     check_time_unique_increasing(nwp.init_time_utc)
 
+    # 0-78 one hour steps, rest 3 hour steps
     nwp = nwp.isel(step=slice(0, 78))
     nwp = nwp.transpose("init_time_utc", "step", "channel", "longitude", "latitude")
     nwp = make_spatial_coords_increasing(nwp, x_coord="longitude", y_coord="latitude")

@@ -11,60 +11,42 @@ from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
 
 
 def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
-    """Validates the structure and data types of a loaded NWP DataArray.
-
-    This helper function is extracted to keep the main `open_nwp` function clean.
-
-    Args:
-        data_array: The xarray.DataArray to validate.
-        provider: The NWP provider name.
-
-    Raises:
-        TypeError: If the data or any coordinate has an unexpected dtype.
-        ValueError: If a required coordinate is missing.
-    """
     if not np.issubdtype(data_array.dtype, np.number):
         raise TypeError(f"NWP data for {provider} should be numeric, not {data_array.dtype}")
 
-    base_expected_dtypes = {
+    common_expected_dtypes = {
         "init_time_utc": np.datetime64,
         "step": np.timedelta64,
+        "channel": np.str_,
     }
 
-    provider_specific_dtypes = {
+    geographic_spatial_dtypes = {
+        "latitude": np.floating,
+        "longitude": np.floating,
+    }
+
+    provider_specific_spatial_dtypes = {
         "ukv": {
-            "channel": np.str_,
             "x_osgb": np.floating,
             "y_osgb": np.floating,
         },
-        "ecmwf": {
-            "channel": np.str_,
-            "latitude": np.floating,
-            "longitude": np.floating,
-        },
-        "icon-eu": {
-            "channel": np.str_,
-            "latitude": np.floating,
-            "longitude": np.floating,
-        },
+        "ecmwf": geographic_spatial_dtypes,
+        "icon-eu": geographic_spatial_dtypes,
         "cloudcasting": {
-            "channel": np.str_,
             "x_geostationary": np.floating,
             "y_geostationary": np.floating,
         },
-        "gfs": {
-            "channel": np.str_,
-            "latitude": np.floating,
-            "longitude": np.floating,
-        },
-        "mo_global": {
-            "channel": np.str_,
-            "latitude": np.floating,
-            "longitude": np.floating,
-        },
+        "gfs": geographic_spatial_dtypes,
+        "mo_global": geographic_spatial_dtypes,
     }
 
-    expected_dtypes = {**base_expected_dtypes, **provider_specific_dtypes.get(provider, {})}
+    expected_dtypes = {
+        **common_expected_dtypes,
+        **provider_specific_spatial_dtypes.get(provider, {}),
+    }
+
+    if not expected_dtypes:
+        raise ValueError(f"Unknown provider: {provider}")
 
     for coord, expected_dtype in expected_dtypes.items():
         if coord not in data_array.coords:
