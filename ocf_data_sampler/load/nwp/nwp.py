@@ -11,6 +11,18 @@ from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
 
 
 def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
+    """Validates the structure and data types of a loaded NWP DataArray.
+
+    This helper function is extracted to keep the main `open_nwp` function clean.
+
+    Args:
+        data_array: The xarray.DataArray to validate.
+        provider: The NWP provider name.
+
+    Raises:
+        TypeError: If the data or any coordinate has an unexpected dtype.
+        ValueError: If a required coordinate is missing.
+    """
     if not np.issubdtype(data_array.dtype, np.number):
         raise TypeError(f"NWP data for {provider} should be numeric, not {data_array.dtype}")
 
@@ -26,18 +38,18 @@ def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
     }
 
     provider_specific_spatial_dtypes = {
+        "ecmwf": geographic_spatial_dtypes,
+        "icon-eu": geographic_spatial_dtypes,
+        "gfs": geographic_spatial_dtypes,
+        "mo_global": geographic_spatial_dtypes,
         "ukv": {
             "x_osgb": np.floating,
             "y_osgb": np.floating,
         },
-        "ecmwf": geographic_spatial_dtypes,
-        "icon-eu": geographic_spatial_dtypes,
         "cloudcasting": {
             "x_geostationary": np.floating,
             "y_geostationary": np.floating,
         },
-        "gfs": geographic_spatial_dtypes,
-        "mo_global": geographic_spatial_dtypes,
     }
 
     expected_dtypes = {
@@ -85,6 +97,7 @@ def open_nwp(
         _open_nwp = open_icon_eu
     elif provider == "gfs":
         _open_nwp = open_gfs
+        # GFS has a public/private flag
         if public:
             kwargs["public"] = True
     elif provider == "cloudcasting":

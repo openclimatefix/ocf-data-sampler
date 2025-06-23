@@ -179,8 +179,9 @@ def ds_nwp_ecmwf():
     init_times = pd.date_range(start="2023-01-01 00:00", freq="6h", periods=24 * 7)
     steps = pd.timedelta_range("0h", "14h", freq="1h")
 
-    lons = np.arange(-12, 3, dtype=np.float32)
+    lons = np.arange(-12.0, 3.0)
     lats = np.arange(48.0, 60.0)
+
     variables = ["t2m", "dswrf", "mcc"]
 
     coords = (
@@ -192,12 +193,14 @@ def ds_nwp_ecmwf():
     )
 
     nwp_array_shape = tuple(len(coord_values) for _, coord_values in coords)
+    nwp_data_raw = np.random.uniform(0, 200, size=nwp_array_shape)
 
     nwp_data = xr.DataArray(
-        np.random.uniform(0, 200, size=nwp_array_shape).astype(np.float32),
+        nwp_data_raw,
         coords=coords,
     )
-    return nwp_data.to_dataset(name="ECMWF_UK")
+    
+    return nwp_data.astype(np.float32).to_dataset(name="ECMWF_UK")
 
 
 @pytest.fixture(scope="session")
