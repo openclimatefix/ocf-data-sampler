@@ -43,7 +43,7 @@ def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
             "longitude": np.floating,
         },
         "icon-eu": {
-            "channel": np.object_,
+            "channel": np.str_,
             "latitude": np.floating,
             "longitude": np.floating,
         },
@@ -97,7 +97,7 @@ def open_nwp(
     }
     if provider == "ukv":
         _open_nwp = open_ukv
-    elif provider == "ecmwf" or provider == "mo_global":
+    elif provider in ["ecmwf", "mo_global"]:
         _open_nwp = open_ifs
     elif provider == "icon-eu":
         _open_nwp = open_icon_eu

@@ -223,24 +223,29 @@ def icon_eu_zarr_path(session_tmp_path):
     hours = ["00", "06"]
     paths = []
 
+    latitude = np.linspace(29.5, 35.69, 100)
+    longitude = np.linspace(-23.5, -17.31, 100)
+    step = pd.timedelta_range("0h", "5D", freq="1h")
+
+    channel_names = np.array(["t_1000hPa", "u_10m", "v_10m"], dtype=np.str_)
+
     for hour in hours:
-        time = f"{date}_{hour}"
-        ds = xr.Dataset(
+        time_str = f"{date}_{hour}"
+        time_utc = pd.Timestamp(f"2021-11-01T{hour}:00:00")
+
+        data_shape = (len(step), len(channel_names), len(latitude), len(longitude))
+        data = np.random.rand(*data_shape).astype(np.float32)
+
+        da = xr.DataArray(
+            data=data,
             coords={
-                "isobaricInhPa": [50.0, 500.0, 700.0, 850.0, 950.0, 1000.0],
-                "latitude": np.linspace(29.5, 35.69, 100),
-                "longitude": np.linspace(-23.5, -17.31, 100),
-                "step": pd.timedelta_range(start="0h", end="5D", periods=93),
-                "time": pd.Timestamp(f"2021-11-01T{hour}:00:00"),
+                "step": step,
+                "latitude": latitude,
+                "longitude": longitude,
+                "init_time_utc": time_utc,
+                "channel": channel_names,
             },
-            data_vars={
-                "t": (("step", "isobaricInhPa", "latitude", "longitude"),
-                      np.random.rand(93, 6, 100, 100).astype(np.float32)),
-                "u_10m": (("step", "latitude", "longitude"),
-                          np.random.rand(93, 100, 100).astype(np.float32)),
-                "v_10m": (("step", "latitude", "longitude"),
-                          np.random.rand(93, 100, 100).astype(np.float32)),
-            },
+            dims=("step", "channel", "latitude", "longitude"),
             attrs={
                 "Conventions": "CF-1.7",
                 "GRIB_centre": "edzw",
@@ -249,9 +254,13 @@ def icon_eu_zarr_path(session_tmp_path):
                 "institution": "Offenbach",
             },
         )
-        ds.coords["valid_time"] = ds.time + ds.step
-        zarr_path = session_tmp_path / f"{time}.zarr"
-        ds.to_zarr(zarr_path)
+
+        da.coords["valid_time"] = da.init_time_utc + da.step
+
+        ds_to_save = da.to_dataset(name="icon_eu_data")
+
+        zarr_path = session_tmp_path / f"{time_str}.zarr"
+        ds_to_save.to_zarr(zarr_path)
         paths.append(zarr_path)
 
     return paths

@@ -27,7 +27,7 @@ def test_load_icon_eu(icon_eu_zarr_path):
     da = open_nwp(zarr_path=icon_eu_zarr_path, provider="icon-eu")
     assert isinstance(da, DataArray)
     assert da.dims == ("init_time_utc", "step", "channel", "longitude", "latitude")
-    assert da.shape == (2, 78, 2, 100, 100)
+    assert da.shape == (2, 78, 3, 100, 100)
     assert len(np.unique(da.coords["channel"])) == da.shape[2]
 
 
