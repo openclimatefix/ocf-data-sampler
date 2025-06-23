@@ -216,6 +216,7 @@ def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
     ds.to_zarr(zarr_path)
     yield zarr_path
 
+
 @pytest.fixture(scope="session")
 def icon_eu_zarr_path(session_tmp_path):
     date = "20211101"
