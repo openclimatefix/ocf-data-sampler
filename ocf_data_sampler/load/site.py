@@ -16,7 +16,6 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
         xr.DataArray: The opened site generation data
     """
     generation_ds = xr.open_dataset(generation_file_path)
-
     metadata_df = pd.read_csv(metadata_file_path, index_col="site_id")
 
     if not metadata_df.index.is_unique:
@@ -38,4 +37,23 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     if not (generation_ds.capacity_kwp.values > 0).all():
         raise ValueError("capacity_kwp contains non-positive values")
 
-    return generation_ds.generation_kw
+    site_da = generation_ds.generation_kw
+
+    # Validate data types directly in loading function
+    if not np.issubdtype(site_da.dtype, np.floating):
+        raise TypeError(f"Generation data should be float, not {site_da.dtype}")
+
+    coord_dtypes = {
+        "time_utc": np.datetime64,
+        "site_id": np.integer,
+        "capacity_kwp": np.floating,
+        "latitude": np.floating,
+        "longitude": np.floating,
+    }
+
+    for coord, expected_dtype in coord_dtypes.items():
+        if not np.issubdtype(site_da.coords[coord].dtype, expected_dtype):
+            dtype = site_da.coords[coord].dtype
+            raise TypeError(f"{coord} should be {expected_dtype.__name__}, not {dtype}")
+
+    return site_da
