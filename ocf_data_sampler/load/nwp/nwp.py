@@ -29,7 +29,7 @@ def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
     common_expected_dtypes = {
         "init_time_utc": np.datetime64,
         "step": np.timedelta64,
-        "channel": np.str_,
+        "channel": (np.str_, np.object_),
     }
 
     geographic_spatial_dtypes = {
@@ -57,17 +57,21 @@ def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
         **provider_specific_spatial_dtypes.get(provider, {}),
     }
 
-    if not expected_dtypes:
-        raise ValueError(f"Unknown provider: {provider}")
-
     for coord, expected_dtype in expected_dtypes.items():
         if coord not in data_array.coords:
             raise ValueError(f"Coordinate '{coord}' missing for provider '{provider}'")
-        if not np.issubdtype(data_array.coords[coord].dtype, expected_dtype):
-            actual_dtype = data_array.coords[coord].dtype
+
+        actual_dtype = data_array.coords[coord].dtype
+
+        if not np.issubdtype(actual_dtype, expected_dtype):
+            if isinstance(expected_dtype, tuple):
+                expected_name_str = " or ".join([t.__name__ for t in expected_dtype])
+            else:
+                expected_name_str = expected_dtype.__name__
+
             err_msg = (
-                f"'{coord}' for {provider} should be {expected_dtype.__name__}, "
-                f"not {actual_dtype}"
+                f"'{coord}' for {provider} should be {expected_name_str}, "
+                f"not {actual_dtype.name}"
             )
             raise TypeError(err_msg)
 
