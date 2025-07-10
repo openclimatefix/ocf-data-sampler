@@ -97,7 +97,7 @@ class DropoutMixin(Base):
         le=1,
     )
     dropout_fractions: list[float] = Field(
-        default=[],
+        default=[1.0],
         description="List of probabilties that dropout of the correspoding timedelta is applied",
     )
 
