@@ -96,6 +96,10 @@ class DropoutMixin(Base):
         ge=0,
         le=1,
     )
+    dropout_fractions: list[float] = Field(
+        default=[],
+        description="List of probabilties that dropout of the correspoding timedelta is applied",
+    )
 
     @field_validator("dropout_timedeltas_minutes")
     def dropout_timedeltas_minutes_negative(cls, v: list[int]) -> list[int]:
@@ -104,6 +108,15 @@ class DropoutMixin(Base):
             if m > 0:
                 raise ValueError("Dropout timedeltas must be negative")
         return v
+    
+    @field_validator("dropout_fractions")
+    def dropout_fractions_equal_one(cls, dropout_frac: list[float]) -> list[float]:
+        """Validate 'dropout_frac'."""
+        import math
+        if not math.isclose(sum(dropout_frac),1.0,rel_tol=1e-9):
+            raise ValueError('Sum of dropout_frac must be 1')
+        else:
+            return dropout_frac
 
     @model_validator(mode="after")
     def dropout_instructions_consistent(self) -> "DropoutMixin":
