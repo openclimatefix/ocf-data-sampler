@@ -117,6 +117,14 @@ class DropoutMixin(Base):
             raise ValueError('Sum of dropout_frac must be 1')
         else:
             return dropout_frac
+        
+    @field_validator("dropout_fractions")
+    def dropout_fractions_negative(cls, dropout_frac : list[float]) -> list[float]:
+        for i in dropout_frac:
+            if i < 0:
+                raise ValueError("Probabilities cannot be negative")
+        
+        return dropout_frac
 
     @model_validator(mode="after")
     def dropout_instructions_consistent(self) -> "DropoutMixin":

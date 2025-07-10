@@ -36,15 +36,24 @@ def apply_sampled_dropout_time(
         for t in dropout_timedeltas:
             if t > pd.Timedelta("0min"):
                 raise ValueError("Dropout timedeltas must be negative")
-        # probability sum check
-        if not np.isclose(np.sum(dropout_frac),1.0,rtol=1e-9):
-            raise ValueError('Sum of dropout_frac must be 1')
+            
             
         _probability_list = [0]*len(dropout_frac)
         _probability_sum = 0
         for i in range(len(dropout_frac)):
             _probability_list[i] = _probability_sum
             _probability_sum += dropout_frac[i]
+            # probabilities arent -ve
+            if dropout_frac[i] < 0:
+                raise ValueError("Probabilities can be negative")
+
+
+        # probability sum check
+        if not np.isclose(_probability_sum,1.0,rtol=1e-9):
+            raise ValueError('Sum of dropout_frac must be 1')
+        
+        
+            
 
         dropout_time = dropout_timedeltas[np.searchsorted(np.array(_probability_list) , np.random.uniform() ,side='right') -1]
 
