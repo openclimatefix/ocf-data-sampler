@@ -16,8 +16,8 @@ from ocf_data_sampler.numpy_sample import (
     make_datetime_numpy_dict,
     make_sun_position_numpy_sample,
 )
-from ocf_data_sampler.numpy_sample.common_types import NumpySample
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
+from ocf_data_sampler.numpy_sample.common_types import NumpySample
 from ocf_data_sampler.select import (
     Location,
     fill_time_periods,
@@ -365,7 +365,7 @@ class SitesDataset(AbstractSiteDataset):
 
 
 class SitesDatasetConcurrent(AbstractSiteDataset):
-    """A torch Dataset for creating PVNet Site batches with samples at the same t0 time for all sites."""
+    """A torch Dataset for creating PVNet Site batches with samples for all sites."""
 
     @override
     def __len__(self) -> int:
@@ -482,8 +482,8 @@ class SitesDatasetConcurrent(AbstractSiteDataset):
             # Calculate solar positions and add to modalities
             numpy_modalities.append(
                 make_sun_position_numpy_sample(
-                    datetimes, da_sites.longitude.values, da_sites.latitude.values
-                )
+                    datetimes, da_sites.longitude.values, da_sites.latitude.values,
+                ),
             )
 
         # Combine all the modalities and fill NaNs
