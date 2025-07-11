@@ -43,8 +43,8 @@ def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
         "gfs": geographic_spatial_dtypes,
         "mo_global": geographic_spatial_dtypes,
         "ukv": {
-            "x_osgb": np.floating,
-            "y_osgb": np.floating,
+            "x_osgb": np.number,
+            "y_osgb": np.number,
         },
         "cloudcasting": {
             "x_geostationary": np.floating,
