@@ -1,5 +1,6 @@
 """Utility functions for the NWP data processing."""
 
+from glob import glob
 import xarray as xr
 from xarray_tensorstore import open_zarr
 
@@ -69,8 +70,12 @@ def _dask_open_zarr_paths(zarr_path: str | list[str], time_dim: str, public: boo
 
 
 def _tensostore_open_zarr_paths(zarr_path: str | list[str], time_dim: str) -> xr.Dataset:
+
+    if "*" in str(zarr_path):
+        zarr_path = sorted(glob(zarr_path))
+    
     if isinstance(zarr_path, list | tuple):
-        ds = open_zarrs(zarr_path, concat_dim=time_dim)
+        ds = open_zarrs(zarr_path, concat_dim=time_dim).sortby(time_dim)
     else:
         ds = open_zarr(zarr_path)
     return ds
