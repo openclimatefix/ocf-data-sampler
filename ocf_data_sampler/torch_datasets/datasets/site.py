@@ -50,8 +50,8 @@ def compute(xarray_dict: dict) -> dict:
 
 
 class AbstractSiteDataset(Dataset):
-
     """Abstract class for Site datasets."""
+
     def __init__(
         self,
         config_filename: str,
@@ -146,7 +146,6 @@ class AbstractSiteDataset(Dataset):
         valid_t0_and_site_ids.index.name = "t0"
         return valid_t0_and_site_ids.reset_index()
 
-    
     def get_locations(self, site_xr: xr.Dataset) -> list[Location]:
         """Get list of locations of all sites.
 
@@ -165,9 +164,9 @@ class AbstractSiteDataset(Dataset):
             locations.append(location)
 
         return locations
-    
-class SitesDataset(AbstractSiteDataset):
 
+
+class SitesDataset(AbstractSiteDataset):
     """A torch Dataset for creating PVNet Site samples."""
 
     @override
@@ -270,8 +269,8 @@ class SitesDataset(AbstractSiteDataset):
 
         # Only add solar position if explicitly configured
         has_solar_config = (
-            hasattr(self.config.input_data, "solar_position") and
-            self.config.input_data.solar_position is not None
+            hasattr(self.config.input_data, "solar_position")
+            and self.config.input_data.solar_position is not None
         )
 
         if has_solar_config:
@@ -363,6 +362,135 @@ class SitesDataset(AbstractSiteDataset):
         combined_dataset = xr.merge(datasets)
 
         return combined_dataset
+
+
+class SitesDatasetConcurrent(AbstractSiteDataset):
+    """A torch Dataset for creating PVNet Site batches with samples at the same t0 time for all sites."""
+
+    @override
+    def __len__(self) -> int:
+        return len(self.valid_t0_and_site_ids)
+
+    @override
+    def __getitem__(self, idx: int) -> dict:
+        # Get the coordinates of the sample
+        t0, site_id = self.valid_t0_and_site_ids.iloc[idx]
+
+        # get location from site id
+        location = self.location_lookup[site_id]
+
+        return self._get_batch(t0, location)
+
+    def _get_batch(self, t0: pd.Timestamp, location: Location) -> dict:
+        """Generate the PVNet batch for given coordinates.
+
+        Args:
+            t0: init-time for sample
+            location: location for sample
+        """
+        # slice by time first as we want to keep all site id info
+        sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
+        sample_dict = compute(sample_dict)
+
+        site_samples = []
+
+        for location in self.locations:
+            site_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
+            site_numpy_sample = self.process_and_combine_datasets(
+                site_sample_dict,
+                self.config,
+                t0,
+            )
+            site_samples.append(site_numpy_sample)
+
+        return stack_np_samples_into_batch(site_samples)
+
+    @staticmethod
+    def process_and_combine_datasets(
+        dataset_dict: dict,
+        config: Configuration,
+        t0: pd.Timestamp,
+    ) -> NumpySample:
+        """Normalise and convert data to numpy arrays.
+
+        Args:
+            dataset_dict: Dictionary of xarray datasets
+            config: Configuration object
+            t0: init-time for sample
+            location: location of the sample
+        """
+        numpy_modalities = []
+
+        if "nwp" in dataset_dict:
+            nwp_numpy_modalities = {}
+
+            for nwp_key, da_nwp in dataset_dict["nwp"].items():
+                # Standardise and convert to NumpyBatch
+
+                da_channel_means = channel_dict_to_dataarray(
+                    config.input_data.nwp[nwp_key].channel_means,
+                )
+                da_channel_stds = channel_dict_to_dataarray(
+                    config.input_data.nwp[nwp_key].channel_stds,
+                )
+
+                da_nwp = (da_nwp - da_channel_means) / da_channel_stds
+
+                nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
+
+            # Combine the NWPs into NumpyBatch
+            numpy_modalities.append({NWPSampleKey.nwp: nwp_numpy_modalities})
+
+        if "sat" in dataset_dict:
+            da_sat = dataset_dict["sat"]
+
+            # Standardise and convert to NumpyBatch
+            da_channel_means = channel_dict_to_dataarray(config.input_data.satellite.channel_means)
+            da_channel_stds = channel_dict_to_dataarray(config.input_data.satellite.channel_stds)
+
+            da_sat = (da_sat - da_channel_means) / da_channel_stds
+
+            numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
+
+        if "site" in dataset_dict:
+            da_sites = dataset_dict["site"]
+            da_sites = da_sites / da_sites.capacity_kwp
+
+            # Convert to NumpyBatch
+            numpy_modalities.append(
+                convert_site_to_numpy_sample(
+                    da_sites,
+                ),
+            )
+
+        # Only add solar position if explicitly configured
+        has_solar_config = (
+            hasattr(config.input_data, "solar_position")
+            and config.input_data.solar_position is not None
+        )
+
+        if has_solar_config:
+            solar_config = config.input_data.solar_position
+
+            # Create datetime range for solar position calculation
+            datetimes = pd.date_range(
+                t0 + minutes(solar_config.interval_start_minutes),
+                t0 + minutes(solar_config.interval_end_minutes),
+                freq=minutes(solar_config.time_resolution_minutes),
+            )
+
+            # Calculate solar positions and add to modalities
+            numpy_modalities.append(
+                make_sun_position_numpy_sample(
+                    datetimes, da_sites.longitude.values, da_sites.latitude.values
+                )
+            )
+
+        # Combine all the modalities and fill NaNs
+        combined_sample = merge_dicts(numpy_modalities)
+        combined_sample = fill_nans_in_arrays(combined_sample)
+
+        return combined_sample
 
 
 # ----- functions to load presaved samples ------
@@ -507,136 +635,3 @@ def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float = 0.1) -> xr.Dataset
             ).mean()
 
     return xr_data
-
-
-class SitesDatasetConcurrent(AbstractSiteDataset):
-    """A torch Dataset for creating PVNet Site samples."""
-
-    @override
-    def __len__(self) -> int:
-        return len(self.valid_t0_and_site_ids)
-
-    @override
-    def __getitem__(self, idx: int) -> dict:
-        # Get the coordinates of the sample
-
-        # with record_function("find_t0_and_site_ids"):
-        t0, site_id = self.valid_t0_and_site_ids.iloc[idx]
-
-        # get location from site id
-        location = self.location_lookup[site_id]
-        
-        # Generate the sample
-        # xarray_sample = self._get_sample(t0, location)
-        # convert_netcdf_to_numpy_sample(xarray_sample)
-        return self._get_sample(t0, location)
-
-    def _get_sample(self, t0: pd.Timestamp, location: Location) -> dict:
-        """Generate the PVNet sample for given coordinates.
-
-        Args:
-            t0: init-time for sample
-            location: location for sample
-        """
-        # slice by time first as we want to keep all site id info
-        sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
-        sample_dict = compute(sample_dict)
-
-        site_samples = []
-
-        for location in self.locations:
-            site_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
-            site_numpy_sample = self.process_and_combine_datasets(
-                site_sample_dict,
-                self.config,
-                t0,
-            )
-            site_samples.append(site_numpy_sample)
-
-        return stack_np_samples_into_batch(site_samples)
-   
-    @staticmethod
-    def process_and_combine_datasets(
-        dataset_dict: dict,
-        config: Configuration,
-        t0: pd.Timestamp,
-    ) -> NumpySample:
-        """Normalise and convert data to numpy arrays.
-
-        Args:
-            dataset_dict: Dictionary of xarray datasets
-            config: Configuration object
-            t0: init-time for sample
-            location: location of the sample
-        """
-        numpy_modalities = []
-
-        if "nwp" in dataset_dict:
-            nwp_numpy_modalities = {}
-
-            for nwp_key, da_nwp in dataset_dict["nwp"].items():
-
-                # Standardise and convert to NumpyBatch
-
-                da_channel_means = channel_dict_to_dataarray(
-                    config.input_data.nwp[nwp_key].channel_means,
-                )
-                da_channel_stds = channel_dict_to_dataarray(
-                    config.input_data.nwp[nwp_key].channel_stds,
-                )
-
-                da_nwp = (da_nwp - da_channel_means) / da_channel_stds
-
-                nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
-
-            # Combine the NWPs into NumpyBatch
-            numpy_modalities.append({NWPSampleKey.nwp: nwp_numpy_modalities})
-
-        if "sat" in dataset_dict:
-            da_sat = dataset_dict["sat"]
-
-            # Standardise and convert to NumpyBatch
-            da_channel_means = channel_dict_to_dataarray(config.input_data.satellite.channel_means)
-            da_channel_stds = channel_dict_to_dataarray(config.input_data.satellite.channel_stds)
-
-            da_sat = (da_sat - da_channel_means) / da_channel_stds
-
-            numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
-
-        if "site" in dataset_dict:
-            gsp_config = config.input_data.site
-            da_sites = dataset_dict["site"]
-            da_sites = da_sites / da_sites.capacity_kwp
-
-            # Convert to NumpyBatch
-            numpy_modalities.append(
-                convert_site_to_numpy_sample(
-                    da_sites,
-                ),
-            )
-
-        # Only add solar position if explicitly configured
-        has_solar_config = (
-            hasattr(config.input_data, "solar_position") and
-            config.input_data.solar_position is not None
-        )
-
-        if has_solar_config:
-            solar_config = config.input_data.solar_position
-
-            # Create datetime range for solar position calculation
-            datetimes = pd.date_range(
-                t0 + minutes(solar_config.interval_start_minutes),
-                t0 + minutes(solar_config.interval_end_minutes),
-                freq=minutes(solar_config.time_resolution_minutes),
-            )
-
-
-            # Calculate solar positions and add to modalities
-            numpy_modalities.append(make_sun_position_numpy_sample(datetimes, da_sites.longitude.values, da_sites.latitude.values))
-
-        # Combine all the modalities and fill NaNs
-        combined_sample = merge_dicts(numpy_modalities)
-        combined_sample = fill_nans_in_arrays(combined_sample)
-
-        return combined_sample
