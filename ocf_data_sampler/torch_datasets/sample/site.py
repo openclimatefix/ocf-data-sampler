@@ -31,7 +31,7 @@ class SiteSample(SampleBase):
     @override
     def load(cls, path: str) -> "SiteSample":
         # Loads from NetCDF
-        return cls(xr.open_dataset(path))
+        return cls(xr.open_dataset(path, decode_timedelta=False))
 
     @override
     def plot(self) -> None:

@@ -21,7 +21,7 @@ def sample_data():
     site_times = pd.date_range("2023-01-01 00:00", periods=4, freq="30min")
 
     # Defined steps for NWP data
-    steps = [(t - init_time) for t in target_times]
+    steps = ((target_times - init_time).total_seconds()).astype(np.int32)
 
     # Create the sample dataset
     return xr.Dataset(

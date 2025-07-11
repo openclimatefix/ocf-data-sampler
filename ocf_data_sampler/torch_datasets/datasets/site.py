@@ -277,11 +277,9 @@ class SitesDataset(Dataset):
                 lat=combined_sample_dataset.site__latitude.values,
             )
 
-            # Dimension state for solar position data
-            solar_dim_name = "solar_time_utc"
-            combined_sample_dataset = combined_sample_dataset.assign_coords(
-                {solar_dim_name: solar_datetimes},
-            )
+            # Use existing dimension for solar positions
+            # TODO decouple this as a separate data varaible
+            solar_dim_name = "site__time_utc"
 
             # Assign solar position values
             for key, values in sun_position_features.items():

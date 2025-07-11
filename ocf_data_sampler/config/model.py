@@ -13,6 +13,7 @@ from typing_extensions import override
 NWP_PROVIDERS = [
     "ukv",
     "ecmwf",
+    "mo_global",
     "gfs",
     "icon_eu",
     "cloudcasting",
@@ -213,6 +214,17 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
     )
     public: bool = Field(False, description="Whether the NWP data is public or private")
 
+    @model_validator(mode="after")
+    def validate_accum_channels_subset(self) -> "NWP":
+        """Validate accum_channels is subset of channels."""
+        invalid_channels = set(self.accum_channels) - set(self.channels)
+        if invalid_channels:
+            raise ValueError(
+                f"NWP provider '{self.provider}': all values in 'accum_channels' should "
+                f"be present in 'channels'. Extra values found: {invalid_channels}",
+            )
+        return self
+
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:
         """Validator for 'provider'."""
@@ -289,6 +301,8 @@ class GSP(TimeWindowMixin, DropoutMixin):
         "20220314",
         description="Version of the GSP boundaries to use. Options are '20220314' or '20250109'.",
     )
+
+    public: bool = Field(False, description="Whether the NWP data is public or private")
 
 
 class Site(TimeWindowMixin, DropoutMixin):

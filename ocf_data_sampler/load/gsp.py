@@ -2,6 +2,7 @@
 
 from importlib.resources import files
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -26,13 +27,18 @@ def get_gsp_boundaries(version: str) -> pd.DataFrame:
     )
 
 
-def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArray:
-    """Open the GSP data.
+def open_gsp(
+    zarr_path: str,
+    boundaries_version: str = "20220314",
+    public: bool = False,
+) -> xr.DataArray:
+    """Open the GSP data and validates its data types.
 
     Args:
         zarr_path: Path to the GSP zarr data
         boundaries_version: Version of the GSP boundaries to use. Options are "20220314" or
         "20250109".
+        public: Whether the data is public or private.
 
     Returns:
         xr.DataArray: The opened GSP data
@@ -40,10 +46,14 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArr
     # Load UK GSP locations
     df_gsp_loc = get_gsp_boundaries(boundaries_version)
 
+    backend_kwargs = {}
     # Open the GSP generation data
-    ds = (
-        xr.open_zarr(zarr_path)
-        .rename({"datetime_gmt": "time_utc"})
+    if public:
+        backend_kwargs = {"storage_options": {"anon": True}}
+        # Currently only compatible with S3 bucket.
+
+    ds = xr.open_dataset(zarr_path, engine="zarr", backend_kwargs=backend_kwargs).rename(
+        {"datetime_gmt": "time_utc"},
     )
 
     if not (ds.gsp_id.isin(df_gsp_loc.index)).all():
@@ -62,4 +72,24 @@ def open_gsp(zarr_path: str, boundaries_version: str = "20220314") -> xr.DataArr
         effective_capacity_mwp=ds.capacity_mwp,
     )
 
-    return ds.generation_mw
+    gsp_da = ds.generation_mw
+
+    # Validate data types directly in loading function
+    if not np.issubdtype(gsp_da.dtype, np.floating):
+        raise TypeError(f"generation_mw should be floating, not {gsp_da.dtype}")
+
+    coord_dtypes = {
+        "time_utc": np.datetime64,
+        "gsp_id": np.integer,
+        "nominal_capacity_mwp": np.floating,
+        "effective_capacity_mwp": np.floating,
+        "x_osgb": np.floating,
+        "y_osgb": np.floating,
+    }
+
+    for coord, expected_dtype in coord_dtypes.items():
+        if not np.issubdtype(gsp_da.coords[coord].dtype, expected_dtype):
+            dtype = gsp_da.coords[coord].dtype
+            raise TypeError(f"{coord} should be {expected_dtype.__name__}, not {dtype}")
+
+    return gsp_da

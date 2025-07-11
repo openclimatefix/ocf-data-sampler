@@ -18,8 +18,8 @@ def test_site(tmp_path, site_config_filename):
     # Create dataset object
     dataset = SitesDataset(site_config_filename)
 
-    assert len(dataset) == 10 * 41
-    # TODO check 41
+    # (10 sites * 24 valid t0s per site = 240)
+    assert len(dataset) == 240
 
     # Generate a sample
     sample = dataset[0]
@@ -37,7 +37,6 @@ def test_site(tmp_path, site_config_filename):
         "satellite__time_utc",
         "nwp-ukv__channel",
         "nwp-ukv__y_osgb",
-        "solar_time_utc",
     }
 
     expected_coords_subset = {
@@ -45,12 +44,14 @@ def test_site(tmp_path, site_config_filename):
         "site__time_cos",
         "site__time_sin",
         "site__date_sin",
+        "solar_azimuth",
+        "solar_elevation",
     }
 
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
 
     sample.to_netcdf(f"{tmp_path}/sample.nc", mode="w", engine="h5netcdf")
-    sample = xr.open_dataset(f"{tmp_path}/sample.nc")
+    sample = xr.open_dataset(f"{tmp_path}/sample.nc", decode_timedelta=False)
 
     # Check dimensions
     assert set(sample.dims) == expected_dims, (
@@ -64,12 +65,12 @@ def test_site(tmp_path, site_config_filename):
     for coords in expected_coords_subset:
         assert coords in sample.coords
 
-    # check the shape of the data is correct
-    # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["satellite"].values.shape == (7, 1, 2, 2)
-    # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
-    # 1.5 hours of 30 minute data (inclusive)
+    # check the shape of the data is correct based on new config intervals and image sizes
+    # Satellite: (0 - (-30)) / 5 + 1 = 7 time steps; 2 channels (IR_016, VIS006); 24x24 pixels
+    assert sample["satellite"].values.shape == (7, 2, 24, 24)
+    # NWP-UKV: (480 - (-60)) / 60 + 1 = 10 time steps; 1 channel (t); 24x24 pixels
+    assert sample["nwp-ukv"].values.shape == (10, 1, 24, 24)
+    # Site: (60 - (-30)) / 30 + 1 = 4 time steps (from site_config_filename interval)
     assert sample["site"].values.shape == (4,)
 
 
@@ -122,15 +123,20 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
     expected_data_vars = {"nwp-ukv", "satellite", "site"}
     assert set(individual_xr_sample.data_vars) == expected_data_vars
 
-    assert individual_xr_sample["satellite"].values.shape == (7, 1, 2, 2)
-    assert individual_xr_sample["nwp-ukv"].values.shape == (4, 1, 2, 2)
-    assert individual_xr_sample["site"].values.shape == (4,)
+    # Satellite: (0 - (-30)) / 5 + 1 = 7 time steps; 2 channels (IR_016, VIS006); 24x24 pixels
+    assert individual_xr_sample["satellite"].values.shape == (7, 2, 24, 24)
+    # NWP-UKV: (480 - (-60)) / 60 + 1 = 10 time steps; 1 channel (t); 24x24 pixels
+    assert individual_xr_sample["nwp-ukv"].values.shape == (10, 1, 24, 24)
+    # Site: (60 - (-30)) / 30 + 1 = 4 time steps (from site_config_filename interval)
+    assert individual_xr_sample["site"].values.shape == (4,) # CORRECTED: Changed from (7,) to (4,)
 
     expected_coords_subset = {
         "site__date_cos",
         "site__time_cos",
         "site__time_sin",
         "site__date_sin",
+        "solar_azimuth",
+        "solar_elevation",
     }
     for coord_key in expected_coords_subset:
         assert coord_key in individual_xr_sample.coords
@@ -138,15 +144,18 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
 
 def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
     # Specify minimal structure for testing
-    raw_nwp_values = np.random.rand(4, 1, 2, 2)  # Single channel
-    fake_site_values = np.random.rand(197)
+    # NWP: Based on site_config_filename, (480 - (-60)) / 60 + 1 = 10 time steps
+    raw_nwp_values = np.random.rand(10, 1, 24, 24)
+    # Site: Based on site_config_filename, (60 - (-30)) / 30 + 1 = 4 time steps
+    number_of_site_values = 4 # CORRECTED: Changed from 7 to 4
+    fake_site_values = np.random.rand(number_of_site_values)
     site_dict = {
         "nwp": {
             "ukv": xr.DataArray(
                 raw_nwp_values,
                 dims=["time_utc", "channel", "y", "x"],
                 coords={
-                    "time_utc": pd.date_range("2024-01-01 00:00", periods=4, freq="h"),
+                    "time_utc": pd.date_range("2024-01-01 00:00", periods=10, freq="h"),
                     "channel": list(sites_dataset.config.input_data.nwp["ukv"].channels),
                 },
             ),
@@ -155,7 +164,9 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
             fake_site_values,
             dims=["time_utc"],
             coords={
-                "time_utc": pd.date_range("2024-01-01 00:00", periods=197, freq="15min"),
+                "time_utc": pd.date_range(
+                    "2024-01-01 00:00", periods=number_of_site_values, freq="30min",
+                ),
                 "capacity_kwp": 1000,
                 "site_id": 1,
                 "longitude": -3.5,
@@ -181,9 +192,11 @@ def test_process_and_combine_site_sample_dict(sites_dataset) -> None:
         )
 
     nwp_result = result["nwp-ukv"]
-    assert nwp_result.shape == (4, 1, 2, 2), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
+    assert nwp_result.shape == (10, 1, 24, 24), f"Unexpected shape for nwp-ukv : {nwp_result.shape}"
     site_result = result["site"]
-    assert site_result.shape == (197,), f"Unexpected shape for site: {site_result.shape}"
+    assert site_result.shape == (number_of_site_values,), (
+        f"Unexpected shape for site: {site_result.shape}"
+    )
 
 
 def test_potentially_coarsen(ds_nwp_ecmwf):
@@ -212,8 +225,8 @@ def test_solar_position_decoupling_site(tmp_path, site_config_filename):
     config_with_solar = config.model_copy(deep=True)
     config_with_solar.input_data.solar_position = SolarPosition(
         time_resolution_minutes=30,
-        interval_start_minutes=0,
-        interval_end_minutes=180,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
     )
 
     # Save both testing configurations
@@ -248,8 +261,8 @@ def test_convert_from_dataset_to_dict_solar_handling(tmp_path, site_config_filen
     config = load_yaml_configuration(site_config_filename)
     config.input_data.solar_position = SolarPosition(
         time_resolution_minutes=30,
-        interval_start_minutes=0,
-        interval_end_minutes=180,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
     )
 
     config_with_solar_path = tmp_path / "site_config_with_solar_for_dict.yaml"
@@ -276,8 +289,8 @@ def test_convert_netcdf_to_numpy_solar_handling(tmp_path, site_config_filename):
     config = load_yaml_configuration(site_config_filename)
     config.input_data.solar_position = SolarPosition(
         time_resolution_minutes=30,
-        interval_start_minutes=0,
-        interval_end_minutes=180,
+        interval_start_minutes=-30,
+        interval_end_minutes=60,
     )
 
     config_with_solar_path = tmp_path / "site_config_with_solar_for_numpy.yaml"
@@ -290,7 +303,7 @@ def test_convert_netcdf_to_numpy_solar_handling(tmp_path, site_config_filename):
     # Save to netCDF and load back
     netcdf_path = f"{tmp_path}/sample_with_solar.nc"
     sample_with_solar.to_netcdf(netcdf_path, mode="w", engine="h5netcdf")
-    loaded_sample = xr.open_dataset(netcdf_path)
+    loaded_sample = xr.open_dataset(netcdf_path, decode_timedelta=False)
 
     # Verify solar position data exists in sample
     solar_keys = ["solar_azimuth", "solar_elevation"]

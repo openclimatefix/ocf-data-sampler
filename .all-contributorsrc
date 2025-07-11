@@ -31,7 +31,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/42407101?v=4",
       "profile": "https://github.com/Sukh-P",
       "contributions": [
-        "code"
+        "code",
+        "bug"
       ]
     },
     {
@@ -76,7 +77,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/137530077?v=4",
       "profile": "https://github.com/felix-e-h-p",
       "contributions": [
-        "code"
+        "code",
+        "test"
       ]
     },
     {
@@ -111,6 +113,15 @@
       "name": "Sachin-G13",
       "avatar_url": "https://avatars.githubusercontent.com/u/190184500?v=4",
       "profile": "https://github.com/Sachin-G13",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "drona-gyawali",
+      "name": "Dorna Raj Gyawali",
+      "avatar_url": "https://avatars.githubusercontent.com/u/170401554?v=4",
+      "profile": "https://drona-gyawali.github.io/",
       "contributions": [
         "code"
       ]
