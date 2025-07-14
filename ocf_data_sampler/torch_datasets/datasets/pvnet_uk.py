@@ -280,6 +280,8 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
     def __getitem__(self, idx: int) -> NumpySample:
         # Get the coordinates of the sample
 
+        idx = int(idx)
+
         if idx >= len(self):
             raise ValueError(f"Index {idx} out of range for dataset of length {len(self)}")
 
