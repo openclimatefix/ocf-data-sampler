@@ -30,20 +30,6 @@ def apply_sampled_dropout_time(
         # checking if len match
         if len(dropout_frac) != len(dropout_timedeltas):
             raise ValueError("Lengths of dropout_frac and dropout_timedeltas should match")
-        # is dropout even necessary?
-        if (len(dropout_timedeltas) == 0):
-            return da
-        
-        # valid timedeltas check
-        for t in dropout_timedeltas:
-            if t > pd.Timedelta("0min"):
-                raise ValueError("Dropout timedeltas must be negative")
-            
-            
-        for i in range(len(dropout_frac)):
-            if dropout_frac[i] < 0:
-                raise ValueError("Probabilities can be negative")
-
 
         # probability sum check
         if not np.isclose(np.sum(dropout_frac),1.0,rtol=1e-9):
@@ -64,9 +50,6 @@ def apply_sampled_dropout_time(
         if dropout_frac > 0 and len(dropout_timedeltas) == 0:
             raise ValueError("To apply dropout, dropout_timedeltas must be provided")
 
-        for t in dropout_timedeltas:
-            if t > pd.Timedelta("0min"):
-                raise ValueError("Dropout timedeltas must be negative")
 
         if not (0 <= dropout_frac <= 1):
             raise ValueError("dropout_frac must be between 0 and 1 inclusive")
