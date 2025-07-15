@@ -69,6 +69,26 @@ def test_apply_sampled_dropout_time_none(da_sample):
     # Check data arrays are equal as dropout time would be None
     xr.testing.assert_equal(da_sample_dropout, da_sample)
 
+def test_apply_sampled_dropout_time_list(da_sample):
+    t0 = pd.Timestamp("2021-01-01 04:00:00")
+
+    dropout_timedeltas = pd.to_timedelta([-30, -45], unit="min")
+    da_sample_dropout = apply_sampled_dropout_time(
+        t0,
+        dropout_timedeltas=dropout_timedeltas,
+        dropout_frac=[0.5,0.5],
+        da=da_sample,
+    )
+
+    latest_expected_cut_off = t0 + pd.Timedelta(-30, "min")
+    
+    assert (
+        da_sample_dropout.sel(
+            time_utc=slice(latest_expected_cut_off + pd.Timedelta(5, "min"), None),
+        )
+        .isnull()
+        .all()
+    )
 
 @pytest.mark.parametrize("t0_str", ["12:30", "13:00", "13:30"])
 def test_apply_sampled_dropout_time(da_sample, t0_str):

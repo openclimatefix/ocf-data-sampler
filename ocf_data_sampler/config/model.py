@@ -5,7 +5,7 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 """
 
 from collections.abc import Iterator
-from typing import Literal
+from typing import Literal,Union
 
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
@@ -90,15 +90,10 @@ class DropoutMixin(Base):
         "negative or zero.",
     )
 
-    dropout_fraction: float = Field(
+    dropout_fraction: Union[float,list[float]] = Field(
         default=0,
-        description="Chance of dropout being applied to each sample",
-        ge=0,
-        le=1,
-    )
-    dropout_fractions: list[float] = Field(
-        default=[1.0],
-        description="List of probabilties that dropout of the correspoding timedelta is applied",
+        description="Either a float(Chance of dropout being applied to each sample) or a list of floats"
+        "(probability that dropout of the corresponding timedelta is applied)",
     )
 
     @field_validator("dropout_timedeltas_minutes")
@@ -108,23 +103,36 @@ class DropoutMixin(Base):
             if m > 0:
                 raise ValueError("Dropout timedeltas must be negative")
         return v
+        
     
-    @field_validator("dropout_fractions")
-    def dropout_fractions_equal_one(cls, dropout_frac: list[float]) -> list[float]:
+    @field_validator("dropout_fraction")
+    def dropout_fractions(cls, dropout_frac: list[float]) -> list[float]:
         """Validate 'dropout_frac'."""
-        import math
-        if not math.isclose(sum(dropout_frac),1.0,rel_tol=1e-9):
-            raise ValueError('Sum of dropout_frac must be 1')
+        from math import isclose
+        if isinstance(dropout_frac, float):
+            if not (dropout_frac <= 1):
+                raise ValueError("Input should be less than or equal to 1")
+            elif not (dropout_frac >= 0):
+                raise ValueError("Input should be greater than or equal to 0")
+            
+        elif isinstance(dropout_frac, list):
+            if not dropout_frac:
+                raise ValueError("List cannot be empty.")
+            
+            if not all(isinstance(i, float) for i in dropout_frac):
+                raise ValueError("All elements in the list must be floats.")
+            
+            if not all(0 <= i <= 1 for i in dropout_frac):
+                raise ValueError("Each float in the list must be between 0 and 1.")
+            
+            if not isclose(sum(dropout_frac), 1.0, rel_tol=1e-9):
+                raise ValueError("Sum of all floats in the list must be 1.0.")
+            
+
         else:
-            return dropout_frac
-        
-    @field_validator("dropout_fractions")
-    def dropout_fractions_negative(cls, dropout_frac : list[float]) -> list[float]:
-        for i in dropout_frac:
-            if i < 0:
-                raise ValueError("Probabilities cannot be negative")
-        
+            raise TypeError("Must be either a float or a list of floats.")
         return dropout_frac
+    
 
     @model_validator(mode="after")
     def dropout_instructions_consistent(self) -> "DropoutMixin":
