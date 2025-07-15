@@ -26,7 +26,7 @@ def apply_sampled_dropout_time(
             Should add up to 1,must from 0 to 1,length must same as dropout_timedeltas
         da: Xarray DataArray with 'time_utc' coordinate
     """
-    if dropout_frac.__class__ == list:
+    if  isinstance(dropout_frac, list):
         # checking if len match
         if len(dropout_frac) != len(dropout_timedeltas):
             raise ValueError("Lengths of dropout_frac and dropout_timedeltas should match")
