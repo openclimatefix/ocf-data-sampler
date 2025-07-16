@@ -383,12 +383,12 @@ class SitesDatasetConcurrent(Dataset):
         # Filter t0 times to given range
         if start_time is not None:
             valid_t0s = valid_t0s[
-                valid_t0s["t0"] >= pd.Timestamp(start_time)
+                valid_t0s >= pd.Timestamp(start_time)
             ]
 
         if end_time is not None:
             valid_t0s = valid_t0s[
-                valid_t0s["t0"] <= pd.Timestamp(end_time)
+                valid_t0s <= pd.Timestamp(end_time)
             ]
 
         # Assign coords and indices to self
