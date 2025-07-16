@@ -241,7 +241,7 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
     """
     if a.empty or b.empty:
         return pd.DataFrame(columns=["start_dt", "end_dt"])
-    
+
     # Maybe switch these for efficiency in the next section. We will do the native python loop over
     # the shorter dataframe
     if len(a) > len(b):
