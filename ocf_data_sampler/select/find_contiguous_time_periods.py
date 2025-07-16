@@ -241,7 +241,7 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
     """
     if a.empty or b.empty:
         return pd.DataFrame(columns=["start_dt", "end_dt"])
-
+    
     # Maybe switch these for efficiency in the next section. We will do the native python loop over
     # the shorter dataframe
     if len(a) > len(b):
@@ -262,20 +262,18 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
 
         overlapping_periods = b[(a_period.start_dt <= b.end_dt) & (a_period.end_dt >= b.start_dt)]
 
-        # If there are any overlapping periods store them
-        if len(overlapping_periods)>0:
+        # Now find the intersection of each period in `overlapping_periods` with
+        # the period from `a` that starts at `a_start_dt` and ends at `a_end_dt`.
+        # We do this by clipping each row of `overlapping_periods`
+        # to start no earlier than `a_start_dt`, and end no later than `a_end_dt`.
 
-            # Now find the intersection of each period in `overlapping_periods` with
-            # the period from `a` that starts at `a_start_dt` and ends at `a_end_dt`.
-            # We do this by clipping each row of `overlapping_periods`
-            # to start no earlier than `a_start_dt`, and end no later than `a_end_dt`.
+        # First, make a copy, so we don't clip the underlying data in `b`.
+        intersection = overlapping_periods.copy()
+        intersection["start_dt"] = intersection.start_dt.clip(lower=a_period.start_dt)
+        intersection["end_dt"] = intersection.end_dt.clip(upper=a_period.end_dt)
 
-            # First, make a copy, so we don't clip the underlying data in `b`.
-            intersection = overlapping_periods.copy()
-            intersection["start_dt"] = intersection.start_dt.clip(lower=a_period.start_dt)
-            intersection["end_dt"] = intersection.end_dt.clip(upper=a_period.end_dt)
+        all_intersecting_periods.append(intersection)
 
-            all_intersecting_periods.append(intersection)
 
     all_intersecting_periods = pd.concat(all_intersecting_periods)
     return all_intersecting_periods.sort_values(by="start_dt").reset_index(drop=True)
