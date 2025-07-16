@@ -120,3 +120,25 @@ def test_inconsistent_dropout_use(test_config_filename):
         match="To use dropout timedeltas dropout fraction should be > 0",
     ):
         _ = Configuration(**configuration.model_dump())
+
+
+def test_accum_channels_validation(test_config_filename):
+    """Test accum_channels validation with required normalization constants."""
+    # Load valid config (implicitly tests valid case)
+    config = load_yaml_configuration(test_config_filename)
+    nwp_name, _ = next(iter(config.input_data.nwp.root.items()))
+
+    # Test invalid channel scenario
+    invalid_config = config.model_copy(deep=True)
+    invalid_nwp = invalid_config.input_data.nwp.root[nwp_name]
+    invalid_nwp.accum_channels = ["invalid_channel"]
+
+    # Verify exact error message
+    expected_error = (
+        rf"input_data.nwp.{nwp_name}\n"
+        fr"  Value error, NWP provider '{nwp_name}': all values in 'accum_channels' "
+        r"should be present in 'channels'\. "
+        r"Extra values found: {'invalid_channel'}.*"
+    )
+    with pytest.raises(ValidationError, match=expected_error):
+        _ = Configuration(**invalid_config.model_dump())

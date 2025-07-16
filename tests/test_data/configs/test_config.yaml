@@ -19,6 +19,8 @@ input_data:
       time_resolution_minutes: 60
       channels:
         - t
+      accum_channels:
+        - t
       image_size_pixels_height: 2
       image_size_pixels_width: 2
       dropout_timedeltas_minutes: [-180]
@@ -28,6 +30,9 @@ input_data:
         t:
           mean: 283.64913206
           std: 4.38818501
+        diff_t:
+          mean: 0.0
+          std: 1.0
 
   satellite:
     zarr_path: tests/data/sat_data.zarr
