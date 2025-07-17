@@ -81,7 +81,7 @@ def test_apply_sampled_dropout_time_list(da_sample):
     )
 
     latest_expected_cut_off = t0 + pd.Timedelta(-30, "min")
-    
+
     assert (
         da_sample_dropout.sel(
             time_utc=slice(latest_expected_cut_off + pd.Timedelta(5, "min"), None),

@@ -33,15 +33,15 @@ def apply_sampled_dropout_time(
 
         # probability sum check
         if not np.isclose(np.sum(dropout_frac),1.0,rtol=1e-9):
-            raise ValueError('Sum of dropout_frac must be 1')
-        
-        
-            
+            raise ValueError("Sum of dropout_frac must be 1")
+
+
+
 
         dropout_time = t0 + np.random.choice(dropout_timedeltas,p=dropout_frac)
 
         return da.where(da.time_utc <= dropout_time)
-        
+
 
 
     # old logic
