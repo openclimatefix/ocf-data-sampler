@@ -498,8 +498,6 @@ class SitesDatasetConcurrent(Dataset):
         # Get valid time period for nwp and satellite
         datasets_without_site = {k: v for k, v in datasets_dict.items() if k != "site"}
         valid_time_periods = find_valid_time_periods(datasets_without_site, self.config)
-
-        # Loop over each location in system id and obtain valid periods
         sites = datasets_dict["site"]
 
         # Taking just the first site value, assume t0s the same for all of them
