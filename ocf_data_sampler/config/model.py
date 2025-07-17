@@ -117,20 +117,20 @@ class DropoutMixin(Base):
             
         elif isinstance(dropout_frac, list):
             if not dropout_frac:
-                raise ValueError("List cannot be empty.")
+                raise ValueError("List cannot be empty")
             
             if not all(isinstance(i, float) for i in dropout_frac):
-                raise ValueError("All elements in the list must be floats.")
+                raise ValueError("All elements in the list must be floats")
             
             if not all(0 <= i <= 1 for i in dropout_frac):
-                raise ValueError("Each float in the list must be between 0 and 1.")
+                raise ValueError("Each float in the list must be between 0 and 1")
             
             if not isclose(sum(dropout_frac), 1.0, rel_tol=1e-9):
-                raise ValueError("Sum of all floats in the list must be 1.0.")
+                raise ValueError("Sum of all floats in the list must be 1.0")
             
 
         else:
-            raise TypeError("Must be either a float or a list of floats.")
+            raise TypeError("Must be either a float or a list of floats")
         return dropout_frac
     
 
