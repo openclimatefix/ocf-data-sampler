@@ -22,7 +22,7 @@ def apply_sampled_dropout_time(
         dropout_timedeltas: List of timedeltas relative to t0 to pick from
         dropout_frac: Either a probability that dropout will be applied.
             This should be between 0 and 1 inclusive.
-            Or a list of probabilities for each of the corresponding timedeltas. 
+            Or a list of probabilities for each of the corresponding timedeltas
         da: Xarray DataArray with 'time_utc' coordinate
     """
     if  isinstance(dropout_frac, list):
