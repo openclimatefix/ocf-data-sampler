@@ -92,8 +92,8 @@ class DropoutMixin(Base):
 
     dropout_fraction: float|list[float] = Field(
         default=0,
-        description="Either a float(Chance of dropout being applied to each sample) or a list of floats"
-        "(probability that dropout of the corresponding timedelta is applied)",
+        description="Either a float(Chance of dropout being applied to each sample) or a list of "
+        "floats (probability that dropout of the corresponding timedelta is applied)",
     )
 
     @field_validator("dropout_timedeltas_minutes")
