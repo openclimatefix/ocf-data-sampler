@@ -5,7 +5,7 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 """
 
 from collections.abc import Iterator
-from typing import Literal,Union
+from typing import Literal
 
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
@@ -90,7 +90,7 @@ class DropoutMixin(Base):
         "negative or zero.",
     )
 
-    dropout_fraction: Union[float,list[float]] = Field(
+    dropout_fraction: float|list[float] = Field(
         default=0,
         description="Either a float(Chance of dropout being applied to each sample) or a list of floats"
         "(probability that dropout of the corresponding timedelta is applied)",
@@ -106,7 +106,7 @@ class DropoutMixin(Base):
         
     
     @field_validator("dropout_fraction")
-    def dropout_fractions(cls, dropout_frac: list[float]) -> list[float]:
+    def dropout_fractions(cls, dropout_frac: float|list[float]) -> list[float]:
         """Validate 'dropout_frac'."""
         from math import isclose
         if isinstance(dropout_frac, float):
