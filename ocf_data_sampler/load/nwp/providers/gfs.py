@@ -29,8 +29,7 @@ def open_gfs(zarr_path: str | list[str], public: bool = False) -> xr.DataArray:
         public=public,
         backend="dask",
     )
-    nwp: xr.DataArray = gfs.to_array()
-    nwp = nwp.rename({"variable": "channel"})  # `variable` appears when using `to_array`
+    nwp: xr.DataArray = gfs.to_array(dim="channel")
 
     del gfs
 
