@@ -31,10 +31,6 @@ def apply_sampled_dropout_time(
         if len(dropout_frac) != len(dropout_timedeltas):
             raise ValueError("Lengths of dropout_frac and dropout_timedeltas should match")
 
-        # probability sum check
-        if not np.isclose(np.sum(dropout_frac),1.0,rtol=1e-9):
-            raise ValueError("Sum of dropout_frac must be 1")
-
 
 
 
