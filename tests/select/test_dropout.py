@@ -90,6 +90,22 @@ def test_apply_sampled_dropout_time_list(da_sample):
         .all()
     )
 
+
+def test_apply_sampled_dropout_time_mismatched_lengths(da_sample):
+    t0 = pd.Timestamp("2021-01-01 04:00:00")
+
+    # 2 timedeltas, but 3 dropout fractions
+    dropout_timedeltas = pd.to_timedelta([-30, -45], unit="min")
+    dropout_frac = [0.5, 0.3, 0.2]
+
+    with pytest.raises(ValueError, match="Lengths of dropout_frac and dropout_timedeltas should match"):
+        _ = apply_sampled_dropout_time(
+            t0,
+            dropout_timedeltas=dropout_timedeltas,
+            dropout_frac=dropout_frac,
+            da=da_sample,
+        )
+
 @pytest.mark.parametrize("t0_str", ["12:30", "13:00", "13:30"])
 def test_apply_sampled_dropout_time(da_sample, t0_str):
     t0_time = pd.Timestamp(f"2024-01-01 {t0_str}")
