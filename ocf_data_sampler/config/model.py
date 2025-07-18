@@ -1,13 +1,17 @@
 """Configuration model for the dataset.
 
+
 Absolute or relative zarr filepath(s).
 Prefix with a protocol like s3:// to read from alternative filesystems.
 """
 
+
 from collections.abc import Iterator
+
 
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
+
 
 NWP_PROVIDERS = [
     "ukv",
@@ -18,17 +22,24 @@ NWP_PROVIDERS = [
 ]
 
 
+
+
 class Base(BaseModel):
     """Pydantic Base model where no extras can be added."""
+
 
     class Config:
         """Config class."""
 
+
         extra = "forbid"  # forbid use of extra kwargs
+
+
 
 
 class General(Base):
     """General pydantic model."""
+
 
     name: str = Field("example", description="The name of this configuration file")
     description: str = Field(
@@ -37,8 +48,11 @@ class General(Base):
     )
 
 
+
+
 class TimeWindowMixin(Base):
     """Mixin class, to add interval start, end and resolution minutes."""
+
 
     time_resolution_minutes: int = Field(
         ...,
@@ -46,15 +60,18 @@ class TimeWindowMixin(Base):
         description="The temporal resolution of the data in minutes",
     )
 
+
     interval_start_minutes: int = Field(
         ...,
         description="Data interval starts at `t0 + interval_start_minutes`",
     )
 
+
     interval_end_minutes: int = Field(
         ...,
         description="Data interval ends at `t0 + interval_end_minutes`",
     )
+
 
     @model_validator(mode="after")
     def validate_intervals(self) -> "TimeWindowMixin":
@@ -79,14 +96,18 @@ class TimeWindowMixin(Base):
         return self
 
 
+
+
 class DropoutMixin(Base):
     """Mixin class, to add dropout minutes."""
+
 
     dropout_timedeltas_minutes: list[int] = Field(
         default=[],
         description="List of possible minutes before t0 where data availability may start. Must be "
         "negative or zero.",
     )
+
 
     dropout_fraction: float = Field(
         default=0,
@@ -95,6 +116,7 @@ class DropoutMixin(Base):
         le=1,
     )
 
+
     @field_validator("dropout_timedeltas_minutes")
     def dropout_timedeltas_minutes_negative(cls, v: list[int]) -> list[int]:
         """Validate 'dropout_timedeltas_minutes'."""
@@ -102,6 +124,7 @@ class DropoutMixin(Base):
             if m > 0:
                 raise ValueError("Dropout timedeltas must be negative")
         return v
+
 
     @model_validator(mode="after")
     def dropout_instructions_consistent(self) -> "DropoutMixin":
@@ -115,14 +138,18 @@ class DropoutMixin(Base):
         return self
 
 
+
+
 class SpatialWindowMixin(Base):
     """Mixin class, to add path and image size."""
+
 
     image_size_pixels_height: int = Field(
         ...,
         ge=0,
         description="The number of pixels of the height of the region of interest",
     )
+
 
     image_size_pixels_width: int = Field(
         ...,
@@ -131,15 +158,20 @@ class SpatialWindowMixin(Base):
     )
 
 
+
+
 class NormalisationValues(Base):
     """Normalisation mean and standard deviation."""
     mean: float = Field(..., description="Mean value for normalization")
     std: float = Field(..., gt=0, description="Standard deviation (must be positive)")
 
 
+
+
 class NormalisationConstantsMixin(Base):
     """Normalisation constants for multiple channels."""
     normalisation_constants: dict[str, NormalisationValues]
+
 
     @property
     def channel_means(self) -> dict[str, float]:
@@ -148,6 +180,8 @@ class NormalisationConstantsMixin(Base):
             channel: norm_values.mean
             for channel, norm_values in self.normalisation_constants.items()
         }
+
+
 
 
     @property
@@ -159,19 +193,96 @@ class NormalisationConstantsMixin(Base):
         }
 
 
-class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
-    """Satellite configuration model."""
 
-    zarr_path: str | tuple[str] | list[str] = Field(
-        ...,
+
+class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
+    """Satellite configuration model with Ice Chunk support."""
+
+
+    zarr_path: str | tuple[str] | list[str] | None = Field(
+        None,
         description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
     )
+
+
+    # NEW: Ice Chunk support
+    icechunk_path: str | None = Field(
+        None,
+        description="Remote Ice Chunk dataset path for cloud-native streaming. "
+        "When provided, this will be used instead of zarr_path with 103+ MB/s optimizations.",
+    )
+
+
+    bucket_name: str = Field(
+        "gsoc-dakshbir",
+        description="GCS bucket name for Ice Chunk datasets",
+    )
+
+
+    # NEW: True Ice Chunk settings
+    use_true_icechunk: bool = Field(
+        False,
+        description="Whether to use the true Ice Chunk API for versioning and transactions.",
+    )
+
+
+    icechunk_branch: str | None = Field(
+        "main",
+        description="The Ice Chunk branch to use (e.g., 'main').",
+    )
+
+
+    icechunk_commit: str | None = Field(
+        None,
+        description="The specific Ice Chunk commit ID to use. If provided, it overrides the branch.",
+    )
+
+
+    # NEW: Optimization parameters (from your research)
+    use_optimized_streaming: bool = Field(
+        True,
+        description="Enable 103+ MB/s streaming optimizations for Ice Chunk",
+    )
+
+
+    optimal_time_steps: int = Field(
+        6,
+        description="Optimal time steps per chunk for streaming. "
+        "Default is 6, which is optimal for 11-channel satellite data.",
+    )
+
+
+    optimal_block_size_mb: int = Field(
+        64,
+        description="Optimal GCS block size in MB (default: 64 from optimization research)",
+    )
+
 
     channels: list[str] = Field(
         ...,
         description="the satellite channels that are used",
     )
+
+
+    @model_validator(mode="after")
+    def validate_data_source(self) -> "Satellite":
+        """Validate that either zarr_path or icechunk_path is provided."""
+        if not self.zarr_path and not self.icechunk_path:
+            raise ValueError(
+                "Either 'zarr_path' or 'icechunk_path' must be provided for satellite data"
+            )
+       
+        if self.zarr_path and self.icechunk_path:
+            # If both provided, prefer icechunk_path and warn
+            import warnings
+            warnings.warn(
+                "Both zarr_path and icechunk_path provided. Using icechunk_path for optimized streaming.",
+                UserWarning
+            )
+       
+        return self
+
 
     @model_validator(mode="after")
     def check_all_channel_have_normalisation_constants(self) -> "Satellite":
@@ -186,8 +297,11 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
         return self
 
 
+
+
 class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
     """NWP configuration model."""
+
 
     zarr_path: str | tuple[str] | list[str] = Field(
         ...,
@@ -195,14 +309,18 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         "to read from alternative filesystems.",
     )
 
+
     channels: list[str] = Field(
         ...,
         description="the channels used in the nwp data",
     )
 
+
     provider: str = Field(..., description="The provider of the NWP data")
 
+
     accum_channels: list[str] = Field([], description="the nwp channels which need to be diffed")
+
 
     max_staleness_minutes: int | None = Field(
         None,
@@ -210,6 +328,7 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         " used to construct an example. If set to None, then the max staleness is set according to"
         " the maximum forecast horizon of the NWP and the requested forecast length.",
     )
+
 
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:
@@ -219,6 +338,8 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         return v
 
 
+
+
     @model_validator(mode="after")
     def check_all_channel_have_normalisation_constants(self) -> "NWP":
         """Check that all the channels have normalisation constants."""
@@ -226,12 +347,14 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         non_accum_channels = [c for c in self.channels if c not in self.accum_channels]
         accum_channel_names = [f"diff_{c}" for c in self.accum_channels]
 
+
         missing_norm_values = set(non_accum_channels) - set(normalisation_channels)
         if len(missing_norm_values)>0:
             raise ValueError(
                 "Normalsation constants must be provided for all channels. Missing values for "
                 f"channels: {missing_norm_values}",
             )
+
 
         missing_norm_values = set(accum_channel_names) - set(normalisation_channels)
         if len(missing_norm_values)>0:
@@ -244,38 +367,50 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         return self
 
 
+
+
 class MultiNWP(RootModel):
     """Configuration for multiple NWPs."""
 
+
     root: dict[str, NWP]
+
 
     @override
     def __getattr__(self, item: str) -> NWP:
         return self.root[item]
 
+
     @override
     def __getitem__(self, item: str) -> NWP:
         return self.root[item]
+
 
     @override
     def __len__(self) -> int:
         return len(self.root)
 
+
     @override
     def __iter__(self) -> Iterator:
         return iter(self.root)
 
+
     def keys(self) -> Iterator[str]:
         """Returns dictionary-like keys."""
         return self.root.keys()
+
 
     def items(self) -> Iterator[tuple[str, NWP]]:
         """Returns dictionary-like items."""
         return self.root.items()
 
 
+
+
 class GSP(TimeWindowMixin, DropoutMixin):
     """GSP configuration model."""
+
 
     zarr_path: str = Field(
         ...,
@@ -284,8 +419,11 @@ class GSP(TimeWindowMixin, DropoutMixin):
     )
 
 
+
+
 class Site(TimeWindowMixin, DropoutMixin):
     """Site configuration model."""
+
 
     file_path: str = Field(
         ...,
@@ -296,16 +434,22 @@ class Site(TimeWindowMixin, DropoutMixin):
         description="The CSV files describing power system",
     )
 
+
     # TODO validate the netcdf for sites
     # TODO validate the csv for metadata
+
+
 
 
 class SolarPosition(TimeWindowMixin):
     """Solar position configuration model."""
 
 
+
+
 class InputData(Base):
     """Input data model."""
+
 
     satellite: Satellite | None = None
     nwp: MultiNWP | None = None
@@ -314,8 +458,13 @@ class InputData(Base):
     solar_position: SolarPosition | None = None
 
 
+
+
 class Configuration(Base):
     """Configuration model for the dataset."""
 
+
     general: General = General()
     input_data: InputData = InputData()
+
+
