@@ -47,7 +47,7 @@ def get_xr_data_array_from_xr_dataset(ds: xr.Dataset) -> xr.DataArray:
     Args:
         ds: xr.Dataset to extract xr.DataArray from
     """
-    datavars = list(ds.var())
+    datavars = list(ds.data_vars)
     if len(datavars) != 1:
         raise ValueError("Cannot open as xr.DataArray: dataset contains multiple variables")
     return ds[datavars[0]]

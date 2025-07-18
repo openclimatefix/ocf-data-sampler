@@ -35,6 +35,7 @@ dependencies = [
     "pyaml_env",
     "pyresample",
     "h5netcdf",
+    "xarray-tensorstore==0.1.5",
 ]
 
 [dependency-groups]
