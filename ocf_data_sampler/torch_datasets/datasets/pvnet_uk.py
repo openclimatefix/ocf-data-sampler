@@ -30,19 +30,9 @@ from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
     merge_dicts,
 )
-from ocf_data_sampler.utils import minutes
+from ocf_data_sampler.utils import compute, minutes
 
 xr.set_options(keep_attrs=True)
-
-
-def compute(xarray_dict: dict) -> dict:
-    """Eagerly load a nested dictionary of xarray DataArrays."""
-    for k, v in xarray_dict.items():
-        if isinstance(v, dict):
-            xarray_dict[k] = compute(v)
-        else:
-            xarray_dict[k] = v.compute(scheduler="single-threaded")
-    return xarray_dict
 
 
 def get_gsp_locations(
@@ -279,6 +269,8 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
     @override
     def __getitem__(self, idx: int) -> NumpySample:
         # Get the coordinates of the sample
+
+        idx = int(idx)
 
         if idx >= len(self):
             raise ValueError(f"Index {idx} out of range for dataset of length {len(self)}")
