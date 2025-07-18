@@ -90,11 +90,10 @@ class DropoutMixin(Base):
         "negative or zero.",
     )
 
-    dropout_fraction: float = Field(
+    dropout_fraction: float|list[float] = Field(
         default=0,
-        description="Chance of dropout being applied to each sample",
-        ge=0,
-        le=1,
+        description="Either a float(Chance of dropout being applied to each sample) or a list of "
+        "floats (probability that dropout of the corresponding timedelta is applied)",
     )
 
     @field_validator("dropout_timedeltas_minutes")
@@ -104,6 +103,36 @@ class DropoutMixin(Base):
             if m > 0:
                 raise ValueError("Dropout timedeltas must be negative")
         return v
+
+
+    @field_validator("dropout_fraction")
+    def dropout_fractions(cls, dropout_frac: float|list[float]) -> float|list[float]:
+        """Validate 'dropout_frac'."""
+        from math import isclose
+        if isinstance(dropout_frac, float):
+            if not (dropout_frac <= 1):
+                raise ValueError("Input should be less than or equal to 1")
+            elif not (dropout_frac >= 0):
+                raise ValueError("Input should be greater than or equal to 0")
+
+        elif isinstance(dropout_frac, list):
+            if not dropout_frac:
+                raise ValueError("List cannot be empty")
+
+            if not all(isinstance(i, float) for i in dropout_frac):
+                raise ValueError("All elements in the list must be floats")
+
+            if not all(0 <= i <= 1 for i in dropout_frac):
+                raise ValueError("Each float in the list must be between 0 and 1")
+
+            if not isclose(sum(dropout_frac), 1.0, rel_tol=1e-9):
+                raise ValueError("Sum of all floats in the list must be 1.0")
+
+
+        else:
+            raise TypeError("Must be either a float or a list of floats")
+        return dropout_frac
+
 
     @model_validator(mode="after")
     def dropout_instructions_consistent(self) -> "DropoutMixin":
