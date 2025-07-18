@@ -98,7 +98,8 @@ def test_apply_sampled_dropout_time_mismatched_lengths(da_sample):
     dropout_timedeltas = pd.to_timedelta([-30, -45], unit="min")
     dropout_frac = [0.5, 0.3, 0.2]
 
-    with pytest.raises(ValueError, match="Lengths of dropout_frac and dropout_timedeltas should match"):
+    with pytest.raises(ValueError,
+                       match="Lengths of dropout_frac and dropout_timedeltas should match"):
         _ = apply_sampled_dropout_time(
             t0,
             dropout_timedeltas=dropout_timedeltas,
