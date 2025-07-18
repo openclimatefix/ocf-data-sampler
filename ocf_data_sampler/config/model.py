@@ -106,7 +106,7 @@ class DropoutMixin(Base):
 
 
     @field_validator("dropout_fraction")
-    def dropout_fractions(cls, dropout_frac: float|list[float]) -> list[float]:
+    def dropout_fractions(cls, dropout_frac: float|list[float]) -> float|list[float]:
         """Validate 'dropout_frac'."""
         from math import isclose
         if isinstance(dropout_frac, float):
