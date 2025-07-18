@@ -242,6 +242,11 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
     if a.empty or b.empty:
         return pd.DataFrame(columns=["start_dt", "end_dt"])
 
+    # Maybe switch these for efficiency in the next section. We will do the native python loop over
+    # the shorter dataframe
+    if len(a) > len(b):
+        a, b = b, a
+
     all_intersecting_periods = []
     for a_period in a.itertuples():
         # Five ways in which two periods may overlap:
@@ -250,12 +255,12 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
         # In all five, `a` must always start before (or equal to) where `b` ends,
         # and `a` must always end after (or equal to) where `b` starts.
 
-        overlapping_periods = b[(a_period.start_dt <= b.end_dt) & (a_period.end_dt >= b.start_dt)]
-
         # There are two ways in which two periods may *not* overlap:
         # a: |---|        or        |---|
         # b:       |---|      |---|
-        # `overlapping` will not include periods which do *not* overlap.
+        # `overlapping_periods` will not include periods which do *not* overlap.
+
+        overlapping_periods = b[(a_period.start_dt <= b.end_dt) & (a_period.end_dt >= b.start_dt)]
 
         # Now find the intersection of each period in `overlapping_periods` with
         # the period from `a` that starts at `a_start_dt` and ends at `a_end_dt`.
@@ -268,6 +273,7 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
         intersection["end_dt"] = intersection.end_dt.clip(upper=a_period.end_dt)
 
         all_intersecting_periods.append(intersection)
+
 
     all_intersecting_periods = pd.concat(all_intersecting_periods)
     return all_intersecting_periods.sort_values(by="start_dt").reset_index(drop=True)
