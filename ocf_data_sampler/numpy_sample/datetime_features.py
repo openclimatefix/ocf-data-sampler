@@ -6,18 +6,15 @@ import pandas as pd
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 
-
-
 def encode_datetimes(datetimes: pd.DatetimeIndex) -> NumpySample:
     """Creates dictionary of sin and cos datetime embeddings.
-    
+
     Args:
-        dt: DatetimeIndex to create radian embeddings for
+        datetimes: DatetimeIndex to create radian embeddings for
 
     Returns:
         Dictionary of datetime encodings
     """
-
     day_of_year = datetimes.dayofyear
     minute_of_day = datetimes.minute + datetimes.hour * 60
 
