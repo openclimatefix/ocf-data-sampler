@@ -40,10 +40,10 @@ def test_site(tmp_path, site_config_filename):
     }
 
     expected_coords_subset = {
-        "site__date_cos",
-        "site__time_cos",
-        "site__time_sin",
-        "site__date_sin",
+        "date_cos",
+        "time_cos",
+        "time_sin",
+        "date_sin",
         "solar_azimuth",
         "solar_elevation",
     }
@@ -131,10 +131,10 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
     assert individual_xr_sample["site"].values.shape == (4,) # CORRECTED: Changed from (7,) to (4,)
 
     expected_coords_subset = {
-        "site__date_cos",
-        "site__time_cos",
-        "site__time_sin",
-        "site__date_sin",
+        "date_cos",
+        "time_cos",
+        "time_sin",
+        "date_sin",
         "solar_azimuth",
         "solar_elevation",
     }

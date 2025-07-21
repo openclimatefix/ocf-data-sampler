@@ -13,7 +13,7 @@ from ocf_data_sampler.numpy_sample import (
     convert_nwp_to_numpy_sample,
     convert_satellite_to_numpy_sample,
     convert_site_to_numpy_sample,
-    make_datetime_numpy_dict,
+    encode_datetimes,
     make_sun_position_numpy_sample,
 )
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
@@ -249,7 +249,7 @@ class SitesDataset(Dataset):
 
         # add datetime features
         datetimes = pd.DatetimeIndex(combined_sample_dataset.site__time_utc.values)
-        datetime_features = make_datetime_numpy_dict(datetimes=datetimes, key_prefix="site_")
+        datetime_features = encode_datetimes(datetimes=datetimes)
         combined_sample_dataset = combined_sample_dataset.assign_coords(
             {k: ("site__time_utc", v) for k, v in datetime_features.items()},
         )
@@ -445,11 +445,7 @@ class SitesDatasetConcurrent(Dataset):
             da_sites = da_sites / da_sites.capacity_kwp
 
             # Convert to NumpyBatch
-            numpy_modalities.append(
-                convert_site_to_numpy_sample(
-                    da_sites,
-                ),
-            )
+            numpy_modalities.append(convert_site_to_numpy_sample(da_sites))
 
         # Only add solar position if explicitly configured
         has_solar_config = (
@@ -578,13 +574,11 @@ def convert_netcdf_to_numpy_sample(ds: xr.Dataset) -> dict:
         sample_dict["sat"] = sample_dict.pop("satellite")
 
     # process and combine the datasets
-    sample = convert_to_numpy_and_combine(
-        dataset_dict=sample_dict,
-    )
+    sample = convert_to_numpy_and_combine(dataset_dict=sample_dict)
 
-    # Extraction of solar position coords
-    solar_keys = ["solar_azimuth", "solar_elevation"]
-    for key in solar_keys:
+    # Add solar coord and datetime features
+    keys = ["solar_azimuth", "solar_elevation", "date_sin", "date_cos", "time_sin", "time_cos"]
+    for key in keys:
         if key in ds.coords:
             sample[key] = ds.coords[key].values
 
@@ -672,11 +666,7 @@ def convert_to_numpy_and_combine(dataset_dict: dict[xr.Dataset]) -> NumpySample:
     if "site" in dataset_dict:
         da_sites = dataset_dict["site"]
 
-        numpy_modalities.append(
-            convert_site_to_numpy_sample(
-                da_sites,
-            ),
-        )
+        numpy_modalities.append(convert_site_to_numpy_sample(da_sites))
 
     # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
