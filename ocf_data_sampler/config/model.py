@@ -98,44 +98,66 @@ class TimeWindowMixin(Base):
 
 
 
-class DropoutMixin(Base):
-    """Mixin class, to add dropout minutes."""
+# ocf_data_sampler/config/model.py
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+class DropoutMixin(BaseModel):
+    """Mixin class, to add dropout minutes."""
 
     dropout_timedeltas_minutes: list[int] = Field(
         default=[],
-        description="List of possible minutes before t0 where data availability may start. Must be "
-        "negative or zero.",
+        description="List of possible minutes before t0 where data availability may start. Must be negative or zero.",
     )
 
-
-    dropout_fraction: float = Field(
+    # merged type from both branches:
+    dropout_fraction: float | list[float] = Field(
         default=0,
-        description="Chance of dropout being applied to each sample",
-        ge=0,
-        le=1,
+        description=(
+            "Either a float (chance of dropout being applied to each sample) "
+            "or a list of floats (probability that dropout of the corresponding "
+            "timedelta is applied; list must sum to 1.0)"
+        ),
     )
-
 
     @field_validator("dropout_timedeltas_minutes")
     def dropout_timedeltas_minutes_negative(cls, v: list[int]) -> list[int]:
-        """Validate 'dropout_timedeltas_minutes'."""
         for m in v:
             if m > 0:
-                raise ValueError("Dropout timedeltas must be negative")
+                raise ValueError("Dropout timedeltas must be zero or negative")
         return v
 
+    @field_validator("dropout_fraction")
+    def dropout_fraction_validator(cls, v: float | list[float]) -> float | list[float]:
+        """Validate single float in [0,1] or list of floats summing to 1.0."""
+        from math import isclose
+
+        if isinstance(v, float):
+            if not (0.0 <= v <= 1.0):
+                raise ValueError("dropout_fraction float must be between 0 and 1")
+            return v
+
+        if isinstance(v, list):
+            if not v:
+                raise ValueError("dropout_fraction list cannot be empty")
+            if any(not isinstance(x, float) for x in v):
+                raise ValueError("All elements of dropout_fraction list must be floats")
+            if any(x < 0.0 or x > 1.0 for x in v):
+                raise ValueError("Each dropout_fraction value must be between 0 and 1")
+            if not isclose(sum(v), 1.0, rel_tol=1e-9):
+                raise ValueError("Sum of dropout_fraction list must be exactly 1.0")
+            return v
+
+        raise TypeError("dropout_fraction must be float or list of floats")
 
     @model_validator(mode="after")
     def dropout_instructions_consistent(self) -> "DropoutMixin":
-        """Validator for dropout instructions."""
-        if self.dropout_fraction == 0:
-            if self.dropout_timedeltas_minutes != []:
-                raise ValueError("To use dropout timedeltas dropout fraction should be > 0")
-        else:
-            if self.dropout_timedeltas_minutes == []:
-                raise ValueError("To dropout fraction > 0 requires a list of dropout timedeltas")
+        """Ensure that dropout_timedeltas and dropout_fraction align."""
+        if self.dropout_fraction == 0 and self.dropout_timedeltas_minutes:
+            raise ValueError("Non-zero dropout_timedeltas requires dropout_fraction > 0")
+        if self.dropout_fraction != 0 and not self.dropout_timedeltas_minutes:
+            raise ValueError("dropout_fraction > 0 requires dropout_timedeltas_minutes")
         return self
+
 
 
 
