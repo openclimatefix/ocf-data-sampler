@@ -336,9 +336,10 @@ class InputData(Base):
 
     @model_validator(mode="after")
     def check_site_or_gsp(self) -> "InputData":
+        """Ensure that either `site` or `gsp` is provided in the input data."""
         if self.site is None and self.gsp is None:
             raise ValueError(
-                "You must provide either `site` or `gsp` in the `input_data`"
+                "You must provide either `site` or `gsp` in the `input_data`",
             )
 
         return self
