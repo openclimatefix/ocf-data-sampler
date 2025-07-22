@@ -142,3 +142,12 @@ def test_accum_channels_validation(test_config_filename):
     )
     with pytest.raises(ValidationError, match=expected_error):
         _ = Configuration(**invalid_config.model_dump())
+
+
+def test_configuration_requires_site_or_gsp():
+    """
+    Test that Configuration raises an error if both site and gsp are None in input_data.
+    """
+    with pytest.raises(ValidationError, match="You must provide either `site` or `gsp`"):
+        Configuration()
+
