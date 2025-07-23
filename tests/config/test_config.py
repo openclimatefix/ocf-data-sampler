@@ -1,5 +1,7 @@
 import pytest
 from pydantic import ValidationError
+import fsspec
+from pyaml_env import parse_config
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 
@@ -9,12 +11,14 @@ def test_default_configuration():
     _ = Configuration()
 
 
-def test_extra_field_error():
+def test_extra_field_error(test_config_filename):
     """
     Check an extra parameters in config causes error
     """
+    with fsspec.open(test_config_filename, mode="r") as stream:
+        configuration1 = parse_config(data=stream)
 
-    configuration = Configuration()
+    configuration = Configuration(**configuration1)
     configuration_dict = configuration.model_dump()
     configuration_dict["extra_field"] = "extra_value"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
