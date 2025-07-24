@@ -40,7 +40,15 @@ input_data:
 
   site: null
 
-  gsp: null
+  #gsp: null
+  gsp:
+    zarr_path: set_in_temp_file
+    interval_start_minutes: -60
+    interval_end_minutes: 120
+    time_resolution_minutes: 30
+    dropout_timedeltas_minutes: [ ]
+    dropout_fraction: 0
+
 
   solar_position:
     time_resolution_minutes: 30
