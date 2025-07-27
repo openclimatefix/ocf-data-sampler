@@ -216,91 +216,16 @@ class NormalisationConstantsMixin(Base):
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
     """Satellite configuration model with Ice Chunk support."""
 
-
-    zarr_path: str | tuple[str] | list[str] | None = Field(
-        None,
+    zarr_path: str | tuple[str] | list[str] = Field(
+        ...,
         description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
     )
-
-
-    # NEW: Ice Chunk support
-    icechunk_path: str | None = Field(
-        None,
-        description="Remote Ice Chunk dataset path for cloud-native streaming. "
-        "When provided, this will be used instead of zarr_path with 103+ MB/s optimizations.",
-    )
-
-
-    bucket_name: str = Field(
-        "gsoc-dakshbir",
-        description="GCS bucket name for Ice Chunk datasets",
-    )
-
-
-    # NEW: True Ice Chunk settings
-    use_true_icechunk: bool = Field(
-        False,
-        description="Whether to use the true Ice Chunk API for versioning and transactions.",
-    )
-
-
-    icechunk_branch: str | None = Field(
-        "main",
-        description="The Ice Chunk branch to use (e.g., 'main').",
-    )
-
-
-    icechunk_commit: str | None = Field(
-        None,
-        description="The specific Ice Chunk commit ID to use. If provided, it overrides the branch.",
-    )
-
-
-    # NEW: Optimization parameters (from your research)
-    use_optimized_streaming: bool = Field(
-        True,
-        description="Enable 103+ MB/s streaming optimizations for Ice Chunk",
-    )
-
-
-    optimal_time_steps: int = Field(
-        6,
-        description="Optimal time steps per chunk for streaming. "
-        "Default is 6, which is optimal for 11-channel satellite data.",
-    )
-
-
-    optimal_block_size_mb: int = Field(
-        64,
-        description="Optimal GCS block size in MB (default: 64 from optimization research)",
-    )
-
 
     channels: list[str] = Field(
         ...,
         description="the satellite channels that are used",
     )
-
-
-    @model_validator(mode="after")
-    def validate_data_source(self) -> "Satellite":
-        """Validate that either zarr_path or icechunk_path is provided."""
-        if not self.zarr_path and not self.icechunk_path:
-            raise ValueError(
-                "Either 'zarr_path' or 'icechunk_path' must be provided for satellite data"
-            )
-       
-        if self.zarr_path and self.icechunk_path:
-            # If both provided, prefer icechunk_path and warn
-            import warnings
-            warnings.warn(
-                "Both zarr_path and icechunk_path provided. Using icechunk_path for optimized streaming.",
-                UserWarning
-            )
-       
-        return self
-
 
     @model_validator(mode="after")
     def check_all_channel_have_normalisation_constants(self) -> "Satellite":
@@ -313,8 +238,6 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
                 f"channels: {missing_norm_values}",
             )
         return self
-
-
 
 
 class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
@@ -484,5 +407,3 @@ class Configuration(Base):
 
     general: General = General()
     input_data: InputData = InputData()
-
-

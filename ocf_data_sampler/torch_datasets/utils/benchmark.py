@@ -35,12 +35,7 @@ class OCFDataSamplerBenchmark:
         
         sat_config = self.config.input_data.satellite
         results['satellite_config'] = {
-            'channels': sat_config.channels,
-            'has_zarr_path': bool(getattr(sat_config, 'zarr_path', None)),
-            'has_icechunk_path': bool(getattr(sat_config, 'icechunk_path', None)),
-            'use_optimized_streaming': getattr(sat_config, 'use_optimized_streaming', True),
-            'optimal_time_steps': getattr(sat_config, 'optimal_time_steps', 6),
-            'optimal_block_size_mb': getattr(sat_config, 'optimal_block_size_mb', 64)
+            'channels': sat_config.channels
         }
         
         benchmark_results = []
@@ -53,30 +48,26 @@ class OCFDataSamplerBenchmark:
                 'methods': {}
             }
             
-            if local_zarr_path or getattr(sat_config, 'zarr_path', None):
-                zarr_path = local_zarr_path or sat_config.zarr_path
-                sample_result['methods']['local_zarr'] = self._benchmark_single_load(
-                    method='local_zarr',
-                    zarr_path=zarr_path
-                )
-            
-            if hasattr(sat_config, 'icechunk_path') and sat_config.icechunk_path:
-                sample_result['methods']['icechunk_optimized'] = self._benchmark_single_load(
-                    method='icechunk_optimized',
-                    icechunk_path=sat_config.icechunk_path,
-                    bucket_name=getattr(sat_config, 'bucket_name', 'gsoc-dakshbir'),
-                    channels=sat_config.channels
-                )
-            
+            # Use local_zarr_path if provided, otherwise use path from config
+            zarr_path_to_use = local_zarr_path or sat_config.zarr_path
+            # Temporarily update config for the benchmark run if overriding path
+            original_path = sat_config.zarr_path
+            sat_config.zarr_path = zarr_path_to_use
+
+            method_name = "icechunk" if ".icechunk" in str(zarr_path_to_use) else "zarr"
+            sample_result['methods'][method_name] = self._benchmark_single_load(method=method_name)
+
+            # Restore original config path
+            sat_config.zarr_path = original_path
+
             benchmark_results.append(sample_result)
         
         results['samples'] = benchmark_results
         results['aggregate'] = self._calculate_aggregate_results(benchmark_results)
-        results['assessment'] = self._assess_performance(results['aggregate'])
         
         return results
     
-    def _benchmark_single_load(self, method: str, **kwargs) -> Dict[str, Any]:
+    def _benchmark_single_load(self, method: str) -> Dict[str, Any]:
         """Benchmark a single loading method."""
         start_time = time.time()
         
@@ -139,53 +130,6 @@ class OCFDataSamplerBenchmark:
         
         return aggregate
     
-    def _assess_performance(self, aggregate_results: Dict) -> Dict[str, Any]:
-        """Assess overall performance and provide recommendations."""
-        assessment = {
-            'recommendations': [],
-            'performance_summary': {},
-            'optimization_impact': {}
-        }
-        
-        if 'local_zarr' in aggregate_results and 'icechunk_optimized' in aggregate_results:
-            local_results = aggregate_results['local_zarr']
-            icechunk_results = aggregate_results['icechunk_optimized']
-            
-            if local_results.get('success_rate', 0) > 0 and icechunk_results.get('success_rate', 0) > 0:
-                local_throughput = local_results['avg_throughput_mb_s']
-                icechunk_throughput = icechunk_results['avg_throughput_mb_s']
-                
-                performance_ratio = icechunk_throughput / local_throughput
-                
-                assessment['performance_summary'] = {
-                    'local_throughput': local_throughput,
-                    'icechunk_throughput': icechunk_throughput,
-                    'performance_ratio': performance_ratio,
-                    'icechunk_faster': performance_ratio > 1.0
-                }
-                
-                if performance_ratio > 1.2:
-                    assessment['recommendations'].append(
-                        f"Use Ice Chunk: {performance_ratio:.2f}x faster than local ({icechunk_throughput:.2f} vs {local_throughput:.2f} MB/s)"
-                    )
-                elif performance_ratio > 0.8:
-                    assessment['recommendations'].append(
-                        f"Similar performance: Ice Chunk {icechunk_throughput:.2f} MB/s vs Local {local_throughput:.2f} MB/s. Choose based on infrastructure needs."
-                    )
-                else:
-                    assessment['recommendations'].append(
-                        f"Local faster: {1/performance_ratio:.2f}x faster than Ice Chunk. Consider local storage for this dataset."
-                    )
-                
-                if icechunk_throughput > 50:
-                    assessment['optimization_impact']['status'] = "Optimizations working well (>50 MB/s)"
-                elif icechunk_throughput > 20:
-                    assessment['optimization_impact']['status'] = "Good performance (20-50 MB/s)"
-                else:
-                    assessment['optimization_impact']['status'] = "Performance below expectations (<20 MB/s)"
-        
-        return assessment
-
 
 def run_ocf_benchmark(config_path: str, 
                      local_zarr_path: Optional[str] = None,

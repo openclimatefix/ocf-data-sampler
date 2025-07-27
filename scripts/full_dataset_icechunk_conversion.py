@@ -47,7 +47,7 @@ def convert_dataset_to_icechunk(dataset_name, bucket_name):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = str(uuid.uuid4())[:8]
     base_name = dataset_name.replace('.zarr', '').replace('_nonhrv', '')
-    icechunk_path = f"{base_name}_icechunk_full_{timestamp}_{unique_id}"
+    icechunk_path = f"{base_name}_icechunk_full_{timestamp}_{unique_id}/"
     
     try:
         storage = icechunk.gcs_storage(bucket=bucket_name, prefix=icechunk_path, from_env=True)
@@ -155,20 +155,15 @@ def create_production_config(conversion_result):
         mean: 0.5
         std: 0.2"""
 
+    repo_path_for_config = conversion_result['icechunk_path'].rstrip('/')
+
     config_content = f"""general:
   name: "Production Ice Chunk - {conversion_result['original_dataset']}"
   description: "Complete {conversion_result['original_dataset']} converted to Ice Chunk for production comparison"
 
 input_data:
   satellite:
-    icechunk_path: "{conversion_result['icechunk_path']}"
-    bucket_name: "{BUCKET_NAME}"
-    use_true_icechunk: true
-    icechunk_branch: "main"
-    icechunk_commit: "{conversion_result['commit_id']}"
-    use_optimized_streaming: true
-    optimal_time_steps: 6
-    optimal_block_size_mb: 64
+    zarr_path: "gs://{BUCKET_NAME}/{repo_path_for_config}.icechunk@{conversion_result['commit_id']}"
     channels: {all_channels}
     time_resolution_minutes: 15
     interval_start_minutes: -60

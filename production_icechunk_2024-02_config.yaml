@@ -4,14 +4,7 @@ general:
 
 input_data:
   satellite:
-    icechunk_path: "2024-02_icechunk_full_20250718_154450_962ca20b"
-    bucket_name: "gsoc-dakshbir"
-    use_true_icechunk: true
-    icechunk_branch: "main"
-    icechunk_commit: "MCYR0A26NXKMQTWC578G"
-    use_optimized_streaming: true
-    optimal_time_steps: 6
-    optimal_block_size_mb: 64
+    zarr_path: "gs://gsoc-dakshbir/2024-02_icechunk_full_20250727_093251_7d45f9cd.icechunk@S4DPK1PT7BB3513WZ6GG"
     channels: ['IR_016', 'IR_039', 'IR_087', 'IR_097', 'IR_108', 'IR_120', 'IR_134', 'VIS006', 'VIS008', 'WV_062', 'WV_073']
     time_resolution_minutes: 15
     interval_start_minutes: -60

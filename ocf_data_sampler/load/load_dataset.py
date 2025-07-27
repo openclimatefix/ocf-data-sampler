@@ -53,41 +53,13 @@ def get_dataset_dict(
     # Load satellite data if in config
     if input_config.satellite:
         sat_config = input_config.satellite
-
-        # Determine which loader to use based on the configuration
-        use_icechunk_library = getattr(sat_config, "use_true_icechunk", False)
-
-        if use_icechunk_library:
-            logger.info(f"Using true Ice Chunk loader for: {sat_config.icechunk_path}")
-            from ocf_data_sampler.load.icechunk_optimized_with_ics import open_sat_data_icechunk_optimized as open_ice_chunk
-            da_sat = open_ice_chunk(
-                cloud_zarr_path=sat_config.icechunk_path,
-                bucket_name=sat_config.bucket_name,
-                channels=list(sat_config.channels),
-                time_steps=sat_config.optimal_time_steps,
-                block_size_mb=sat_config.optimal_block_size_mb,
-                use_true_icechunk=True,
-                icechunk_branch=sat_config.icechunk_branch,
-                icechunk_commit=sat_config.icechunk_commit,
-            )
-        elif hasattr(sat_config, 'icechunk_path') and sat_config.icechunk_path:
-            logger.info(f"Using optimized cloud Zarr loader for: {sat_config.icechunk_path}")
-            from ocf_data_sampler.load.icechunk_optimized import open_sat_data_icechunk_optimized
-            da_sat = open_sat_data_icechunk_optimized(
-                cloud_zarr_path=sat_config.icechunk_path,
-                bucket_name=sat_config.bucket_name,
-                channels=list(sat_config.channels),
-                time_steps=sat_config.optimal_time_steps,
-                block_size_mb=sat_config.optimal_block_size_mb,
-            )
-        elif hasattr(sat_config, 'zarr_path') and sat_config.zarr_path:
-            # This handles both local and plain GCS paths without optimizations
-            logger.info(f"Using traditional loader for: {sat_config.zarr_path}")
-            da_sat = open_sat_data(sat_config.zarr_path)
-        else:
-            raise ValueError("No valid satellite data path found in configuration")
-
-        da_sat = da_sat.sel(channel=list(sat_config.channels))
+        logger.info(f"Loading satellite data from: {sat_config.zarr_path}")
+        # open_sat_data will now internally decide whether to use
+        # the standard Zarr loader or the Ice Chunk loader.
+        da_sat = open_sat_data(
+            zarr_path=sat_config.zarr_path,
+            channels=list(sat_config.channels),
+        )
         datasets_dict["sat"] = da_sat
 
     # Load site data if in config
