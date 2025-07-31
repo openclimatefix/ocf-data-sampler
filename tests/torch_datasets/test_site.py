@@ -9,8 +9,6 @@ from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.torch_datasets.datasets.site import (
     SitesDataset,
     coarsen_data,
-    convert_from_dataset_to_dict_datasets,
-    convert_netcdf_to_numpy_sample,
 )
 
 
@@ -24,7 +22,7 @@ def test_site(tmp_path, site_config_filename):
     # Generate a sample
     sample = dataset[0]
 
-    assert isinstance(sample, xr.Dataset)
+    assert isinstance(sample, dict)
 
     # Expected dimensions and data variables
     expected_dims = {
@@ -86,18 +84,6 @@ def test_site_time_filter_end(site_config_filename):
     dataset = SitesDataset(site_config_filename, end_time="2000-01-01")
 
     assert len(dataset) == 0
-
-
-def test_convert_from_dataset_to_dict_datasets(sites_dataset):
-    # Generate sample
-    sample_xr = sites_dataset[0]
-
-    sample = convert_from_dataset_to_dict_datasets(sample_xr)
-
-    assert isinstance(sample, dict)
-
-    for key in ["nwp", "satellite", "site"]:
-        assert key in sample
 
 
 def test_site_dataset_with_dataloader(sites_dataset) -> None:
@@ -253,72 +239,3 @@ def test_solar_position_decoupling_site(tmp_path, site_config_filename):
     # Sample with solar config should have solar position data
     for key in solar_keys:
         assert key in sample_with_solar.coords, f"Solar key {key} should be in sample"
-
-
-def test_convert_from_dataset_to_dict_solar_handling(tmp_path, site_config_filename):
-    """Test that function handles solar position coordinates correctly."""
-
-    config = load_yaml_configuration(site_config_filename)
-    config.input_data.solar_position = SolarPosition(
-        time_resolution_minutes=30,
-        interval_start_minutes=-30,
-        interval_end_minutes=60,
-    )
-
-    config_with_solar_path = tmp_path / "site_config_with_solar_for_dict.yaml"
-    save_yaml_configuration(config, config_with_solar_path)
-
-    # Create dataset and obtain sample with solar
-    dataset_with_solar = SitesDataset(config_with_solar_path)
-    sample_with_solar = dataset_with_solar[0]
-
-    # Verify solar position data exists in original sample
-    solar_keys = ["solar_azimuth", "solar_elevation"]
-    for key in solar_keys:
-        assert key in sample_with_solar.coords, f"Solar key {key} not found in original sample"
-
-    # Conversion and subsequent verification
-    converted_dict = convert_from_dataset_to_dict_datasets(sample_with_solar)
-    assert isinstance(converted_dict, dict)
-    assert "site" in converted_dict
-
-
-def test_convert_netcdf_to_numpy_solar_handling(tmp_path, site_config_filename):
-    """Test that convert_netcdf_to_numpy_sample handles solar position data correctly."""
-
-    config = load_yaml_configuration(site_config_filename)
-    config.input_data.solar_position = SolarPosition(
-        time_resolution_minutes=30,
-        interval_start_minutes=-30,
-        interval_end_minutes=60,
-    )
-
-    config_with_solar_path = tmp_path / "site_config_with_solar_for_numpy.yaml"
-    save_yaml_configuration(config, config_with_solar_path)
-
-    # Create dataset and obtain sample with solar
-    dataset_with_solar = SitesDataset(config_with_solar_path)
-    sample_with_solar = dataset_with_solar[0]
-
-    # Save to netCDF and load back
-    netcdf_path = f"{tmp_path}/sample_with_solar.nc"
-    sample_with_solar.to_netcdf(netcdf_path, mode="w", engine="h5netcdf")
-    loaded_sample = xr.open_dataset(netcdf_path, decode_timedelta=False)
-
-    # Verify solar position data exists in sample
-    solar_keys = ["solar_azimuth", "solar_elevation"]
-    for key in solar_keys:
-        assert key in loaded_sample.coords, f"Solar key {key} not found in loaded netCDF"
-
-    # Conversion and subsequent assertion
-    numpy_sample = convert_netcdf_to_numpy_sample(loaded_sample)
-    assert isinstance(numpy_sample, dict)
-
-    # Explicitly verify what is in sample
-    assert "nwp" in numpy_sample
-    assert "satellite_actual" in numpy_sample or "sat" in numpy_sample
-    assert "site" in numpy_sample
-
-    # Assert solar position values exist in numpy sample
-    for key in solar_keys:
-        assert key in numpy_sample, f"Solar key {key} not found in numpy sample"
