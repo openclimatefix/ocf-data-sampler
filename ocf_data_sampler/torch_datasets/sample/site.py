@@ -8,6 +8,8 @@ from ocf_data_sampler.numpy_sample.common_types import NumpySample
 from .base import SampleBase
 
 
+# TODO this is now similar to the UKRegionalSample
+# We should consider just having one Sample class for all datasets
 class SiteSample(SampleBase):
     """Handles PVNet site specific netCDF operations."""
 
