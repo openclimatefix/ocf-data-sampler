@@ -122,12 +122,7 @@ def process_and_combine_datasets(
         numpy_modalities.append(datetime_features)
 
     # Only add solar position if explicitly configured
-    has_solar_config = (
-        hasattr(config.input_data, "solar_position") and
-        config.input_data.solar_position is not None
-    )
-
-    if has_solar_config:
+    if config.input_data.solar_position is not None:
         solar_config = config.input_data.solar_position
 
         # Create datetime range for solar position calculation
@@ -140,8 +135,11 @@ def process_and_combine_datasets(
 
         # Calculate solar positions and add to modalities
         numpy_modalities.append(
-            make_sun_position_numpy_sample(datetimes, da_sites.longitude.values,
-                                           da_sites.latitude.values),
+            make_sun_position_numpy_sample(
+                datetimes,
+                da_sites.longitude.values,
+                da_sites.latitude.values,
+                ),
             )
 
     # Combine all the modalities and fill NaNs
