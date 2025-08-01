@@ -11,7 +11,7 @@ from .base import SampleBase
 # TODO this is now similar to the UKRegionalSample
 # We should consider just having one Sample class for all datasets
 class SiteSample(SampleBase):
-    """Handles PVNet site specific netCDF operations."""
+    """Handles SiteSample specific operations."""
 
     def __init__(self, data: NumpySample) -> None:
         """Initializes the SiteSample object with the given NumpySample."""
@@ -36,7 +36,7 @@ class SiteSample(SampleBase):
             path: Path to the saved sample file.
 
         Returns:
-            A UKRegionalSample instance with the loaded data.
+            A SiteSample instance with the loaded data.
         """
         # Loads from .pt format
         # TODO: We should move away from using torch.load(..., weights_only=False)
