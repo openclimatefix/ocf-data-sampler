@@ -149,16 +149,21 @@ class DropoutMixin(Base):
     @model_validator(mode="after")
     def validate_dropout(self) -> "DropoutMixin":
         """Validator for dropout instructions."""
-        if isinstance(self.dropout_fraction, float):
-            if self.dropout_fraction > 0 and self.dropout_timedeltas_minutes:
-                raise ValueError(
-                    "If dropout_fraction is a float, dropout_timedeltas_minutes must be empty."
-                )
-        elif isinstance(self.dropout_fraction, list):
-            if len(self.dropout_fraction) != len(self.dropout_timedeltas_minutes):
-                raise ValueError(
-                    "If dropout_fraction is a list, its length must match dropout_timedeltas_minutes."
-                )
+        if (
+            isinstance(self.dropout_fraction, float)
+            and self.dropout_fraction > 0
+            and self.dropout_timedeltas_minutes
+        ):
+            raise ValueError(
+                "If dropout_fraction is a float, dropout_timedeltas_minutes must be empty.",
+            )
+        elif isinstance(self.dropout_fraction, list) and len(self.dropout_fraction) != len(
+            self.dropout_timedeltas_minutes,
+        ):
+            raise ValueError(
+                "If dropout_fraction is a list, "
+                "its length must match dropout_timedeltas_minutes.",
+            )
         return self
 
 
