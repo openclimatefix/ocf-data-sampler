@@ -53,8 +53,8 @@ def open_gsp(
         # Currently only compatible with S3 bucket.
 
     ds = xr.open_dataset(
-        zarr_path, 
-        engine="zarr", 
+        zarr_path,
+        engine="zarr",
         chunks=None,
         backend_kwargs=backend_kwargs,
     ).rename({"datetime_gmt": "time_utc"})
