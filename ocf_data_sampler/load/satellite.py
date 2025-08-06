@@ -8,6 +8,7 @@ from typing import List, Optional
 import dask
 import icechunk
 import xarray as xr
+from xarray_tensorstore import open_zarr
 
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
@@ -40,7 +41,7 @@ def _setup_optimal_environment():
     )
     logger.debug("Optimization environment configured successfully")
 
-def _parse_icechunk_path(path: str) -> dict:
+def _parse_zarr_path(path: str) -> dict:
     """Parse a path into its components, supporting both local and cloud paths."""
     # Sol's recommended regex pattern - handles optional protocol and wildcards
     pattern = r"^(?:(?P<protocol>[\w]{2,6}):\/\/)?(?P<bucket>[\w\/-]+)\/(?P<prefix>[\w*.\/-]+?)(?:@(?P<sha1>[\w]+))?$"
@@ -57,6 +58,14 @@ def _parse_icechunk_path(path: str) -> dict:
         raise ValueError(f"Invalid path format: {path}")
     
     components = match.groupdict()
+    
+    # Validation checks moved from match block
+    if components["protocol"] is None and components["sha1"] is not None:
+        raise ValueError("Commit syntax (@commit) not supported for local files")
+    
+    if components["protocol"] == "gs" and components["prefix"] is not None and "*" in components["prefix"]:
+        raise ValueError("Wildcard (*) paths are not supported for GCP (gs://) URLs")
+    
     return components
 
 def _open_sat_data_icechunk(
@@ -135,37 +144,17 @@ def get_single_sat_data(zarr_path: str) -> xr.Dataset:
     logic into match/case patterns for different path types.
     """
     # Parse path components using Sol's regex approach
-    path_info = _parse_icechunk_path(zarr_path)
+    path_info = _parse_zarr_path(zarr_path)
     
     # Sol's requested match/case pattern for path routing
     match path_info:
-        case {"protocol": None, "bucket": _, "prefix": _, "sha1": sha1} if sha1 is not None:
-            # Raise error if trying to use commit syntax for local file
-            raise ValueError("Commit syntax (@commit) not supported for local files")
-        
-        case {"protocol": "gs", "bucket": _, "prefix": prefix, "sha1": _} if "*" in prefix:
-            # Raise an error if a wildcard is used in a GCP path
-            raise ValueError("Wildcard (*) paths are not supported for GCP (gs://) URLs")
-        
         case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix and protocol is not None:
             # Ice Chunk logic goes here - Sol's requested signature
             ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
         
         case {"protocol": _, "bucket": _, "prefix": _, "sha1": None}:
             # Existing single zarr logic path here - Sol's specification
-            ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto")
-        
-        case {"protocol": None, "bucket": _, "prefix": prefix, "sha1": None} if "*" in prefix:
-            # Handle multi-zarr dataset for local files
-            ds = xr.open_mfdataset(
-                zarr_path,
-                engine="zarr",
-                concat_dim="time",
-                combine="nested",
-                chunks="auto",
-                join="override",
-            )
-            check_time_unique_increasing(ds.time)
+            ds = open_zarr(zarr_path)
         
         case _:
             # Raise error on unhandled path
@@ -227,4 +216,3 @@ def open_sat_data(zarr_path: str | list[str], channels: Optional[List[str]] = No
             raise TypeError(f"Coordinate {coord} should be {expected_kind}, not {actual_kind}")
     
     return data_array
-
