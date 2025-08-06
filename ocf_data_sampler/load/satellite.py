@@ -76,12 +76,6 @@ def _open_sat_data_icechunk(
     logger.info(f"Opening Ice Chunk repository: {protocol_str}://{bucket}/{prefix}")
     _setup_optimal_environment()
 
-    # Remove .icechunk/.ic suffix from prefix for the icechunk library
-    if prefix.endswith(".icechunk"):
-        prefix = prefix.removesuffix(".icechunk")
-    elif prefix.endswith(".ic"):
-        prefix = prefix.removesuffix(".ic")
-
     # Ensure proper trailing slash
     if not prefix.endswith('/'):
         prefix = prefix + '/'
@@ -153,7 +147,8 @@ def get_single_sat_data(zarr_path: str) -> xr.Dataset:
             ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
         
         case {"protocol": _, "bucket": _, "prefix": _, "sha1": None}:
-            # Existing single zarr logic path here - Sol's specification
+            #  this doesn't work for blosc2 
+            #  use ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto") in the case of blosc2
             ds = open_zarr(zarr_path)
         
         case _:
