@@ -21,7 +21,7 @@ from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import Location, fill_time_periods
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 from ocf_data_sampler.torch_datasets.utils import (
-    channel_dict_to_dataarray,
+    config_normalization_values_to_dicts,
     find_valid_time_periods,
     slice_datasets_by_space,
     slice_datasets_by_time,
@@ -110,11 +110,14 @@ class AbstractPVNetUKDataset(Dataset):
         self.config = config
         self.datasets_dict = datasets_dict
 
+        # Extract the normalisation values from the config for faster access
+        means_dict, stds_dict = config_normalization_values_to_dicts(config)
+        self.means_dict = means_dict
+        self.stds_dict = stds_dict
 
-    @staticmethod
     def process_and_combine_datasets(
+        self,
         dataset_dict: dict,
-        config: Configuration,
         t0: pd.Timestamp,
         location: Location,
     ) -> NumpySample:
@@ -122,7 +125,6 @@ class AbstractPVNetUKDataset(Dataset):
 
         Args:
             dataset_dict: Dictionary of xarray datasets
-            config: Configuration object
             t0: init-time for sample
             location: location of the sample
         """
@@ -134,13 +136,8 @@ class AbstractPVNetUKDataset(Dataset):
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
 
                 # Standardise and convert to NumpyBatch
-
-                da_channel_means = channel_dict_to_dataarray(
-                    config.input_data.nwp[nwp_key].channel_means,
-                )
-                da_channel_stds = channel_dict_to_dataarray(
-                    config.input_data.nwp[nwp_key].channel_stds,
-                )
+                da_channel_means = self.means_dict["nwp"][nwp_key]
+                da_channel_stds = self.stds_dict["nwp"][nwp_key]
 
                 da_nwp = (da_nwp - da_channel_means) / da_channel_stds
 
@@ -153,15 +150,15 @@ class AbstractPVNetUKDataset(Dataset):
             da_sat = dataset_dict["sat"]
 
             # Standardise and convert to NumpyBatch
-            da_channel_means = channel_dict_to_dataarray(config.input_data.satellite.channel_means)
-            da_channel_stds = channel_dict_to_dataarray(config.input_data.satellite.channel_stds)
+            da_channel_means = self.means_dict["sat"]
+            da_channel_stds = self.stds_dict["sat"]
 
             da_sat = (da_sat - da_channel_means) / da_channel_stds
 
             numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
         if "gsp" in dataset_dict:
-            gsp_config = config.input_data.gsp
+            gsp_config = self.config.input_data.gsp
             da_gsp = dataset_dict["gsp"]
             da_gsp = da_gsp / da_gsp.effective_capacity_mwp
 
@@ -183,13 +180,8 @@ class AbstractPVNetUKDataset(Dataset):
         )
 
         # Only add solar position if explicitly configured
-        has_solar_config = (
-            hasattr(config.input_data, "solar_position") and
-            config.input_data.solar_position is not None
-        )
-
-        if has_solar_config:
-            solar_config = config.input_data.solar_position
+        if self.config.input_data.solar_position is not None:
+            solar_config = self.config.input_data.solar_position
 
             # Create datetime range for solar position calculation
             datetimes = pd.date_range(
@@ -264,7 +256,7 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = compute(sample_dict)
 
-        return self.process_and_combine_datasets(sample_dict, self.config, t0, location)
+        return self.process_and_combine_datasets(sample_dict, t0, location)
 
     @override
     def __getitem__(self, idx: int) -> NumpySample:
@@ -330,7 +322,6 @@ class PVNetUKConcurrentDataset(AbstractPVNetUKDataset):
             gsp_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
             gsp_numpy_sample = self.process_and_combine_datasets(
                 gsp_sample_dict,
-                self.config,
                 t0,
                 location,
             )
