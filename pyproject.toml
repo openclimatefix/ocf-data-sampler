@@ -35,7 +35,7 @@ dependencies = [
     "pyaml_env",
     "pyresample",
     "h5netcdf",
-    "xarray-tensorstore@git+https://github.com/openclimatefix/xarray-tensorstore.git",
+    "tensorstore",
     "zarr>=3",
 ]
 

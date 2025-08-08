@@ -3,9 +3,9 @@
 from glob import glob
 
 import xarray as xr
-from xarray_tensorstore import open_zarr
 
 from ocf_data_sampler.load.open_tensorstore_zarrs import open_zarrs
+from ocf_data_sampler.load.xarray_tensorstore import open_zarr
 
 
 def open_zarr_paths(
