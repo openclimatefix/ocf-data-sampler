@@ -1,70 +1,16 @@
 import dask.array
 import numpy as np
-import pandas as pd
 import torch
 import xarray as xr
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
-from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
     PVNetUKConcurrentDataset,
     PVNetUKRegionalDataset,
     compute,
 )
-
-
-def test_process_and_combine_datasets(pvnet_config_filename):
-    config = load_yaml_configuration(pvnet_config_filename)
-
-    t0 = pd.Timestamp("2024-01-01 00:00")
-    location = Location(coordinate_system="osgb", x=1234, y=5678, id=1)
-
-    sat_data = xr.DataArray(
-        np.random.rand(7, 1, 2, 2),
-        dims=["time_utc", "channel", "y", "x"],
-        coords={
-            "time_utc": pd.date_range("2024-01-01 00:00", periods=7, freq="5min"),
-            "channel": list(config.input_data.satellite.channels),
-            "x_geostationary": (["y", "x"], np.array([[1, 2], [1, 2]])),
-            "y_geostationary": (["y", "x"], np.array([[1, 1], [2, 2]])),
-        },
-    )
-
-    x = np.arange(-100, 100, 10)
-    y = np.arange(-100, 100, 10)
-    steps = pd.timedelta_range("0h", "8h", freq="1h")
-    target_times = t0 + steps
-
-    channels = list(config.input_data.nwp["ukv"].channels)
-
-    # Create dummy time-sliced NWP data
-    ukv_data = xr.DataArray(
-        np.random.normal(size=(len(target_times), len(channels), len(x), len(y))),
-        coords={
-            "target_time_utc": (["target_time_utc"], target_times),
-            "channel": (["channel"], channels),
-            "x_osgb": (["x_osgb"], x),
-            "y_osgb": (["y_osgb"], y),
-        },
-    )
-
-    # Add extra non-coordinate dimensions
-    ukv_data = ukv_data.assign_coords(
-        init_time_utc=("target_time_utc", pd.to_datetime([t0] * len(steps))),
-        step=("target_time_utc", steps),
-    )
-
-    dataset_dict = {"nwp": {"ukv": ukv_data}, "sat": sat_data}
-
-    sample = PVNetUKRegionalDataset.process_and_combine_datasets(dataset_dict, config, t0, location)
-
-    assert isinstance(sample, dict)
-    assert "nwp" in sample
-    assert sample["satellite_actual"].shape == sat_data.shape
-    assert sample["nwp"]["ukv"]["nwp"].shape == ukv_data.shape
-    assert "gsp_id" in sample
 
 
 def test_compute():

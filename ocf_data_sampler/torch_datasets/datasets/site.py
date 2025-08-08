@@ -25,7 +25,7 @@ from ocf_data_sampler.select import (
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.torch_datasets.utils import (
-    channel_dict_to_dataarray,
+    config_normalization_values_to_dicts,
     find_valid_time_periods,
     slice_datasets_by_space,
     slice_datasets_by_time,
@@ -62,6 +62,8 @@ def process_and_combine_datasets(
     dataset_dict: dict,
     config: Configuration,
     t0: pd.Timestamp,
+    means_dict: dict[str, xr.DataArray | dict[str, xr.DataArray]],
+    stds_dict: dict[str, xr.DataArray | dict[str, xr.DataArray]],
 ) -> NumpySample:
     """Normalise and convert data to numpy arrays.
 
@@ -69,6 +71,8 @@ def process_and_combine_datasets(
         dataset_dict: Dictionary of xarray datasets
         config: Configuration object
         t0: init-time for sample
+        means_dict: Nested dictionary of mean values for the input data sources
+        stds_dict: Nested dictionary of std values for the input data sources
     """
     numpy_modalities = []
 
@@ -79,12 +83,8 @@ def process_and_combine_datasets(
 
             # Standardise and convert to NumpyBatch
 
-            da_channel_means = channel_dict_to_dataarray(
-                config.input_data.nwp[nwp_key].channel_means,
-            )
-            da_channel_stds = channel_dict_to_dataarray(
-                config.input_data.nwp[nwp_key].channel_stds,
-            )
+            da_channel_means = means_dict["nwp"][nwp_key]
+            da_channel_stds = stds_dict["nwp"][nwp_key]
 
             da_nwp = (da_nwp - da_channel_means) / da_channel_stds
 
@@ -97,8 +97,8 @@ def process_and_combine_datasets(
         da_sat = dataset_dict["sat"]
 
         # Standardise and convert to NumpyBatch
-        da_channel_means = channel_dict_to_dataarray(config.input_data.satellite.channel_means)
-        da_channel_stds = channel_dict_to_dataarray(config.input_data.satellite.channel_stds)
+        da_channel_means = means_dict["sat"]
+        da_channel_stds = stds_dict["sat"]
 
         da_sat = (da_sat - da_channel_means) / da_channel_stds
 
@@ -109,11 +109,7 @@ def process_and_combine_datasets(
         da_sites = da_sites / da_sites.capacity_kwp
 
         # Convert to NumpyBatch
-        numpy_modalities.append(
-            convert_site_to_numpy_sample(
-                da_sites,
-            ),
-        )
+        numpy_modalities.append(convert_site_to_numpy_sample(da_sites))
 
         # add datetime features
         datetimes = pd.DatetimeIndex(da_sites.time_utc.values)
@@ -192,6 +188,11 @@ class SitesDataset(Dataset):
 
         # Assign coords and indices to self
         self.valid_t0_and_site_ids = valid_t0_and_site_ids
+
+        # Extract the normalisation values from the config for faster access
+        means_dict, stds_dict = config_normalization_values_to_dicts(config)
+        self.means_dict = means_dict
+        self.stds_dict = stds_dict
 
     def find_valid_t0_and_site_ids(
         self,
@@ -273,7 +274,13 @@ class SitesDataset(Dataset):
 
         sample_dict = compute(sample_dict)
 
-        return process_and_combine_datasets(sample_dict, self.config, t0)
+        return process_and_combine_datasets(
+            sample_dict,
+            self.config,
+            t0,
+            self.means_dict,
+            self.stds_dict,
+        )
 
     def get_sample(self, t0: pd.Timestamp, site_id: int) -> dict:
         """Generate a sample for a given site id and t0.
@@ -331,6 +338,11 @@ class SitesDatasetConcurrent(Dataset):
 
         # Assign coords and indices to self
         self.valid_t0s = valid_t0s
+
+        # Extract the normalisation values from the config for faster access
+        means_dict, stds_dict = config_normalization_values_to_dicts(config)
+        self.means_dict = means_dict
+        self.stds_dict = stds_dict
 
     def find_valid_t0s(
         self,
@@ -406,6 +418,8 @@ class SitesDatasetConcurrent(Dataset):
                 site_sample_dict,
                 self.config,
                 t0,
+                self.means_dict,
+                self.stds_dict,
             )
             site_samples.append(site_numpy_sample)
 
