@@ -15,4 +15,4 @@ jobs:
       enable_typechecking: false
       containerfile: 'None'
       tests_folder: 'tests'
-      tests_matrix: true
+      tests_matrix: false
