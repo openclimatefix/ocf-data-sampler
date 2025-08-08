@@ -1,6 +1,7 @@
 """Utility function for converting channel dictionaries to xarray DataArrays."""
 
 import xarray as xr
+
 from ocf_data_sampler.config import Configuration
 
 
@@ -21,8 +22,8 @@ def channel_dict_to_dataarray(channel_dict: dict[str, float]) -> xr.DataArray:
 def config_normalization_values_to_dicts(
     config: Configuration,
 ) -> tuple[dict[str, xr.DataArray | dict[str, xr.DataArray]]]:
-    """Construct DataArrays of mean and std values from the config normalisation constants
-    
+    """Construct DataArrays of mean and std values from the config normalisation constants.
+
     Args:
         config: Data configuration.
 
@@ -30,7 +31,6 @@ def config_normalization_values_to_dicts(
         Means dict
         Stds dict
     """
-
     means_dict = {}
     stds_dict = {}
 
@@ -39,7 +39,7 @@ def config_normalization_values_to_dicts(
         means_dict["nwp"] = {}
         stds_dict["nwp"] = {}
 
-        for nwp_key in config.input_data.nwp.keys():
+        for nwp_key in config.input_data.nwp:
             # Standardise and convert to NumpyBatch
 
             means_dict["nwp"][nwp_key] = channel_dict_to_dataarray(
@@ -53,5 +53,5 @@ def config_normalization_values_to_dicts(
 
         means_dict["sat"] = channel_dict_to_dataarray(config.input_data.satellite.channel_means)
         stds_dict["sat"] = channel_dict_to_dataarray(config.input_data.satellite.channel_stds)
-    
+
     return means_dict, stds_dict

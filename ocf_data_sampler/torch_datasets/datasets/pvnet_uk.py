@@ -110,7 +110,7 @@ class AbstractPVNetUKDataset(Dataset):
         self.config = config
         self.datasets_dict = datasets_dict
 
-        # Extract the normalisation values from the config for faster access
+        # Extract the normalisation values from the config for faster access
         means_dict, stds_dict = config_normalization_values_to_dicts(config)
         self.means_dict = means_dict
         self.stds_dict = stds_dict

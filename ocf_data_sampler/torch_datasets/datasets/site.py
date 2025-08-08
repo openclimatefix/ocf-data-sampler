@@ -189,7 +189,7 @@ class SitesDataset(Dataset):
         # Assign coords and indices to self
         self.valid_t0_and_site_ids = valid_t0_and_site_ids
 
-        # Extract the normalisation values from the config for faster access
+        # Extract the normalisation values from the config for faster access
         means_dict, stds_dict = config_normalization_values_to_dicts(config)
         self.means_dict = means_dict
         self.stds_dict = stds_dict
@@ -339,7 +339,7 @@ class SitesDatasetConcurrent(Dataset):
         # Assign coords and indices to self
         self.valid_t0s = valid_t0s
 
-        # Extract the normalisation values from the config for faster access
+        # Extract the normalisation values from the config for faster access
         means_dict, stds_dict = config_normalization_values_to_dicts(config)
         self.means_dict = means_dict
         self.stds_dict = stds_dict
