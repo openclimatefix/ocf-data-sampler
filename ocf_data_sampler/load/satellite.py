@@ -1,7 +1,7 @@
 """Satellite loader."""
 import numpy as np
 import xarray as xr
-from xarray_tensorstore import open_zarr
+from ocf_data_sampler.load.xarray_tensorstore import open_zarr
 
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
