@@ -36,6 +36,7 @@ dependencies = [
     "pyresample",
     "h5netcdf",
     "xarray-tensorstore@git+https://github.com/openclimatefix/xarray-tensorstore.git",
+    "zarr>=3",
 ]
 
 [dependency-groups]
