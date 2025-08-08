@@ -8,11 +8,12 @@ on:
 
 jobs:
   branch-ci:
-    uses: openclimatefix/.github/.github/workflows/branch_ci.yml@main
+    uses: openclimatefix/.github/.github/workflows/branch_ci.yml@pyhton-version-options
     secrets: inherit
     with:
       enable_linting: true
       enable_typechecking: false
       containerfile: 'None'
       tests_folder: 'tests'
-      tests_matrix: false
+      tests_matrix: true
+      test_python_versions: '["3.11", "3.12"]'
