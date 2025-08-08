@@ -20,7 +20,7 @@ import dataclasses
 import math
 import os.path
 import re
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 import numpy as np
 import tensorstore
@@ -28,12 +28,11 @@ import xarray
 import zarr
 from xarray.core import indexing
 
+__version__ = "0.1.5"  # keep in sync with setup.py
 
-__version__ = '0.1.5'  # keep in sync with setup.py
 
-
-Index = TypeVar('Index', int, slice, np.ndarray, None)
-XarrayData = TypeVar('XarrayData', xarray.Dataset, xarray.DataArray)
+Index = TypeVar("Index", int, slice, np.ndarray, None)
+XarrayData = TypeVar("XarrayData", xarray.Dataset, xarray.DataArray)
 
 
 def _numpy_to_tensorstore_index(index: Index, size: int) -> Index:
@@ -52,7 +51,7 @@ def _numpy_to_tensorstore_index(index: Index, size: int) -> Index:
       stop = min(stop, size)
     return slice(start, stop, index.step)
   else:
-    assert isinstance(index, np.ndarray)
+    assert isinstance(index, np.ndarray)  # noqa S101
     return np.where(index < 0, index + size, index)
 
 
@@ -67,7 +66,7 @@ class _TensorStoreAdapter(indexing.ExplicitlyIndexed):
   """
 
   array: tensorstore.TensorStore
-  future: Optional[tensorstore.Future] = None
+  future: tensorstore.Future | None = None
 
   @property
   def shape(self) -> tuple[int, ...]:
@@ -95,24 +94,24 @@ class _TensorStoreAdapter(indexing.ExplicitlyIndexed):
     elif isinstance(key, indexing.VectorizedIndexer):
       indexed = self.array.vindex[index_tuple]
     else:
-      assert isinstance(key, indexing.BasicIndexer)
+      assert isinstance(key, indexing.BasicIndexer)  # noqa S101
       indexed = self.array[index_tuple]
     # Translate to the origin so repeated indexing is relative to the new bounds
     # like NumPy, not absolute like TensorStore
     translated = indexed[tensorstore.d[:].translate_to[0]]
     return type(self)(translated)
 
-  def __setitem__(self, key: indexing.ExplicitIndexer, value) -> None:
+  def __setitem__(self, key: indexing.ExplicitIndexer, value) -> None:  # noqa ANN001
     index_tuple = tuple(map(_numpy_to_tensorstore_index, key.tuple, self.shape))
     if isinstance(key, indexing.OuterIndexer):
       self.array.oindex[index_tuple] = value
     elif isinstance(key, indexing.VectorizedIndexer):
       self.array.vindex[index_tuple] = value
     else:
-      assert isinstance(key, indexing.BasicIndexer)
+      assert isinstance(key, indexing.BasicIndexer)  # noqa S101
       self.array[index_tuple] = value
     # Invalidate the future so that the next read will pick up the new value
-    object.__setattr__(self, 'future', None)
+    object.__setattr__(self, "future", None)
 
   # xarray>2024.02.0 uses oindex and vindex properties, which are expected to
   # return objects whose __getitem__ method supports the appropriate form of
@@ -133,11 +132,11 @@ class _TensorStoreAdapter(indexing.ExplicitlyIndexed):
     future = self.array.read()
     return type(self)(self.array, future)
 
-  def __array__(self, dtype: Optional[np.dtype] = None) -> np.ndarray:  # type: ignore
+  def __array__(self, dtype: np.dtype | None = None) -> np.ndarray:  # type: ignore
     future = self.array.read() if self.future is None else self.future
     return np.asarray(future.result(), dtype=dtype)
 
-  def get_duck_array(self):
+  def get_duck_array(self) -> np.ndarray:
     # special method for xarray to return an in-memory (computed) representation
     return np.asarray(self)
 
@@ -149,7 +148,7 @@ class _TensorStoreAdapter(indexing.ExplicitlyIndexed):
   def __copy__(self) -> _TensorStoreAdapter:
     return type(self)(self.array, self.future)
 
-  def __deepcopy__(self, memo) -> _TensorStoreAdapter:
+  def __deepcopy__(self, memo) -> _TensorStoreAdapter:  # noqa ANN001
     return self.__copy__()
 
 
@@ -171,46 +170,46 @@ def read(xarraydata: XarrayData, /) -> XarrayData:
   elif isinstance(xarraydata, xarray.DataArray):
     data = _read_tensorstore(xarraydata.variable._data)
   else:
-    raise TypeError(f'argument is not a DataArray or Dataset: {xarraydata}')
+    raise TypeError(f"argument is not a DataArray or Dataset: {xarraydata}")
   # pylint: enable=protected-access
   return xarraydata.copy(data=data)
 
 
-_DEFAULT_STORAGE_DRIVER = 'file'
+_DEFAULT_STORAGE_DRIVER = "file"
 
 
 def _zarr_spec_from_path(path: str, zarr_format: int) -> ...:
-  if re.match(r'\w+\://', path):  # path is a URI
+  if re.match(r"\w+\://", path):  # path is a URI
     kv_store = path
   else:
-    kv_store = {'driver': _DEFAULT_STORAGE_DRIVER, 'path': path}
+    kv_store = {"driver": _DEFAULT_STORAGE_DRIVER, "path": path}
 
   if zarr_format == 2:
-    return {'driver': 'zarr2', 'kvstore': kv_store}
+    return {"driver": "zarr2", "kvstore": kv_store}
   else:
-    return {'driver': 'zarr3', 'kvstore': kv_store}
+    return {"driver": "zarr3", "kvstore": kv_store}
 
 
-def _raise_if_mask_and_scale_used_for_data_vars(ds: xarray.Dataset):
+def _raise_if_mask_and_scale_used_for_data_vars(ds: xarray.Dataset) -> None:
   """Check a dataset for data variables that would need masking or scaling."""
   advice = (
-      'Consider re-opening with xarray_tensorstore.open_zarr(..., '
-      'mask_and_scale=False), or falling back to use xarray.open_zarr().'
+      "Consider re-opening with xarray_tensorstore.open_zarr(..., "
+      "mask_and_scale=False), or falling back to use xarray.open_zarr()."
   )
   for k in ds:
     encoding = ds[k].encoding
-    for attr in ['_FillValue', 'missing_value']:
+    for attr in ["_FillValue", "missing_value"]:
       fill_value = encoding.get(attr, np.nan)
       if fill_value == fill_value:  # pylint: disable=comparison-with-itself
         raise ValueError(
-            f'variable {k} has non-NaN fill value, which is not supported by'
-            f' xarray-tensorstore: {fill_value}. {advice}'
+            f"variable {k} has non-NaN fill value, which is not supported by"
+            f" xarray-tensorstore: {fill_value}. {advice}",
         )
-    for attr in ['scale_factor', 'add_offset']:
+    for attr in ["scale_factor", "add_offset"]:
       if attr in encoding:
         raise ValueError(
-            f'variable {k} uses scale/offset encoding, which is not supported'
-            f' by xarray-tensorstore: {encoding}. {advice}'
+            f"variable {k} uses scale/offset encoding, which is not supported"
+            f" by xarray-tensorstore: {encoding}. {advice}",
         )
 
 
@@ -276,7 +275,7 @@ def open_zarr(
   try:
     # this should work with zarr>=3 - https://github.com/zarr-developers/zarr-python
     zarr_format = zarr.open(path).metadata.zarr_format
-  except:
+  except:  # noqa E722
     # try to open it, but if it fails, assume zarr_format 2
     zarr_format = 2
 
