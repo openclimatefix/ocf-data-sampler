@@ -1,6 +1,5 @@
 import dask.array
 import numpy as np
-import pandas as pd
 import torch
 import xarray as xr
 from torch.utils.data import DataLoader
