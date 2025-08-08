@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Utilities for loading TensorStore data into Xarray.
+"""Utilities for loading TensorStore data into Xarray.
 
 Copied from https://github.com/google-research/tensorstore/blob/main/tensorstore/xarray.py
-But we added small changes so that it works for zarr3 
+But we added small changes so that it works for zarr3
 https://github.com/google/xarray-tensorstore/pull/22
 """
 from __future__ import annotations
