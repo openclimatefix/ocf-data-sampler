@@ -14,6 +14,12 @@ We are currently migrating to this repo from [ocf_datapipes](https://github.com/
 > [!Note]
 > This repository is still in early development development and large changes to the user facing functions may still occur.
 
+## Licence 
+
+This project is primarily licensed under the MIT License (see LICENSE).
+
+It includes and adapts internal functions from the Google xarray-tensorstore project, licensed under the Apache License, Version 2.0.
+
 ## Documentation
 
 **ocf-data-sampler** doesn't have external documentation _yet_; you can read a bit about how our torch datasets work in the README [here](ocf_data_sampler/torch_datasets/README.md).
