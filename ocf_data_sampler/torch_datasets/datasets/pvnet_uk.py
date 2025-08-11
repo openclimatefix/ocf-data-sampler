@@ -1,5 +1,6 @@
 """Torch dataset for UK PVNet."""
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
@@ -19,7 +20,7 @@ from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import Location, fill_time_periods
-from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
+from ocf_data_sampler.select.geospatial import spatial_coord_type, convert_coordinates
 from ocf_data_sampler.torch_datasets.utils import (
     config_normalization_values_to_dicts,
     find_valid_time_periods,
@@ -59,13 +60,78 @@ def get_gsp_locations(
     for gsp_id in gsp_ids:
         locations.append(
             Location(
-                coordinate_system="osgb",
                 x=df_gsp_loc.loc[gsp_id].x_osgb,
                 y=df_gsp_loc.loc[gsp_id].y_osgb,
+                coord_system="osgb",
                 id=gsp_id,
             ),
         )
     return locations
+
+
+def add_alterate_coordinate_projections(
+    locations: list[Location], 
+    datasets_dict: dict, 
+    primary_coords: str,
+) -> list[Location]:
+
+    if primary_coords not in ["osgb", "lon_lat"]:
+        raise ValueError("Only osbg and lon_lat are currently supported")
+
+    xs, ys = np.array([loc.in_coord_system(primary_coords) for loc in locations]).T
+
+    datasets = []
+    if "nwp" in datasets_dict:
+        datasets.extend(datasets_dict["nwp"].values())
+    if "sat" in datasets_dict:
+        datasets.append(datasets_dict["sat"])
+
+    computed_coord_systems = {primary_coords}
+
+    # Find all the coord systems required by all datasets
+    for ds in datasets:
+
+        # Fid the dataset required by this dataset
+        coord_system, *_ = spatial_coord_type(ds)
+
+        # Skip if the projections in this coord system have already been computed
+        if coord_system not in computed_coord_systems:
+
+            if coord_system=="geostationary":
+                area_string = ds.attrs["area"]
+            else:
+                area_string = None
+            
+            new_xs, new_ys = convert_coordinates(
+                x=xs, 
+                y=ys, 
+                from_coords=primary_coords, 
+                target_coords=coord_system,
+                area_string=area_string,
+            )
+
+            # Add the projection to the locations objects
+            for x, y, loc in zip(new_xs, new_ys, locations):
+                loc.add_coord_system(x, y, coord_system)
+
+            computed_coord_systems.add(coord_system)
+
+    # Add lon-lat to start since it is required to compute the solar coords
+    if "lon_lat" not in computed_coord_systems:
+        new_xs, new_ys = convert_coordinates(
+            x=xs, 
+            y=ys, 
+            from_coords=primary_coords, 
+            target_coords="lon_lat",
+            area_string=None,
+        )
+
+        # Add the projection to the locations objects
+        for x, y, loc in zip(new_xs, new_ys, locations):
+            loc.add_coord_system(x, y, coord_system)
+
+    return locations
+
 
 
 class AbstractPVNetUKDataset(Dataset):
@@ -100,10 +166,13 @@ class AbstractPVNetUKDataset(Dataset):
             valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
-        self.locations = get_gsp_locations(
-            gsp_ids,
-            version=config.input_data.gsp.boundaries_version,
+        locations = get_gsp_locations(gsp_ids, version=config.input_data.gsp.boundaries_version)
+        self.locations = add_alterate_coordinate_projections(
+            locations,
+            datasets_dict,
+            primary_coords="osgb"
         )
+
         self.valid_t0_times = valid_t0_times
 
         # Assign config and input data to self
@@ -171,11 +240,14 @@ class AbstractPVNetUKDataset(Dataset):
             )
 
         # Add GSP location data
+
+        osgb_x, osgb_y = location.in_coord_system("osgb")
+
         numpy_modalities.append(
             {
                 GSPSampleKey.gsp_id: location.id,
-                GSPSampleKey.x_osgb: location.x,
-                GSPSampleKey.y_osgb: location.y,
+                GSPSampleKey.x_osgb: osgb_x,
+                GSPSampleKey.y_osgb: osgb_y,
             },
         )
 
@@ -191,7 +263,7 @@ class AbstractPVNetUKDataset(Dataset):
             )
 
             # Convert OSGB coordinates to lon/lat
-            lon, lat = osgb_to_lon_lat(location.x, location.y)
+            lon, lat = location.in_coord_system("lon_lat")
 
             # Calculate solar positions and add to modalities
             numpy_modalities.append(make_sun_position_numpy_sample(datetimes, lon, lat))

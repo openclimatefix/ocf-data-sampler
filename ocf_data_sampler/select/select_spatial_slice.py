@@ -1,63 +1,12 @@
 """Select spatial slices."""
 
-import logging
-
 import numpy as np
 import xarray as xr
-
-from ocf_data_sampler.select.geospatial import (
-    lon_lat_to_geostationary_area_coords,
-    lon_lat_to_osgb,
-    osgb_to_geostationary_area_coords,
-    osgb_to_lon_lat,
-    spatial_coord_type,
-)
 from ocf_data_sampler.select.location import Location
-
-logger = logging.getLogger(__name__)
-
-
-def convert_coordinates(
-    from_coords: str,
-    x: float | np.ndarray,
-    y: float | np.ndarray,
-    da: xr.DataArray,
-) -> tuple[float | np.ndarray, float | np.ndarray]:
-    """Convert x and y coordinates to coordinate system matching xarray data.
-
-    Args:
-        from_coords: The coordinate system to convert from.
-        x: The x-coordinate to convert.
-        y: The y-coordinate to convert.
-        da: The xarray DataArray used for context (e.g., for geostationary conversion).
-
-    Returns:
-        The converted (x, y) coordinates.
-    """
-    target_coords, *_ = spatial_coord_type(da)
-
-    match (from_coords, target_coords):
-        case ("osgb", "geostationary"):
-            x, y = osgb_to_geostationary_area_coords(x, y, da)
-        case ("osgb", "lon_lat"):
-            x, y = osgb_to_lon_lat(x, y)
-        case ("osgb", "osgb"):
-            pass
-        case ("lon_lat", "osgb"):
-            x, y = lon_lat_to_osgb(x, y)
-        case ("lon_lat", "geostationary"):
-            x, y = lon_lat_to_geostationary_area_coords(x, y, da)
-        case ("lon_lat", "lon_lat"):
-            pass
-        case (_, _):
-            raise NotImplementedError(
-                f"Conversion from {from_coords} to "
-                f"{target_coords} is not supported",
-            )
-    return x, y
+from ocf_data_sampler.select.geospatial import spatial_coord_type
 
 
-def _get_pixel_index_location(da: xr.DataArray, location: Location) -> Location:
+def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int, int]:
     """Find pixel index location closest to given Location.
 
     Args:
@@ -65,14 +14,15 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> Location:
         location: The Location object representing the point of interest.
 
     Returns:
-        A Location object with x and y attributes representing the pixel indices.
+        The pixel indices.
 
     Raises:
         ValueError: If the location is outside the bounds of the DataArray.
     """
-    xr_coords, x_dim, y_dim = spatial_coord_type(da)
 
-    x, y = convert_coordinates(location.coordinate_system, location.x, location.y, da)
+    target_coords, x_dim, y_dim = spatial_coord_type(da)
+
+    x, y = location.in_coord_system(target_coords)
 
     # Check that requested point lies within the data
     if not (da[x_dim].min() < x < da[x_dim].max()):
@@ -89,7 +39,7 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> Location:
     closest_x = x_index.get_indexer([x], method="nearest")[0]
     closest_y = y_index.get_indexer([y], method="nearest")[0]
 
-    return Location(x=closest_x, y=closest_y, coordinate_system="idx")
+    return closest_x, closest_y
 
 
 def _select_padded_slice(
@@ -214,15 +164,15 @@ def select_spatial_slice_pixels(
         raise ValueError("Height must be an even number")
 
     _, x_dim, y_dim = spatial_coord_type(da)
-    center_idx = _get_pixel_index_location(da, location)
+    center_idx_x, center_idx_y = _get_pixel_index_location(da, location)
 
     half_width = width_pixels // 2
     half_height = height_pixels // 2
 
-    left_idx = int(center_idx.x - half_width)
-    right_idx = int(center_idx.x + half_width)
-    bottom_idx = int(center_idx.y - half_height)
-    top_idx = int(center_idx.y + half_height)
+    left_idx = int(center_idx_x - half_width)
+    right_idx = int(center_idx_x + half_width)
+    bottom_idx = int(center_idx_y - half_height)
+    top_idx = int(center_idx_y + half_height)
 
     data_width_pixels = len(da[x_dim])
     data_height_pixels = len(da[y_dim])
