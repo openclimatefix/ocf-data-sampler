@@ -1,6 +1,6 @@
 """Utilities for loading TensorStore data into Xarray.
 
-This module uses and adapts internal functions from the Google xarray-tensorstore project [1], 
+This module uses and adapts internal functions from the Google xarray-tensorstore project [1],
 licensed under the Apache License, Version 2.0. See [2] for details.
 
 Modifications copyright 2025 Open climate Fix. Licensed under the MIT License.
@@ -22,8 +22,8 @@ import xarray as xr
 import zarr
 from xarray_tensorstore import (
     _DEFAULT_STORAGE_DRIVER,
+    _raise_if_mask_and_scale_used_for_data_vars,
     _TensorStoreAdapter,
-    _raise_if_mask_and_scale_used_for_data_vars
 )
 
 
@@ -36,12 +36,12 @@ def _zarr_spec_from_path(path: str, zarr_format: int) -> ...:
 
 
 def _get_data_variable_array_futures(
-    path: str, 
-    context: ts.Context | None, 
+    path: str,
+    context: ts.Context | None,
     variables: list[str],
 ) -> dict[ts.Future]:
-    """Open all data variables in a zarr group and return futures
-    
+    """Open all data variables in a zarr group and return futures.
+
     Args:
         path: path or URI to zarr group to open.
         context: TensorStore configuration options to use when opening arrays.
@@ -66,7 +66,6 @@ def _tensorstore_open_zarrs(
         concat_axes: List of axes along which to concatenate the data variables.
         context: TensorStore context.
     """
-
     # Open all the variables from all the datasets - returned as futures
     arrays_list: list[dict[str, ts.Future]] = []
     for path in paths:
@@ -101,7 +100,6 @@ def open_zarr(
     Returns:
         Dataset with all data variables opened via TensorStore.
     """
-
     if context is None:
         context = ts.Context()
 
@@ -111,7 +109,7 @@ def open_zarr(
     if mask_and_scale:
         _raise_if_mask_and_scale_used_for_data_vars(ds)
 
-    # Open all data variables using tensorstore - returned as futures
+    # Open all data variables using tensorstore - returned as futures
     data_vars = list(ds.data_vars)
     arrays = _get_data_variable_array_futures(path, context, data_vars)
 
@@ -146,16 +144,16 @@ def open_zarrs(
 
     ds_list = [xr.open_zarr(p, mask_and_scale=mask_and_scale, decode_timedelta=True) for p in paths]
     ds = xr.concat(
-        ds_list, 
-        dim=concat_dim, 
-        data_vars="minimal", 
-        compat="equals", 
+        ds_list,
+        dim=concat_dim,
+        data_vars="minimal",
+        compat="equals",
         combine_attrs="no_conflicts",
     )
 
     if mask_and_scale:
         _raise_if_mask_and_scale_used_for_data_vars(ds)
-    
+
     # Find the axis along which each data array must be concatenated
     data_vars = list(ds.data_vars)
     concat_axes = [ds[v].dims.index(concat_dim) for v in data_vars]

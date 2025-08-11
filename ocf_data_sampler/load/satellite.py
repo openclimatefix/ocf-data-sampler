@@ -2,12 +2,12 @@
 import numpy as np
 import xarray as xr
 
+from ocf_data_sampler.load.open_xarray_tensorstore import open_zarr, open_zarrs
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
     get_xr_data_array_from_xr_dataset,
     make_spatial_coords_increasing,
 )
-from ocf_data_sampler.load.open_xarray_tensorstore import open_zarr, open_zarrs
 
 
 def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
