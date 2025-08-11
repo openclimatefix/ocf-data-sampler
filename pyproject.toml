@@ -35,7 +35,7 @@ dependencies = [
     "pyaml_env",
     "pyresample",
     "h5netcdf",
-    "tensorstore",
+    "xarray-tensorstore==0.1.5",
     "zarr>=3",
 ]
 
