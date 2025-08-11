@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 from pathlib import Path
 
@@ -9,6 +10,8 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
+
+logger = logging.getLogger(__name__)
 from ocf_data_sampler.config.model import Site, SolarPosition
 from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
 
@@ -56,6 +59,7 @@ def session_tmp_path(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def sat_zarr_path(session_tmp_path):
+    logger.info("Creating dummy satellite dataset with 11 variables")
     # Define coords for satellite-like dataset
     variables = [
         "IR_016",
@@ -102,6 +106,7 @@ def sat_zarr_path(session_tmp_path):
 
 @pytest.fixture(scope="session")
 def ds_nwp_ukv():
+    logger.info("Creating dummy UKV NWP dataset with variables: si10, dswrf, t, prate")
     init_times = pd.date_range(start="2023-01-01 00:00", freq="180min", periods=24 * 7)
     steps = pd.timedelta_range("0h", "10h", freq="1h")
 
@@ -128,6 +133,7 @@ def ds_nwp_ukv():
 
 @pytest.fixture(scope="session")
 def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
+    logger.info("Creating UKV NWP zarr dataset at %s", session_tmp_path / "ukv_nwp.zarr")
     ds = ds_nwp_ukv.chunk(
         {
             "init_time": 1,
@@ -144,6 +150,7 @@ def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
 
 @pytest.fixture()
 def ds_nwp_ukv_time_sliced():
+    logger.info("Creating time-sliced UKV NWP dataset")
     t0 = pd.to_datetime("2024-01-02 00:00")
 
     x = np.arange(-100, 100, 10)
@@ -176,6 +183,7 @@ def ds_nwp_ukv_time_sliced():
 
 @pytest.fixture(scope="session")
 def ds_nwp_ecmwf():
+    logger.info("Creating dummy ECMWF NWP dataset with variables: t2m, dswrf, mcc")
     init_times = pd.date_range(start="2023-01-01 00:00", freq="6h", periods=24 * 7)
     steps = pd.timedelta_range("0h", "14h", freq="1h")
 
@@ -205,6 +213,7 @@ def ds_nwp_ecmwf():
 
 @pytest.fixture(scope="session")
 def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
+    logger.info("Creating ECMWF NWP zarr dataset at %s", session_tmp_path / "ukv_ecmwf.zarr")
     ds = ds_nwp_ecmwf.chunk(
         {
             "init_time": 1,
@@ -222,6 +231,7 @@ def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
 
 @pytest.fixture(scope="session")
 def icon_eu_zarr_path(session_tmp_path):
+    logger.info("Creating ICON EU zarr dataset with variables: t_1000hPa, u_10m, v_10m")
     date = "20211101"
     hours = ["00", "06"]
     paths = []
@@ -271,7 +281,7 @@ def icon_eu_zarr_path(session_tmp_path):
 
 @pytest.fixture(scope="session")
 def nwp_cloudcasting_zarr_path(session_tmp_path):
-
+    logger.info("Creating cloudcasting NWP zarr dataset with variables: IR_097, VIS008, WV_073")
     init_times = pd.date_range(start="2023-01-01 00:00", freq="1h", periods=2)
     steps = pd.timedelta_range("15min", "180min", freq="15min")
 
@@ -310,6 +320,7 @@ def nwp_cloudcasting_zarr_path(session_tmp_path):
 
 @pytest.fixture(scope="session")
 def ds_uk_gsp():
+    logger.info("Creating dummy UK GSP dataset with 318 GSP IDs")
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
     gsp_ids = np.arange(0, 318)
     capacity = np.ones((len(times), len(gsp_ids)))
@@ -349,6 +360,11 @@ def create_site_data(
     site_interval_end_minutes: int = 60,
     site_time_resolution_minutes: int = 30,
 ) -> Site:
+    """
+    Make fake data for sites
+    Returns: filename for netcdf file, and csv metadata
+    """
+    logger.info("Creating synthetic site data with %d sites", num_sites)
     """
     Make fake data for sites
     Returns: filename for netcdf file, and csv metadata
@@ -411,6 +427,7 @@ def data_sites(session_tmp_path):
 
 @pytest.fixture(scope="session")
 def uk_gsp_zarr_path(session_tmp_path, ds_uk_gsp):
+    logger.info("Creating UK GSP zarr dataset at %s", session_tmp_path / "uk_gsp.zarr")
     zarr_path = session_tmp_path / "uk_gsp.zarr"
     ds_uk_gsp.to_zarr(zarr_path)
     yield zarr_path
@@ -424,6 +441,7 @@ def pvnet_config_filename(
     uk_gsp_zarr_path,
     sat_zarr_path,
 ):
+    logger.info("Creating PVNet configuration with UKV, satellite, and GSP zarr paths")
     # adjust config to point to the zarr file
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
@@ -448,6 +466,7 @@ def site_config_filename(
     sat_zarr_path,
     default_data_site_model,
 ):
+    logger.info("Creating site configuration with UKV, satellite, and site model")
     # adjust config to point to the zarr file
     config = load_yaml_configuration(site_test_config_path)
     config.input_data.nwp["ukv"].zarr_path = str(nwp_ukv_zarr_path)
@@ -468,4 +487,5 @@ def site_config_filename(
 
 @pytest.fixture()
 def sites_dataset(site_config_filename):
+    logger.info("Creating SitesDataset from configuration")
     return SitesDataset(site_config_filename)
