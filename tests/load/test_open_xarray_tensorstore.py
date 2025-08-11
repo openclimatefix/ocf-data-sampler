@@ -8,17 +8,15 @@ from ocf_data_sampler.load.open_xarray_tensorstore import open_zarr, open_zarrs
 @pytest.fixture(scope="module")
 def concatable_nwp_like_data(ds_nwp_ecmwf):
 
-    ds_1 = ds_nwp_ecmwf
-
     # Make a second NWP-like dataset so we can concat them
     ds_2 = ds_nwp_ecmwf.copy(deep=True)
     ds_2["init_time"] = pd.date_range(
-        start=ds_1.init_time.max().values + pd.Timedelta("6h"),
+        start=ds_nwp_ecmwf.init_time.max().values + pd.Timedelta("6h"),
         freq=pd.Timedelta("6h"),
-        periods=len(ds_1.init_time),
+        periods=len(ds_nwp_ecmwf.init_time),
     )
 
-    return ds_1, ds_2
+    return ds_nwp_ecmwf, ds_2
 
 
 @pytest.fixture(scope="module")
