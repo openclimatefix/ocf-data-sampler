@@ -34,7 +34,7 @@ from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
     merge_dicts,
 )
-from ocf_data_sampler.utils import compute, minutes
+from ocf_data_sampler.utils import minutes, tensorstore_compute
 
 xr.set_options(keep_attrs=True)
 
@@ -272,7 +272,7 @@ class SitesDataset(Dataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
 
-        sample_dict = compute(sample_dict)
+        sample_dict = tensorstore_compute(sample_dict)
 
         return process_and_combine_datasets(
             sample_dict,
@@ -408,7 +408,7 @@ class SitesDatasetConcurrent(Dataset):
         """
         # slice by time first as we want to keep all site id info
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
-        sample_dict = compute(sample_dict)
+        sample_dict = tensorstore_compute(sample_dict)
 
         site_samples = []
 
