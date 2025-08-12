@@ -148,7 +148,7 @@ def open_zarrs(
         dim=concat_dim,
         data_vars="minimal",
         compat="equals",
-        combine_attrs="no_conflicts",
+        combine_attrs="drop_conflicts",
     )
 
     if mask_and_scale:
