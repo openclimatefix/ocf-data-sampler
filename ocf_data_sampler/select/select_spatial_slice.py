@@ -3,7 +3,7 @@
 import numpy as np
 import xarray as xr
 from ocf_data_sampler.select.location import Location
-from ocf_data_sampler.select.geospatial import spatial_coord_type
+from ocf_data_sampler.select.geospatial import find_coord_system
 
 
 def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int, int]:
@@ -20,7 +20,7 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int
         ValueError: If the location is outside the bounds of the DataArray.
     """
 
-    target_coords, x_dim, y_dim = spatial_coord_type(da)
+    target_coords, x_dim, y_dim = find_coord_system(da)
 
     x, y = location.in_coord_system(target_coords)
 
@@ -163,7 +163,7 @@ def select_spatial_slice_pixels(
     if (height_pixels % 2) != 0:
         raise ValueError("Height must be an even number")
 
-    _, x_dim, y_dim = spatial_coord_type(da)
+    _, x_dim, y_dim = find_coord_system(da)
     center_idx_x, center_idx_y = _get_pixel_index_location(da, location)
 
     half_width = width_pixels // 2

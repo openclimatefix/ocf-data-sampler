@@ -1,6 +1,5 @@
 """Torch dataset for UK PVNet."""
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
@@ -20,14 +19,12 @@ from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import Location, fill_time_periods
-from ocf_data_sampler.select.geospatial import spatial_coord_type, convert_coordinates
 from ocf_data_sampler.torch_datasets.utils import (
     config_normalization_values_to_dicts,
     find_valid_time_periods,
     slice_datasets_by_space,
     slice_datasets_by_time,
-)
-from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
+    add_alterate_coordinate_projections,
     fill_nans_in_arrays,
     merge_dicts,
 )
@@ -67,71 +64,6 @@ def get_gsp_locations(
             ),
         )
     return locations
-
-
-def add_alterate_coordinate_projections(
-    locations: list[Location], 
-    datasets_dict: dict, 
-    primary_coords: str,
-) -> list[Location]:
-
-    if primary_coords not in ["osgb", "lon_lat"]:
-        raise ValueError("Only osbg and lon_lat are currently supported")
-
-    xs, ys = np.array([loc.in_coord_system(primary_coords) for loc in locations]).T
-
-    datasets = []
-    if "nwp" in datasets_dict:
-        datasets.extend(datasets_dict["nwp"].values())
-    if "sat" in datasets_dict:
-        datasets.append(datasets_dict["sat"])
-
-    computed_coord_systems = {primary_coords}
-
-    # Find all the coord systems required by all datasets
-    for ds in datasets:
-
-        # Fid the dataset required by this dataset
-        coord_system, *_ = spatial_coord_type(ds)
-
-        # Skip if the projections in this coord system have already been computed
-        if coord_system not in computed_coord_systems:
-
-            if coord_system=="geostationary":
-                area_string = ds.attrs["area"]
-            else:
-                area_string = None
-            
-            new_xs, new_ys = convert_coordinates(
-                x=xs, 
-                y=ys, 
-                from_coords=primary_coords, 
-                target_coords=coord_system,
-                area_string=area_string,
-            )
-
-            # Add the projection to the locations objects
-            for x, y, loc in zip(new_xs, new_ys, locations):
-                loc.add_coord_system(x, y, coord_system)
-
-            computed_coord_systems.add(coord_system)
-
-    # Add lon-lat to start since it is required to compute the solar coords
-    if "lon_lat" not in computed_coord_systems:
-        new_xs, new_ys = convert_coordinates(
-            x=xs, 
-            y=ys, 
-            from_coords=primary_coords, 
-            target_coords="lon_lat",
-            area_string=None,
-        )
-
-        # Add the projection to the locations objects
-        for x, y, loc in zip(new_xs, new_ys, locations):
-            loc.add_coord_system(x, y, coord_system)
-
-    return locations
-
 
 
 class AbstractPVNetUKDataset(Dataset):

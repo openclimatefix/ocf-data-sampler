@@ -29,10 +29,9 @@ from ocf_data_sampler.torch_datasets.utils import (
     find_valid_time_periods,
     slice_datasets_by_space,
     slice_datasets_by_time,
-)
-from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
     merge_dicts,
+    add_alterate_coordinate_projections,
 )
 from ocf_data_sampler.utils import minutes, tensorstore_compute
 
@@ -168,8 +167,14 @@ class SitesDataset(Dataset):
         self.datasets_dict = datasets_dict
         self.config = config
 
-        # get all locations
-        self.locations = get_locations(datasets_dict["site"])
+        # Construct list of locations to sample from
+        locations = get_locations(datasets_dict["site"])
+        self.locations = add_alterate_coordinate_projections(
+            locations,
+            datasets_dict,
+            primary_coords="lon_lat"
+        )
+
         self.location_lookup = {loc.id: loc for loc in self.locations}
 
         # Get t0 times where all input data is available
