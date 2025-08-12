@@ -1,7 +1,7 @@
 """Location object."""
 
 
-allowed_coordinate_systems = {"osgb", "lon_lat", "geostationary"}
+allowed_coord_systems = {"osgb", "lon_lat", "geostationary"}
 
 
 class Location:
@@ -16,8 +16,8 @@ class Location:
             coord_system: The coordinate system
             id: The location ID
         """
-        assert coord_system in allowed_coordinate_systems
-        self._projections: dict[str, Location] = {coord_system: (x, y)}
+        assert coord_system in allowed_coord_systems
+        self._projections: dict[str, tuple[float, float]] = {coord_system: (x, y)}
         self.id = id
 
     def in_coord_system(self, coord_system: str) -> tuple[float, float]:
@@ -26,7 +26,7 @@ class Location:
         Args:
             coord_system: The desired output coordinate system
         """
-        assert coord_system in allowed_coordinate_systems
+        assert coord_system in allowed_coord_systems
 
         if coord_system in self._projections:
             return self._projections[coord_system]
@@ -45,7 +45,7 @@ class Location:
             y: The south-north / down-up coordinate
             coord_system: The coordinate system name
         """
-        assert coord_system in allowed_coordinate_systems
+        assert coord_system in allowed_coord_systems
         if coord_system in self._projections:
             if not (x, y)==self._projections[coord_system]:
                 raise ValueError(

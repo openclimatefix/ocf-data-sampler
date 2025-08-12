@@ -45,9 +45,9 @@ def add_alterate_coordinate_projections(
             )
 
             # Add the projection to the locations objects
-            for x, y, loc in zip(new_xs, new_ys, locations):
+            for x, y, loc in zip(new_xs, new_ys, locations, strict=True):
                 loc.add_coord_system(x, y, coord_system)
-
+            
             computed_coord_systems.add(coord_system)
 
     # Add lon-lat to start since it is required to compute the solar coords
@@ -62,6 +62,6 @@ def add_alterate_coordinate_projections(
 
         # Add the projection to the locations objects
         for x, y, loc in zip(new_xs, new_ys, locations):
-            loc.add_coord_system(x, y, coord_system)
+            loc.add_coord_system(x, y, "lon_lat")
 
     return locations

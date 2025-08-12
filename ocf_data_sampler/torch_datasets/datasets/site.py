@@ -51,7 +51,7 @@ def get_locations(site_xr: xr.Dataset) -> list[Location]:
             id=site_id,
             x=site.longitude.values,
             y=site.latitude.values,
-            coordinate_system="lon_lat",
+            coord_system="lon_lat",
         )
         locations.append(location)
 

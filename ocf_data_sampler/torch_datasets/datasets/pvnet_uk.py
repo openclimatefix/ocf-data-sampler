@@ -60,7 +60,7 @@ def get_gsp_locations(
                 x=df_gsp_loc.loc[gsp_id].x_osgb,
                 y=df_gsp_loc.loc[gsp_id].y_osgb,
                 coord_system="osgb",
-                id=gsp_id,
+                id=int(gsp_id),
             ),
         )
     return locations
