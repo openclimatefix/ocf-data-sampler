@@ -1,7 +1,5 @@
-import dask.array
 import numpy as np
 import torch
-import xarray as xr
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
@@ -9,27 +7,7 @@ from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
     PVNetUKConcurrentDataset,
     PVNetUKRegionalDataset,
-    compute,
 )
-
-
-def test_compute():
-    """Test compute function with dask array"""
-    da_dask = xr.DataArray(dask.array.random.random((5, 5)))
-
-    # Create a nested dictionary with dask array
-    lazy_data_dict = {
-        "array1": da_dask,
-        "nested": {
-            "array2": da_dask,
-        },
-    }
-
-    computed_data_dict = compute(lazy_data_dict)
-
-    # Assert that the result is no longer lazy
-    assert isinstance(computed_data_dict["array1"].data, np.ndarray)
-    assert isinstance(computed_data_dict["nested"]["array2"].data, np.ndarray)
 
 
 def test_pvnet_uk_regional_dataset(pvnet_config_filename):
