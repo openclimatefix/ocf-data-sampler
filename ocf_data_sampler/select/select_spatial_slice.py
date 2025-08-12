@@ -2,8 +2,9 @@
 
 import numpy as np
 import xarray as xr
-from ocf_data_sampler.select.location import Location
+
 from ocf_data_sampler.select.geospatial import find_coord_system
+from ocf_data_sampler.select.location import Location
 
 
 def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int, int]:
@@ -19,7 +20,6 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int
     Raises:
         ValueError: If the location is outside the bounds of the DataArray.
     """
-
     target_coords, x_dim, y_dim = find_coord_system(da)
 
     x, y = location.in_coord_system(target_coords)

@@ -25,13 +25,13 @@ from ocf_data_sampler.select import (
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.torch_datasets.utils import (
+    add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
+    fill_nans_in_arrays,
     find_valid_time_periods,
+    merge_dicts,
     slice_datasets_by_space,
     slice_datasets_by_time,
-    fill_nans_in_arrays,
-    merge_dicts,
-    add_alterate_coordinate_projections,
 )
 from ocf_data_sampler.utils import minutes, tensorstore_compute
 
@@ -172,7 +172,7 @@ class SitesDataset(Dataset):
         self.locations = add_alterate_coordinate_projections(
             locations,
             datasets_dict,
-            primary_coords="lon_lat"
+            primary_coords="lon_lat",
         )
 
         self.location_lookup = {loc.id: loc for loc in self.locations}

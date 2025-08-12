@@ -10,8 +10,8 @@ Supports conversions between:
 
 import numpy as np
 import pyproj
-from pyresample.area_config import load_area_from_string
 import xarray as xr
+from pyresample.area_config import load_area_from_string
 
 # Coordinate Reference System (CRS) identifiers
 
@@ -134,8 +134,8 @@ def find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
     dimensional_coords = set(da.xindexes)
 
     coord_systems = {
-        "lon_lat": ["longitude", "latitude"], 
-        "geostationary": ["x_geostationary", "y_geostationary"], 
+        "lon_lat": ["longitude", "latitude"],
+        "geostationary": ["x_geostationary", "y_geostationary"],
         "osgb": ["x_osgb", "y_osgb"],
     }
 
@@ -147,12 +147,12 @@ def find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
 
     if len(coords_systems_found)==0:
         raise ValueError(
-            f"Did not find any coordinate pairs in the dimensional coords: {dimensional_coords}"
+            f"Did not find any coordinate pairs in the dimensional coords: {dimensional_coords}",
         )
     elif len(coords_systems_found)>1:
         raise ValueError(
             f"Found >1 ({coords_systems_found}) coordinate pairs in the dimensional coords: "
-            f"{dimensional_coords}"
+            f"{dimensional_coords}",
         )
     else:
         coord_system_name = coords_systems_found[0]
@@ -179,30 +179,29 @@ def convert_coordinates(
     Returns:
         The converted (x, y) coordinates.
     """
-
     if from_coords==target_coords:
         return x, y
-    
-    else:
-        match (from_coords, target_coords):
 
-            case ("osgb", "geostationary"):
-                assert area_string is not None
-                x, y = osgb_to_geostationary_area_coords(x, y, area_string)
+    if "geostationary" in (from_coords, target_coords) and area_string is not None:
+        ValueError("If using geostationary coords the `area_string` must be provided")
 
-            case ("lon_lat", "geostationary"):
-                assert area_string is not None
-                x, y = lon_lat_to_geostationary_area_coords(x, y, area_string)
+    match (from_coords, target_coords):
 
-            case ("osgb", "lon_lat"):
-                x, y = osgb_to_lon_lat(x, y)
+        case ("osgb", "geostationary"):
+            x, y = osgb_to_geostationary_area_coords(x, y, area_string)
 
-            case ("lon_lat", "osgb"):
-                x, y = lon_lat_to_osgb(x, y)
-                
-            case (_, _):
-                raise NotImplementedError(
-                    f"Conversion from {from_coords} to "
-                    f"{target_coords} is not supported",
-                )
-        return x, y
+        case ("lon_lat", "geostationary"):
+            x, y = lon_lat_to_geostationary_area_coords(x, y, area_string)
+
+        case ("osgb", "lon_lat"):
+            x, y = osgb_to_lon_lat(x, y)
+
+        case ("lon_lat", "osgb"):
+            x, y = lon_lat_to_osgb(x, y)
+
+        case (_, _):
+            raise NotImplementedError(
+                f"Conversion from {from_coords} to "
+                f"{target_coords} is not supported",
+            )
+    return x, y

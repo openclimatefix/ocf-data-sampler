@@ -20,13 +20,13 @@ from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import Location, fill_time_periods
 from ocf_data_sampler.torch_datasets.utils import (
+    add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
+    fill_nans_in_arrays,
     find_valid_time_periods,
+    merge_dicts,
     slice_datasets_by_space,
     slice_datasets_by_time,
-    add_alterate_coordinate_projections,
-    fill_nans_in_arrays,
-    merge_dicts,
 )
 from ocf_data_sampler.utils import minutes, tensorstore_compute
 
@@ -102,7 +102,7 @@ class AbstractPVNetUKDataset(Dataset):
         self.locations = add_alterate_coordinate_projections(
             locations,
             datasets_dict,
-            primary_coords="osgb"
+            primary_coords="osgb",
         )
 
         self.valid_t0_times = valid_t0_times
