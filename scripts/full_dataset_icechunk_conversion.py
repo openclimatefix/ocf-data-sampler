@@ -141,7 +141,12 @@ def create_production_config(conversion_result):
         return None
     
     dataset_name = conversion_result['original_dataset'].replace('.zarr', '').replace('_nonhrv', '')
-    config_filename = f"production_icechunk_{dataset_name}_config.yaml"
+    # Create the directory structure if it doesn't exist
+    config_dir = "tests/test_satellite/configs"
+    os.makedirs(config_dir, exist_ok=True)
+    
+    # Set the full path for the config file
+    config_filename = os.path.join(config_dir, f"production_icechunk_{dataset_name}_config.yaml")
     
     all_channels = [
         'IR_016', 'IR_039', 'IR_087', 'IR_097', 'IR_108', 'IR_120', 'IR_134', 

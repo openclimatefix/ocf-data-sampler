@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 OPTIMAL_BLOCK_SIZE_MB = 64
 OPTIMAL_THREADS = 2
 
-def open_sat_data(zarr_path: str | list[str], channels: Optional[List[str]] = None) -> xr.DataArray:
+def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None) -> xr.DataArray:
     """Lazily opens the zarr store and validates data types."""
     
     if isinstance(zarr_path, list | tuple):
@@ -34,8 +34,13 @@ def open_sat_data(zarr_path: str | list[str], channels: Optional[List[str]] = No
         
         # Sol's requested match/case pattern for path routing
         match path_info:
+            # Updated case to handle local icechunk paths correctly
+            case {"protocol": None, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix:
+                # Pass the original zarr_path for local icechunk paths
+                ds = _open_sat_data_icechunk("local", "", zarr_path, sha1)
+
             case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix and protocol is not None:
-                # Ice Chunk logic goes here - Sol's requested signature
+                # Cloud Ice Chunk logic goes here - Sol's requested signature
                 ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
             
             case {"protocol": _, "bucket": _, "prefix": _, "sha1": None}:
@@ -102,7 +107,8 @@ def _setup_optimal_environment():
 
 def _parse_zarr_path(path: str) -> dict:
     """Parse a path into its components, supporting both local and cloud paths."""
-    # Sol's recommended regex pattern - handles optional protocol and wildcards
+
+    # Sol's recommended regex pattern - handles optional protocol and wildcards  
     pattern = r"^(?:(?P<protocol>[\w]{2,6}):\/\/)?(?P<bucket>[\w\/-]+)\/(?P<prefix>[\w*.\/-]+?)(?:@(?P<sha1>[\w]+))?$"
     match = re.match(pattern, path)
     if not match:
@@ -111,8 +117,8 @@ def _parse_zarr_path(path: str) -> dict:
     components = match.groupdict()
     
     # Validation checks moved from match block
-    if components["protocol"] is None and components["sha1"] is not None:
-        raise ValueError("Commit syntax (@commit) not supported for local files")
+    if components["sha1"] is not None and not components["prefix"].endswith(".icechunk"):
+        raise ValueError("Commit syntax (@commit) not supported for non-icechunk stores")
     
     if components["protocol"] == "gs" and components["prefix"] is not None and "*" in components["prefix"]:
         raise ValueError("Wildcard (*) paths are not supported for GCP (gs://) URLs")
@@ -123,45 +129,54 @@ def _open_sat_data_icechunk(
     protocol: str | None, bucket: str, prefix: str, sha1: str | None
 ) -> xr.Dataset:
     """Open satellite data from an Ice Chunk repository with optimized settings."""
-    protocol_str = protocol or "unknown"
-    logger.info(f"Opening Ice Chunk repository: {protocol_str}://{bucket}/{prefix}")
-    _setup_optimal_environment()
+    
+    # Handle local icechunk paths
+    if protocol == "local":
+        # Remove @commit from path if present for repository opening
+        base_path = prefix.split('@')[0] if '@' in prefix else prefix
+        logger.info(f"Opening local Ice Chunk repository: {base_path}")
+        
+        storage = icechunk.local_filesystem_storage(base_path)
+        try:
+            repo = icechunk.Repository.open(storage)
+        except Exception as e:
+            logger.error(f"Failed to open local icechunk repository at {base_path}")
+            raise e
+    else:
+        # Your existing cloud logic remains the same
+        protocol_str = protocol or "unknown"
+        logger.info(f"Opening Ice Chunk repository: {protocol_str}://{bucket}/{prefix}")
+        _setup_optimal_environment()
 
-    # Ensure proper trailing slash
-    if not prefix.endswith('/'):
-        prefix = prefix + '/'
+        # Ensure proper trailing slash
+        if not prefix.endswith('/'):
+            prefix = prefix + '/'
 
-    logger.info(f"Accessing Ice Chunk repository: gs://{bucket}/{prefix}")
+        logger.info(f"Accessing Ice Chunk repository: gs://{bucket}/{prefix}")
 
-    # Set up storage and open the repository
-    storage = icechunk.gcs_storage(bucket=bucket, prefix=prefix, from_env=True)
-    try:
-        repo = icechunk.Repository.open(storage)
-    except Exception as e:
-        logger.error(f"Failed to open repository at gs://{bucket}/{prefix}")
-        raise e
+        # Set up storage and open the repository
+        storage = icechunk.gcs_storage(bucket=bucket, prefix=prefix, from_env=True)
+        try:
+            repo = icechunk.Repository.open(storage)
+        except Exception as e:
+            logger.error(f"Failed to open repository at gs://{bucket}/{prefix}")
+            raise e
 
-    # Handle different cases properly - NO FALLBACK as per Sol's feedback
+    # Rest of your existing logic remains exactly the same
     if sha1:
         logger.info(f"Opening Ice Chunk commit: {sha1}")
         try:
-            # First verify the snapshot exists
             snapshot_info = repo.lookup_snapshot(sha1)
             logger.info(f"Found snapshot: {snapshot_info}")
             
-            # Since the documentation shows readonly_session doesn't accept commit IDs,
-            # and your debug shows this snapshot is the current main branch snapshot,
-            # access via main branch but verify we get the correct snapshot
             session = repo.readonly_session("main")
             
-            # Verify we got the expected snapshot
             if session.snapshot_id == sha1:
                 logger.info(f"Successfully accessed commit {sha1} via main branch")
             else:
                 raise ValueError(f"Expected snapshot {sha1}, but main branch has {session.snapshot_id}")
                 
         except Exception as e:
-            # NO FALLBACK - error out as Sol requested
             raise ValueError(f"Commit {sha1} not found or inaccessible: {e}")
     else:
         logger.info("Opening 'main' branch of Ice Chunk repository.")
@@ -172,12 +187,9 @@ def _open_sat_data_icechunk(
 
     # Convert Ice Chunk format to standard format
     if len(ds.data_vars) > 1:
-        # Data is stored with separate variables per channel - combine them
         data_arrays = [ds[var] for var in sorted(ds.data_vars)]
         combined_da = xr.concat(data_arrays, dim="variable")
         combined_da = combined_da.assign_coords(variable=sorted(ds.data_vars))
-        
-        # Create dataset with data variable (to match OCF format)
         ds = xr.Dataset({"data": combined_da})
 
     return ds

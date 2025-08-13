@@ -19,12 +19,12 @@ def production_benchmark_comparison():
     configs = [
         {
             'name': 'Plain Zarr (Current Production)',
-            'config': PROJECT_ROOT / 'test_plain_zarr_clean.yaml',
+            'config': PROJECT_ROOT / 'tests/test_satellite/configs/test_plain_zarr_clean.yaml',
             'description': 'Optimized plain zarr streaming'
         },
         {
             'name': 'Ice Chunk (Complete Dataset)',
-            'config': PROJECT_ROOT / 'production_icechunk_2024-02_config.yaml',
+            'config': PROJECT_ROOT / 'tests/test_satellite/configs/production_icechunk_2024-02_config.yaml',
             'description': 'Complete dataset in Ice Chunk format'
         }
     ]
