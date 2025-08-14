@@ -9,7 +9,6 @@ class GSPSampleKey:
     """Keys for the GSP sample dictionary."""
 
     gsp = "gsp"
-    nominal_capacity_mwp = "gsp_nominal_capacity_mwp"
     effective_capacity_mwp = "gsp_effective_capacity_mwp"
     time_utc = "gsp_time_utc"
     t0_idx = "gsp_t0_idx"

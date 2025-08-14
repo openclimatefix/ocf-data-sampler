@@ -14,7 +14,6 @@ def test_convert_gsp_to_numpy_sample(uk_gsp_zarr_path):
     assert set(numpy_sample.keys()).issubset(
         {
             GSPSampleKey.gsp,
-            GSPSampleKey.nominal_capacity_mwp,
             GSPSampleKey.effective_capacity_mwp,
             GSPSampleKey.time_utc,
         },
@@ -27,10 +26,6 @@ def test_convert_gsp_to_numpy_sample(uk_gsp_zarr_path):
         np.ndarray,
     ), "Time UTC should be numpy array"
     assert numpy_sample[GSPSampleKey.time_utc].dtype == float, "Time UTC should be float type"
-    assert (
-        numpy_sample[GSPSampleKey.nominal_capacity_mwp]
-        == da.isel(time_utc=0)["nominal_capacity_mwp"].values
-    )
     assert (
         numpy_sample[GSPSampleKey.effective_capacity_mwp]
         == da.isel(time_utc=0)["effective_capacity_mwp"].values
