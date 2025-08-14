@@ -9,53 +9,52 @@ import pandas as pd
 import xarray as xr
 
 
-def apply_sampled_dropout_time(
+def apply_history_dropout(
     t0: pd.Timestamp,
     dropout_timedeltas: list[pd.Timedelta],
-    dropout_frac: float|list[float],
+    dropout_frac: float | list[float],
     da: xr.DataArray,
 ) -> xr.DataArray:
-    """Randomly pick a dropout time from a list of timedeltas and apply dropout time to the data.
+    """Apply randomly sampled dropout to the historical part of some sequence data
+
+    Dropped out data is replaced with NaNs
 
     Args:
-        t0: The forecast init-time
+        t0: The forecast init-time. 
         dropout_timedeltas: List of timedeltas relative to t0 to pick from
-        dropout_frac: Either a probability that dropout will be applied.
-            This should be between 0 and 1 inclusive.
-            Or a list of probabilities for each of the corresponding timedeltas
+        dropout_frac: The probabilit(ies) that each dropout timedelta will be applied. This should 
+            be between 0 and 1 inclusive.
         da: Xarray DataArray with 'time_utc' coordinate
     """
-    if  isinstance(dropout_frac, list):
-        # checking if len match
-        if len(dropout_frac) != len(dropout_timedeltas):
-            raise ValueError("Lengths of dropout_frac and dropout_timedeltas should match")
 
+    if len(dropout_timedeltas)==0:
+        return da
+    
+    if isinstance(dropout_frac, float | int):
 
-
-
-        dropout_time = t0 + np.random.choice(dropout_timedeltas,p=dropout_frac)
-
-        return da.where(da.time_utc <= dropout_time)
-
-
-
-    # old logic
+        if not (0<=dropout_frac<=1):
+            raise ValueError("`dropout_frac` must be in range [0, 1]")
+        
+        # Create list with equal chance for all dropout timedeltas
+        n = len(dropout_timedeltas)
+        dropout_frac = [dropout_frac/n for _ in range(n)]
     else:
-        # sample dropout time
-        if dropout_frac > 0 and len(dropout_timedeltas) == 0:
-            raise ValueError("To apply dropout, dropout_timedeltas must be provided")
+        if not 0<=sum(dropout_frac)<=1:
+            raise ValueError("The sum of `dropout_frac` must be in range [0, 1]")
+        if len(dropout_timedeltas)!=len(dropout_frac):
+            raise ValueError("`dropout_timedeltas` and `dropout_frac` must have the same length")
 
+        dropout_frac = [*dropout_frac] # Make copy of the list so we can append to it
 
-        if not (0 <= dropout_frac <= 1):
-            raise ValueError("dropout_frac must be between 0 and 1 inclusive")
+    dropout_timedeltas = [*dropout_timedeltas] # Make copy of the list so we can append to it
 
-        if (len(dropout_timedeltas) == 0) or (np.random.uniform() >= dropout_frac):
-            dropout_time = None
-        else:
-            dropout_time = t0 + np.random.choice(dropout_timedeltas)
+    # Add chance of no dropout
+    dropout_frac.append(1-sum(dropout_frac))
+    dropout_timedeltas.append(None)
+        
+    timedelta_choice = np.random.choice(dropout_timedeltas, p=dropout_frac)
 
-        # apply dropout time
-        if dropout_time is None:
-            return da
-        # This replaces the times after the dropout with NaNs
-        return da.where(da.time_utc <= dropout_time)
+    if timedelta_choice is None:
+        return da
+    else:
+        return da.where((da.time_utc <= timedelta_choice + t0) | (da.time_utc> t0))
