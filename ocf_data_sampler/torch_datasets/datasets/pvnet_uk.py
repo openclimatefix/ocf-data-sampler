@@ -137,10 +137,10 @@ class AbstractPVNetUKDataset(Dataset):
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
 
                 # Standardise and convert to NumpyBatch
-                da_channel_means = self.means_dict["nwp"][nwp_key]
-                da_channel_stds = self.stds_dict["nwp"][nwp_key]
+                channel_means = self.means_dict["nwp"][nwp_key]
+                channel_stds = self.stds_dict["nwp"][nwp_key]
 
-                da_nwp = (da_nwp - da_channel_means) / da_channel_stds
+                da_nwp = (da_nwp - channel_means) / channel_stds
 
                 nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
@@ -151,12 +151,10 @@ class AbstractPVNetUKDataset(Dataset):
             da_sat = dataset_dict["sat"]
 
             # Standardise and convert to NumpyBatch
-            channel_means = self.means_dict["sat"].values[None, :, None, None]
-            dchannel_stds = self.stds_dict["sat"].values[None, :, None, None]
+            channel_means = self.means_dict["sat"]
+            channel_stds = self.stds_dict["sat"]
 
-            #da_sat = (da_sat - da_channel_means) / da_channel_stds
-
-            da_sat = (da_sat - channel_means) / dchannel_stds
+            da_sat = (da_sat - channel_means) / channel_stds
 
             numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
