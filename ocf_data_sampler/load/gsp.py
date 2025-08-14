@@ -52,9 +52,12 @@ def open_gsp(
         backend_kwargs = {"storage_options": {"anon": True}}
         # Currently only compatible with S3 bucket.
 
-    ds = xr.open_dataset(zarr_path, engine="zarr", backend_kwargs=backend_kwargs).rename(
-        {"datetime_gmt": "time_utc"},
-    )
+    ds = xr.open_dataset(
+        zarr_path,
+        engine="zarr",
+        chunks=None,
+        backend_kwargs=backend_kwargs,
+    ).rename({"datetime_gmt": "time_utc"})
 
     if not (ds.gsp_id.isin(df_gsp_loc.index)).all():
         raise ValueError(

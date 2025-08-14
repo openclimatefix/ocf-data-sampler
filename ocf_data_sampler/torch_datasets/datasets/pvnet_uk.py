@@ -19,30 +19,18 @@ from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import Location, fill_time_periods
-from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 from ocf_data_sampler.torch_datasets.utils import (
-    channel_dict_to_dataarray,
+    add_alterate_coordinate_projections,
+    config_normalization_values_to_dicts,
+    fill_nans_in_arrays,
     find_valid_time_periods,
+    merge_dicts,
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
-from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
-    fill_nans_in_arrays,
-    merge_dicts,
-)
-from ocf_data_sampler.utils import minutes
+from ocf_data_sampler.utils import minutes, tensorstore_compute
 
 xr.set_options(keep_attrs=True)
-
-
-def compute(xarray_dict: dict) -> dict:
-    """Eagerly load a nested dictionary of xarray DataArrays."""
-    for k, v in xarray_dict.items():
-        if isinstance(v, dict):
-            xarray_dict[k] = compute(v)
-        else:
-            xarray_dict[k] = v.compute(scheduler="single-threaded")
-    return xarray_dict
 
 
 def get_gsp_locations(
@@ -69,10 +57,10 @@ def get_gsp_locations(
     for gsp_id in gsp_ids:
         locations.append(
             Location(
-                coordinate_system="osgb",
                 x=df_gsp_loc.loc[gsp_id].x_osgb,
                 y=df_gsp_loc.loc[gsp_id].y_osgb,
-                id=gsp_id,
+                coord_system="osgb",
+                id=int(gsp_id),
             ),
         )
     return locations
@@ -110,21 +98,27 @@ class AbstractPVNetUKDataset(Dataset):
             valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
-        self.locations = get_gsp_locations(
-            gsp_ids,
-            version=config.input_data.gsp.boundaries_version,
+        locations = get_gsp_locations(gsp_ids, version=config.input_data.gsp.boundaries_version)
+        self.locations = add_alterate_coordinate_projections(
+            locations,
+            datasets_dict,
+            primary_coords="osgb",
         )
+
         self.valid_t0_times = valid_t0_times
 
         # Assign config and input data to self
         self.config = config
         self.datasets_dict = datasets_dict
 
+        # Extract the normalisation values from the config for faster access
+        means_dict, stds_dict = config_normalization_values_to_dicts(config)
+        self.means_dict = means_dict
+        self.stds_dict = stds_dict
 
-    @staticmethod
     def process_and_combine_datasets(
+        self,
         dataset_dict: dict,
-        config: Configuration,
         t0: pd.Timestamp,
         location: Location,
     ) -> NumpySample:
@@ -132,7 +126,6 @@ class AbstractPVNetUKDataset(Dataset):
 
         Args:
             dataset_dict: Dictionary of xarray datasets
-            config: Configuration object
             t0: init-time for sample
             location: location of the sample
         """
@@ -144,13 +137,8 @@ class AbstractPVNetUKDataset(Dataset):
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
 
                 # Standardise and convert to NumpyBatch
-
-                da_channel_means = channel_dict_to_dataarray(
-                    config.input_data.nwp[nwp_key].channel_means,
-                )
-                da_channel_stds = channel_dict_to_dataarray(
-                    config.input_data.nwp[nwp_key].channel_stds,
-                )
+                da_channel_means = self.means_dict["nwp"][nwp_key]
+                da_channel_stds = self.stds_dict["nwp"][nwp_key]
 
                 da_nwp = (da_nwp - da_channel_means) / da_channel_stds
 
@@ -163,15 +151,15 @@ class AbstractPVNetUKDataset(Dataset):
             da_sat = dataset_dict["sat"]
 
             # Standardise and convert to NumpyBatch
-            da_channel_means = channel_dict_to_dataarray(config.input_data.satellite.channel_means)
-            da_channel_stds = channel_dict_to_dataarray(config.input_data.satellite.channel_stds)
+            da_channel_means = self.means_dict["sat"]
+            da_channel_stds = self.stds_dict["sat"]
 
             da_sat = (da_sat - da_channel_means) / da_channel_stds
 
             numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
         if "gsp" in dataset_dict:
-            gsp_config = config.input_data.gsp
+            gsp_config = self.config.input_data.gsp
             da_gsp = dataset_dict["gsp"]
             da_gsp = da_gsp / da_gsp.effective_capacity_mwp
 
@@ -184,22 +172,20 @@ class AbstractPVNetUKDataset(Dataset):
             )
 
         # Add GSP location data
+
+        osgb_x, osgb_y = location.in_coord_system("osgb")
+
         numpy_modalities.append(
             {
                 GSPSampleKey.gsp_id: location.id,
-                GSPSampleKey.x_osgb: location.x,
-                GSPSampleKey.y_osgb: location.y,
+                GSPSampleKey.x_osgb: osgb_x,
+                GSPSampleKey.y_osgb: osgb_y,
             },
         )
 
         # Only add solar position if explicitly configured
-        has_solar_config = (
-            hasattr(config.input_data, "solar_position") and
-            config.input_data.solar_position is not None
-        )
-
-        if has_solar_config:
-            solar_config = config.input_data.solar_position
+        if self.config.input_data.solar_position is not None:
+            solar_config = self.config.input_data.solar_position
 
             # Create datetime range for solar position calculation
             datetimes = pd.date_range(
@@ -209,7 +195,7 @@ class AbstractPVNetUKDataset(Dataset):
             )
 
             # Convert OSGB coordinates to lon/lat
-            lon, lat = osgb_to_lon_lat(location.x, location.y)
+            lon, lat = location.in_coord_system("lon_lat")
 
             # Calculate solar positions and add to modalities
             numpy_modalities.append(make_sun_position_numpy_sample(datetimes, lon, lat))
@@ -272,13 +258,15 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         """
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-        sample_dict = compute(sample_dict)
+        sample_dict = tensorstore_compute(sample_dict)
 
-        return self.process_and_combine_datasets(sample_dict, self.config, t0, location)
+        return self.process_and_combine_datasets(sample_dict, t0, location)
 
     @override
     def __getitem__(self, idx: int) -> NumpySample:
         # Get the coordinates of the sample
+
+        idx = int(idx)
 
         if idx >= len(self):
             raise ValueError(f"Index {idx} out of range for dataset of length {len(self)}")
@@ -329,7 +317,7 @@ class PVNetUKConcurrentDataset(AbstractPVNetUKDataset):
         """
         # Slice by time then load to avoid loading the data multiple times from disk
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
-        sample_dict = compute(sample_dict)
+        sample_dict = tensorstore_compute(sample_dict)
 
         gsp_samples = []
 
@@ -338,7 +326,6 @@ class PVNetUKConcurrentDataset(AbstractPVNetUKDataset):
             gsp_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
             gsp_numpy_sample = self.process_and_combine_datasets(
                 gsp_sample_dict,
-                self.config,
                 t0,
                 location,
             )

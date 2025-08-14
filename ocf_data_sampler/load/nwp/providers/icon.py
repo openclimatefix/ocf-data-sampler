@@ -20,7 +20,7 @@ def open_icon_eu(zarr_path: str | list[str]) -> xr.DataArray:
         Xarray DataArray of the NWP data
     """
     # Open and check initially
-    ds = open_zarr_paths(zarr_path, time_dim="init_time_utc")
+    ds = open_zarr_paths(zarr_path, time_dim="init_time_utc", backend="dask")
 
     if "icon_eu_data" in ds.data_vars:
         nwp = ds["icon_eu_data"]

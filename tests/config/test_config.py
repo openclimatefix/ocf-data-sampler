@@ -103,6 +103,18 @@ def test_incorrect_dropout_fraction(test_config_filename):
     with pytest.raises(ValidationError, match="Input should be greater than or equal to 0"):
         _ = Configuration(**configuration.model_dump())
 
+    configuration.input_data.nwp["ukv"].dropout_fraction = [1.0,0.1]
+    with pytest.raises(ValidationError, match="Sum of all floats in the list must be 1.0"):
+        _ = Configuration(**configuration.model_dump())
+
+    configuration.input_data.nwp["ukv"].dropout_fraction = [-0.1,1.1]
+    with pytest.raises(ValidationError, match="Each float in the list must be between 0 and 1"):
+        _ = Configuration(**configuration.model_dump())
+
+    configuration.input_data.nwp["ukv"].dropout_fraction = []
+    with pytest.raises(ValidationError, match="List cannot be empty"):
+        _ = Configuration(**configuration.model_dump())
+
 
 def test_inconsistent_dropout_use(test_config_filename):
     """
