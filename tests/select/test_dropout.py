@@ -6,6 +6,7 @@ import xarray as xr
 from ocf_data_sampler.select.dropout import apply_history_dropout
 from ocf_data_sampler.utils import minutes
 
+
 @pytest.fixture(scope="module")
 def da_sample():
 
