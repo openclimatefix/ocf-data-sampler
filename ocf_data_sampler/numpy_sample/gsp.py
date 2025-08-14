@@ -27,8 +27,7 @@ def convert_gsp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> 
     """
     sample = {
         GSPSampleKey.gsp: da.values,
-        GSPSampleKey.nominal_capacity_mwp: da.isel(time_utc=0)["nominal_capacity_mwp"].values,
-        GSPSampleKey.effective_capacity_mwp: da.isel(time_utc=0)["effective_capacity_mwp"].values,
+        GSPSampleKey.effective_capacity_mwp: da.effective_capacity_mwp.values[0],
         GSPSampleKey.time_utc: da["time_utc"].values.astype(float),
     }
 
