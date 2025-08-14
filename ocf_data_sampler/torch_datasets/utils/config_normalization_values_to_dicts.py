@@ -50,7 +50,7 @@ def config_normalization_values_to_dicts(
                 # These accumulated channels are diffed and renamed
                 if channel in nwp_config.accum_channels:
                     channel =f"diff_{channel}"
-                
+
                 means_list.append(nwp_config.normalisation_constants[channel].mean)
                 stds_list.append(nwp_config.normalisation_constants[channel].std)
 
@@ -62,7 +62,7 @@ def config_normalization_values_to_dicts(
 
         means_list = []
         stds_list = []
-        
+
         for channel in list(config.input_data.satellite.channels):
             means_list.append(sat_config.normalisation_constants[channel].mean)
             stds_list.append(sat_config.normalisation_constants[channel].std)
