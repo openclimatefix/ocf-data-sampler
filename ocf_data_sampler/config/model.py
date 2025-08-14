@@ -118,7 +118,7 @@ class DropoutMixin(Base):
 
             if not all(0 <= i <= 1 for i in dropout_frac):
                 raise ValueError("All dropout fractions must be in range [0, 1]")
-            
+
             if not (0 <= sum(dropout_frac) <= 1):
                 raise ValueError("The sum of dropout fractions must be in range [0, 1]")
 

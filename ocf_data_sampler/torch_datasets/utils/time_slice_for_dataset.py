@@ -1,7 +1,6 @@
 """Slice datasets by time."""
 
 import pandas as pd
-import xarray as xr
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.dropout import apply_history_dropout
