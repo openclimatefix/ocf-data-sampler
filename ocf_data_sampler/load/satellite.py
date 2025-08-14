@@ -152,14 +152,17 @@ def _open_sat_data_icechunk(
         if not prefix.endswith('/'):
             prefix = prefix + '/'
 
-        logger.info(f"Accessing Ice Chunk repository: gs://{bucket}/{prefix}")
+        logger.info(f"Accessing Ice Chunk repository: {protocol_str}://{bucket}/{prefix}")
 
         # Set up storage and open the repository
-        storage = icechunk.gcs_storage(bucket=bucket, prefix=prefix, from_env=True)
+        if protocol == "gs":
+            storage = icechunk.gcs_storage(bucket=bucket, prefix=prefix, from_env=True)
+        else:
+            raise ValueError(f"Unsupported cloud protocol for icechunk: {protocol}")
         try:
             repo = icechunk.Repository.open(storage)
         except Exception as e:
-            logger.error(f"Failed to open repository at gs://{bucket}/{prefix}")
+            logger.error(f"Failed to open repository at {protocol_str}://{bucket}/{prefix}")
             raise e
 
     # Rest of your existing logic remains exactly the same
