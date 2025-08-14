@@ -6,19 +6,20 @@ from pyaml_env import parse_config
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 
 
-def test_default_configuration():
+def test_default_configuration(test_config_gsp_path):
     """Test default pydantic class"""
-    _ = Configuration()
+    config = load_yaml_configuration(test_config_gsp_path)
+    _ = Configuration(**config.model_dump())
 
 
-def test_extra_field_error(test_config_filename):
+def test_extra_field_error(test_config_gsp_path):
     """
     Check an extra parameters in config causes error
     """
-    with fsspec.open(test_config_filename, mode="r") as stream:
-        configuration1 = parse_config(data=stream)
-
-    configuration = Configuration(**configuration1)
+    #with fsspec.open(test_config_gsp_path, mode="r") as stream:
+     #   configuration1 = parse_config(data=stream)
+    config = load_yaml_configuration(test_config_gsp_path)
+    configuration = Configuration(**config.model_dump())
     configuration_dict = configuration.model_dump()
     configuration_dict["extra_field"] = "extra_value"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):

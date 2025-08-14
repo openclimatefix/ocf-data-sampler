@@ -41,6 +41,10 @@ uk_sat_area_string = """msg_seviri_rss_3km:
 def test_config_filename():
     return f"{_top_test_directory}/test_data/configs/test_config.yaml"
 
+@pytest.fixture()
+def test_config_gsp_path():
+    return f"{_top_test_directory}/test_data/configs/gsp_test_config.yaml"
+
 @pytest.fixture(scope="session")
 def site_test_config_path():
     return f"{_top_test_directory}/test_data/configs/site_test_config.yaml"
