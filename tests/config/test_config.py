@@ -1,8 +1,5 @@
 import pytest
 from pydantic import ValidationError
-import fsspec
-from pyaml_env import parse_config
-
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 
 
@@ -16,8 +13,6 @@ def test_extra_field_error(test_config_gsp_path):
     """
     Check an extra parameters in config causes error
     """
-    #with fsspec.open(test_config_gsp_path, mode="r") as stream:
-     #   configuration1 = parse_config(data=stream)
     config = load_yaml_configuration(test_config_gsp_path)
     configuration = Configuration(**config.model_dump())
     configuration_dict = configuration.model_dump()
