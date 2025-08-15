@@ -1,6 +1,7 @@
 """Utility function for converting normalisation constants in the config to arrays."""
 
 import numpy as np
+
 from ocf_data_sampler.config import Configuration
 
 
