@@ -25,13 +25,13 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int
     x, y = location.in_coord_system(target_coords)
 
     # Check that requested point lies within the data
-    if not (da[x_dim].min() < x < da[x_dim].max()):
+    if not (da[x_dim].values[0] < x < da[x_dim].values[-1]):
         raise ValueError(
-            f"{x} is not in the interval {da[x_dim].min().values}: {da[x_dim].max().values}",
+            f"{x} is not in the interval {da[x_dim].values[0]}: {da[x_dim].values[-1]}",
         )
-    if not (da[y_dim].min() < y < da[y_dim].max()):
+    if not (da[y_dim].values[0] < y < da[y_dim].values[-1]):
         raise ValueError(
-            f"{y} is not in the interval {da[y_dim].min().values}: {da[y_dim].max().values}",
+            f"{y} is not in the interval {da[y_dim].values[0]}: {da[y_dim].values[-1]}",
         )
 
     x_index = da.get_index(x_dim)
