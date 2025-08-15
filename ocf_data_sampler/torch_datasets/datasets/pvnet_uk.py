@@ -137,10 +137,10 @@ class AbstractPVNetUKDataset(Dataset):
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
 
                 # Standardise and convert to NumpyBatch
-                da_channel_means = self.means_dict["nwp"][nwp_key]
-                da_channel_stds = self.stds_dict["nwp"][nwp_key]
+                channel_means = self.means_dict["nwp"][nwp_key]
+                channel_stds = self.stds_dict["nwp"][nwp_key]
 
-                da_nwp = (da_nwp - da_channel_means) / da_channel_stds
+                da_nwp = (da_nwp - channel_means) / channel_stds
 
                 nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
@@ -151,17 +151,17 @@ class AbstractPVNetUKDataset(Dataset):
             da_sat = dataset_dict["sat"]
 
             # Standardise and convert to NumpyBatch
-            da_channel_means = self.means_dict["sat"]
-            da_channel_stds = self.stds_dict["sat"]
+            channel_means = self.means_dict["sat"]
+            channel_stds = self.stds_dict["sat"]
 
-            da_sat = (da_sat - da_channel_means) / da_channel_stds
+            da_sat = (da_sat - channel_means) / channel_stds
 
             numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
         if "gsp" in dataset_dict:
             gsp_config = self.config.input_data.gsp
             da_gsp = dataset_dict["gsp"]
-            da_gsp = da_gsp / da_gsp.effective_capacity_mwp
+            da_gsp = da_gsp / da_gsp.effective_capacity_mwp.values
 
             # Convert to NumpyBatch
             numpy_modalities.append(
