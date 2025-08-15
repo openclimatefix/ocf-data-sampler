@@ -42,6 +42,7 @@ input_data:
 
   gsp: null
 
+
   solar_position:
     time_resolution_minutes: 30
     interval_start_minutes: -60
