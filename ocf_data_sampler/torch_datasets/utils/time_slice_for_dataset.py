@@ -30,16 +30,19 @@ def slice_datasets_by_time(
 
             # Add a buffer if we need to diff some of the channels in time
             if len(nwp_config.accum_channels)>0:
-                diff_buffer = minutes(nwp_config.interval_end_minutes)
+                interval_end_mins = (
+                    nwp_config.interval_end_minutes
+                    + nwp_config.time_resolution_minutes
+                )
             else:
-                diff_buffer = minutes(0)
+                interval_end_mins = nwp_config.interval_end_minutes
 
             sliced_datasets_dict["nwp"][nwp_key] = select_time_slice_nwp(
                 da_nwp,
                 t0,
                 time_resolution=minutes(nwp_config.time_resolution_minutes),
                 interval_start=minutes(nwp_config.interval_start_minutes),
-                interval_end=minutes(nwp_config.interval_end_minutes)+diff_buffer,
+                interval_end=minutes(interval_end_mins),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
                 dropout_frac=nwp_config.dropout_fraction,
             )
