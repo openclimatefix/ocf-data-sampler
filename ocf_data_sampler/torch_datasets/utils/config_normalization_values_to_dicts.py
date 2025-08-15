@@ -1,24 +1,8 @@
-"""Utility function for converting channel dictionaries to xarray DataArrays."""
+"""Utility function for converting normalisation constants in the config to arrays."""
 
 import numpy as np
-import xarray as xr
-
 from ocf_data_sampler.config import Configuration
 
-
-def channel_dict_to_dataarray(channel_dict: dict[str, float]) -> xr.DataArray:
-    """Converts a dictionary of channel values to a DataArray.
-
-    Args:
-        channel_dict: Dictionary mapping channel names (str) to their values (float).
-
-    Returns:
-        xr.DataArray: A 1D DataArray with channels as coordinates.
-    """
-    return xr.DataArray(
-        list(channel_dict.values()),
-        coords={"channel": list(channel_dict.keys())},
-    )
 
 def config_normalization_values_to_dicts(
     config: Configuration,
@@ -54,8 +38,8 @@ def config_normalization_values_to_dicts(
                 means_list.append(nwp_config.normalisation_constants[channel].mean)
                 stds_list.append(nwp_config.normalisation_constants[channel].std)
 
-            means_dict["nwp"][nwp_key] = np.array(means_list)
-            stds_dict["nwp"][nwp_key] = np.array(stds_list)
+            means_dict["nwp"][nwp_key] = np.array(means_list)[None, :, None, None]
+            stds_dict["nwp"][nwp_key] = np.array(stds_list)[None, :, None, None]
 
     if config.input_data.satellite is not None:
         sat_config = config.input_data.satellite
