@@ -9,6 +9,7 @@ from ocf_data_sampler.select.select_time_slice import select_time_slice, select_
 from ocf_data_sampler.utils import minutes
 
 
+
 def slice_datasets_by_time(
     datasets_dict: dict,
     t0: pd.Timestamp,
@@ -28,16 +29,21 @@ def slice_datasets_by_time(
 
         for nwp_key, da_nwp in datasets_dict["nwp"].items():
             nwp_config = config.input_data.nwp[nwp_key]
+            
+            # Add a buffer if we need to diff some of the channels in time
+            if len(nwp_config.accum_channels)>0:
+                diff_buffer = minutes(nwp_config.interval_end_minutes)
+            else:
+                diff_buffer = minutes(0)
 
             sliced_datasets_dict["nwp"][nwp_key] = select_time_slice_nwp(
                 da_nwp,
                 t0,
                 time_resolution=minutes(nwp_config.time_resolution_minutes),
                 interval_start=minutes(nwp_config.interval_start_minutes),
-                interval_end=minutes(nwp_config.interval_end_minutes),
+                interval_end=minutes(nwp_config.interval_end_minutes)+diff_buffer,
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
                 dropout_frac=nwp_config.dropout_fraction,
-                accum_channels=nwp_config.accum_channels,
             )
 
     if "sat" in datasets_dict:

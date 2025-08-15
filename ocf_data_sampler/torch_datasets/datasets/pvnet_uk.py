@@ -19,6 +19,7 @@ from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import Location, fill_time_periods
+from ocf_data_sampler.select.diff_channels import diff_channels
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
@@ -135,6 +136,11 @@ class AbstractPVNetUKDataset(Dataset):
             nwp_numpy_modalities = {}
 
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
+                
+                # Diff the accumulated channels
+                accum_channels = self.config.input_data.nwp[nwp_key].accum_channels
+                if len(accum_channels)>0:
+                    da_nwp = diff_channels(da_nwp, accum_channels)
 
                 # Standardise and convert to NumpyBatch
                 da_channel_means = self.means_dict["nwp"][nwp_key]
@@ -259,7 +265,6 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
-
         return self.process_and_combine_datasets(sample_dict, t0, location)
 
     @override

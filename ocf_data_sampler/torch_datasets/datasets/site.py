@@ -24,6 +24,7 @@ from ocf_data_sampler.select import (
     find_contiguous_t0_periods,
     intersection_of_multiple_dataframes_of_periods,
 )
+from ocf_data_sampler.select.diff_channels import diff_channels
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
@@ -80,7 +81,10 @@ def process_and_combine_datasets(
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
 
-            # Standardise and convert to NumpyBatch
+            # Diff the accumulated channels
+            accum_channels = config.input_data.nwp[nwp_key].accum_channels
+            if len(accum_channels)>0:
+                da_nwp = diff_channels(da_nwp, accum_channels)
 
             da_channel_means = means_dict["nwp"][nwp_key]
             da_channel_stds = stds_dict["nwp"][nwp_key]
