@@ -91,14 +91,14 @@ def slice_datasets_by_time(
         )
 
         # Apply the randomly sampled dropout on the past site not the future
-        da_site_past = apply_history_dropout(
+        da_site = apply_history_dropout(
             t0,
             dropout_timedeltas=minutes(site_config.dropout_timedeltas_minutes),
             dropout_frac=site_config.dropout_fraction,
             da=da_site,
         )
 
-        sliced_datasets_dict["site"] = da_site_past
+        sliced_datasets_dict["site"] = da_site
 
 
     return sliced_datasets_dict
