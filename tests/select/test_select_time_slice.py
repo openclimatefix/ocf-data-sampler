@@ -141,19 +141,20 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
         interval_end=interval_end,
         dropout_timedeltas=None,
         dropout_frac=0,
-        accum_channels=[],
     )
 
     # Check the target-times are as expected
     expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
-    assert (da_slice.target_time_utc == expected_target_times).all()
+
+    valid_times = da_slice.init_time_utc + da_slice.step
+    assert (valid_times == expected_target_times).all()
 
     # Check the init-times are as expected
     # - Forecast frequency is `NWP_FREQ`, and we can't have selected future init-times
     expected_init_times = pd.to_datetime(
         [t if t < t0 else t0 for t in expected_target_times],
     ).floor(NWP_FREQ)
-    assert (da_slice.init_time_utc == expected_init_times).all()
+    assert (expected_init_times==da_slice.init_time_utc.values).all()
 
 
 @pytest.mark.parametrize("dropout_hours", [1, 2, 5])
@@ -174,94 +175,16 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
         interval_end=interval_end,
         dropout_timedeltas=[dropout_timedelta],
         dropout_frac=1,
-        accum_channels=[],
     )
 
     # Check the target-times are as expected
     expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
-    assert (da_slice.target_time_utc == expected_target_times).all()
+    valid_times = da_slice.init_time_utc + da_slice.step
+    assert (valid_times == expected_target_times).all()
 
     # Check the init-times are as expected considering the delay
     t0_delayed = t0 + dropout_timedelta
     expected_init_times = pd.to_datetime(
         [t if t < t0_delayed else t0_delayed for t in expected_target_times],
     ).floor(NWP_FREQ)
-    assert (da_slice.init_time_utc == expected_init_times).all()
-
-
-@pytest.mark.parametrize("t0_str", ["10:00", "11:00", "12:00"])
-def test_select_time_slice_nwp_with_dropout_and_accum(da_nwp_like, t0_str):
-    """Test the functionality of select_time_slice_nwp with dropout and accumulated variables"""
-
-    # Slice parameters
-    t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    interval_start = pd.Timedelta(-6, "h")
-    interval_end = pd.Timedelta(3, "h")
-    freq = pd.Timedelta("1h")
-    dropout_timedelta = pd.Timedelta("-2h")
-
-    t0_delayed = (t0 + dropout_timedelta).floor(NWP_FREQ)
-
-    da_slice = select_time_slice_nwp(
-        da_nwp_like,
-        t0,
-        time_resolution=freq,
-        interval_start=interval_start,
-        interval_end=interval_end,
-        dropout_timedeltas=[dropout_timedelta],
-        dropout_frac=1,
-        accum_channels=["dswrf"],
-    )
-
-    # Check the target-times are as expected
-    expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
-    assert (da_slice.target_time_utc == expected_target_times).all()
-
-    # Check the init-times are as expected considering the delay
-    expected_init_times = pd.to_datetime(
-        [t if t < t0_delayed else t0_delayed for t in expected_target_times],
-    ).floor(NWP_FREQ)
-    assert (da_slice.init_time_utc == expected_init_times).all()
-
-    # Check channels are as expected
-    assert (da_slice.channel.values == ["t", "diff_dswrf"]).all()
-
-    # Check the accummulated channel has been differenced correctly
-
-    # This part of the data is pulled from the init-time: t0_delayed
-    da_slice_accum = da_slice.sel(
-        target_time_utc=slice(t0_delayed, None),
-        channel="diff_dswrf",
-    )
-
-    # Get the original data for the t0_delayed init-time, and diff it along steps
-    # then select the steps which are expected to be used in the above slice
-    da_orig_diffed = (
-        da_nwp_like.sel(
-            init_time_utc=t0_delayed,
-            channel="dswrf",
-        )
-        .diff(dim="step", label="lower")
-        .sel(step=slice(t0 - t0_delayed + interval_start, t0 - t0_delayed + interval_end))
-    )
-
-    # Check the values are the same
-    assert (da_slice_accum.values == da_orig_diffed.values).all()
-
-    # Check the non-accummulated channel has not been differenced
-
-    # This part of the data is pulled from the init-time: t0_delayed
-    da_slice_nonaccum = da_slice.sel(
-        target_time_utc=slice(t0_delayed, None),
-        channel="t",
-    )
-
-    # Get the original data for the t0_delayed init-time, and select the steps which are expected
-    # to be used in the above slice
-    da_orig = da_nwp_like.sel(
-        init_time_utc=t0_delayed,
-        channel="t",
-    ).sel(step=slice(t0 - t0_delayed + interval_start, t0 - t0_delayed + interval_end))
-
-    # Check the values are the same
-    assert (da_slice_nonaccum.values == da_orig.values).all()
+    assert (expected_init_times==da_slice.init_time_utc.values).all()
