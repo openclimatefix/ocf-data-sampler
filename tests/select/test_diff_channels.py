@@ -1,5 +1,6 @@
+
 from ocf_data_sampler.select.diff_channels import diff_channels
-import numpy as np
+
 
 def test_diff_channels(ds_nwp_ukv_time_sliced):
 
@@ -7,12 +8,12 @@ def test_diff_channels(ds_nwp_ukv_time_sliced):
     da = ds_nwp_ukv_time_sliced.copy(deep=True)
     channels = [*da.channel.values]
 
-    # This test relies on there being more than one channel in the fixture
+    # This test relies on there being more than one channel in the fixture
     assert len(channels)>1
 
     da_diffed = diff_channels(da, accum_channels=channels[:1])
 
-    # The diff function reduces the steps by one
+    # The diff function reduces the steps by one
     assert (da_diffed.step.values==ds_nwp_ukv_time_sliced.step.values[:-1]).all()
 
     # Check that these channels have not beeen changed
