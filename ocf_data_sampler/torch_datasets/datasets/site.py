@@ -86,10 +86,10 @@ def process_and_combine_datasets(
             if len(accum_channels)>0:
                 da_nwp = diff_channels(da_nwp, accum_channels)
 
-            da_channel_means = means_dict["nwp"][nwp_key]
-            da_channel_stds = stds_dict["nwp"][nwp_key]
+            channel_means = means_dict["nwp"][nwp_key]
+            channel_stds = stds_dict["nwp"][nwp_key]
 
-            da_nwp = (da_nwp - da_channel_means) / da_channel_stds
+            da_nwp = (da_nwp - channel_means) / channel_stds
 
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
@@ -100,16 +100,16 @@ def process_and_combine_datasets(
         da_sat = dataset_dict["sat"]
 
         # Standardise and convert to NumpyBatch
-        da_channel_means = means_dict["sat"]
-        da_channel_stds = stds_dict["sat"]
+        channel_means = means_dict["sat"]
+        channel_stds = stds_dict["sat"]
 
-        da_sat = (da_sat - da_channel_means) / da_channel_stds
+        da_sat = (da_sat - channel_means) / channel_stds
 
         numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
     if "site" in dataset_dict:
         da_sites = dataset_dict["site"]
-        da_sites = da_sites / da_sites.capacity_kwp
+        da_sites = da_sites / da_sites.capacity_kwp.values
 
         # Convert to NumpyBatch
         numpy_modalities.append(convert_site_to_numpy_sample(da_sites))
