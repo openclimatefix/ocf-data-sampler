@@ -71,7 +71,6 @@ def open_gsp(
     ds = ds.assign_coords(
         x_osgb=(df_gsp_loc.x_osgb.to_xarray()),
         y_osgb=(df_gsp_loc.y_osgb.to_xarray()),
-        nominal_capacity_mwp=ds.installedcapacity_mwp,
         effective_capacity_mwp=ds.capacity_mwp,
     )
 
@@ -84,7 +83,6 @@ def open_gsp(
     coord_dtypes = {
         "time_utc": np.datetime64,
         "gsp_id": np.integer,
-        "nominal_capacity_mwp": np.floating,
         "effective_capacity_mwp": np.floating,
         "x_osgb": np.floating,
         "y_osgb": np.floating,
