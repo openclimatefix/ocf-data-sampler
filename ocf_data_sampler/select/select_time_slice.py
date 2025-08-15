@@ -50,7 +50,6 @@ def select_time_slice_nwp(
         dropout_timedeltas: List of possible timedeltas before t0 where data availability may start
         dropout_frac: Probability to apply dropout
     """
-
     # Input checking
     if dropout_timedeltas is None:
         dropout_timedeltas = []
@@ -83,14 +82,14 @@ def select_time_slice_nwp(
 
     # Find the most recent available init-times for all target-times
     selected_init_times = np.array(
-        [available_init_times[available_init_times<=t][-1] for t in target_times]
+        [available_init_times[available_init_times<=t][-1] for t in target_times],
     )
 
     # Find the required steps for all target-times
     steps = target_times - selected_init_times
 
     # If we are only selecting from one init-time we can construct the slice so its faster
-    if len(np.unique(selected_init_times))==1:        
+    if len(np.unique(selected_init_times))==1:
         da_sel = da.sel(init_time_utc=selected_init_times[0], step=slice(steps[0], steps[-1]))
 
     # If we are selecting from multiple init times this more complex and slower

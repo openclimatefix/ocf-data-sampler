@@ -136,7 +136,7 @@ class AbstractPVNetUKDataset(Dataset):
             nwp_numpy_modalities = {}
 
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
-                
+
                 # Diff the accumulated channels
                 accum_channels = self.config.input_data.nwp[nwp_key].accum_channels
                 if len(accum_channels)>0:
