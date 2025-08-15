@@ -145,6 +145,7 @@ def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
 @pytest.fixture()
 def ds_nwp_ukv_time_sliced():
 
+    t0 = pd.to_datetime("2024-01-02 00:00")
     x = np.arange(-100, 100, 10)
     y = np.arange(-100, 100, 10)
     steps = pd.timedelta_range("0h", "8h", freq="1h")
@@ -161,6 +162,7 @@ def ds_nwp_ukv_time_sliced():
         },
     )
 
+    da_nwp = da_nwp.assign_coords(init_time_utc=("step", [t0 for _ in steps]))
 
     return da_nwp
 
