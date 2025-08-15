@@ -163,23 +163,6 @@ class NormalisationConstantsMixin(Base):
     """Normalisation constants for multiple channels."""
     normalisation_constants: dict[str, NormalisationValues]
 
-    @property
-    def channel_means(self) -> dict[str, float]:
-        """Return the channel means."""
-        return {
-            channel: norm_values.mean
-            for channel, norm_values in self.normalisation_constants.items()
-        }
-
-
-    @property
-    def channel_stds(self) -> dict[str, float]:
-        """Return the channel standard deviations."""
-        return {
-            channel: norm_values.std
-            for channel, norm_values in self.normalisation_constants.items()
-        }
-
 
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
     """Satellite configuration model."""
