@@ -28,7 +28,6 @@ def test_open_gsp(uk_gsp_zarr_path):
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "gsp_id")
 
-    assert "nominal_capacity_mwp" in da.coords
     assert "effective_capacity_mwp" in da.coords
     assert "x_osgb" in da.coords
     assert "y_osgb" in da.coords
@@ -46,7 +45,6 @@ def test_open_gsp_bad_dtype(tmp_path: Path):
     bad_ds = xr.Dataset(
         data_vars={
             "generation_mw": (("datetime_gmt", "gsp_id"), np.random.randint(0, 100, (10, 2))),
-            "installedcapacity_mwp": (("gsp_id",), [100.0, 120.0]),
             "capacity_mwp": (("gsp_id",), [90.0, 110.0]),
         },
         coords={
