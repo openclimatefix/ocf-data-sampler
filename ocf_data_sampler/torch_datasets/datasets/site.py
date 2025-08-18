@@ -27,6 +27,7 @@ from ocf_data_sampler.select import (
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
+    diff_nwp_data,
     fill_nans_in_arrays,
     find_valid_time_periods,
     merge_dicts,
@@ -57,6 +58,7 @@ def get_locations(site_xr: xr.Dataset) -> list[Location]:
 
     return locations
 
+
 def process_and_combine_datasets(
     dataset_dict: dict,
     config: Configuration,
@@ -79,8 +81,6 @@ def process_and_combine_datasets(
         nwp_numpy_modalities = {}
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
-
-            # Standardise and convert to NumpyBatch
 
             channel_means = means_dict["nwp"][nwp_key]
             channel_stds = stds_dict["nwp"][nwp_key]
@@ -276,8 +276,8 @@ class SitesDataset(Dataset):
         """
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = diff_nwp_data(sample_dict, self.config)
 
         return process_and_combine_datasets(
             sample_dict,
@@ -414,6 +414,7 @@ class SitesDatasetConcurrent(Dataset):
         # slice by time first as we want to keep all site id info
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = diff_nwp_data(sample_dict, self.config)
 
         site_samples = []
 
