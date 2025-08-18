@@ -1,3 +1,5 @@
+"""Take the in-place diff of some channels of the NWP data."""
+
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.diff_channels import diff_channels
 

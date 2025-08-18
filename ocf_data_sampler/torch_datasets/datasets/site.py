@@ -24,16 +24,15 @@ from ocf_data_sampler.select import (
     find_contiguous_t0_periods,
     intersection_of_multiple_dataframes_of_periods,
 )
-from ocf_data_sampler.select.diff_channels import diff_channels
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
+    diff_nwp_data,
     fill_nans_in_arrays,
     find_valid_time_periods,
     merge_dicts,
     slice_datasets_by_space,
     slice_datasets_by_time,
-    diff_nwp_data,
 )
 from ocf_data_sampler.utils import minutes, tensorstore_compute
 
