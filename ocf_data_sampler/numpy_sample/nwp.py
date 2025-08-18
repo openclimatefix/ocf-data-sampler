@@ -28,7 +28,7 @@ def convert_nwp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> 
         NWPSampleKey.channel_names: da.channel.values,
         NWPSampleKey.init_time_utc: da.init_time_utc.values.astype(float),
         NWPSampleKey.step: (da.step.values / 3600).astype(int),
-        NWPSampleKey.target_time_utc: da.target_time_utc.values.astype(float),
+        NWPSampleKey.target_time_utc: (da.init_time_utc.values + da.step.values).astype(float),
     }
 
     if t0_idx is not None:
