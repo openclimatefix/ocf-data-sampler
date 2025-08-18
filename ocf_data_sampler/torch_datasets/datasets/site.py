@@ -59,14 +59,13 @@ def get_locations(site_xr: xr.Dataset) -> list[Location]:
     return locations
 
 
-def diff_nwp_data(dataset_dict: dict, config: Configuration, ) -> dict:
-    """Take the in-place diff of some channels of the NWP data
+def diff_nwp_data(dataset_dict: dict, config: Configuration ) -> dict:
+    """Take the in-place diff of some channels of the NWP data.
 
     Args:
         dataset_dict: Dictionary of xarray datasets
         config: Configuration object
     """
-
     if "nwp" in dataset_dict:
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
             accum_channels = config.input_data.nwp[nwp_key].accum_channels

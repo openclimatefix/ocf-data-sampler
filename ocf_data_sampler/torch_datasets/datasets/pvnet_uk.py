@@ -119,12 +119,11 @@ class AbstractPVNetUKDataset(Dataset):
 
 
     def diff_nwp_data(self, dataset_dict: dict) -> dict:
-        """Take the in-place diff of some channels of the NWP data
+        """Take the in-place diff of some channels of the NWP data.
 
         Args:
             dataset_dict: Dictionary of xarray datasets
         """
-
         if "nwp" in dataset_dict:
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
                 accum_channels = self.config.input_data.nwp[nwp_key].accum_channels
@@ -132,7 +131,7 @@ class AbstractPVNetUKDataset(Dataset):
                     # diff_channels() is an in-place operation and modifies the input
                     dataset_dict["nwp"][nwp_key] = diff_channels(da_nwp, accum_channels)
         return dataset_dict
-            
+
 
     def process_and_combine_datasets(
         self,
