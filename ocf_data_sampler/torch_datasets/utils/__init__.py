@@ -4,3 +4,4 @@ from .valid_time_periods import find_valid_time_periods
 from .spatial_slice_for_dataset import slice_datasets_by_space
 from .time_slice_for_dataset import slice_datasets_by_time
 from .add_alterate_coordinate_projections import add_alterate_coordinate_projections
+from .diff_nwp_data import diff_nwp_data
