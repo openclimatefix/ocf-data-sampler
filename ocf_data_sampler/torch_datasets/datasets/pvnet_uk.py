@@ -117,6 +117,23 @@ class AbstractPVNetUKDataset(Dataset):
         self.means_dict = means_dict
         self.stds_dict = stds_dict
 
+
+    def diff_nwp_data(self, dataset_dict: dict) -> dict:
+        """Take the in-place diff of some channels of the NWP data
+
+        Args:
+            dataset_dict: Dictionary of xarray datasets
+        """
+
+        if "nwp" in dataset_dict:
+            for nwp_key, da_nwp in dataset_dict["nwp"].items():
+                accum_channels = self.config.input_data.nwp[nwp_key].accum_channels
+                if len(accum_channels)>0:
+                    # diff_channels() is an in-place operation and modifies the input
+                    dataset_dict["nwp"][nwp_key] = diff_channels(da_nwp, accum_channels)
+        return dataset_dict
+            
+
     def process_and_combine_datasets(
         self,
         dataset_dict: dict,
@@ -136,11 +153,6 @@ class AbstractPVNetUKDataset(Dataset):
             nwp_numpy_modalities = {}
 
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
-
-                # Diff the accumulated channels
-                accum_channels = self.config.input_data.nwp[nwp_key].accum_channels
-                if len(accum_channels)>0:
-                    da_nwp = diff_channels(da_nwp, accum_channels)
 
                 # Standardise and convert to NumpyBatch
                 channel_means = self.means_dict["nwp"][nwp_key]
@@ -265,6 +277,7 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = self.diff_nwp_data(sample_dict)
         return self.process_and_combine_datasets(sample_dict, t0, location)
 
     @override
@@ -323,6 +336,7 @@ class PVNetUKConcurrentDataset(AbstractPVNetUKDataset):
         # Slice by time then load to avoid loading the data multiple times from disk
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = self.diff_nwp_data(sample_dict)
 
         gsp_samples = []
 

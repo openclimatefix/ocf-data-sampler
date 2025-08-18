@@ -58,6 +58,24 @@ def get_locations(site_xr: xr.Dataset) -> list[Location]:
 
     return locations
 
+
+def diff_nwp_data(dataset_dict: dict, config: Configuration, ) -> dict:
+    """Take the in-place diff of some channels of the NWP data
+
+    Args:
+        dataset_dict: Dictionary of xarray datasets
+        config: Configuration object
+    """
+
+    if "nwp" in dataset_dict:
+        for nwp_key, da_nwp in dataset_dict["nwp"].items():
+            accum_channels = config.input_data.nwp[nwp_key].accum_channels
+            if len(accum_channels)>0:
+                # diff_channels() is an in-place operation and modifies the input
+                dataset_dict["nwp"][nwp_key] = diff_channels(da_nwp, accum_channels)
+    return dataset_dict
+
+
 def process_and_combine_datasets(
     dataset_dict: dict,
     config: Configuration,
@@ -80,11 +98,6 @@ def process_and_combine_datasets(
         nwp_numpy_modalities = {}
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
-
-            # Diff the accumulated channels
-            accum_channels = config.input_data.nwp[nwp_key].accum_channels
-            if len(accum_channels)>0:
-                da_nwp = diff_channels(da_nwp, accum_channels)
 
             channel_means = means_dict["nwp"][nwp_key]
             channel_stds = stds_dict["nwp"][nwp_key]
@@ -280,8 +293,8 @@ class SitesDataset(Dataset):
         """
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = diff_nwp_data(sample_dict, self.config)
 
         return process_and_combine_datasets(
             sample_dict,
@@ -418,6 +431,7 @@ class SitesDatasetConcurrent(Dataset):
         # slice by time first as we want to keep all site id info
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = diff_nwp_data(sample_dict, self.config)
 
         site_samples = []
 

@@ -5,7 +5,7 @@ import xarray as xr
 
 
 def diff_channels(da: xr.DataArray, accum_channels: list[str]) -> xr.DataArray:
-    """Diff the given channels of the DataArray in-place in the steps dimension.
+    """Perform in-place diff of the given channels of the DataArray in the steps dimension.
 
     Args:
         da: The DataArray to slice from
@@ -17,6 +17,9 @@ def diff_channels(da: xr.DataArray, accum_channels: list[str]) -> xr.DataArray:
     all_channels = da.channel.values
     accum_channel_inds = [i for i, c in enumerate(all_channels) if c in accum_channels]
 
-    da.values[:-1, accum_channel_inds] = np.diff(da.values[:, accum_channel_inds], axis=0)
+    # Make a copy of the values to avoid changing the underlying numpy array
+    vals = da.values.copy()
+    vals[:-1, accum_channel_inds] = np.diff(vals[:, accum_channel_inds], axis=0)
+    da.values = vals
 
     return da.isel(step=slice(0, -1))
