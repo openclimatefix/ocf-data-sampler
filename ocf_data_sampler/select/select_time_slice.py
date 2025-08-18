@@ -38,7 +38,6 @@ def select_time_slice_nwp(
     time_resolution: pd.Timedelta,
     dropout_timedeltas: list[pd.Timedelta] | None = None,
     dropout_frac: float | None = 0,
-    accum_channels: list[str] | None = None,
 ) -> xr.DataArray:
     """Select a time slice from an NWP DataArray.
 
@@ -50,11 +49,8 @@ def select_time_slice_nwp(
         time_resolution: Distance between neighbouring timestamps
         dropout_timedeltas: List of possible timedeltas before t0 where data availability may start
         dropout_frac: Probability to apply dropout
-        accum_channels: Channels which are accumulated and need to be differenced
     """
-    if accum_channels is None:
-        accum_channels = []
-
+    # Input checking
     if dropout_timedeltas is None:
         dropout_timedeltas = []
 
@@ -69,75 +65,43 @@ def select_time_slice_nwp(
 
     consider_dropout = len(dropout_timedeltas) > 0 and dropout_frac > 0
 
-    # The accumatated and non-accumulated channels
-    accum_channels = np.intersect1d(da.channel.values, accum_channels)
-    non_accum_channels = np.setdiff1d(da.channel.values, accum_channels)
-
     start_dt = (t0 + interval_start).ceil(time_resolution)
     end_dt = (t0 + interval_end).ceil(time_resolution)
     target_times = pd.date_range(start_dt, end_dt, freq=time_resolution)
 
     # Potentially apply NWP dropout
     if consider_dropout and (np.random.uniform() < dropout_frac):
-        dt = np.random.choice(dropout_timedeltas)
-        t0_available = t0 + dt
+        t0_available = t0 + np.random.choice(dropout_timedeltas)
     else:
         t0_available = t0
 
-    # Forecasts made up to and including t0
-    available_init_times = da.init_time_utc.sel(init_time_utc=slice(None, t0_available))
+    # Get the available and relevant init-times
+    t_min = target_times[0] - da.step.values[-1]
+    init_times = da.init_time_utc.values
+    available_init_times = init_times[(t_min<=init_times) & (init_times<=t0_available)]
 
-    # Find the most recent available init times for all target times
-    selected_init_times = available_init_times.sel(
-        init_time_utc=target_times,
-        method="ffill",  # forward fill from init times to target times
-    ).values
+    # Find the most recent available init-times for all target-times
+    selected_init_times = np.array(
+        [available_init_times[available_init_times<=t][-1] for t in target_times],
+    )
 
-    # Find the required steps for all target times
+    # Find the required steps for all target-times
     steps = target_times - selected_init_times
 
-    # We want one timestep for each target_time_hourly (obviously!) If we simply do
-    # nwp.sel(init_time=init_times, step=steps) then we'll get the *product* of
-    # init_times and steps, which is not what we want! Instead, we use xarray's
-    # vectorised-indexing mode via using a DataArray indexer.  See the last example here:
-    # https://docs.xarray.dev/en/latest/user-guide/indexing.html#more-advanced-indexing
+    # If we are only selecting from one init-time we can construct the slice so its faster
+    if len(np.unique(selected_init_times))==1:
+        da_sel = da.sel(init_time_utc=selected_init_times[0], step=slice(steps[0], steps[-1]))
 
-    coords = {"target_time_utc": target_times}
-    init_time_indexer = xr.DataArray(selected_init_times, coords=coords)
-    step_indexer = xr.DataArray(steps, coords=coords)
-
-    if len(accum_channels) == 0:
-        da_sel = da.sel(step=step_indexer, init_time_utc=init_time_indexer)
+    # If we are selecting from multiple init times this more complex and slower
     else:
-        # First minimise the size of the dataset we are diffing
-        # - find the init times we are slicing from
-        unique_init_times = np.unique(selected_init_times)
-        # - find the min and max steps we slice over. Max is extended due to diff
-        min_step = min(steps)
-        max_step = max(steps) + time_resolution
-
-        da_min = da.sel(init_time_utc=unique_init_times, step=slice(min_step, max_step))
-
-        # Slice out the data which does not need to be diffed
-        da_non_accum = da_min.sel(channel=non_accum_channels)
-        da_sel_non_accum = da_non_accum.sel(step=step_indexer, init_time_utc=init_time_indexer)
-
-        # Slice out the channels which need to be diffed
-        da_accum = da_min.sel(channel=accum_channels)
-
-        # Take the diff and slice requested data
-        da_accum = da_accum.diff(dim="step", label="lower")
-        da_sel_accum = da_accum.sel(step=step_indexer, init_time_utc=init_time_indexer)
-
-        # Join diffed and non-diffed variables
-        da_sel = xr.concat([da_sel_non_accum, da_sel_accum], dim="channel")
-
-        # Reorder the variable back to the original order
-        da_sel = da_sel.sel(channel=da.channel.values)
-
-        # Rename the diffed channels
-        da_sel["channel"] = [
-            f"diff_{v}" if v in accum_channels else v for v in da_sel.channel.values
-        ]
+        # We want one timestep for each target_time_hourly (obviously!) If we simply do
+        # nwp.sel(init_time=init_times, step=steps) then we'll get the *product* of
+        # init_times and steps, which is not what we want! Instead, we use xarray's
+        # vectorised-indexing mode via using a DataArray indexer.  See the last example here:
+        # https://docs.xarray.dev/en/latest/user-guide/indexing.html#more-advanced-indexing
+        coords = {"step": steps}
+        init_time_indexer = xr.DataArray(selected_init_times, coords=coords)
+        step_indexer = xr.DataArray(steps, coords=coords)
+        da_sel = da.sel(init_time_utc=init_time_indexer, step=step_indexer)
 
     return da_sel

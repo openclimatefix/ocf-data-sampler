@@ -22,6 +22,7 @@ from ocf_data_sampler.select import Location, fill_time_periods
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
+    diff_nwp_data,
     fill_nans_in_arrays,
     find_valid_time_periods,
     merge_dicts,
@@ -259,7 +260,7 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
-
+        sample_dict = diff_nwp_data(sample_dict, self.config)
         return self.process_and_combine_datasets(sample_dict, t0, location)
 
     @override
@@ -318,6 +319,7 @@ class PVNetUKConcurrentDataset(AbstractPVNetUKDataset):
         # Slice by time then load to avoid loading the data multiple times from disk
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = diff_nwp_data(sample_dict, self.config)
 
         gsp_samples = []
 
