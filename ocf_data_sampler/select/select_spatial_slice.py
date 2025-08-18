@@ -24,20 +24,21 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int
 
     x, y = location.in_coord_system(target_coords)
 
+    x_vals = da[x_dim].values
+    y_vals = da[y_dim].values
+
     # Check that requested point lies within the data
-    if not (da[x_dim].values[0] < x < da[x_dim].values[-1]):
+    if not (x_vals[0] < x < x_vals[-1]):
         raise ValueError(
-            f"{x} is not in the interval {da[x_dim].values[0]}: {da[x_dim].values[-1]}",
+            f"{x} is not in the interval {x_vals[0]}: {x_vals[-1]}",
         )
-    if not (da[y_dim].values[0] < y < da[y_dim].values[-1]):
+    if not (y_vals[0] < y < y_vals[-1]):
         raise ValueError(
-            f"{y} is not in the interval {da[y_dim].values[0]}: {da[y_dim].values[-1]}",
+            f"{y} is not in the interval {y_vals[0]}: {y_vals[-1]}",
         )
 
-    x_index = da.get_index(x_dim)
-    y_index = da.get_index(y_dim)
-    closest_x = x_index.get_indexer([x], method="nearest")[0]
-    closest_y = y_index.get_indexer([y], method="nearest")[0]
+    closest_x = np.argmin(np.abs(x_vals - x))
+    closest_y = np.argmin(np.abs(y_vals - y))
 
     return closest_x, closest_y
 
