@@ -124,7 +124,6 @@ class AbstractPVNetUKDataset(Dataset):
         Args:
             dataset_dict: Dictionary of xarray datasets
         """
-
         if "nwp" in dataset_dict:
 
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
@@ -143,7 +142,7 @@ class AbstractPVNetUKDataset(Dataset):
             channel_stds = self.stds_dict["sat"]
 
             da_sat.values = (da_sat.values - channel_means) / channel_stds
-            
+
 
         if "gsp" in dataset_dict:
             # Standardise not in-place
@@ -151,7 +150,7 @@ class AbstractPVNetUKDataset(Dataset):
             dataset_dict["gsp"] = da_gsp / da_gsp.effective_capacity_mwp.values
 
         return dataset_dict
-    
+
 
     def convert_to_numpysample(
         self,
@@ -280,7 +279,7 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         sample_dict = diff_nwp_data(sample_dict, self.config)
         sample_dict = self.normalize_datasets(sample_dict)
         return self.convert_to_numpysample(sample_dict, t0, location)
-    
+
     @override
     def __getitem__(self, idx: int) -> NumpySample:
         # Get the coordinates of the sample
