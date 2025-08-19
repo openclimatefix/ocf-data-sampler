@@ -93,4 +93,4 @@ def open_gsp(
             dtype = gsp_da.coords[coord].dtype
             raise TypeError(f"{coord} should be {expected_dtype.__name__}, not {dtype}")
 
-    return gsp_da
+    return gsp_da.compute()
