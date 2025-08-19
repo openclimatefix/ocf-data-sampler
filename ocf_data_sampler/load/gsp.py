@@ -32,7 +32,7 @@ def open_gsp(
     boundaries_version: str = "20220314",
     public: bool = False,
 ) -> xr.DataArray:
-    """Open the GSP data and validates its data types.
+    """Open and eagerly load the GSP data and validates its data types.
 
     Args:
         zarr_path: Path to the GSP zarr data
@@ -93,4 +93,6 @@ def open_gsp(
             dtype = gsp_da.coords[coord].dtype
             raise TypeError(f"{coord} should be {expected_dtype.__name__}, not {dtype}")
 
+    # Below we load the data eagerly into memory - this makes the dataset faster to sample from, but
+    # at the cost of a little extra memory usage
     return gsp_da.compute()
