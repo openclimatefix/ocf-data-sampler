@@ -17,14 +17,13 @@ def compute(xarray_dict: dict) -> dict:
     """Eagerly load a nested dictionary of xarray DataArrays."""
     
     # Load these keys first because they don't use tensorstore
-    for key in ["gsp", "site"]:
-        if key in xarray_dict:
-            da = xarray_dict.pop(key)
-            keys = [*xarray_dict.keys()]
-            xarray_dict[key] = da.compute()
-    else:
-        keys = [*xarray_dict.keys()]
+    priority_keys = ["gsp", "site"]
+    for key in priority_keys:
+        if key in xarray_dict:            
+            xarray_dict[key] = xarray_dict[key].compute()
 
+    # Load the rest
+    keys = [k for k in xarray_dict.keys() if k not in priority_keys]
     for k in keys:
         v = xarray_dict[k]
         if isinstance(v, dict):
