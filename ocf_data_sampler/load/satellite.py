@@ -35,13 +35,13 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
         # Sol's requested match/case pattern for path routing
         match path_info:
             # Updated case to handle local icechunk paths correctly
-            case {"protocol": None, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix:
-                # Pass the original zarr_path for local icechunk paths
-                ds = _open_sat_data_icechunk("local", "", zarr_path, sha1)
-
-            case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix and protocol is not None:
-                # Cloud Ice Chunk logic goes here - Sol's requested signature
+            case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix:
+                # Single case for both local and cloud Ice Chunk
                 ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
+
+            # case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix and protocol is not None:
+            #     # Cloud Ice Chunk logic goes here - Sol's requested signature
+            #     ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
             
             case {"protocol": _, "bucket": _, "prefix": _, "sha1": None}:
                 #  this doesn't work for blosc2 
@@ -130,42 +130,31 @@ def _open_sat_data_icechunk(
 ) -> xr.Dataset:
     """Open satellite data from an Ice Chunk repository with optimized settings."""
     
-    # Handle local icechunk paths
-    if protocol == "local":
-        # Remove @commit from path if present for repository opening
-        base_path = prefix.split('@')[0] if '@' in prefix else prefix
-        logger.info(f"Opening local Ice Chunk repository: {base_path}")
+    # Get storage according to protocol
+    if protocol is None:
+        logger.info(f"Opening local Ice Chunk repository: {prefix}")
+        storage = icechunk.local_filesystem_storage(prefix)
+    elif protocol == "gs":
+        logger.info(f"Opening Ice Chunk repository: {protocol}://{bucket}/{prefix}")
+        _setup_optimal_environment()  # Only applies for GCS
         
-        storage = icechunk.local_filesystem_storage(base_path)
-        try:
-            repo = icechunk.Repository.open(storage)
-        except Exception as e:
-            logger.error(f"Failed to open local icechunk repository at {base_path}")
-            raise e
-    else:
-        # Your existing cloud logic remains the same
-        protocol_str = protocol or "unknown"
-        logger.info(f"Opening Ice Chunk repository: {protocol_str}://{bucket}/{prefix}")
-        _setup_optimal_environment()
-
         # Ensure proper trailing slash
         if not prefix.endswith('/'):
             prefix = prefix + '/'
+            
+        logger.info(f"Accessing Ice Chunk repository: {protocol}://{bucket}/{prefix}")
+        storage = icechunk.gcs_storage(bucket=bucket, prefix=prefix, from_env=True)
+    else:
+        raise ValueError(f"Unsupported protocol: {protocol}")
 
-        logger.info(f"Accessing Ice Chunk repository: {protocol_str}://{bucket}/{prefix}")
+    # Get repo from storage (single try/catch)
+    try:
+        repo = icechunk.Repository.open(storage)
+    except Exception as e:
+        logger.error(f"Failed to open Ice Chunk repository at {protocol or 'local'}://{bucket or ''}/{prefix}")
+        raise e
 
-        # Set up storage and open the repository
-        if protocol == "gs":
-            storage = icechunk.gcs_storage(bucket=bucket, prefix=prefix, from_env=True)
-        else:
-            raise ValueError(f"Unsupported cloud protocol for icechunk: {protocol}")
-        try:
-            repo = icechunk.Repository.open(storage)
-        except Exception as e:
-            logger.error(f"Failed to open repository at {protocol_str}://{bucket}/{prefix}")
-            raise e
-
-    # Rest of your existing logic remains exactly the same
+    # Get session from repo according to commit, if present
     if sha1:
         logger.info(f"Opening Ice Chunk commit: {sha1}")
         try:
