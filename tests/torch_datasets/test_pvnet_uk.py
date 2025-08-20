@@ -1,7 +1,8 @@
+import pickle
+
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-import pickle
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
@@ -241,18 +242,18 @@ def test_pvnet_uk_regional_dataset_pickle(tmp_path, pvnet_config_filename):
     # Presave the pickled dataset
     dataset.presave_pickle(pickle_path)
 
-    # Since its been pe-pickled this should just return a reference to the previous pickle
+    # Since its been pe-pickled this should just return a reference to the previous pickle
     pickle_bytes = pickle.dumps(dataset)
 
     # Check the path is in the pickle object
-    assert pickle_path.encode('utf-8') in pickle_bytes
+    assert pickle_path.encode("utf-8") in pickle_bytes
 
     # Check we can reload the object
-    _ = pickle.loads(pickle_bytes)
+    _ = pickle.loads(pickle_bytes) # noqa: S301
 
 
-    # Check we can still pickle and unpickle if we don't presave
+    # Check we can still pickle and unpickle if we don't presave
     dataset = PVNetUKRegionalDataset(pvnet_config_filename)
     pickle_bytes = pickle.dumps(dataset)
-    _ = pickle.loads(pickle_bytes)
+    _ = pickle.loads(pickle_bytes) # noqa: S301
 
