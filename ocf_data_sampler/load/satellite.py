@@ -38,10 +38,6 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
             case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix:
                 # Single case for both local and cloud Ice Chunk
                 ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
-
-            # case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix and protocol is not None:
-            #     # Cloud Ice Chunk logic goes here - Sol's requested signature
-            #     ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
             
             case {"protocol": _, "bucket": _, "prefix": _, "sha1": None}:
                 #  this doesn't work for blosc2 
@@ -109,7 +105,7 @@ def _parse_zarr_path(path: str) -> dict:
     """Parse a path into its components, supporting both local and cloud paths."""
 
     # Sol's recommended regex pattern - handles optional protocol and wildcards  
-    pattern = r"^(?:(?P<protocol>[\w]{2,6}):\/\/)?(?P<bucket>[\w\/-]+)\/(?P<prefix>[\w*.\/-]+?)(?:@(?P<sha1>[\w]+))?$"
+    pattern = r"^(?:(?P<protocol>[\w]{2,6}):\/\/)?(?P<bucket>\/?[\w-]+)\/(?P<prefix>[\w*.\/-]+?)(?:@(?P<sha1>[\w]+))?$"
     match = re.match(pattern, path)
     if not match:
         raise ValueError(f"Invalid path format: {path}")
