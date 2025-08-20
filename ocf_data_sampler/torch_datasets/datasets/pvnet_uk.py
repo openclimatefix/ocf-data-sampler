@@ -19,6 +19,7 @@ from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import Location, fill_time_periods
+from ocf_data_sampler.torch_datasets.datasets.picklecache import PickleCacheMixin
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
@@ -67,7 +68,7 @@ def get_gsp_locations(
     return locations
 
 
-class AbstractPVNetUKDataset(Dataset):
+class AbstractPVNetUKDataset(PickleCacheMixin, Dataset):
     """Abstract class for PVNet UK datasets."""
 
     def __init__(
@@ -85,6 +86,8 @@ class AbstractPVNetUKDataset(Dataset):
             end_time: Limit the init-times to be before this
             gsp_ids: List of GSP IDs to create samples for. Defaults to all
         """
+        super().__init__()
+
         config = load_yaml_configuration(config_filename)
         datasets_dict = get_dataset_dict(config.input_data, gsp_ids=gsp_ids)
 
@@ -239,7 +242,6 @@ class AbstractPVNetUKDataset(Dataset):
             freq=minutes(config.input_data.gsp.time_resolution_minutes),
         )
         return valid_t0_times
-
 
 
 class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
