@@ -261,6 +261,9 @@ class SitesDataset(PickleCacheMixin, Dataset):
 
     @override
     def __getitem__(self, idx: int) -> dict:
+
+        idx = int(idx)
+
         # Get the coordinates of the sample
         t0, site_id = self.valid_t0_and_site_ids.iloc[idx]
 
