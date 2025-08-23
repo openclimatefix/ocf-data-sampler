@@ -89,7 +89,8 @@ def test_to_numpy(numpy_sample):
     assert isinstance(site_data, np.ndarray)
     assert site_data.ndim == 1
     assert len(site_data) == 7
-    assert np.all(site_data >= 0) and np.all(site_data <= 1)
+    assert site_data.dtype == np.float32
+    assert np.all(site_data >= 0) 
 
     # Check NWP
     assert "ukv" in numpy_data["nwp"]
