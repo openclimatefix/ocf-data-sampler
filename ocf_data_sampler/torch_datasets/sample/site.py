@@ -1,9 +1,11 @@
 """PVNet Site sample implementation for netCDF data handling and conversion."""
 
 import torch
+import numpy as np
 from typing_extensions import override
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
+from ocf_data_sampler.numpy_sample import SiteSampleKey
 
 from .base import SampleBase
 
@@ -19,6 +21,7 @@ class SiteSample(SampleBase):
 
     @override
     def to_numpy(self) -> NumpySample:
+        self._data[SiteSampleKey.generation] = self._data[SiteSampleKey.generation].astype(np.float32)
         return self._data
 
     @override
