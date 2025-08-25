@@ -24,9 +24,11 @@ from ocf_data_sampler.select import (
     find_contiguous_t0_periods,
     intersection_of_multiple_dataframes_of_periods,
 )
+from ocf_data_sampler.torch_datasets.datasets.picklecache import PickleCacheMixin
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
+    diff_nwp_data,
     fill_nans_in_arrays,
     find_valid_time_periods,
     merge_dicts,
@@ -57,6 +59,7 @@ def get_locations(site_xr: xr.Dataset) -> list[Location]:
 
     return locations
 
+
 def process_and_combine_datasets(
     dataset_dict: dict,
     config: Configuration,
@@ -80,12 +83,10 @@ def process_and_combine_datasets(
 
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
 
-            # Standardise and convert to NumpyBatch
+            channel_means = means_dict["nwp"][nwp_key]
+            channel_stds = stds_dict["nwp"][nwp_key]
 
-            da_channel_means = means_dict["nwp"][nwp_key]
-            da_channel_stds = stds_dict["nwp"][nwp_key]
-
-            da_nwp = (da_nwp - da_channel_means) / da_channel_stds
+            da_nwp = (da_nwp - channel_means) / channel_stds
 
             nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
@@ -96,16 +97,16 @@ def process_and_combine_datasets(
         da_sat = dataset_dict["sat"]
 
         # Standardise and convert to NumpyBatch
-        da_channel_means = means_dict["sat"]
-        da_channel_stds = stds_dict["sat"]
+        channel_means = means_dict["sat"]
+        channel_stds = stds_dict["sat"]
 
-        da_sat = (da_sat - da_channel_means) / da_channel_stds
+        da_sat = (da_sat - channel_means) / channel_stds
 
         numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
     if "site" in dataset_dict:
         da_sites = dataset_dict["site"]
-        da_sites = da_sites / da_sites.capacity_kwp
+        da_sites = da_sites / da_sites.capacity_kwp.values
 
         # Convert to NumpyBatch
         numpy_modalities.append(convert_site_to_numpy_sample(da_sites))
@@ -144,7 +145,7 @@ def process_and_combine_datasets(
     return combined_sample
 
 
-class SitesDataset(Dataset):
+class SitesDataset(PickleCacheMixin, Dataset):
     """A torch Dataset for creating PVNet Site samples."""
 
     def __init__(
@@ -160,6 +161,8 @@ class SitesDataset(Dataset):
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
         """
+        super().__init__()
+
         config = load_yaml_configuration(config_filename)
         datasets_dict = get_dataset_dict(config.input_data)
 
@@ -258,6 +261,9 @@ class SitesDataset(Dataset):
 
     @override
     def __getitem__(self, idx: int) -> dict:
+
+        idx = int(idx)
+
         # Get the coordinates of the sample
         t0, site_id = self.valid_t0_and_site_ids.iloc[idx]
 
@@ -276,8 +282,8 @@ class SitesDataset(Dataset):
         """
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = diff_nwp_data(sample_dict, self.config)
 
         return process_and_combine_datasets(
             sample_dict,
@@ -301,7 +307,7 @@ class SitesDataset(Dataset):
         return self._get_sample(t0, location)
 
 
-class SitesDatasetConcurrent(Dataset):
+class SitesDatasetConcurrent(PickleCacheMixin, Dataset):
     """A torch Dataset for creating PVNet Site batches with samples for all sites."""
 
     def __init__(
@@ -317,6 +323,8 @@ class SitesDatasetConcurrent(Dataset):
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
         """
+        super().__init__()
+
         config = load_yaml_configuration(config_filename)
         datasets_dict = get_dataset_dict(config.input_data)
 
@@ -414,6 +422,7 @@ class SitesDatasetConcurrent(Dataset):
         # slice by time first as we want to keep all site id info
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = diff_nwp_data(sample_dict, self.config)
 
         site_samples = []
 

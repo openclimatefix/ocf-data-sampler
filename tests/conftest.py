@@ -148,32 +148,25 @@ def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
 
 @pytest.fixture()
 def ds_nwp_ukv_time_sliced():
-    t0 = pd.to_datetime("2024-01-02 00:00")
 
+    t0 = pd.to_datetime("2024-01-02 00:00")
     x = np.arange(-100, 100, 10)
     y = np.arange(-100, 100, 10)
     steps = pd.timedelta_range("0h", "8h", freq="1h")
-    target_times = t0 + steps
-
     channels = ["t", "dswrf"]
-    init_times = pd.to_datetime([t0] * len(steps))
 
     # Create dummy time-sliced NWP data
     da_nwp = xr.DataArray(
-        np.random.normal(size=(len(target_times), len(channels), len(x), len(y))),
+        np.random.normal(size=(len(steps), len(channels), len(x), len(y))),
         coords={
-            "target_time_utc": (["target_time_utc"], target_times),
+            "step": (["step"], steps),
             "channel": (["channel"], channels),
             "x_osgb": (["x_osgb"], x),
             "y_osgb": (["y_osgb"], y),
         },
     )
 
-    # Add extra non-coordinate dimensions
-    da_nwp = da_nwp.assign_coords(
-        init_time_utc=("target_time_utc", init_times),
-        step=("target_time_utc", steps),
-    )
+    da_nwp = da_nwp.assign_coords(init_time_utc=("step", [t0 for _ in steps]))
 
     return da_nwp
 

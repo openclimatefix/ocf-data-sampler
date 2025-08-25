@@ -19,9 +19,11 @@ from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import Location, fill_time_periods
+from ocf_data_sampler.torch_datasets.datasets.picklecache import PickleCacheMixin
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
+    diff_nwp_data,
     fill_nans_in_arrays,
     find_valid_time_periods,
     merge_dicts,
@@ -66,7 +68,7 @@ def get_gsp_locations(
     return locations
 
 
-class AbstractPVNetUKDataset(Dataset):
+class AbstractPVNetUKDataset(PickleCacheMixin, Dataset):
     """Abstract class for PVNet UK datasets."""
 
     def __init__(
@@ -84,6 +86,8 @@ class AbstractPVNetUKDataset(Dataset):
             end_time: Limit the init-times to be before this
             gsp_ids: List of GSP IDs to create samples for. Defaults to all
         """
+        super().__init__()
+
         config = load_yaml_configuration(config_filename)
         datasets_dict = get_dataset_dict(config.input_data, gsp_ids=gsp_ids)
 
@@ -137,10 +141,10 @@ class AbstractPVNetUKDataset(Dataset):
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
 
                 # Standardise and convert to NumpyBatch
-                da_channel_means = self.means_dict["nwp"][nwp_key]
-                da_channel_stds = self.stds_dict["nwp"][nwp_key]
+                channel_means = self.means_dict["nwp"][nwp_key]
+                channel_stds = self.stds_dict["nwp"][nwp_key]
 
-                da_nwp = (da_nwp - da_channel_means) / da_channel_stds
+                da_nwp = (da_nwp - channel_means) / channel_stds
 
                 nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
@@ -151,17 +155,17 @@ class AbstractPVNetUKDataset(Dataset):
             da_sat = dataset_dict["sat"]
 
             # Standardise and convert to NumpyBatch
-            da_channel_means = self.means_dict["sat"]
-            da_channel_stds = self.stds_dict["sat"]
+            channel_means = self.means_dict["sat"]
+            channel_stds = self.stds_dict["sat"]
 
-            da_sat = (da_sat - da_channel_means) / da_channel_stds
+            da_sat = (da_sat - channel_means) / channel_stds
 
             numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
         if "gsp" in dataset_dict:
             gsp_config = self.config.input_data.gsp
             da_gsp = dataset_dict["gsp"]
-            da_gsp = da_gsp / da_gsp.effective_capacity_mwp
+            da_gsp = da_gsp / da_gsp.effective_capacity_mwp.values
 
             # Convert to NumpyBatch
             numpy_modalities.append(
@@ -224,7 +228,6 @@ class AbstractPVNetUKDataset(Dataset):
         return valid_t0_times
 
 
-
 class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
     """A torch Dataset for creating PVNet UK regional samples."""
 
@@ -259,7 +262,7 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
-
+        sample_dict = diff_nwp_data(sample_dict, self.config)
         return self.process_and_combine_datasets(sample_dict, t0, location)
 
     @override
@@ -318,6 +321,7 @@ class PVNetUKConcurrentDataset(AbstractPVNetUKDataset):
         # Slice by time then load to avoid loading the data multiple times from disk
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = diff_nwp_data(sample_dict, self.config)
 
         gsp_samples = []
 
