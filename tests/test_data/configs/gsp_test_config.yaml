@@ -1,0 +1,10 @@
+general:
+  description: test example configuration
+  name: example
+
+input_data:
+  gsp:
+    zarr_path: ""
+    interval_start_minutes: -60
+    interval_end_minutes: 120
+    time_resolution_minutes: 30
