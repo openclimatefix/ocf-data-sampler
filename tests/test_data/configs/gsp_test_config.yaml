@@ -4,9 +4,7 @@ general:
 
 input_data:
   gsp:
-    zarr_path: tests/data/gsp/test.zarr
+    zarr_path: ""
     interval_start_minutes: -60
     interval_end_minutes: 120
     time_resolution_minutes: 30
-    dropout_timedeltas_minutes: [-30]
-    dropout_fraction: 0.1

@@ -6,16 +6,14 @@ from ocf_data_sampler.config import Configuration, load_yaml_configuration
 
 def test_default_configuration(test_config_gsp_path):
     """Test default pydantic class"""
-    config = load_yaml_configuration(test_config_gsp_path)
-    _ = Configuration(**config.model_dump())
+    _ = load_yaml_configuration(test_config_gsp_path)
 
 
 def test_extra_field_error(test_config_gsp_path):
     """
     Check an extra parameters in config causes error
     """
-    config = load_yaml_configuration(test_config_gsp_path)
-    configuration = Configuration(**config.model_dump())
+    configuration = load_yaml_configuration(test_config_gsp_path)
     configuration_dict = configuration.model_dump()
     configuration_dict["extra_field"] = "extra_value"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):

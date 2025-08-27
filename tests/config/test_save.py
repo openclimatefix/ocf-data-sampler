@@ -2,12 +2,13 @@
 
 import os
 
-from ocf_data_sampler.config import Configuration, load_yaml_configuration, save_yaml_configuration
+from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 
 
 def test_save_yaml_configuration_basic(tmp_path, test_config_gsp_path):
     """Save an empty configuration object"""
-    config = Configuration(**load_yaml_configuration(test_config_gsp_path).model_dump())
+    #config = Configuration(**load_yaml_configuration(test_config_gsp_path).model_dump())
+    config = load_yaml_configuration(test_config_gsp_path)
 
     filepath = f"{tmp_path}/config.yaml"
     save_yaml_configuration(config, filepath)
