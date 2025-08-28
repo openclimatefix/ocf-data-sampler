@@ -75,7 +75,7 @@ def _tensostore_open_zarr_paths(zarr_path: str | list[str], time_dim: str) -> xr
         zarr_path = sorted(glob(zarr_path))
 
     if isinstance(zarr_path, list | tuple):
-        ds = open_zarrs(zarr_path, concat_dim=time_dim, data_source="NWP").sortby(time_dim)
+        ds = open_zarrs(zarr_path, concat_dim=time_dim, data_source="nwp").sortby(time_dim)
     else:
         ds = open_zarr(zarr_path)
     return ds
