@@ -24,6 +24,7 @@ from ocf_data_sampler.select import (
     find_contiguous_t0_periods,
     intersection_of_multiple_dataframes_of_periods,
 )
+from ocf_data_sampler.torch_datasets.datasets.picklecache import PickleCacheMixin
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
@@ -144,7 +145,7 @@ def process_and_combine_datasets(
     return combined_sample
 
 
-class SitesDataset(Dataset):
+class SitesDataset(PickleCacheMixin, Dataset):
     """A torch Dataset for creating PVNet Site samples."""
 
     def __init__(
@@ -160,6 +161,8 @@ class SitesDataset(Dataset):
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
         """
+        super().__init__()
+
         config = load_yaml_configuration(config_filename)
         datasets_dict = get_dataset_dict(config.input_data)
 
@@ -258,6 +261,9 @@ class SitesDataset(Dataset):
 
     @override
     def __getitem__(self, idx: int) -> dict:
+
+        idx = int(idx)
+
         # Get the coordinates of the sample
         t0, site_id = self.valid_t0_and_site_ids.iloc[idx]
 
@@ -301,7 +307,7 @@ class SitesDataset(Dataset):
         return self._get_sample(t0, location)
 
 
-class SitesDatasetConcurrent(Dataset):
+class SitesDatasetConcurrent(PickleCacheMixin, Dataset):
     """A torch Dataset for creating PVNet Site batches with samples for all sites."""
 
     def __init__(
@@ -317,6 +323,8 @@ class SitesDatasetConcurrent(Dataset):
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
         """
+        super().__init__()
+
         config = load_yaml_configuration(config_filename)
         datasets_dict = get_dataset_dict(config.input_data)
 

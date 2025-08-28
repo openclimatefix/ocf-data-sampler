@@ -4,17 +4,16 @@ from pydantic import ValidationError
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 
 
-def test_default_configuration():
+def test_default_configuration(test_config_gsp_path):
     """Test default pydantic class"""
-    _ = Configuration()
+    _ = load_yaml_configuration(test_config_gsp_path)
 
 
-def test_extra_field_error():
+def test_extra_field_error(test_config_gsp_path):
     """
     Check an extra parameters in config causes error
     """
-
-    configuration = Configuration()
+    configuration = load_yaml_configuration(test_config_gsp_path)
     configuration_dict = configuration.model_dump()
     configuration_dict["extra_field"] = "extra_value"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
@@ -154,3 +153,12 @@ def test_accum_channels_validation(test_config_filename):
     )
     with pytest.raises(ValidationError, match=expected_error):
         _ = Configuration(**invalid_config.model_dump())
+
+
+def test_configuration_requires_site_or_gsp():
+    """
+    Test that Configuration raises an error if both site and gsp are None in input_data.
+    """
+    with pytest.raises(ValidationError, match="You must provide either `site` or `gsp`"):
+        Configuration()
+
