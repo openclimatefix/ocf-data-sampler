@@ -10,6 +10,7 @@ import icechunk
 import xarray as xr
 from xarray_tensorstore import open_zarr
 from ocf_data_sampler.load.open_tensorstore_zarrs import open_zarrs
+from contextlib import contextmanager
 
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
@@ -35,7 +36,7 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
         # Sol's requested match/case pattern for path routing
         match path_info:
             # Updated case to handle local icechunk paths correctly
-            case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if ".icechunk" in prefix:
+            case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if prefix.endswith(".icechunk"):
                 # Single case for both local and cloud Ice Chunk
                 ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
             
@@ -82,24 +83,49 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
     
     return data_array
 
+@contextmanager
 def _setup_optimal_environment():
-    """Apply optimization settings for cloud data streaming."""
-    logger.debug("Applying optimization settings for cloud streaming...")
-
-    os.environ["GCSFS_CACHE_TIMEOUT"] = "3600"
-    os.environ["GCSFS_BLOCK_SIZE"] = str(OPTIMAL_BLOCK_SIZE_MB * 1024 * 1024)
-    os.environ["GCSFS_DEFAULT_CACHE_TYPE"] = "readahead"
-    os.environ["GOOGLE_CLOUD_DISABLE_GRPC"] = "true"
-
-    dask.config.set(
-        {
-            "distributed.worker.memory.target": 0.7,
-            "array.chunk-size": "512MB",
-            "distributed.comm.compression": None,
-            "distributed.worker.threads": OPTIMAL_THREADS,
-        }
-    )
-    logger.debug("Optimization environment configured successfully")
+    """Apply optimization settings for cloud data streaming with context management."""
+    # Store original values
+    original_values = {}
+    env_vars = {
+        "GCSFS_CACHE_TIMEOUT": "3600",
+        "GCSFS_BLOCK_SIZE": str(OPTIMAL_BLOCK_SIZE_MB * 1024 * 1024),
+        "GCSFS_DEFAULT_CACHE_TYPE": "readahead",
+        "GOOGLE_CLOUD_DISABLE_GRPC": "true"
+    }
+    
+    # Store original environment values
+    for key in env_vars:
+        original_values[key] = os.environ.get(key)
+        os.environ[key] = env_vars[key]
+    
+    # Store original dask config (THIS MUST BE DECLARED HERE)
+    original_dask_config = dict(dask.config.config)
+    
+    dask.config.set({
+        "distributed.worker.memory.target": 0.7,
+        "array.chunk-size": "512MB",
+        "distributed.comm.compression": None,
+        "distributed.worker.threads": OPTIMAL_THREADS,
+    })
+    
+    try:
+        yield
+    finally:
+        # Restore original environment values
+        for key, original_value in original_values.items():
+            if original_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original_value
+        
+        # Restore original dask config
+        try:
+            dask.config.reset()
+        except AttributeError:
+            # Use the correctly named variable
+            dask.config.set(original_dask_config)
 
 def _parse_zarr_path(path: str) -> dict:
     """Parse a path into its components, supporting both local and cloud paths."""
@@ -132,14 +158,13 @@ def _open_sat_data_icechunk(
         storage = icechunk.local_filesystem_storage(prefix)
     elif protocol == "gs":
         logger.info(f"Opening Ice Chunk repository: {protocol}://{bucket}/{prefix}")
-        _setup_optimal_environment()  # Only applies for GCS
-        
-        # Ensure proper trailing slash
-        if not prefix.endswith('/'):
-            prefix = prefix + '/'
-            
-        logger.info(f"Accessing Ice Chunk repository: {protocol}://{bucket}/{prefix}")
-        storage = icechunk.gcs_storage(bucket=bucket, prefix=prefix, from_env=True)
+        with _setup_optimal_environment():  # Use context manager
+            # Ensure proper trailing slash
+            if not prefix.endswith('/'):
+                prefix = prefix + '/'
+                
+            logger.info(f"Accessing Ice Chunk repository: {protocol}://{bucket}/{prefix}")
+            storage = icechunk.gcs_storage(bucket=bucket, prefix=prefix, from_env=True)
     else:
         raise ValueError(f"Unsupported protocol: {protocol}")
 
@@ -150,26 +175,16 @@ def _open_sat_data_icechunk(
         logger.error(f"Failed to open Ice Chunk repository at {protocol or 'local'}://{bucket or ''}/{prefix}")
         raise e
 
-    # Get session from repo according to commit, if present
-    if sha1:
-        logger.info(f"Opening Ice Chunk commit: {sha1}")
-        try:
-            snapshot_info = repo.lookup_snapshot(sha1)
-            logger.info(f"Found snapshot: {snapshot_info}")
-            
+    # CORRECT - uses proper Ice Chunk API
+    try:
+        if sha1:
+            session = repo.readonly_session(snapshot_id=sha1)
+        else:
             session = repo.readonly_session("main")
-            
-            if session.snapshot_id == sha1:
-                logger.info(f"Successfully accessed commit {sha1} via main branch")
-            else:
-                raise ValueError(f"Expected snapshot {sha1}, but main branch has {session.snapshot_id}")
-                
-        except Exception as e:
-            raise ValueError(f"Commit {sha1} not found or inaccessible: {e}")
-    else:
-        logger.info("Opening 'main' branch of Ice Chunk repository.")
-        session = repo.readonly_session("main")
-
+    except Exception as e:
+        target = sha1 or "main"
+        raise ValueError(f"Failed to open session for '{target}': {e}") from e
+        
     # Open the dataset from the Ice Chunk session store
     ds = xr.open_zarr(session.store, consolidated=True, chunks="auto")
 

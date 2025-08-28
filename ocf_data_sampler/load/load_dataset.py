@@ -1,12 +1,8 @@
 """Loads all data sources."""
-
-import logging
 import xarray as xr
 
 from ocf_data_sampler.config import InputData
 from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
-
-logger = logging.getLogger(__name__)
 
 def get_dataset_dict(
     input_config: InputData,
@@ -27,7 +23,7 @@ def get_dataset_dict(
             zarr_path=input_config.gsp.zarr_path,
             boundaries_version=input_config.gsp.boundaries_version,
             public=input_config.gsp.public,
-        ).compute()
+        )
 
         if gsp_ids is None:
             # Remove national (gsp_id=0)
@@ -53,7 +49,6 @@ def get_dataset_dict(
     # Load satellite data if in config
     if input_config.satellite:
         sat_config = input_config.satellite
-        logger.info(f"Loading satellite data from: {sat_config.zarr_path}")
         # open_sat_data will now internally decide whether to use
         # the standard Zarr loader or the Ice Chunk loader.
         da_sat = open_sat_data(
