@@ -14,6 +14,7 @@ References:
     [2] https://www.apache.org/licenses/LICENSE-2.0
 """
 
+import logging
 import os.path
 import re
 
@@ -26,10 +27,7 @@ from xarray_tensorstore import (
     _TensorStoreAdapter,
 )
 
-import logging
-
 logger = logging.getLogger(__name__)
-
 
 def _zarr_spec_from_path(path: str, zarr_format: int) -> ...:
     if re.match(r"\w+\://", path):  # path is a URI
@@ -140,6 +138,7 @@ def open_zarrs(
         concat_dim: Dimension along which to concatenate the data variables.
         context: TensorStore context.
         mask_and_scale: Whether to mask and scale the data.
+        data_source: Which data source is being opened. Used for warning context.
 
     Returns:
         Concatenated Dataset with all data variables opened via TensorStore.
@@ -158,8 +157,9 @@ def open_zarrs(
             join="exact",
         )
     except ValueError:
-        logger.warning(f"Coordinate mismatch found in {data_source} input data. " 
-                       f"The coordinates will be overwritten! This might be fine for satellite data. "
+        logger.warning(f"Coordinate mismatch found in {data_source} input data. "
+                       f"The coordinates will be overwritten! "
+                       f"This might be fine for satellite data. "
                        f"Proceed with caution.")
         ds = xr.concat(
             ds_list,
