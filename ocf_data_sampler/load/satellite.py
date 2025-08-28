@@ -19,7 +19,7 @@ def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
     """
     # Open the data
     if isinstance(zarr_path, list | tuple):
-        ds = open_zarrs(zarr_path, concat_dim="time")
+        ds = open_zarrs(zarr_path, concat_dim="time", data_source="satellite")
     else:
         ds = open_zarr(zarr_path)
 
