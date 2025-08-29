@@ -20,7 +20,6 @@ from ocf_data_sampler.load.utils import (
 
 logger = logging.getLogger(__name__)
 
-# Optimal values from research, now hardcoded as per Sol's feedback.
 OPTIMAL_BLOCK_SIZE_MB = 64
 OPTIMAL_THREADS = 2
 
@@ -33,11 +32,8 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
         # Parse path components using Sol's regex approach
         path_info = _parse_zarr_path(zarr_path)
         
-        # Sol's requested match/case pattern for path routing
         match path_info:
-            # Updated case to handle local icechunk paths correctly
             case {"protocol": protocol, "bucket": bucket, "prefix": prefix, "sha1": sha1} if prefix.endswith(".icechunk"):
-                # Single case for both local and cloud Ice Chunk
                 ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
             
             case {"protocol": _, "bucket": _, "prefix": _, "sha1": None}:
@@ -46,7 +42,6 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
                 ds = open_zarr(zarr_path)
                 
             case _:
-                # Raise error on unhandled path
                 raise ValueError(f"Unhandled path format: {zarr_path}")
 
     check_time_unique_increasing(ds.time)
@@ -69,8 +64,8 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
     coord_dtypes = {
         "time_utc": "M",  # datetime64 (any precision)
         "channel": "U",   # Unicode string
-        "x_geostationary": "f",  # floating
-        "y_geostationary": "f",  # floating
+        "x_geostationary": "f",  
+        "y_geostationary": "f",  
     }
     
     for coord, expected_kind in coord_dtypes.items():
@@ -86,7 +81,7 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
 @contextmanager
 def _setup_optimal_environment():
     """Apply optimization settings for cloud data streaming with context management."""
-    # Store original values
+
     original_values = {}
     env_vars = {
         "GCSFS_CACHE_TIMEOUT": "3600",
@@ -130,7 +125,6 @@ def _setup_optimal_environment():
 def _parse_zarr_path(path: str) -> dict:
     """Parse a path into its components, supporting both local and cloud paths."""
 
-    # Sol's recommended regex pattern - handles optional protocol and wildcards  
     pattern = r"^(?:(?P<protocol>[\w]{2,6}):\/\/)?(?P<bucket>\/?[\w-]+)\/(?P<prefix>[\w*.\/-]+?)(?:@(?P<sha1>[\w]+))?$"
     match = re.match(pattern, path)
     if not match:
@@ -138,7 +132,6 @@ def _parse_zarr_path(path: str) -> dict:
     
     components = match.groupdict()
     
-    # Validation checks moved from match block
     if components["sha1"] is not None and not components["prefix"].endswith(".icechunk"):
         raise ValueError("Commit syntax (@commit) not supported for non-icechunk stores")
     
@@ -158,7 +151,7 @@ def _open_sat_data_icechunk(
         storage = icechunk.local_filesystem_storage(prefix)
     elif protocol == "gs":
         logger.info(f"Opening Ice Chunk repository: {protocol}://{bucket}/{prefix}")
-        with _setup_optimal_environment():  # Use context manager
+        with _setup_optimal_environment():  
             # Ensure proper trailing slash
             if not prefix.endswith('/'):
                 prefix = prefix + '/'
@@ -168,14 +161,12 @@ def _open_sat_data_icechunk(
     else:
         raise ValueError(f"Unsupported protocol: {protocol}")
 
-    # Get repo from storage (single try/catch)
     try:
         repo = icechunk.Repository.open(storage)
     except Exception as e:
         logger.error(f"Failed to open Ice Chunk repository at {protocol or 'local'}://{bucket or ''}/{prefix}")
         raise e
 
-    # CORRECT - uses proper Ice Chunk API
     try:
         if sha1:
             session = repo.readonly_session(snapshot_id=sha1)
@@ -185,7 +176,6 @@ def _open_sat_data_icechunk(
         target = sha1 or "main"
         raise ValueError(f"Failed to open session for '{target}': {e}") from e
         
-    # Open the dataset from the Ice Chunk session store
     ds = xr.open_zarr(session.store, consolidated=True, chunks="auto")
 
     # Convert Ice Chunk format to standard format

@@ -104,7 +104,6 @@ def sat_icechunk_path(session_tmp_path):
     """Create a small, custom local icechunk store with expected dimensions for testing."""
     import icechunk
     
-    # Define coords for satellite-like dataset (same as sat_zarr_path but smaller)
     variables = [
         "IR_016",
         "IR_039", 
@@ -118,11 +117,11 @@ def sat_icechunk_path(session_tmp_path):
         "WV_062",
         "WV_073",
     ]
-    x = np.linspace(start=15002, stop=-1824245, num=50)  # Smaller for testing
-    y = np.linspace(start=4191563, stop=5304712, num=50)  # Smaller for testing
-    times = pd.date_range("2023-01-01 00:00", "2023-01-01 02:00", freq="5min")  # Just 2 hours
+    x = np.linspace(start=15002, stop=-1824245, num=50)  
+    y = np.linspace(start=4191563, stop=5304712, num=50)  
+    times = pd.date_range("2023-01-01 00:00", "2023-01-01 02:00", freq="5min")  
     
-    # Create satellite-like data
+    # Fill with fake data
     data = dask.array.zeros(
         shape=(len(variables), len(times), len(y), len(x)),
         chunks=(-1, 10, -1, -1),
@@ -144,14 +143,12 @@ def sat_icechunk_path(session_tmp_path):
     icechunk_path = session_tmp_path / "bucket" / "test_sat.icechunk"
     os.makedirs(icechunk_path.parent, exist_ok=True)
     
-    # Use local_filesystem_storage instead of filesystem_storage
     storage = icechunk.local_filesystem_storage(str(icechunk_path))
     repo = icechunk.Repository.create(storage)
     session = repo.writable_session("main")
-    store = session.store  # Remove the parentheses - it's a property, not a method
     
     # Write data to icechunk
-    ds.to_zarr(store, mode='w')
+    ds.to_zarr(session.store, mode='w')
     session.commit("Initial test data commit")
     
     yield str(icechunk_path)

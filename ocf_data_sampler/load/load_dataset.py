@@ -49,15 +49,13 @@ def get_dataset_dict(
     # Load satellite data if in config
     if input_config.satellite:
         sat_config = input_config.satellite
-        # open_sat_data will now internally decide whether to use
-        # the standard Zarr loader or the Ice Chunk loader.
+
         da_sat = open_sat_data(
             zarr_path=sat_config.zarr_path,
             channels=list(sat_config.channels),
         )
         datasets_dict["sat"] = da_sat
 
-    # Load site data if in config
     if input_config.site:
         da_sites = open_site(
             generation_file_path=input_config.site.file_path,
