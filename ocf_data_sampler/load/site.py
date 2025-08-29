@@ -57,4 +57,8 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
             dtype = site_da.coords[coord].dtype
             allowed = ", ".join(dt.__name__ for dt in expected_dtypes)
             raise TypeError(f"{coord} should be one of ({allowed}), not {dtype}")
+
+    # Load the data eagerly into memory by calling compute
+    # this makes the dataset faster to sample from, but
+    # at the cost of a little extra memory usage
     return site_da.compute()

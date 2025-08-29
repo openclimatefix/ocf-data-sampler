@@ -48,5 +48,5 @@ def test_open_site_bad_dtype(tmp_path: Path):
     )
     metadata.to_csv(meta_path)
 
-    with pytest.raises(TypeError, match="site_id should be integer"):
+    with pytest.raises(TypeError, match="site_id should be one of (integer), not float64"):
         open_site(generation_file_path=gen_path, metadata_file_path=meta_path)
