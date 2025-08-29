@@ -14,6 +14,7 @@ References:
     [2] https://www.apache.org/licenses/LICENSE-2.0
 """
 
+import logging
 import os.path
 import re
 
@@ -26,6 +27,7 @@ from xarray_tensorstore import (
     _TensorStoreAdapter,
 )
 
+logger = logging.getLogger(__name__)
 
 def _zarr_spec_from_path(path: str, zarr_format: int) -> ...:
     if re.match(r"\w+\://", path):  # path is a URI
@@ -127,6 +129,7 @@ def open_zarrs(
     concat_dim: str,
     context: ts.Context | None = None,
     mask_and_scale: bool = True,
+    data_source: str = "unknown",
 ) -> xr.Dataset:
     """Open multiple zarrs with TensorStore.
 
@@ -135,6 +138,7 @@ def open_zarrs(
         concat_dim: Dimension along which to concatenate the data variables.
         context: TensorStore context.
         mask_and_scale: Whether to mask and scale the data.
+        data_source: Which data source is being opened. Used for warning context.
 
     Returns:
         Concatenated Dataset with all data variables opened via TensorStore.
@@ -143,13 +147,28 @@ def open_zarrs(
         context = ts.Context()
 
     ds_list = [xr.open_zarr(p, mask_and_scale=mask_and_scale, decode_timedelta=True) for p in paths]
-    ds = xr.concat(
-        ds_list,
-        dim=concat_dim,
-        data_vars="minimal",
-        compat="equals",
-        combine_attrs="drop_conflicts",
-    )
+    try:
+        ds = xr.concat(
+            ds_list,
+            dim=concat_dim,
+            data_vars="minimal",
+            compat="equals",
+            combine_attrs="drop_conflicts",
+            join="exact",
+        )
+    except ValueError:
+        logger.warning(f"Coordinate mismatch found in {data_source} input data. "
+                       f"The coordinates will be overwritten! "
+                       f"This might be fine for satellite data. "
+                       f"Proceed with caution.")
+        ds = xr.concat(
+            ds_list,
+            dim=concat_dim,
+            data_vars="minimal",
+            compat="equals",
+            combine_attrs="drop_conflicts",
+            join="override",
+        )
 
     if mask_and_scale:
         _raise_if_mask_and_scale_used_for_data_vars(ds)
