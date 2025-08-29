@@ -31,8 +31,8 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
         capacity_kwp=("site_id", metadata_df["capacity_kwp"].values),
     )
 
-    # Sanity checks
-    # Allow NaNs in generation_kw as can have non overlapping time periods for sites
+    # Sanity checks, to prevent inf or negative values
+    # Note NaNs are allowed in generation_kw as can have non overlapping time periods for sites
     if np.isinf(generation_ds.generation_kw.values).all():
         raise ValueError("generation_kw contains infinite (+/- inf) values")
     if not (generation_ds.capacity_kwp.values > 0).all():
