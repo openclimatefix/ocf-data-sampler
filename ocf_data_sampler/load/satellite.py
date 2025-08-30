@@ -53,9 +53,7 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
     ds = ds.rename({"variable": "channel", "time": "time_utc"})
     ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
     ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
-    
     data_array = get_xr_data_array_from_xr_dataset(ds)
-    
     # Validate data types directly in loading function
     if not data_array.dtype.kind in 'bifc':  # boolean, int, float, complex
         raise TypeError(f"Satellite data should be numeric, not {data_array.dtype}")
