@@ -20,9 +20,6 @@ from ocf_data_sampler.load.utils import (
 
 logger = logging.getLogger(__name__)
 
-OPTIMAL_BLOCK_SIZE_MB = 64
-OPTIMAL_THREADS = 2
-
 def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
     """Lazily opens the zarr store and validates data types."""
     
@@ -143,7 +140,6 @@ def _open_sat_data_icechunk(
     if protocol is None:
         storage = icechunk.local_filesystem_storage(prefix)
     elif protocol == "gs":
-        logger.info(f"Opening Ice Chunk repository: {protocol}://{bucket}/{prefix}")
         with _setup_optimal_environment():  
             # Ensure proper trailing slash
             if not prefix.endswith('/'):
