@@ -26,21 +26,15 @@ def da():
 
 
 def test_get_idx_of_pixel_closest_to_poi(da):
-    idx_location = _get_pixel_index_location(
-        da,
-        location=Location(x=10, y=10, coordinate_system="osgb"),
-    )
-
-    assert idx_location.coordinate_system == "idx"
-    assert idx_location.x == 110
-    assert idx_location.y == 110
+    idx_location = _get_pixel_index_location(da, location=Location(x=10, y=10, coord_system="osgb"))
+    assert idx_location == (110, 110)
 
 
 def test_select_spatial_slice_pixels(da):
     # Select window which lies within x-y bounds of the data
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=-90, y=-80, coordinate_system="osgb"),
+        location=Location(x=-90, y=-80, coord_system="osgb"),
         width_pixels=10,
         height_pixels=10,
         allow_partial_slice=True,
@@ -55,7 +49,7 @@ def test_select_spatial_slice_pixels(da):
     # Select window where the edge of the window lies right on the edge of the data
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=-90, y=-80, coordinate_system="osgb"),
+        location=Location(x=-90, y=-80, coord_system="osgb"),
         width_pixels=20,
         height_pixels=20,
         allow_partial_slice=True,
@@ -70,7 +64,7 @@ def test_select_spatial_slice_pixels(da):
     # Select window which is partially outside the boundary of the data - padded on left
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=-90, y=-80, coordinate_system="osgb"),
+        location=Location(x=-90, y=-80, coord_system="osgb"),
         width_pixels=30,
         height_pixels=30,
         allow_partial_slice=True,
@@ -85,7 +79,7 @@ def test_select_spatial_slice_pixels(da):
     # Select window which is partially outside the boundary of the data - padded on right
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=90, y=-80, coordinate_system="osgb"),
+        location=Location(x=90, y=-80, coord_system="osgb"),
         width_pixels=30,
         height_pixels=30,
         allow_partial_slice=True,
@@ -100,7 +94,7 @@ def test_select_spatial_slice_pixels(da):
     # Select window which is partially outside the boundary of the data - padded on top
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=-90, y=95, coordinate_system="osgb"),
+        location=Location(x=-90, y=95, coord_system="osgb"),
         width_pixels=20,
         height_pixels=20,
         allow_partial_slice=True,
@@ -115,7 +109,7 @@ def test_select_spatial_slice_pixels(da):
     # Select window which is partially outside the boundary of the data - padded on bottom
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=-90, y=-95, coordinate_system="osgb"),
+        location=Location(x=-90, y=-95, coord_system="osgb"),
         width_pixels=20,
         height_pixels=20,
         allow_partial_slice=True,
@@ -130,7 +124,7 @@ def test_select_spatial_slice_pixels(da):
     # Select window which is partially outside the boundary of the data - padded right and bottom
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=90, y=-80, coordinate_system="osgb"),
+        location=Location(x=90, y=-80, coord_system="osgb"),
         width_pixels=50,
         height_pixels=50,
         allow_partial_slice=True,
@@ -150,7 +144,7 @@ def test_select_spatial_slice_pixels_no_partial(da):
     with pytest.raises(ValueError) as excinfo:
         select_spatial_slice_pixels(
             da,
-            location=Location(x=-90, y=-80, coordinate_system="osgb"),
+            location=Location(x=-90, y=-80, coord_system="osgb"),
             width_pixels=30,
             height_pixels=30,
             allow_partial_slice=False,
@@ -162,7 +156,7 @@ def test_select_spatial_slice_pixels_no_partial(da):
     with pytest.raises(ValueError) as excinfo:
         select_spatial_slice_pixels(
             da,
-            location=Location(x=90, y=90, coordinate_system="osgb"),
+            location=Location(x=90, y=90, coord_system="osgb"),
             width_pixels=40,
             height_pixels=40,
             allow_partial_slice=False,

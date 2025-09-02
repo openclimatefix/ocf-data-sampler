@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 name = "ocf-data-sampler"
 dynamic = ["version"] # Set automtically using git: https://setuptools-git-versioning.readthedocs.io/en/stable/
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
     { name = "Open Climate Fix team", email = "info@openclimatefix.org" },
@@ -25,8 +25,8 @@ dependencies = [
     "numpy",
     "pandas",
     "xarray",
-    "zarr==2.18.3",
-    "numcodecs==0.13.1",
+    "zarr",
+    "numcodecs",
     "dask",
     "matplotlib",
     "pvlib",
@@ -36,6 +36,7 @@ dependencies = [
     "pyresample",
     "h5netcdf",
     "xarray-tensorstore==0.1.5",
+    "zarr>=3",
 ]
 
 [dependency-groups]

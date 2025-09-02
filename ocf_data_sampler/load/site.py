@@ -31,9 +31,10 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
         capacity_kwp=("site_id", metadata_df["capacity_kwp"].values),
     )
 
-    # Sanity checks
-    if not np.isfinite(generation_ds.generation_kw.values).all():
-        raise ValueError("generation_kw contains non-finite values")
+    # Sanity checks, to prevent inf or negative values
+    # Note NaNs are allowed in generation_kw as can have non overlapping time periods for sites
+    if np.isinf(generation_ds.generation_kw.values).all():
+        raise ValueError("generation_kw contains infinite (+/- inf) values")
     if not (generation_ds.capacity_kwp.values > 0).all():
         raise ValueError("capacity_kwp contains non-positive values")
 
@@ -43,17 +44,21 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     if not np.issubdtype(site_da.dtype, np.floating):
         raise TypeError(f"Generation data should be float, not {site_da.dtype}")
 
+
     coord_dtypes = {
-        "time_utc": np.datetime64,
-        "site_id": np.integer,
-        "capacity_kwp": np.floating,
-        "latitude": np.floating,
-        "longitude": np.floating,
-    }
-
-    for coord, expected_dtype in coord_dtypes.items():
-        if not np.issubdtype(site_da.coords[coord].dtype, expected_dtype):
+    "time_utc": (np.datetime64,),
+    "site_id": (np.integer,),
+    "capacity_kwp": (np.integer, np.floating),
+    "latitude": (np.floating,),
+    "longitude": (np.floating,),
+}
+    for coord, expected_dtypes in coord_dtypes.items():
+        if not any(np.issubdtype(site_da.coords[coord].dtype, dt) for dt in expected_dtypes):
             dtype = site_da.coords[coord].dtype
-            raise TypeError(f"{coord} should be {expected_dtype.__name__}, not {dtype}")
+            allowed = ", ".join(dt.__name__ for dt in expected_dtypes)
+            raise TypeError(f"{coord} should be one of ({allowed}), not {dtype}")
 
-    return site_da
+    # Load the data eagerly into memory by calling compute
+    # this makes the dataset faster to sample from, but
+    # at the cost of a little extra memory usage
+    return site_da.compute()

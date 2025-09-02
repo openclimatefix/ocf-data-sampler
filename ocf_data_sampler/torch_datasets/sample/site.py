@@ -1,37 +1,46 @@
 """PVNet Site sample implementation for netCDF data handling and conversion."""
 
-import xarray as xr
+import torch
 from typing_extensions import override
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
-from ocf_data_sampler.torch_datasets.datasets.site import convert_netcdf_to_numpy_sample
 
 from .base import SampleBase
 
 
+# TODO this is now similar to the UKRegionalSample
+# We should consider just having one Sample class for all datasets
 class SiteSample(SampleBase):
-    """Handles PVNet site specific netCDF operations."""
+    """Handles SiteSample specific operations."""
 
-    def __init__(self, data: xr.Dataset) -> None:
-        """Initializes the SiteSample object with the given xarray Dataset."""
-        if not isinstance(data, xr.Dataset):
-            raise TypeError(f"Data must be xarray Dataset - Found type {type(data)}")
+    def __init__(self, data: NumpySample) -> None:
+        """Initializes the SiteSample object with the given NumpySample."""
         self._data = data
 
     @override
     def to_numpy(self) -> NumpySample:
-        return convert_netcdf_to_numpy_sample(self._data)
+        return self._data
 
     @override
     def save(self, path: str) -> None:
-        # Saves as NetCDF
-        self._data.to_netcdf(path, mode="w", engine="h5netcdf")
+        """Saves sample to the specified path in pickle format."""
+        # Saves to pickle format
+        torch.save(self._data, path)
 
     @classmethod
     @override
     def load(cls, path: str) -> "SiteSample":
-        # Loads from NetCDF
-        return cls(xr.open_dataset(path, decode_timedelta=False))
+        """Loads sample from the specified path.
+
+        Args:
+            path: Path to the saved sample file.
+
+        Returns:
+            A SiteSample instance with the loaded data.
+        """
+        # Loads from .pt format
+        # TODO: We should move away from using torch.load(..., weights_only=False)
+        return cls(torch.load(path, weights_only=False))
 
     @override
     def plot(self) -> None:

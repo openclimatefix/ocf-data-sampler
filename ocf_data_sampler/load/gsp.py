@@ -32,7 +32,7 @@ def open_gsp(
     boundaries_version: str = "20220314",
     public: bool = False,
 ) -> xr.DataArray:
-    """Open the GSP data and validates its data types.
+    """Open and eagerly load the GSP data and validates its data types.
 
     Args:
         zarr_path: Path to the GSP zarr data
@@ -52,9 +52,12 @@ def open_gsp(
         backend_kwargs = {"storage_options": {"anon": True}}
         # Currently only compatible with S3 bucket.
 
-    ds = xr.open_dataset(zarr_path, engine="zarr", backend_kwargs=backend_kwargs).rename(
-        {"datetime_gmt": "time_utc"},
-    )
+    ds = xr.open_dataset(
+        zarr_path,
+        engine="zarr",
+        chunks=None,
+        backend_kwargs=backend_kwargs,
+    ).rename({"datetime_gmt": "time_utc"})
 
     if not (ds.gsp_id.isin(df_gsp_loc.index)).all():
         raise ValueError(
@@ -68,7 +71,6 @@ def open_gsp(
     ds = ds.assign_coords(
         x_osgb=(df_gsp_loc.x_osgb.to_xarray()),
         y_osgb=(df_gsp_loc.y_osgb.to_xarray()),
-        nominal_capacity_mwp=ds.installedcapacity_mwp,
         effective_capacity_mwp=ds.capacity_mwp,
     )
 
@@ -81,7 +83,6 @@ def open_gsp(
     coord_dtypes = {
         "time_utc": np.datetime64,
         "gsp_id": np.integer,
-        "nominal_capacity_mwp": np.floating,
         "effective_capacity_mwp": np.floating,
         "x_osgb": np.floating,
         "y_osgb": np.floating,
@@ -92,4 +93,6 @@ def open_gsp(
             dtype = gsp_da.coords[coord].dtype
             raise TypeError(f"{coord} should be {expected_dtype.__name__}, not {dtype}")
 
-    return gsp_da
+    # Below we load the data eagerly into memory - this makes the dataset faster to sample from, but
+    # at the cost of a little extra memory usage
+    return gsp_da.compute()

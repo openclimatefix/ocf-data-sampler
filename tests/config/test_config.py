@@ -4,17 +4,16 @@ from pydantic import ValidationError
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 
 
-def test_default_configuration():
+def test_default_configuration(test_config_gsp_path):
     """Test default pydantic class"""
-    _ = Configuration()
+    _ = load_yaml_configuration(test_config_gsp_path)
 
 
-def test_extra_field_error():
+def test_extra_field_error(test_config_gsp_path):
     """
     Check an extra parameters in config causes error
     """
-
-    configuration = Configuration()
+    configuration = load_yaml_configuration(test_config_gsp_path)
     configuration_dict = configuration.model_dump()
     configuration_dict["extra_field"] = "extra_value"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
@@ -91,19 +90,19 @@ def test_incorrect_dropout_fraction(test_config_filename):
 
     configuration.input_data.nwp["ukv"].dropout_fraction = 1.1
 
-    with pytest.raises(ValidationError, match="Input should be less than or equal to 1"):
+    with pytest.raises(ValidationError, match="Dropout fractions must be in range *"):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp["ukv"].dropout_fraction = -0.1
-    with pytest.raises(ValidationError, match="Input should be greater than or equal to 0"):
+    with pytest.raises(ValidationError, match="Dropout fractions must be in range *"):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp["ukv"].dropout_fraction = [1.0,0.1]
-    with pytest.raises(ValidationError, match="Sum of all floats in the list must be 1.0"):
+    with pytest.raises(ValidationError, match="The sum of dropout fractions must be in range *"):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp["ukv"].dropout_fraction = [-0.1,1.1]
-    with pytest.raises(ValidationError, match="Each float in the list must be between 0 and 1"):
+    with pytest.raises(ValidationError, match="All dropout fractions must be in range *"):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp["ukv"].dropout_fraction = []
@@ -154,3 +153,12 @@ def test_accum_channels_validation(test_config_filename):
     )
     with pytest.raises(ValidationError, match=expected_error):
         _ = Configuration(**invalid_config.model_dump())
+
+
+def test_configuration_requires_site_or_gsp():
+    """
+    Test that Configuration raises an error if both site and gsp are None in input_data.
+    """
+    with pytest.raises(ValidationError, match="You must provide either `site` or `gsp`"):
+        Configuration()
+

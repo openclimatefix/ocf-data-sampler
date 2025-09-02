@@ -12,6 +12,8 @@ from xarray_tensorstore import open_zarr
 from ocf_data_sampler.load.open_tensorstore_zarrs import open_zarrs
 from contextlib import contextmanager
 
+
+from ocf_data_sampler.load.open_xarray_tensorstore import open_zarr, open_zarrs
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
     get_xr_data_array_from_xr_dataset,
@@ -20,11 +22,12 @@ from ocf_data_sampler.load.utils import (
 
 logger = logging.getLogger(__name__)
 
+
 def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
     """Lazily opens the zarr store and validates data types."""
     
     if isinstance(zarr_path, list | tuple):
-        ds = open_zarrs(zarr_path, concat_dim="time")
+        ds = open_zarrs(zarr_path, concat_dim="time", data_source="satellite")
     else:
         path_info = _parse_zarr_path(zarr_path)
         

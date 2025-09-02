@@ -90,7 +90,7 @@ class DropoutMixin(Base):
         "negative or zero.",
     )
 
-    dropout_fraction: float|list[float] = Field(
+    dropout_fraction: float | list[float] = Field(
         default=0,
         description="Either a float(Chance of dropout being applied to each sample) or a list of "
         "floats (probability that dropout of the corresponding timedelta is applied)",
@@ -106,31 +106,22 @@ class DropoutMixin(Base):
 
 
     @field_validator("dropout_fraction")
-    def dropout_fractions(cls, dropout_frac: float|list[float]) -> float|list[float]:
+    def dropout_fractions(cls, dropout_frac: float | list[float]) -> float | list[float]:
         """Validate 'dropout_frac'."""
-        from math import isclose
-        if isinstance(dropout_frac, float):
-            if not (dropout_frac <= 1):
-                raise ValueError("Input should be less than or equal to 1")
-            elif not (dropout_frac >= 0):
-                raise ValueError("Input should be greater than or equal to 0")
+        if isinstance(dropout_frac, float | int):
+            if not (0<= dropout_frac <= 1):
+                raise ValueError("Dropout fractions must be in range [0, 1]")
 
         elif isinstance(dropout_frac, list):
             if not dropout_frac:
                 raise ValueError("List cannot be empty")
 
-            if not all(isinstance(i, float) for i in dropout_frac):
-                raise ValueError("All elements in the list must be floats")
-
             if not all(0 <= i <= 1 for i in dropout_frac):
-                raise ValueError("Each float in the list must be between 0 and 1")
+                raise ValueError("All dropout fractions must be in range [0, 1]")
 
-            if not isclose(sum(dropout_frac), 1.0, rel_tol=1e-9):
-                raise ValueError("Sum of all floats in the list must be 1.0")
+            if not (0 <= sum(dropout_frac) <= 1):
+                raise ValueError("The sum of dropout fractions must be in range [0, 1]")
 
-
-        else:
-            raise TypeError("Must be either a float or a list of floats")
         return dropout_frac
 
 
@@ -171,23 +162,6 @@ class NormalisationValues(Base):
 class NormalisationConstantsMixin(Base):
     """Normalisation constants for multiple channels."""
     normalisation_constants: dict[str, NormalisationValues]
-
-    @property
-    def channel_means(self) -> dict[str, float]:
-        """Return the channel means."""
-        return {
-            channel: norm_values.mean
-            for channel, norm_values in self.normalisation_constants.items()
-        }
-
-
-    @property
-    def channel_stds(self) -> dict[str, float]:
-        """Return the channel standard deviations."""
-        return {
-            channel: norm_values.std
-            for channel, norm_values in self.normalisation_constants.items()
-        }
 
 
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
@@ -363,9 +337,19 @@ class InputData(Base):
     site: Site | None = None
     solar_position: SolarPosition | None = None
 
+    @model_validator(mode="after")
+    def check_site_or_gsp(self) -> "InputData":
+        """Ensure that either `site` or `gsp` is provided in the input data."""
+        if self.site is None and self.gsp is None:
+            raise ValueError(
+                "You must provide either `site` or `gsp` in the `input_data`",
+            )
+
+        return self
+
 
 class Configuration(Base):
     """Configuration model for the dataset."""
 
     general: General = General()
-    input_data: InputData = InputData()
+    input_data: InputData = Field(default_factory=InputData)
