@@ -369,3 +369,4 @@ class Configuration(Base):
 
     general: General = General()
     input_data: InputData = InputData()
+    
