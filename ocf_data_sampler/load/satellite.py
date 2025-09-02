@@ -23,13 +23,12 @@ logger = logging.getLogger(__name__)
 OPTIMAL_BLOCK_SIZE_MB = 64
 OPTIMAL_THREADS = 2
 
-def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None) -> xr.DataArray:
+def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
     """Lazily opens the zarr store and validates data types."""
     
     if isinstance(zarr_path, list | tuple):
         ds = open_zarrs(zarr_path, concat_dim="time")
     else:
-        # Parse path components using Sol's regex approach
         path_info = _parse_zarr_path(zarr_path)
         
         match path_info:
@@ -37,18 +36,13 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
                 ds = _open_sat_data_icechunk(protocol, bucket, prefix, sha1)
             
             case {"protocol": _, "bucket": _, "prefix": _, "sha1": None}:
-                #  this doesn't work for blosc2 
-                #  use ds = xr.open_dataset(zarr_path, engine="zarr", chunks="auto") in the case of blosc2
+    
                 ds = open_zarr(zarr_path)
                 
             case _:
                 raise ValueError(f"Unhandled path format: {zarr_path}")
 
     check_time_unique_increasing(ds.time)
-    
-    # Select channels if provided (before renaming variables)
-    if channels:
-        ds = ds.sel(variable=channels)
     
     ds = ds.rename({"variable": "channel", "time": "time_utc"})
     ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
@@ -79,6 +73,9 @@ def open_sat_data(zarr_path: str | list[str], channels: list[str] | None = None)
 @contextmanager
 def _setup_optimal_environment():
     """Apply optimization settings for cloud data streaming with context management."""
+
+    OPTIMAL_BLOCK_SIZE_MB = 64
+    OPTIMAL_THREADS = 2
 
     original_values = {}
     env_vars = {
@@ -117,7 +114,6 @@ def _setup_optimal_environment():
         try:
             dask.config.reset()
         except AttributeError:
-            # Use the correctly named variable
             dask.config.set(original_dask_config)
 
 def _parse_zarr_path(path: str) -> dict:
@@ -145,7 +141,6 @@ def _open_sat_data_icechunk(
     
     # Get storage according to protocol
     if protocol is None:
-        logger.info(f"Opening local Ice Chunk repository: {prefix}")
         storage = icechunk.local_filesystem_storage(prefix)
     elif protocol == "gs":
         logger.info(f"Opening Ice Chunk repository: {protocol}://{bucket}/{prefix}")
@@ -153,8 +148,9 @@ def _open_sat_data_icechunk(
             # Ensure proper trailing slash
             if not prefix.endswith('/'):
                 prefix = prefix + '/'
+
+            logger.debug(f"Accessing Ice Chunk repository: {protocol}://{bucket}/{prefix}")
                 
-            logger.info(f"Accessing Ice Chunk repository: {protocol}://{bucket}/{prefix}")
             storage = icechunk.gcs_storage(bucket=bucket, prefix=prefix, from_env=True)
     else:
         raise ValueError(f"Unsupported protocol: {protocol}")
@@ -175,12 +171,5 @@ def _open_sat_data_icechunk(
         raise ValueError(f"Failed to open session for '{target}': {e}") from e
         
     ds = xr.open_zarr(session.store, consolidated=True, chunks="auto")
-
-    # Convert Ice Chunk format to standard format
-    if len(ds.data_vars) > 1:
-        data_arrays = [ds[var] for var in sorted(ds.data_vars)]
-        combined_da = xr.concat(data_arrays, dim="variable")
-        combined_da = combined_da.assign_coords(variable=sorted(ds.data_vars))
-        ds = xr.Dataset({"data": combined_da})
 
     return ds

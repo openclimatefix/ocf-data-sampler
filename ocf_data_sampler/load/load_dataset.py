@@ -50,10 +50,8 @@ def get_dataset_dict(
     if input_config.satellite:
         sat_config = input_config.satellite
 
-        da_sat = open_sat_data(
-            zarr_path=sat_config.zarr_path,
-            channels=list(sat_config.channels),
-        )
+        da_sat = open_sat_data(zarr_path=sat_config.zarr_path)
+        da_sat = da_sat.sel(channel=list(sat_config.channels))
         datasets_dict["sat"] = da_sat
 
     if input_config.site:
