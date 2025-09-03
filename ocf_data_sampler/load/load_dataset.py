@@ -4,6 +4,7 @@ import xarray as xr
 from ocf_data_sampler.config import InputData
 from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
 
+
 def get_dataset_dict(
     input_config: InputData,
     gsp_ids: list[int] | None = None,

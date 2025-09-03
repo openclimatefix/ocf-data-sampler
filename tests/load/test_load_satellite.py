@@ -50,36 +50,36 @@ def test_open_satellite_icechunk_main(sat_icechunk_path):
     """Test the satellite data loader with Ice Chunk main branch."""
     # Test Ice Chunk path without commit
     da = open_sat_data(zarr_path=sat_icechunk_path)
-    
+
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "channel", "x_geostationary", "y_geostationary")
     # 25 is 2 hours of data at 5 minutes intervals, 2 * 12 + 1
     # There are 11 channels
     # There are 50 x 50 pixels
     assert da.shape == (25, 11, 50, 50)
-    
+
     assert len(np.unique(da.coords["channel"])) == da.shape[1]
 
 
 def test_open_satellite_icechunk_commit(sat_icechunk_path):
     """Test the satellite data loader with Ice Chunk commit SHA."""
     import icechunk
-    
+
     # Get the commit SHA from the repository using the correct function name
     storage = icechunk.local_filesystem_storage(sat_icechunk_path)
     repo = icechunk.Repository.open(storage)
     session = repo.readonly_session("main")
     commit_sha = session.snapshot_id
-    
+
     # Test Ice Chunk path with commit
     icechunk_commit_path = f"{sat_icechunk_path}@{commit_sha}"
     da = open_sat_data(zarr_path=icechunk_commit_path)
-    
+
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "channel", "x_geostationary", "y_geostationary")
     # 25 is 2 hours of data at 5 minutes intervals, 2 * 12 + 1
-    # There are 11 channels  
+    # There are 11 channels
     # There are 50 x 50 pixels
     assert da.shape == (25, 11, 50, 50)
-    
+
     assert len(np.unique(da.coords["channel"])) == da.shape[1]
