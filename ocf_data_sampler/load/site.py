@@ -25,11 +25,20 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     metadata_df = metadata_df.reindex(generation_ds.site_id.values)
 
     # Assign coordinates to the Dataset using the aligned metadata
-    generation_ds = generation_ds.assign_coords(
-        latitude=("site_id", metadata_df["latitude"].values),
-        longitude=("site_id", metadata_df["longitude"].values),
-        capacity_kwp=("site_id", metadata_df["capacity_kwp"].values),
-    )
+    # Check if variable capacity was passed with the generation data
+    # If not assign static capacity from metadata
+    try:
+        generation_ds = generation_ds.assign_coords(
+            latitude=(metadata_df.latitude.to_xarray()),
+            longitude=(metadata_df.longitude.to_xarray()),
+            capacity_kwp=generation_ds.capacity_kwp,
+        )
+    except AttributeError:
+        generation_ds = generation_ds.assign_coords(
+            latitude=(metadata_df.latitude.to_xarray()),
+            longitude=(metadata_df.longitude.to_xarray()),
+            capacity_kwp=(metadata_df.capacity_kwp.to_xarray()),
+        )
 
     # Sanity checks, to prevent inf or negative values
     # Note NaNs are allowed in generation_kw as can have non overlapping time periods for sites
@@ -38,7 +47,7 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     if not (generation_ds.capacity_kwp.values > 0).all():
         raise ValueError("capacity_kwp contains non-positive values")
 
-    site_da = generation_ds.generation_kw
+    site_da = generation_ds.generation_kw.astype("float32")
 
     # Validate data types directly in loading function
     if not np.issubdtype(site_da.dtype, np.floating):
