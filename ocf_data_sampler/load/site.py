@@ -26,9 +26,9 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
 
     # Assign coordinates to the Dataset using the aligned metadata
     generation_ds = generation_ds.assign_coords(
-        latitude=("site_id", metadata_df["latitude"].values),
-        longitude=("site_id", metadata_df["longitude"].values),
-        capacity_kwp=("site_id", metadata_df["capacity_kwp"].values),
+        latitude=(metadata_df.latitude.to_xarray()),
+        longitude=(metadata_df.longitude.to_xarray()),
+        capacity_kwp=generation_ds.capacity_kwp,
     )
 
     # Sanity checks, to prevent inf or negative values
@@ -38,7 +38,7 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     if not (generation_ds.capacity_kwp.values > 0).all():
         raise ValueError("capacity_kwp contains non-positive values")
 
-    site_da = generation_ds.generation_kw
+    site_da = generation_ds.generation_kw.astype("float32")
 
     # Validate data types directly in loading function
     if not np.issubdtype(site_da.dtype, np.floating):
