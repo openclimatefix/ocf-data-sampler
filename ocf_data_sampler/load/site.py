@@ -25,11 +25,20 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     metadata_df = metadata_df.reindex(generation_ds.site_id.values)
 
     # Assign coordinates to the Dataset using the aligned metadata
-    generation_ds = generation_ds.assign_coords(
-        latitude=(metadata_df.latitude.to_xarray()),
-        longitude=(metadata_df.longitude.to_xarray()),
-        capacity_kwp=generation_ds.capacity_kwp,
-    )
+    # Check if variable capacity was passed with the generation data
+    # If not assign static capacity from metadata
+    try:
+        generation_ds = generation_ds.assign_coords(
+            latitude=(metadata_df.latitude.to_xarray()),
+            longitude=(metadata_df.longitude.to_xarray()),
+            capacity_kwp=generation_ds.capacity_kwp,
+        )
+    except AttributeError:
+        generation_ds = generation_ds.assign_coords(
+            latitude=(metadata_df.latitude.to_xarray()),
+            longitude=(metadata_df.longitude.to_xarray()),
+            capacity_kwp=(metadata_df.capacity_kwp.to_xarray()),
+        )
 
     # Sanity checks, to prevent inf or negative values
     # Note NaNs are allowed in generation_kw as can have non overlapping time periods for sites
