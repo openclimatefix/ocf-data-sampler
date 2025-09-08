@@ -38,7 +38,7 @@ def test_site(site_config_filename):
         "site_time_utc",
         "site_capacity_kwp",
         "nwp",
-        "t0"
+        "t0",
     }
 
     # Check keys

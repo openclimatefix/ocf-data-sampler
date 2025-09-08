@@ -76,7 +76,7 @@ def process_and_combine_datasets(
         means_dict: Nested dictionary of mean values for the input data sources
         stds_dict: Nested dictionary of std values for the input data sources
     """
-    numpy_modalities = [{'t0': t0}]
+    numpy_modalities = [{"t0": t0}]
 
     if "nwp" in dataset_dict:
         nwp_numpy_modalities = {}
