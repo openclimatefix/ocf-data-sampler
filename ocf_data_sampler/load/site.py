@@ -47,7 +47,7 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     if not (generation_ds.capacity_kwp.values > 0).all():
         raise ValueError("capacity_kwp contains non-positive values")
 
-    site_da = generation_ds.generation_kw.astype("float32")
+    site_da = generation_ds.generation_kw
 
     # Validate data types directly in loading function
     if not np.issubdtype(site_da.dtype, np.floating):
