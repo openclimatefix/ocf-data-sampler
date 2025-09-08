@@ -27,7 +27,7 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
     assert isinstance(sample, dict)
 
     # These keys should always be present
-    required_keys = ["nwp", "satellite_actual", "gsp"]
+    required_keys = ["nwp", "satellite_actual", "gsp", "t0"]
     for key in required_keys:
         assert key in sample
 
