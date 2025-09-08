@@ -6,10 +6,12 @@ from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
+from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
     PVNetUKConcurrentDataset,
     PVNetUKRegionalDataset,
 )
+from ocf_data_sampler.torch_datasets.sample.base import batch_to_tensor, copy_batch_to_device
 
 
 def test_pvnet_uk_regional_dataset(pvnet_config_filename):
@@ -257,3 +259,46 @@ def test_pvnet_uk_regional_dataset_pickle(tmp_path, pvnet_config_filename):
     pickle_bytes = pickle.dumps(dataset)
     _ = pickle.loads(pickle_bytes) # noqa: S301
 
+def test_pvnet_uk_regional_dataset_batch_size_2(pvnet_config_filename):
+    """
+    Tests makeing batches from PVNetUKRegionalDataset
+    """
+
+    # Create dataset object
+    dataset = PVNetUKRegionalDataset(pvnet_config_filename)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=2,
+        collate_fn=stack_np_samples_into_batch,
+        shuffle=False,
+        num_workers=0,
+    )
+
+    batch = next(iter(dataloader))
+    batch = batch_to_tensor(batch)
+    batch = copy_batch_to_device(batch, torch.device("cpu"))
+
+    # Assertions for the raw batch
+    assert isinstance(batch, dict), \
+        "Sample yielded by DataLoader with batch_size=None should be a dict"
+
+    # Check for expected keys directly
+    required_keys = ["nwp", "satellite_actual", "gsp", "solar_azimuth", "solar_elevation", "gsp_id"]
+    for key in required_keys:
+        assert key in batch, f"Raw Sample: Expected key '{key}' not found"
+
+    # Check types are primarily torch.Tensor
+    assert isinstance(batch["satellite_actual"], torch.Tensor)
+    assert isinstance(batch["gsp"], torch.Tensor)
+    assert isinstance(batch["solar_azimuth"], torch.Tensor)
+    assert isinstance(batch["solar_elevation"], torch.Tensor)
+    assert isinstance(batch["nwp"], dict)
+    assert "ukv" in batch["nwp"]
+    assert isinstance(batch["nwp"]["ukv"]["nwp"], torch.Tensor)
+    assert isinstance(batch["nwp"]["ukv"]["nwp_channel_names"], np.ndarray)
+    assert isinstance(batch["t0"], torch.Tensor)
+
+    # Check shapes
+    assert batch["satellite_actual"].shape == (2, 7, 1, 2, 2)
+    assert batch["nwp"]["ukv"]["nwp"].shape == (2, 4, 1, 2, 2)
+    assert batch["gsp"].shape == (2,7)
