@@ -302,3 +302,4 @@ def test_pvnet_uk_regional_dataset_batch_size_2(pvnet_config_filename):
     assert batch["satellite_actual"].shape == (2, 7, 1, 2, 2)
     assert batch["nwp"]["ukv"]["nwp"].shape == (2, 4, 1, 2, 2)
     assert batch["gsp"].shape == (2,7)
+    assert batch["t0"].shape == (2,)
