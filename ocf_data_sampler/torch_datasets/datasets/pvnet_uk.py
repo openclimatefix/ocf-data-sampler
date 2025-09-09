@@ -133,7 +133,7 @@ class AbstractPVNetUKDataset(PickleCacheMixin, Dataset):
             t0: init-time for sample
             location: location of the sample
         """
-        numpy_modalities = []
+        numpy_modalities = [{"t0": t0.timestamp()}]
 
         if "nwp" in dataset_dict:
             nwp_numpy_modalities = {}
