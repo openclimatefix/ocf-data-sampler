@@ -7,7 +7,7 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 from collections.abc import Iterator
 from typing import Literal
 
-from pydantic import BaseModel, Field, RootModel, field_validator, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
 
 NWP_PROVIDERS = [
