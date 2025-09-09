@@ -280,10 +280,11 @@ def test_pvnet_uk_regional_dataset_batch_size_2(pvnet_config_filename):
 
     # Assertions for the raw batch
     assert isinstance(batch, dict), \
-        "Sample yielded by DataLoader with batch_size=None should be a dict"
+        "Sample yielded by DataLoader with batch_size=2 should be a dict"
 
     # Check for expected keys directly
-    required_keys = ["nwp", "satellite_actual", "gsp", "solar_azimuth", "solar_elevation", "gsp_id"]
+    required_keys = \
+        ["nwp", "satellite_actual", "gsp", "solar_azimuth", "solar_elevation", "gsp_id", "t0"]
     for key in required_keys:
         assert key in batch, f"Raw Sample: Expected key '{key}' not found"
 
