@@ -48,7 +48,7 @@ def test_open_gsp_bad_dtype(tmp_path: Path):
             "capacity_mwp": (("gsp_id",), [90.0, 110.0]),
         },
         coords={
-            "datetime_gmt": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30T")),
+            "datetime_gmt": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30min")),
             "gsp_id": [1, 2],
         },
     )
