@@ -6,13 +6,31 @@ on:
     paths-ignore: ['README.md']
 
 jobs:
-
-  pull-ci:
-    uses: openclimatefix/.github/.github/workflows/branch_ci.yml@main
+  test:
+    runs-on: ubuntu-latest
     if: ${{ github.event.pull_request.head.repo.fork }}
-    with:
-      enable_linting: true
-      enable_typechecking: false
-      containerfile: 'None'
-      tests_folder: 'tests'
-      tests_matrix: true
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    
+    - name: Run linting
+      run: |
+        ruff check .
+        ruff format --check .
+    
+    - name: Run tests
+      run: |
+        python -m pytest tests/ -v
