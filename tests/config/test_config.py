@@ -90,19 +90,19 @@ def test_incorrect_dropout_fraction(test_config_filename):
 
     configuration.input_data.nwp["ukv"].dropout_fraction = 1.1
 
-    with pytest.raises(ValidationError, match="Dropout fractions must be in range *"):
+    with pytest.raises(ValidationError, match=r"Dropout fractions must be in range *"):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp["ukv"].dropout_fraction = -0.1
-    with pytest.raises(ValidationError, match="Dropout fractions must be in range *"):
+    with pytest.raises(ValidationError, match=r"Dropout fractions must be in range *"):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp["ukv"].dropout_fraction = [1.0,0.1]
-    with pytest.raises(ValidationError, match="The sum of dropout fractions must be in range *"):
+    with pytest.raises(ValidationError, match=r"The sum of dropout fractions must be in range *"):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp["ukv"].dropout_fraction = [-0.1,1.1]
-    with pytest.raises(ValidationError, match="All dropout fractions must be in range *"):
+    with pytest.raises(ValidationError, match=r"All dropout fractions must be in range *"):
         _ = Configuration(**configuration.model_dump())
 
     configuration.input_data.nwp["ukv"].dropout_fraction = []
