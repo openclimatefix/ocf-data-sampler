@@ -82,7 +82,7 @@ def test_load_ecmwf_bad_dtype_init_time(tmp_path):
         },
     )
     bad_array.to_zarr(zarr_path)
-    with pytest.raises((TypeError, AttributeError), match="init_time_utc|datetime64"):
+    with pytest.raises((TypeError, AttributeError), match=r"init_time_utc|datetime64"):
         open_nwp(zarr_path=zarr_path, provider="ecmwf")
 
 
