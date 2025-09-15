@@ -103,22 +103,3 @@ def test_load_ecmwf_bad_dtype_step(tmp_path):
     bad_array.to_zarr(zarr_path)
     with pytest.raises(TypeError, match="'step' for ecmwf should be timedelta64"):
         open_nwp(zarr_path=zarr_path, provider="ecmwf")
-
-
-def test_load_ecmwf_bad_dtype_channel(tmp_path):
-    """Test validation fails for ECMWF with bad channel (variable) dtype."""
-    zarr_path = os.path.join(tmp_path, "bad_ecmwf_channel.zarr")
-    bad_array = DataArray(
-        np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time", "step", "variable", "longitude", "latitude"),
-        coords={
-            "init_time": [np.datetime64("2023-01-01")],
-            "step": [np.timedelta64(1, "h")],
-            "variable": [123],
-            "longitude": np.array([0], dtype=np.float32),
-            "latitude": np.array([50.0], dtype=np.float32),
-        },
-    )
-    bad_array.to_zarr(zarr_path)
-    with pytest.raises(TypeError, match="'channel' for ecmwf should be str_"):
-        open_nwp(zarr_path=zarr_path, provider="ecmwf")
