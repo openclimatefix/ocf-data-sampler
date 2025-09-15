@@ -18,3 +18,4 @@ def test_stack_np_samples_into_batch(pvnet_config_filename):
     assert "ukv" in batch["nwp"]
     assert "gsp" in batch
     assert "satellite_actual" in batch
+    assert "t0" in batch
