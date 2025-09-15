@@ -29,7 +29,6 @@ def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
     common_expected_dtypes = {
         "init_time_utc": np.datetime64,
         "step": np.timedelta64,
-        "channel": (np.str_, np.object_),
     }
 
     geographic_spatial_dtypes = {
