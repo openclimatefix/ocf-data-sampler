@@ -231,7 +231,7 @@ class UKRegionalSample(SampleBase):
         """Plots the sample data for visualization."""
         from matplotlib import pyplot as plt
 
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+        _, axes = plt.subplots(2, 2, figsize=(12, 8))
 
         if NWPSampleKey.nwp in self._data:
             first_nwp = next(iter(self._data[NWPSampleKey.nwp].values()))
