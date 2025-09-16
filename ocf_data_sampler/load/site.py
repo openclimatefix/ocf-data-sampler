@@ -27,13 +27,13 @@ def open_site(generation_file_path: str, metadata_file_path: str) -> xr.DataArra
     # Assign coordinates to the Dataset using the aligned metadata
     # Check if variable capacity was passed with the generation data
     # If not assign static capacity from metadata
-    try:
+    if hasattr(generation_ds,"capacity_kwp"):
         generation_ds = generation_ds.assign_coords(
             latitude=(metadata_df.latitude.to_xarray()),
             longitude=(metadata_df.longitude.to_xarray()),
             capacity_kwp=generation_ds.capacity_kwp,
         )
-    except AttributeError:
+    else:
         generation_ds = generation_ds.assign_coords(
             latitude=(metadata_df.latitude.to_xarray()),
             longitude=(metadata_df.longitude.to_xarray()),
