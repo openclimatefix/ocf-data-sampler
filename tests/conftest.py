@@ -337,7 +337,7 @@ def ds_uk_gsp():
 
 
 @pytest.fixture(scope="session")
-def data_sites(session_tmp_path):
+def default_data_site_model(session_tmp_path):
     def create_site_data(
         tmp_path: Path = session_tmp_path,
         num_sites: int = 10,
@@ -444,13 +444,13 @@ def site_config_filename(
     site_test_config_path,
     nwp_ukv_zarr_path,
     sat_zarr_path,
-    data_sites,
+    default_data_site_model,
 ):
     # adjust config to point to the zarr file
     config = load_yaml_configuration(site_test_config_path)
     config.input_data.nwp["ukv"].zarr_path = str(nwp_ukv_zarr_path)
     config.input_data.satellite.zarr_path = str(sat_zarr_path)
-    config.input_data.site = data_sites()
+    config.input_data.site = default_data_site_model()
     config.input_data.gsp = None
 
     config.input_data.solar_position = SolarPosition(
