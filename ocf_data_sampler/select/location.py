@@ -37,9 +37,9 @@ class Location:
             return self._projections[coord_system]
         else:
             raise ValueError(
-                "Requested the coodinate in {coord_system}. This has not yet been added. "
+                f"Requested the coodinate in {coord_system}. This has not yet been added. "
                 "The current available coordinate systems are "
-                f"{list(self.self._projections.keys())}",
+                f"{list(self._projections.keys())}",
             )
 
     def add_coord_system(self, x: float, y: float, coord_system: int) -> None:
