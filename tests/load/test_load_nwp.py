@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import pytest
 from xarray import DataArray
@@ -50,7 +48,7 @@ def test_load_gfs(nwp_gfs_zarr_path):
 
 def test_load_ecmwf_bad_dtype_latitude(tmp_path):
     """Test validation fails for ECMWF with bad latitude dtype."""
-    zarr_path = os.path.join(tmp_path, "bad_ecmwf_latitude.zarr")
+    zarr_path = tmp_path / "bad_ecmwf_latitude.zarr"
     bad_array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
         dims=("init_time", "step", "variable", "longitude", "latitude"),
@@ -69,7 +67,7 @@ def test_load_ecmwf_bad_dtype_latitude(tmp_path):
 
 def test_load_ecmwf_bad_dtype_init_time(tmp_path):
     """Test validation fails for ECMWF with bad init_time_utc dtype."""
-    zarr_path = os.path.join(tmp_path, "bad_ecmwf_init_time.zarr")
+    zarr_path = tmp_path / "bad_ecmwf_init_time.zarr"
     bad_array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
         dims=("init_time", "step", "variable", "longitude", "latitude"),
@@ -88,7 +86,7 @@ def test_load_ecmwf_bad_dtype_init_time(tmp_path):
 
 def test_load_ecmwf_bad_dtype_step(tmp_path):
     """Test validation fails for ECMWF with bad step dtype."""
-    zarr_path = os.path.join(tmp_path, "bad_ecmwf_step.zarr")
+    zarr_path = tmp_path / "bad_ecmwf_step.zarr"
     bad_array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
         dims=("init_time", "step", "variable", "longitude", "latitude"),
