@@ -43,104 +43,11 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int
     return closest_x, closest_y
 
 
-def _select_padded_slice(
-    da: xr.DataArray,
-    left_idx: int,
-    right_idx: int,
-    bottom_idx: int,
-    top_idx: int,
-    x_dim: str,
-    y_dim: str,
-) -> xr.DataArray:
-    """Selects spatial slice - padding where necessary if indices are out of bounds.
-
-    Args:
-        da: xarray DataArray.
-        left_idx: The leftmost index of the slice.
-        right_idx: The rightmost index of the slice.
-        bottom_idx: The bottommost index of the slice.
-        top_idx: The topmost index of the slice.
-        x_dim: Name of the x dimension.
-        y_dim: Name of the y dimension.
-
-    Returns:
-        An xarray DataArray with padding, if necessary.
-    """
-    data_width_pixels = len(da[x_dim])
-    data_height_pixels = len(da[y_dim])
-
-    left_pad_pixels = max(0, -left_idx)
-    right_pad_pixels = max(0, right_idx - data_width_pixels)
-    bottom_pad_pixels = max(0, -bottom_idx)
-    top_pad_pixels = max(0, top_idx - data_height_pixels)
-
-    if (left_pad_pixels > 0 and right_pad_pixels > 0) or (
-        bottom_pad_pixels > 0 and top_pad_pixels > 0
-    ):
-        raise ValueError("Cannot pad both sides of the window")
-
-    dx = np.median(np.diff(da[x_dim].values))
-    dy = np.median(np.diff(da[y_dim].values))
-
-    # Create a new DataArray which has indices which go outside
-    # the original DataArray
-    # Pad the left of the window
-    if left_pad_pixels > 0:
-        x_sel = np.concatenate(
-            [
-                da[x_dim].values[0] + np.arange(-left_pad_pixels, 0) * dx,
-                da[x_dim].values[0:right_idx],
-            ],
-        )
-        da = da.isel({x_dim: slice(0, right_idx)}).reindex({x_dim: x_sel})
-
-    # Pad the right of the window
-    elif right_pad_pixels > 0:
-        x_sel = np.concatenate(
-            [
-                da[x_dim].values[left_idx:],
-                da[x_dim].values[-1] + np.arange(1, right_pad_pixels + 1) * dx,
-            ],
-        )
-        da = da.isel({x_dim: slice(left_idx, None)}).reindex({x_dim: x_sel})
-
-    # No left-right padding required
-    else:
-        da = da.isel({x_dim: slice(left_idx, right_idx)})
-
-    # Pad the bottom of the window
-    if bottom_pad_pixels > 0:
-        y_sel = np.concatenate(
-            [
-                da[y_dim].values[0] + np.arange(-bottom_pad_pixels, 0) * dy,
-                da[y_dim].values[0:top_idx],
-            ],
-        )
-        da = da.isel({y_dim: slice(0, top_idx)}).reindex({y_dim: y_sel})
-
-    # Pad the top of the window
-    elif top_pad_pixels > 0:
-        y_sel = np.concatenate(
-            [
-                da[y_dim].values[bottom_idx:],
-                da[y_dim].values[-1] + np.arange(1, top_pad_pixels + 1) * dy,
-            ],
-        )
-        da = da.isel({y_dim: slice(bottom_idx, None)}).reindex({y_dim: y_sel})
-
-    # No bottom-top padding required
-    else:
-        da = da.isel({y_dim: slice(bottom_idx, top_idx)})
-
-    return da
-
-
 def select_spatial_slice_pixels(
     da: xr.DataArray,
     location: Location,
     width_pixels: int,
     height_pixels: int,
-    allow_partial_slice: bool = False,
 ) -> xr.DataArray:
     """Select spatial slice based off pixels from location point of interest.
 
@@ -149,7 +56,6 @@ def select_spatial_slice_pixels(
         location: Location of interest that will be the center of the returned slice
         height_pixels: Height of the slice in pixels
         width_pixels: Width of the slice in pixels
-        allow_partial_slice: Whether to allow a partial slice.
 
     Returns:
         The selected DataArray slice.
@@ -157,7 +63,6 @@ def select_spatial_slice_pixels(
     Raises:
         ValueError: If the dimensions are not even or the slice is not allowed
                     when padding is required.
-
     """
     if (width_pixels % 2) != 0:
         raise ValueError("Width must be an even number")
@@ -179,39 +84,27 @@ def select_spatial_slice_pixels(
     data_height_pixels = len(da[y_dim])
 
     # Padding checks
-    pad_required = (
+    slice_unavailable = (
         left_idx < 0
         or right_idx > data_width_pixels
         or bottom_idx < 0
         or top_idx > data_height_pixels
     )
 
-    if pad_required:
-        if allow_partial_slice:
-            da = _select_padded_slice(da, left_idx, right_idx, bottom_idx, top_idx, x_dim, y_dim)
-        else:
-            issues = []
-            if left_idx < 0:
-                issues.append(f"left_idx ({left_idx}) < 0")
-            if right_idx > data_width_pixels:
-                issues.append(f"right_idx ({right_idx}) > data_width_pixels ({data_width_pixels})")
-            if bottom_idx < 0:
-                issues.append(f"bottom_idx ({bottom_idx}) < 0")
-            if top_idx > data_height_pixels:
-                issues.append(f"top_idx ({top_idx}) > data_height_pixels ({data_height_pixels})")
-            issue_details = "\n".join(issues)
-            raise ValueError(
-                f"Window for location {location} not available.  Padding required due to: \n"
-                f"{issue_details}\n"
-                "You may wish to set `allow_partial_slice=True`",
-            )
-    else:
-        # Standard selection - without padding
-        da = da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
-
-    if len(da[x_dim]) != width_pixels:
-        raise ValueError(f"x-dim has size {len(da[x_dim])}, expected {width_pixels}")
-    if len(da[y_dim]) != height_pixels:
-        raise ValueError(f"y-dim has size {len(da[y_dim])}, expected {height_pixels}")
+    if slice_unavailable:
+        issues = []
+        if left_idx < 0:
+            issues.append(f"left_idx ({left_idx}) < 0")
+        if right_idx > data_width_pixels:
+            issues.append(f"right_idx ({right_idx}) > data_width_pixels ({data_width_pixels})")
+        if bottom_idx < 0:
+            issues.append(f"bottom_idx ({bottom_idx}) < 0")
+        if top_idx > data_height_pixels:
+            issues.append(f"top_idx ({top_idx}) > data_height_pixels ({data_height_pixels})")
+        issue_details = "\n - ".join(issues)
+        raise ValueError(f"Window for location {location} not available: \n - {issue_details}")
+    
+    # Standard selection - without padding
+    da = da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
 
     return da
