@@ -9,41 +9,8 @@ import numpy as np
 import pytest
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.config.load import load_yaml_configuration
 from ocf_data_sampler.numpy_sample import GSPSampleKey, NWPSampleKey, SatelliteSampleKey
 from ocf_data_sampler.torch_datasets.sample.uk_regional import UKRegionalSample
-
-
-@pytest.fixture
-def numpy_sample():
-    """Synthetic data generation"""
-    expected_gsp_shape = (7,)
-    expected_nwp_ukv_shape = (4, 1, 2, 2)
-    expected_sat_shape = (7, 1, 2, 2)
-    expected_solar_shape = (7,)
-
-    nwp_data = {
-        "nwp": np.random.rand(*expected_nwp_ukv_shape),
-        "x": np.array([1, 2]),
-        "y": np.array([1, 2]),
-        NWPSampleKey.channel_names: ["t"],
-    }
-
-    return {
-        "nwp": {
-            "ukv": nwp_data,
-        },
-        GSPSampleKey.gsp: np.random.rand(*expected_gsp_shape),
-        SatelliteSampleKey.satellite_actual: np.random.rand(*expected_sat_shape),
-        "solar_azimuth": np.random.rand(*expected_solar_shape),
-        "solar_elevation": np.random.rand(*expected_solar_shape),
-    }
-
-
-@pytest.fixture
-def pvnet_configuration_object(pvnet_config_filename) -> Configuration:
-    """Loads the configuration from the temporary file path."""
-    return load_yaml_configuration(pvnet_config_filename)
 
 
 def test_sample_save_load(numpy_sample):
@@ -53,7 +20,7 @@ def test_sample_save_load(numpy_sample):
         sample.save(tf.name)
         loaded = UKRegionalSample.load(tf.name)
 
-        assert set(loaded._data.keys()) == set(sample._data.keys())
+        assert set(loaded._data) == set(sample._data)
         assert isinstance(loaded._data["nwp"], dict)
         assert "ukv" in loaded._data["nwp"]
 
@@ -68,19 +35,15 @@ def test_sample_save_load(numpy_sample):
 
 def test_load_corrupted_file():
     """Test loading - corrupted / empty file"""
-
     with tempfile.NamedTemporaryFile(suffix=".pt") as tf, open(tf.name, "wb") as f:
         f.write(b"corrupted data")
-
         with pytest.raises(EOFError):
             UKRegionalSample.load(tf.name)
 
 
 def test_to_numpy(numpy_sample):
     """To numpy conversion check"""
-
     sample = UKRegionalSample(numpy_sample)
-
     numpy_data = sample.to_numpy()
 
     # Check returned data matches
@@ -100,8 +63,8 @@ def test_to_numpy(numpy_sample):
 def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration, caplog):
     """Test the validate_sample method succeeds with no warnings for a valid sample."""
     sample = UKRegionalSample(numpy_sample)
-    caplog.set_level(logging.WARNING)
-    result = sample.validate_sample(pvnet_configuration_object)
+    with caplog.at_level(logging.WARNING):
+        result = sample.validate_sample(pvnet_configuration_object)
 
     assert isinstance(result, dict)
     assert result["valid"] is True
@@ -149,6 +112,7 @@ def test_validate_sample_with_missing_solar_coors(
     modified_data = numpy_sample.copy()
     solar_key = "solar_azimuth"
     modified_data.pop(solar_key)
+
     sample = UKRegionalSample(modified_data)
     expected_error_pattern = f"^Configuration expects {solar_key} data but is missing"
 
@@ -163,6 +127,7 @@ def test_validate_sample_with_wrong_solar_shapes(
     """Test validation raises ValueError when solar data shape is incorrect."""
     modified_data = numpy_sample.copy()
     modified_data["solar_azimuth"] = np.random.rand(10)
+
     sample = UKRegionalSample(modified_data)
 
     with pytest.raises(ValueError, match="'Solar Azimuth data' shape mismatch: Actual shape:"):
@@ -184,7 +149,7 @@ def test_validate_sample_with_unexpected_provider(
         NWPSampleKey.channel_names: ["t"],
     }
     if NWPSampleKey.nwp not in modified_data:
-         modified_data[NWPSampleKey.nwp] = {}
+        modified_data[NWPSampleKey.nwp] = {}
     modified_data[NWPSampleKey.nwp][unexpected_provider] = nwp_data
 
     sample = UKRegionalSample(modified_data)
@@ -213,6 +178,7 @@ def test_validate_sample_with_unexpected_component(
     modified_data = numpy_sample.copy()
     unexpected_key = "unexpected_component_key_xyz"
     modified_data[unexpected_key] = np.random.rand(7).astype(np.float32)
+
     sample = UKRegionalSample(modified_data)
 
     with caplog.at_level(logging.WARNING):
@@ -226,5 +192,4 @@ def test_validate_sample_with_unexpected_component(
     assert len(warning_logs) == 1, "Expected exactly one warning log"
 
     log_message = warning_logs[0].message
-    expected_substring = f"Unexpected component '{unexpected_key}'"
-    assert expected_substring in log_message
+    assert f"Unexpected component '{unexpected_key}'" in log_message
