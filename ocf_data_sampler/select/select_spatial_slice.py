@@ -103,7 +103,7 @@ def select_spatial_slice_pixels(
             issues.append(f"top_idx ({top_idx}) > data_height_pixels ({data_height_pixels})")
         issue_details = "\n - ".join(issues)
         raise ValueError(f"Window for location {location} not available: \n - {issue_details}")
-    
+
     # Standard selection - without padding
     da = da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
 
