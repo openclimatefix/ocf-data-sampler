@@ -1,52 +1,9 @@
-import numpy as np
 import pandas as pd
 import pytest
-import xarray as xr
 
 from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
 
 NWP_FREQ = pd.Timedelta("3h")
-
-
-@pytest.fixture(scope="module")
-def da_sat_like():
-    """Create dummy data which looks like satellite data"""
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
-    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq="5min")
-
-    da_sat = xr.DataArray(
-        np.random.normal(size=(len(datetimes), len(x), len(y))),
-        coords={
-            "time_utc": (["time_utc"], datetimes),
-            "x_geostationary": (["x_geostationary"], x),
-            "y_geostationary": (["y_geostationary"], y),
-        },
-    )
-    return da_sat
-
-
-@pytest.fixture(scope="module")
-def da_nwp_like():
-    """Create dummy data which looks like NWP data"""
-
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
-    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq=NWP_FREQ)
-    steps = pd.timedelta_range("0h", "16h", freq="1h")
-    channels = ["t", "dswrf"]
-
-    da_nwp = xr.DataArray(
-        np.random.normal(size=(len(datetimes), len(steps), len(channels), len(x), len(y))),
-        coords={
-            "init_time_utc": (["init_time_utc"], datetimes),
-            "step": (["step"], steps),
-            "channel": (["channel"], channels),
-            "x_osgb": (["x_osgb"], x),
-            "y_osgb": (["y_osgb"], y),
-        },
-    )
-    return da_nwp
 
 
 @pytest.mark.parametrize("t0_str", ["12:30", "12:40", "12:00"])
@@ -55,7 +12,7 @@ def test_select_time_slice(da_sat_like, t0_str):
 
     # Slice parameters
     t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    interval_start = pd.Timedelta(-0, "min")
+    interval_start = pd.Timedelta(0, "min")
     interval_end = pd.Timedelta(60, "min")
     freq = pd.Timedelta("5min")
 
@@ -113,7 +70,7 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
     if expected_datetimes[0] < min_time:
         assert all_nan_space.sel(time_utc=slice(None, min_time - freq)).all(dim="time_utc")
 
-    # Check all the values before the first timestamp available in the data are NaN
+    # Check all the values after the last timestamp available in the data are NaN
     if expected_datetimes[-1] > max_time:
         assert all_nan_space.sel(time_utc=slice(max_time + freq, None)).all(dim="time_utc")
 
@@ -145,7 +102,6 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
 
     # Check the target-times are as expected
     expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
-
     valid_times = da_slice.init_time_utc + da_slice.step
     assert (valid_times == expected_target_times).all()
 
@@ -154,7 +110,7 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
     expected_init_times = pd.to_datetime(
         [t if t < t0 else t0 for t in expected_target_times],
     ).floor(NWP_FREQ)
-    assert (expected_init_times==da_slice.init_time_utc.values).all()
+    assert (expected_init_times == da_slice.init_time_utc.values).all()
 
 
 @pytest.mark.parametrize("dropout_hours", [1, 2, 5])
@@ -187,4 +143,4 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
     expected_init_times = pd.to_datetime(
         [t if t < t0_delayed else t0_delayed for t in expected_target_times],
     ).floor(NWP_FREQ)
-    assert (expected_init_times==da_slice.init_time_utc.values).all()
+    assert (expected_init_times == da_slice.init_time_utc.values).all()

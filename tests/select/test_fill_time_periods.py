@@ -20,23 +20,23 @@ def test_fill_time_periods():
             ],
         },
     )
-    freq = pd.Timedelta("30min")
-    filled_time_periods = fill_time_periods(time_periods, freq)
 
-    expected_times = [
-        "04:30",
-        "05:00",
-        "05:30",
-        "06:00",
-        "09:00",
-        "12:00",
-        "12:30",
-        "13:00",
-        "13:30",
-        "14:00",
-        "14:30",
-    ]
+    filled = fill_time_periods(time_periods, freq=pd.Timedelta("30min"))
 
-    expected_times = pd.DatetimeIndex([f"2021-01-01 {t}" for t in expected_times])
+    expected = pd.to_datetime(
+        [
+            "2021-01-01 04:30",
+            "2021-01-01 05:00",
+            "2021-01-01 05:30",
+            "2021-01-01 06:00",
+            "2021-01-01 09:00",
+            "2021-01-01 12:00",
+            "2021-01-01 12:30",
+            "2021-01-01 13:00",
+            "2021-01-01 13:30",
+            "2021-01-01 14:00",
+            "2021-01-01 14:30",
+        ],
+    )
 
-    pd.testing.assert_index_equal(filled_time_periods, expected_times)
+    pd.testing.assert_index_equal(filled, expected)

@@ -5,19 +5,14 @@ from ocf_data_sampler.numpy_sample.datetime_features import encode_datetimes
 
 
 def test_encode_datetimes():
-    # Pick the day of the summer solstice
+    # Pick summer solstice day and calculate encoding features
     datetimes = pd.to_datetime(["2024-06-20 12:00", "2024-06-20 12:30", "2024-06-20 13:00"])
+    features = encode_datetimes(datetimes)
 
-    # Calculate datetime encoding features
-    datetime_features = encode_datetimes(datetimes)
+    assert len(features) == 4
+    assert all(len(arr) == len(datetimes) for arr in features.values())
+    assert (features["date_cos"] != features["date_sin"]).all()
 
-    assert len(datetime_features) == 4
-
-    assert len(datetime_features["date_sin"]) == len(datetimes)
-    assert (datetime_features["date_cos"] != datetime_features["date_sin"]).all()
-
-    # assert all values are between -1 and 1
-    assert all(np.abs(datetime_features["date_sin"]) <= 1)
-    assert all(np.abs(datetime_features["date_cos"]) <= 1)
-    assert all(np.abs(datetime_features["time_sin"]) <= 1)
-    assert all(np.abs(datetime_features["time_cos"]) <= 1)
+    # Values should be between -1 and 1
+    for key in ("date_sin", "date_cos", "time_sin", "time_cos"):
+        assert np.all(np.abs(features[key]) <= 1)
