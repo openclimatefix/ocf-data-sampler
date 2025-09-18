@@ -42,7 +42,7 @@ def test_open_site_bad_dtype(tmp_path: Path):
             "latitude": [51.0, 52.0],
             "longitude": [0.0, 1.0],
             "capacity_kwp": [100.0, 120.0],
-        }
+        },
     )
     metadata.to_csv(meta_path)
 
