@@ -10,9 +10,8 @@ import xarray as xr
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import Site, SolarPosition
-from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
 from ocf_data_sampler.numpy_sample import GSPSampleKey, NWPSampleKey, SatelliteSampleKey
-
+from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
