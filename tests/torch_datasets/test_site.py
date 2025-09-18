@@ -5,7 +5,6 @@ from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configura
 from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.torch_datasets.datasets.site import (
     SitesDataset,
-    coarsen_data,
 )
 
 
