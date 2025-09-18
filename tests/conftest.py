@@ -525,3 +525,15 @@ def da_sat_like():
         },
     )
     return da_sat
+
+
+@pytest.fixture(scope="module")
+def da_sample():
+
+    datetimes = pd.date_range("2024-01-01 12:00", "2024-01-01 13:00", freq="5min")
+
+    da_sat = xr.DataArray(
+        np.random.normal(size=(len(datetimes),)),
+        coords={"time_utc": (["time_utc"], datetimes)},
+    )
+    return da_sat
