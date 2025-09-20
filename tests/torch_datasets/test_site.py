@@ -5,7 +5,6 @@ from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configura
 from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.torch_datasets.datasets.site import (
     SitesDataset,
-    coarsen_data,
 )
 
 
@@ -96,22 +95,6 @@ def test_site_dataset_with_dataloader(sites_dataset) -> None:
     assert individual_sample["nwp"]["ukv"]["nwp"].shape == (10, 1, 24, 24)
     # Site: (60 - (-30)) / 30 + 1 = 4 time steps (from site_config_filename interval)
     assert individual_sample["site"].shape == (4,)
-
-
-
-def test_potentially_coarsen(ds_nwp_ecmwf):
-    """Test potentially_coarsen function with ECMWF_UK data."""
-    nwp_data = ds_nwp_ecmwf
-    assert nwp_data.ECMWF_UK.shape[3:] == (15, 12)  # Check initial shape (lon, lat)
-
-    data = coarsen_data(xr_data=nwp_data, coarsen_to_deg=2)
-    assert data.ECMWF_UK.shape[3:] == (8, 6)  # Coarsen to every 2 degrees
-
-    data = coarsen_data(xr_data=nwp_data, coarsen_to_deg=3)
-    assert data.ECMWF_UK.shape[3:] == (5, 4)  # Coarsen to every 3 degrees
-
-    data = coarsen_data(xr_data=nwp_data, coarsen_to_deg=1)
-    assert data.ECMWF_UK.shape[3:] == (15, 12)  # No coarsening (same shape)
 
 
 def test_solar_position_decoupling_site(tmp_path, site_config_filename):

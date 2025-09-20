@@ -1,6 +1,5 @@
 """Torch dataset for sites."""
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
@@ -436,25 +435,3 @@ class SitesDatasetConcurrent(PickleCacheMixin, Dataset):
             site_samples.append(site_numpy_sample)
 
         return stack_np_samples_into_batch(site_samples)
-
-
-def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float = 0.1) -> xr.Dataset:
-    """Coarsen the data to a specified resolution in degrees.
-
-    Args:
-        xr_data: xarray dataset to coarsen
-        coarsen_to_deg: resolution to coarsen to in degrees
-    """
-    if "latitude" in xr_data.coords and "longitude" in xr_data.coords:
-        step = np.abs(xr_data.latitude.values[1] - xr_data.latitude.values[0])
-        step = np.round(step, 4)
-        coarsen_factor = int(coarsen_to_deg / step)
-        if coarsen_factor > 1:
-            xr_data = xr_data.coarsen(
-                latitude=coarsen_factor,
-                longitude=coarsen_factor,
-                boundary="pad",
-                coord_func="min",
-            ).mean()
-
-    return xr_data
