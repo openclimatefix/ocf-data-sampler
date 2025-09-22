@@ -57,7 +57,8 @@ def _dask_open_zarr_paths(zarr_path: str | list[str], time_dim: str, public: boo
             zarr_path,
             concat_dim=time_dim,
             combine="nested",
-            compat="override",
+            compat="no_conflicts",
+            coords="different",
             **general_kwargs,
         ).sortby(time_dim)
     else:
