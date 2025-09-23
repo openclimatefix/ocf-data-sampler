@@ -93,7 +93,7 @@ class DropoutMixin(Base):
         "floats (probability that dropout of the corresponding timedelta is applied)",
     )
 
-    dropout_value: float | None = Field(
+    dropout_value: float = Field(
         default=0.0,
         description="The value to use for dropped out values. " \
         "Idea is to use -1, but to be backwards comptaible we've put the default as 0")
