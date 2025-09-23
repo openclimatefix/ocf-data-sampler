@@ -44,7 +44,6 @@ def slice_datasets_by_time(
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 interval_end=minutes(interval_end_mins),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
-                dropout_frac=nwp_config.dropout_fraction,
             )
 
     if "sat" in datasets_dict:
@@ -64,7 +63,6 @@ def slice_datasets_by_time(
             dropout_timedeltas=minutes(sat_config.dropout_timedeltas_minutes),
             dropout_frac=sat_config.dropout_fraction,
             da=sliced_datasets_dict["sat"],
-            dropout_value=sat_config.dropout_value,
         )
 
     if "gsp" in datasets_dict:
@@ -84,7 +82,6 @@ def slice_datasets_by_time(
             dropout_timedeltas=minutes(gsp_config.dropout_timedeltas_minutes),
             dropout_frac=gsp_config.dropout_fraction,
             da=da_gsp,
-            dropout_value=gsp_config.dropout_value,
         )
 
         sliced_datasets_dict["gsp"] = da_gsp
@@ -106,7 +103,6 @@ def slice_datasets_by_time(
             dropout_timedeltas=minutes(site_config.dropout_timedeltas_minutes),
             dropout_frac=site_config.dropout_fraction,
             da=da_site,
-            dropout_value=site_config.dropout_value,
         )
 
         sliced_datasets_dict["site"] = da_site
