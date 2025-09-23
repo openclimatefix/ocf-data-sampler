@@ -44,6 +44,7 @@ def slice_datasets_by_time(
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 interval_end=minutes(interval_end_mins),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
+                dropout_frac=nwp_config.dropout_fraction,
             )
 
     if "sat" in datasets_dict:

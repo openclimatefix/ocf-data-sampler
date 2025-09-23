@@ -94,7 +94,7 @@ class DropoutMixin(Base):
     )
 
     dropout_value: float | None = Field(
-        default=None,
+        default=0.0,
         description="The value to use for dropped out values. " \
         "Idea is to use -1, but to be backwards comptaible we've put the default as 0")
 
