@@ -35,7 +35,7 @@ def test_open_satellite_bad_dtype(tmp_path: Path):
             ),
         },
         coords={
-            "time": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="5T")),
+            "time": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="5min")),
             "variable": [1, 2],
             "y_geostationary": np.arange(4),
             "x_geostationary": np.arange(4),

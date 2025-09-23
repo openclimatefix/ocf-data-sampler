@@ -32,7 +32,7 @@ def test_open_site_bad_dtype(tmp_path: Path):
             "generation_kw": (("time_utc", "site_id"), np.random.rand(10, 2)),
         },
         coords={
-            "time_utc": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30T")),
+            "time_utc": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30min")),
             "site_id": np.array([1.0, 2.0]),
         },
     )
