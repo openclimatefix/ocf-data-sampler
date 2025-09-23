@@ -21,7 +21,6 @@ def open_icon_eu(zarr_path: str | list[str]) -> xr.DataArray:
     """
     # Open and check initially
     ds = open_zarr_paths(zarr_path, time_dim="init_time_utc", backend="dask")
-    ds = ds.drop_vars("valid_time", errors="ignore")
 
     if "icon_eu_data" in ds.data_vars:
         nwp = ds["icon_eu_data"]
