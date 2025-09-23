@@ -14,6 +14,7 @@ def apply_history_dropout(
     dropout_timedeltas: list[pd.Timedelta],
     dropout_frac: float | list[float],
     da: xr.DataArray,
+    dropout_value: float | None = None,
 ) -> xr.DataArray:
     """Apply randomly sampled dropout to the historical part of some sequence data.
 
@@ -25,9 +26,14 @@ def apply_history_dropout(
         dropout_frac: The probabilit(ies) that each dropout timedelta will be applied. This should
             be between 0 and 1 inclusive.
         da: Xarray DataArray with 'time_utc' coordinate
+        dropout_value: The value to use for dropped out values. If None, will use np.nan.
+            Default is None.
     """
     if len(dropout_timedeltas)==0:
         return da
+
+    if dropout_value is not None:
+        dropout_value = np.nan
 
     if isinstance(dropout_frac, float | int):
 
@@ -56,4 +62,8 @@ def apply_history_dropout(
     if timedelta_choice is None:
         return da
     else:
-        return da.where((da.time_utc <= timedelta_choice + t0) | (da.time_utc> t0))
+        drop_out_index = (da.time_utc > timedelta_choice + t0) & (da.time_utc <= t0)
+        drop_out_times = da.time_utc.values[drop_out_index.values]
+        da.loc[{"time_utc":drop_out_times}] = dropout_value
+        return da
+

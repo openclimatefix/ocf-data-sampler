@@ -26,7 +26,7 @@ def test_apply_history_dropout_multiple_timedeltas(da_sample):
         t0,
         dropout_timedeltas=minutes([-30, -45]),
         dropout_frac=1,
-        da=da_sample,
+        da=da_sample.copy(),
     )
 
     latest_expected_cut_off = t0 + minutes(-30)
@@ -46,7 +46,7 @@ def test_apply_history_dropout_none(da_sample):
         t0,
         dropout_timedeltas=[minutes(-30)],
         dropout_frac=0,
-        da=da_sample,
+        da=da_sample.copy(),
     )
 
     # Check data arrays are equal as dropout time would be None
@@ -57,7 +57,7 @@ def test_apply_history_dropout_none(da_sample):
         t0,
         dropout_timedeltas=[],
         dropout_frac=0,
-        da=da_sample,
+        da=da_sample.copy(),
     )
 
     # Check data arrays are equal as dropout time would be None
@@ -71,7 +71,7 @@ def test_apply_history_dropout_list(da_sample):
         t0,
         dropout_timedeltas=minutes([-30, -45]),
         dropout_frac=[0.5,0.5],
-        da=da_sample,
+        da=da_sample.copy(),
     )
 
     latest_expected_cut_off = t0 + minutes(-30)
@@ -92,7 +92,7 @@ def test_apply_history_dropout(da_sample, t0_str):
         t0_time,
         dropout_timedeltas=[minutes(-30)],
         dropout_frac=1.0,
-        da=da_sample,
+        da=da_sample.copy(),
     )
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
