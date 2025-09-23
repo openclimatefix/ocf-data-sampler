@@ -32,7 +32,7 @@ def apply_history_dropout(
     if len(dropout_timedeltas)==0:
         return da
 
-    if dropout_value is not None:
+    if dropout_value is None:
         dropout_value = np.nan
 
     if isinstance(dropout_frac, float | int):

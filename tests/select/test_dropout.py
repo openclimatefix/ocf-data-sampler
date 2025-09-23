@@ -97,3 +97,25 @@ def test_apply_history_dropout(da_sample, t0_str):
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
     assert (da_dropout.sel(time_utc=slice(dropout_time + minutes(5), t0_time)).isnull().all())
+
+
+def test_apply_drop_out_value(da_sample):
+    t0 = da_sample.time_utc.values[-1]
+
+    dropout_value = -9999.0
+
+    da_sample_dropout = apply_history_dropout(
+        t0,
+        dropout_timedeltas=minutes([-30]),
+        dropout_frac=1.0,
+        da=da_sample.copy(),
+        dropout_value=dropout_value,
+    )
+
+    latest_expected_cut_off = t0 + minutes(-30)
+
+    assert (
+        da_sample_dropout
+        .sel(time_utc=slice(latest_expected_cut_off + minutes(5), t0)).values
+        == dropout_value
+    ).all()
