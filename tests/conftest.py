@@ -101,7 +101,7 @@ def sat_zarr_path(session_tmp_path):
     zarr_path = session_tmp_path / "test_sat.zarr"
     ds.to_zarr(zarr_path)
 
-    yield zarr_path
+    yield str(zarr_path)
 
 @pytest.fixture(scope="session")
 def sat_icechunk_path(session_tmp_path):
@@ -196,7 +196,7 @@ def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
     )
     zarr_path = session_tmp_path / "ukv_nwp.zarr"
     ds.to_zarr(zarr_path)
-    yield zarr_path
+    yield str(zarr_path)
 
 
 @pytest.fixture()
@@ -267,7 +267,7 @@ def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
 
     zarr_path = session_tmp_path / "ukv_ecmwf.zarr"
     ds.to_zarr(zarr_path)
-    yield zarr_path
+    yield str(zarr_path)
 
 
 @pytest.fixture(scope="session")
@@ -314,7 +314,7 @@ def icon_eu_zarr_path(session_tmp_path):
 
         zarr_path = session_tmp_path / f"{time_str}.zarr"
         ds_to_save.to_zarr(zarr_path)
-        paths.append(zarr_path)
+        paths.append(str(zarr_path))
 
     return paths
 
@@ -355,7 +355,7 @@ def nwp_cloudcasting_zarr_path(session_tmp_path):
             "y_geostationary": 50,
         },
     ).to_zarr(zarr_path)
-    yield zarr_path
+    yield str(zarr_path)
 
 
 @pytest.fixture(scope="session")
@@ -463,7 +463,7 @@ def data_sites(session_tmp_path):
 def uk_gsp_zarr_path(session_tmp_path, ds_uk_gsp):
     zarr_path = session_tmp_path / "uk_gsp.zarr"
     ds_uk_gsp.to_zarr(zarr_path)
-    yield zarr_path
+    yield str(zarr_path)
 
 
 @pytest.fixture()
