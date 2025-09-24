@@ -21,9 +21,11 @@ def merge_dicts(list_of_dicts: list[dict]) -> dict:
 def fill_nans_in_arrays(
     sample: dict, config: Configuration | None = None, nwp_provider: str | None = None,
 ) -> dict:
-    """Fills all NaN values in each np.ndarray in the sample dictionary with zeros.
+    """Fills all NaN values in each np.ndarray in the sample dictionary.
 
     Operation is performed in-place on the sample.
+    By default a fill value of 0.0 are used, but if a config is provided,
+    it can use the configured dropout values.
     """
     for k, v in sample.items():
         if isinstance(v, np.ndarray) and np.issubdtype(v.dtype, np.number):
