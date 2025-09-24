@@ -330,7 +330,12 @@ class SitesDatasetConcurrent(PickleCacheMixin, Dataset):
         self.config = config
 
         # get all locations
-        self.locations = get_locations(datasets_dict["site"])
+        locations = get_locations(datasets_dict["site"])
+        self.locations = add_alterate_coordinate_projections(
+            locations,
+            datasets_dict,
+            primary_coords="lon_lat",
+        )
 
         # Get t0 times where all input data is available
         valid_t0s = self.find_valid_t0s(datasets_dict)
