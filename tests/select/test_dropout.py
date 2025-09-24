@@ -97,3 +97,4 @@ def test_apply_history_dropout(da_sample, t0_str):
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
     assert (da_dropout.sel(time_utc=slice(dropout_time + minutes(5), t0_time)).isnull().all())
+
