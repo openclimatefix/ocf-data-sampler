@@ -93,6 +93,11 @@ class DropoutMixin(Base):
         "floats (probability that dropout of the corresponding timedelta is applied)",
     )
 
+    dropout_value: float = Field(
+        default=0.0,
+        description="The value to use for dropped out values. "
+        "Idea is to use -1, but to be backwards comptaible we've put the default as 0")
+
     @field_validator("dropout_timedeltas_minutes")
     def dropout_timedeltas_minutes_negative(cls, v: list[int]) -> list[int]:
         """Validate 'dropout_timedeltas_minutes'."""
