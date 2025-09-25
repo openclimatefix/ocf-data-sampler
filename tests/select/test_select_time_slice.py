@@ -1,9 +1,52 @@
+import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 
 from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
 
 NWP_FREQ = pd.Timedelta("3h")
+
+
+@pytest.fixture(scope="module")
+def da_sat_like():
+    """Create dummy data which looks like satellite data"""
+    x = np.arange(-100, 100)
+    y = np.arange(-100, 100)
+    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq="5min")
+
+    da_sat = xr.DataArray(
+        np.random.normal(size=(len(datetimes), len(x), len(y))),
+        coords={
+            "time_utc": (["time_utc"], datetimes),
+            "x_geostationary": (["x_geostationary"], x),
+            "y_geostationary": (["y_geostationary"], y),
+        },
+    )
+    return da_sat
+
+
+@pytest.fixture(scope="module")
+def da_nwp_like():
+    """Create dummy data which looks like NWP data"""
+
+    x = np.arange(-100, 100)
+    y = np.arange(-100, 100)
+    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq=NWP_FREQ)
+    steps = pd.timedelta_range("0h", "16h", freq="1h")
+    channels = ["t", "dswrf"]
+
+    da_nwp = xr.DataArray(
+        np.random.normal(size=(len(datetimes), len(steps), len(channels), len(x), len(y))),
+        coords={
+            "init_time_utc": (["init_time_utc"], datetimes),
+            "step": (["step"], steps),
+            "channel": (["channel"], channels),
+            "x_osgb": (["x_osgb"], x),
+            "y_osgb": (["y_osgb"], y),
+        },
+    )
+    return da_nwp
 
 
 @pytest.mark.parametrize("t0_str", ["12:30", "12:40", "12:00"])

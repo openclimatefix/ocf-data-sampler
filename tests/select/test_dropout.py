@@ -1,9 +1,22 @@
+import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
 
 from ocf_data_sampler.select.dropout import apply_history_dropout
 from ocf_data_sampler.utils import minutes
+
+
+@pytest.fixture(scope="module")
+def da_sample():
+
+    datetimes = pd.date_range("2024-01-01 12:00", "2024-01-01 13:00", freq="5min")
+
+    da_sat = xr.DataArray(
+        np.random.normal(size=(len(datetimes),)),
+        coords={"time_utc": (["time_utc"], datetimes)},
+    )
+    return da_sat
 
 
 def test_apply_history_dropout_multiple_timedeltas(da_sample):
