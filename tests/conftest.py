@@ -336,80 +336,87 @@ def ds_uk_gsp():
     )
 
 
+def create_site_data(
+    tmp_path_base: Path,
+    num_sites: int = 10,
+    start_time_str: str = "2023-01-01 00:00",
+    end_time_str: str = "2023-01-02 00:00",
+    time_freq: str = "30min",
+    site_interval_start_minutes: int = -30,
+    site_interval_end_minutes: int = 60,
+    site_time_resolution_minutes: int = 30,
+    variable_capacity: bool = False,
+) -> Site:
+    """
+    Make fake data for sites
+    Returns: filename for netcdf file, and csv metadata
+    """
+    param_tuple = (num_sites, start_time_str, end_time_str, time_freq,
+                   site_interval_start_minutes, site_interval_end_minutes,
+                   site_time_resolution_minutes)
+    param_key = hashlib.sha256(str(param_tuple).encode()).hexdigest()
+
+    times = pd.date_range(start_time_str, end_time_str, freq=time_freq)
+    site_ids = list(range(num_sites))
+
+    base_longitude = np.round(np.linspace(-4, -3, 15), 2)
+    base_latitude = np.round(np.linspace(51, 52, 15), 2)
+
+    capacity_kwp_1d = np.full(num_sites, 1)
+    longitude = base_longitude[:num_sites]
+    latitude = base_latitude[:num_sites]
+
+    data_shape = (len(times), num_sites)
+    generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
+
+    coords = (("time_utc", times), ("site_id", site_ids))
+    da_gen = xr.DataArray(generation_data, coords=coords)
+
+    meta_df = pd.DataFrame()
+    meta_df["site_id"] = site_ids
+    meta_df["capacity_kwp"] = capacity_kwp_1d
+    meta_df["longitude"] = longitude
+    meta_df["latitude"] = latitude
+
+    if variable_capacity:
+        capacity_kwp_data = np.tile(
+            np.random.uniform(1,100,1)*capacity_kwp_1d,
+            (len(times), 1)).astype(np.float32)
+        generation_ds = xr.Dataset(
+            {
+                "capacity_kwp": xr.DataArray(capacity_kwp_data, coords=coords),
+                "generation_kw": da_gen,
+            },
+        )
+    else:
+        generation_ds = xr.Dataset(
+            {
+                "generation_kw": da_gen,
+            },
+        )
+    filename_data_path = tmp_path_base / f"sites_data_{param_key}.netcdf"
+    filename_csv_path = tmp_path_base / f"sites_metadata_{param_key}.csv"
+    generation_ds.to_netcdf(filename_data_path)
+    meta_df.to_csv(filename_csv_path, index=False)
+
+    site_model = Site(
+        file_path=str(filename_data_path),
+        metadata_file_path=str(filename_csv_path),
+        interval_start_minutes=site_interval_start_minutes,
+        interval_end_minutes=site_interval_end_minutes,
+        time_resolution_minutes=site_time_resolution_minutes,
+    )
+    return site_model
+
+
 @pytest.fixture(scope="session")
 def default_data_site_model(session_tmp_path):
-    def create_site_data(
-        tmp_path: Path = session_tmp_path,
-        num_sites: int = 10,
-        start_time_str: str = "2023-01-01 00:00",
-        end_time_str: str = "2023-01-02 00:00",
-        time_freq: str = "30min",
-        site_interval_start_minutes: int = -30,
-        site_interval_end_minutes: int = 60,
-        site_time_resolution_minutes: int = 30,
-        variable_capacity: bool = False,
-    ) -> Site:
-        """
-        Make fake data for sites
-        Returns: filename for netcdf file, and csv metadata
-        """
-        param_tuple = (num_sites, start_time_str, end_time_str, time_freq,
-                    site_interval_start_minutes, site_interval_end_minutes,
-                    site_time_resolution_minutes)
-        param_key = hashlib.sha256(str(param_tuple).encode()).hexdigest()
+    return create_site_data(tmp_path_base=session_tmp_path)
 
-        times = pd.date_range(start_time_str, end_time_str, freq=time_freq)
-        site_ids = list(range(num_sites))
 
-        base_longitude = np.round(np.linspace(-4, -3, 15), 2)
-        base_latitude = np.round(np.linspace(51, 52, 15), 2)
-
-        capacity_kwp_1d = np.full(num_sites, 1)
-        longitude = base_longitude[:num_sites]
-        latitude = base_latitude[:num_sites]
-
-        data_shape = (len(times), num_sites)
-        generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
-        capacity_kwp_data = np.tile(2*capacity_kwp_1d, (len(times), 1)).astype(np.float32)
-
-        coords = (("time_utc", times), ("site_id", site_ids))
-        da_cap = xr.DataArray(capacity_kwp_data, coords=coords)
-        da_gen = xr.DataArray(generation_data, coords=coords)
-
-        meta_df = pd.DataFrame()
-        meta_df["site_id"] = site_ids
-        meta_df["capacity_kwp"] = capacity_kwp_1d
-        meta_df["longitude"] = longitude
-        meta_df["latitude"] = latitude
-
-        if variable_capacity:
-            generation_ds = xr.Dataset(
-                {
-                    "capacity_kwp": da_cap,
-                    "generation_kw": da_gen,
-                },
-            )
-        else:
-            generation_ds = xr.Dataset(
-                {
-                    "generation_kw": da_gen,
-                },
-            )
-        filename_data_path = tmp_path / f"sites_data_{param_key}.netcdf"
-        filename_csv_path = tmp_path / f"sites_metadata_{param_key}.csv"
-        generation_ds.to_netcdf(filename_data_path)
-        meta_df.to_csv(filename_csv_path, index=False)
-
-        site_model = Site(
-            file_path=str(filename_data_path),
-            metadata_file_path=str(filename_csv_path),
-            interval_start_minutes=site_interval_start_minutes,
-            interval_end_minutes=site_interval_end_minutes,
-            time_resolution_minutes=site_time_resolution_minutes,
-        )
-        return site_model
-
-    return create_site_data
+@pytest.fixture(scope="session")
+def default_data_site_model_variable_capacity(session_tmp_path):
+    return create_site_data(tmp_path_base=session_tmp_path, variable_capacity=True)
 
 
 @pytest.fixture(scope="session")
@@ -450,7 +457,7 @@ def site_config_filename(
     config = load_yaml_configuration(site_test_config_path)
     config.input_data.nwp["ukv"].zarr_path = str(nwp_ukv_zarr_path)
     config.input_data.satellite.zarr_path = str(sat_zarr_path)
-    config.input_data.site = default_data_site_model()
+    config.input_data.site = default_data_site_model
     config.input_data.gsp = None
 
     config.input_data.solar_position = SolarPosition(
