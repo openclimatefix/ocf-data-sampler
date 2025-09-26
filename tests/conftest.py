@@ -345,6 +345,7 @@ def create_site_data(
     site_interval_start_minutes: int = -30,
     site_interval_end_minutes: int = 60,
     site_time_resolution_minutes: int = 30,
+    variable_capacity: bool = False,
 ) -> Site:
     """
     Make fake data for sites
@@ -358,20 +359,17 @@ def create_site_data(
     times = pd.date_range(start_time_str, end_time_str, freq=time_freq)
     site_ids = list(range(num_sites))
 
-    base_capacity_kwp_1d = np.array([0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 5, 7, 10, 12, 1, 0.5])
     base_longitude = np.round(np.linspace(-4, -3, 15), 2)
     base_latitude = np.round(np.linspace(51, 52, 15), 2)
 
-    capacity_kwp_1d = base_capacity_kwp_1d[:num_sites]
+    capacity_kwp_1d = np.full(num_sites, 1)
     longitude = base_longitude[:num_sites]
     latitude = base_latitude[:num_sites]
 
     data_shape = (len(times), num_sites)
     generation_data = np.random.uniform(0, 200, size=data_shape).astype(np.float32)
-    capacity_kwp_data = np.tile(capacity_kwp_1d, (len(times), 1)).astype(np.float32)
 
     coords = (("time_utc", times), ("site_id", site_ids))
-    da_cap = xr.DataArray(capacity_kwp_data, coords=coords)
     da_gen = xr.DataArray(generation_data, coords=coords)
 
     meta_df = pd.DataFrame()
@@ -380,12 +378,22 @@ def create_site_data(
     meta_df["longitude"] = longitude
     meta_df["latitude"] = latitude
 
-    generation_ds = xr.Dataset(
-        {
-            "capacity_kwp": da_cap,
-            "generation_kw": da_gen,
-        },
-    )
+    if variable_capacity:
+        capacity_kwp_data = np.tile(
+            np.random.uniform(1,100,1)*capacity_kwp_1d,
+            (len(times), 1)).astype(np.float32)
+        generation_ds = xr.Dataset(
+            {
+                "capacity_kwp": xr.DataArray(capacity_kwp_data, coords=coords),
+                "generation_kw": da_gen,
+            },
+        )
+    else:
+        generation_ds = xr.Dataset(
+            {
+                "generation_kw": da_gen,
+            },
+        )
     filename_data_path = tmp_path_base / f"sites_data_{param_key}.netcdf"
     filename_csv_path = tmp_path_base / f"sites_metadata_{param_key}.csv"
     generation_ds.to_netcdf(filename_data_path)
@@ -402,8 +410,13 @@ def create_site_data(
 
 
 @pytest.fixture(scope="session")
-def data_sites(session_tmp_path):
+def default_data_site_model(session_tmp_path):
     return create_site_data(tmp_path_base=session_tmp_path)
+
+
+@pytest.fixture(scope="session")
+def default_data_site_model_variable_capacity(session_tmp_path):
+    return create_site_data(tmp_path_base=session_tmp_path, variable_capacity=True)
 
 
 @pytest.fixture(scope="session")
@@ -430,11 +443,6 @@ def pvnet_config_filename(
     filename = f"{tmp_path}/configuration.yaml"
     save_yaml_configuration(config, filename)
     return filename
-
-
-@pytest.fixture(scope="session")
-def default_data_site_model(data_sites):
-    return data_sites
 
 
 @pytest.fixture()
