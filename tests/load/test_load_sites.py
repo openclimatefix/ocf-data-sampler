@@ -28,7 +28,6 @@ def test_open_site_variable_capacity(default_data_site_model_variable_capacity):
     site_model = default_data_site_model_variable_capacity
     da = open_site(site_model.file_path, site_model.metadata_file_path)
     generation_ds = xr.open_dataset(site_model.file_path)
-    capacity = generation_ds.capacity_kwp
 
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "site_id")
