@@ -14,7 +14,7 @@ from ocf_data_sampler.torch_datasets.sample.base import (
 )
 
 
-class TestSample(SampleBase):
+class SampleForTesting(SampleBase):
     """
     SampleBase for testing purposes
     Minimal implementations - abstract methods
@@ -45,22 +45,24 @@ class TestSample(SampleBase):
 
 def test_sample_base_initialisation():
     """Initialisation of SampleBase subclass"""
-    sample = TestSample()
+
+    sample = SampleForTesting()
     assert hasattr(sample, "_data"), "Sample should have _data attribute"
     assert sample._data == {}, "Sample should start with empty dict"
 
 
 def test_sample_base_save_load(tmp_path):
     """Test basic save and load functionality"""
-    sample = TestSample()
+
+    sample = SampleForTesting()
     sample._data["test_data"] = [1, 2, 3]
 
     save_path = tmp_path / "test_sample.dat"
     sample.save(save_path)
     assert save_path.exists()
 
-    loaded_sample = TestSample.load(save_path)
-    assert isinstance(loaded_sample, TestSample)
+    loaded_sample = SampleForTesting.load(save_path)
+    assert isinstance(loaded_sample, SampleForTesting)
 
 
 def test_sample_base_abstract_methods():
@@ -71,8 +73,12 @@ def test_sample_base_abstract_methods():
 
 def test_sample_base_to_numpy():
     """Test the to_numpy functionality"""
-    sample = TestSample()
-    sample._data = {"int_data": 42, "list_data": [1, 2, 3]}
+
+    sample = SampleForTesting()
+    sample._data = {
+        "int_data": 42,
+        "list_data": [1, 2, 3],
+    }
     numpy_data = sample.to_numpy()
 
     assert isinstance(numpy_data, dict)
