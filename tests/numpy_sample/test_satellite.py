@@ -1,7 +1,3 @@
-import numpy as np
-import pandas as pd
-import pytest
-import xarray as xr
 
 from ocf_data_sampler.numpy_sample import SatelliteSampleKey, convert_satellite_to_numpy_sample
 
