@@ -10,15 +10,15 @@ from ocf_data_sampler.load.site import open_site
 
 def test_open_site(default_data_site_model):
     """Test the site data loader with valid data."""
-    da = open_site(default_data_site_model.file_path, default_data_site_model.metadata_file_path)
+    da = open_site(
+        default_data_site_model.file_path,
+        default_data_site_model.metadata_file_path,
+    )
 
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "site_id")
-    assert "capacity_kwp" in da.coords
-    assert "latitude" in da.coords
-    assert "longitude" in da.coords
+    assert {"capacity_kwp", "latitude", "longitude"}.issubset(da.coords)
     assert da.shape == (49, 10)
-
     assert len(np.unique(da.coords["site_id"])) == da.shape[1]
 
 
@@ -28,11 +28,9 @@ def test_open_site_bad_dtype(tmp_path: Path):
     meta_path = tmp_path / "site_meta.csv"
 
     bad_ds = xr.Dataset(
-        data_vars={
-            "generation_kw": (("time_utc", "site_id"), np.random.rand(10, 2)),
-        },
+        data_vars={"generation_kw": (("time_utc", "site_id"), np.random.rand(10, 2))},
         coords={
-            "time_utc": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30min")),
+            "time_utc": pd.date_range("2023-01-01", periods=10, freq="30min"),
             "site_id": np.array([1.0, 2.0]),
         },
     )

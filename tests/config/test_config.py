@@ -4,9 +4,20 @@ from pydantic import ValidationError
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 
 
+def _load_config_and_provider(config_path):
+    config = load_yaml_configuration(config_path)
+    provider = next(iter(config.input_data.nwp.root.keys()))
+    return config, provider
+
+
+def _validate_configuration(config):
+    """Recreate config instance from dict to trigger validation."""
+    return Configuration(**config.model_dump())
+
+
 def test_default_configuration(test_config_gsp_path):
     """Test default pydantic class"""
-    _ = load_yaml_configuration(test_config_gsp_path)
+    load_yaml_configuration(test_config_gsp_path)
 
 
 def test_extra_field_error(test_config_gsp_path):
@@ -17,127 +28,115 @@ def test_extra_field_error(test_config_gsp_path):
     configuration_dict = configuration.model_dump()
     configuration_dict["extra_field"] = "extra_value"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        _ = Configuration(**configuration_dict)
+        Configuration(**configuration_dict)
 
 
 def test_incorrect_interval_start_minutes(test_config_filename):
     """
     Check a history length not divisible by time resolution causes error
     """
-
-    configuration = load_yaml_configuration(test_config_filename)
-
-    configuration.input_data.nwp["ukv"].interval_start_minutes = -1111
+    configuration, provider = _load_config_and_provider(test_config_filename)
+    configuration.input_data.nwp[provider].interval_start_minutes = -1111
     with pytest.raises(
         ValueError,
         match=r"interval_start_minutes \(-1111\) "
         r"must be divisible by time_resolution_minutes \(60\)",
     ):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
 
 def test_incorrect_interval_end_minutes(test_config_filename):
     """
     Check a forecast length not divisible by time resolution causes error
     """
-
-    configuration = load_yaml_configuration(test_config_filename)
-
-    configuration.input_data.nwp["ukv"].interval_end_minutes = 1111
+    configuration, provider = _load_config_and_provider(test_config_filename)
+    configuration.input_data.nwp[provider].interval_end_minutes = 1111
     with pytest.raises(
         ValueError,
         match=r"interval_end_minutes \(1111\) "
         r"must be divisible by time_resolution_minutes \(60\)",
     ):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
 
 def test_incorrect_nwp_provider(test_config_filename):
     """
     Check an unexpected nwp provider causes error
     """
-
-    configuration = load_yaml_configuration(test_config_filename)
-
-    configuration.input_data.nwp["ukv"].provider = "unexpected_provider"
+    configuration, provider = _load_config_and_provider(test_config_filename)
+    configuration.input_data.nwp[provider].provider = "unexpected_provider"
     with pytest.raises(Exception, match="NWP provider"):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
 
 def test_incorrect_dropout(test_config_filename):
     """
     Check a dropout timedelta over 0 causes error and 0 doesn't
     """
+    configuration, provider = _load_config_and_provider(test_config_filename)
 
-    configuration = load_yaml_configuration(test_config_filename)
-
-    # check a positive number is not allowed
-    configuration.input_data.nwp["ukv"].dropout_timedeltas_minutes = [120]
+    # Check that a positive number is not allowed
+    configuration.input_data.nwp[provider].dropout_timedeltas_minutes = [120]
     with pytest.raises(Exception, match="Dropout timedeltas must be negative"):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
-    # check 0 is allowed
-    configuration.input_data.nwp["ukv"].dropout_timedeltas_minutes = [0]
-    _ = Configuration(**configuration.model_dump())
+    # Check that zero is allowed
+    configuration.input_data.nwp[provider].dropout_timedeltas_minutes = [0]
+    _validate_configuration(configuration)
 
 
 def test_incorrect_dropout_fraction(test_config_filename):
     """
     Check dropout fraction outside of range causes error
     """
+    configuration, provider = _load_config_and_provider(test_config_filename)
 
-    configuration = load_yaml_configuration(test_config_filename)
-
-    configuration.input_data.nwp["ukv"].dropout_fraction = 1.1
-
+    configuration.input_data.nwp[provider].dropout_fraction = 1.1
     with pytest.raises(ValidationError, match=r"Dropout fractions must be in range *"):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
-    configuration.input_data.nwp["ukv"].dropout_fraction = -0.1
+    configuration.input_data.nwp[provider].dropout_fraction = -0.1
     with pytest.raises(ValidationError, match=r"Dropout fractions must be in range *"):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
-    configuration.input_data.nwp["ukv"].dropout_fraction = [1.0,0.1]
+    configuration.input_data.nwp[provider].dropout_fraction = [1.0, 0.1]
     with pytest.raises(ValidationError, match=r"The sum of dropout fractions must be in range *"):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
-    configuration.input_data.nwp["ukv"].dropout_fraction = [-0.1,1.1]
+    configuration.input_data.nwp[provider].dropout_fraction = [-0.1, 1.1]
     with pytest.raises(ValidationError, match=r"All dropout fractions must be in range *"):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
-    configuration.input_data.nwp["ukv"].dropout_fraction = []
+    configuration.input_data.nwp[provider].dropout_fraction = []
     with pytest.raises(ValidationError, match="List cannot be empty"):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
 
 def test_inconsistent_dropout_use(test_config_filename):
     """
     Check dropout fraction outside of range causes error
     """
-
     configuration = load_yaml_configuration(test_config_filename)
     configuration.input_data.satellite.dropout_fraction = 1.0
     configuration.input_data.satellite.dropout_timedeltas_minutes = []
-
     with pytest.raises(
         ValueError,
         match="To dropout fraction > 0 requires a list of dropout timedeltas",
     ):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
+
     configuration.input_data.satellite.dropout_fraction = 0.0
     configuration.input_data.satellite.dropout_timedeltas_minutes = [-120, -60]
     with pytest.raises(
         ValueError,
         match="To use dropout timedeltas dropout fraction should be > 0",
     ):
-        _ = Configuration(**configuration.model_dump())
+        _validate_configuration(configuration)
 
 
 def test_accum_channels_validation(test_config_filename):
     """Test accum_channels validation with required normalization constants."""
-    # Load valid config (implicitly tests valid case)
-    config = load_yaml_configuration(test_config_filename)
-    nwp_name, _ = next(iter(config.input_data.nwp.root.items()))
+    config, nwp_name = _load_config_and_provider(test_config_filename)
 
     # Test invalid channel scenario
     invalid_config = config.model_copy(deep=True)
@@ -152,7 +151,7 @@ def test_accum_channels_validation(test_config_filename):
         r"Extra values found: {'invalid_channel'}.*"
     )
     with pytest.raises(ValidationError, match=expected_error):
-        _ = Configuration(**invalid_config.model_dump())
+        _validate_configuration(invalid_config)
 
 
 def test_configuration_requires_site_or_gsp():
@@ -161,4 +160,3 @@ def test_configuration_requires_site_or_gsp():
     """
     with pytest.raises(ValidationError, match="You must provide either `site` or `gsp`"):
         Configuration()
-

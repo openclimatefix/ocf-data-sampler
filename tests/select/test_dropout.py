@@ -48,19 +48,14 @@ def test_apply_history_dropout_none(da_sample):
         dropout_frac=0,
         da=da_sample,
     )
-
-    # Check data arrays are equal as dropout time would be None
     xr.testing.assert_equal(da_sample_dropout, da_sample)
 
-    # No dropout timedeltas and dropout fraction is 0
     da_sample_dropout = apply_history_dropout(
         t0,
         dropout_timedeltas=[],
         dropout_frac=0,
         da=da_sample,
     )
-
-    # Check data arrays are equal as dropout time would be None
     xr.testing.assert_equal(da_sample_dropout, da_sample)
 
 
@@ -70,14 +65,15 @@ def test_apply_history_dropout_list(da_sample):
     da_sample_dropout = apply_history_dropout(
         t0,
         dropout_timedeltas=minutes([-30, -45]),
-        dropout_frac=[0.5,0.5],
+        dropout_frac=[0.5, 0.5],
         da=da_sample,
     )
 
     latest_expected_cut_off = t0 + minutes(-30)
 
     assert (
-        da_sample_dropout.sel(time_utc=slice(latest_expected_cut_off + minutes(5), None))
+        da_sample_dropout
+        .sel(time_utc=slice(latest_expected_cut_off + minutes(5), None))
         .isnull()
         .all()
     )
@@ -96,5 +92,4 @@ def test_apply_history_dropout(da_sample, t0_str):
     )
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
-    assert (da_dropout.sel(time_utc=slice(dropout_time + minutes(5), t0_time)).isnull().all())
-
+    assert da_dropout.sel(time_utc=slice(dropout_time + minutes(5), t0_time)).isnull().all()

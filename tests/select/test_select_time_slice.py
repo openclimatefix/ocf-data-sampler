@@ -55,7 +55,7 @@ def test_select_time_slice(da_sat_like, t0_str):
 
     # Slice parameters
     t0 = pd.Timestamp(f"2024-01-02 {t0_str}")
-    interval_start = pd.Timedelta(-0, "min")
+    interval_start = pd.Timedelta(0, "min")
     interval_end = pd.Timedelta(60, "min")
     freq = pd.Timedelta("5min")
 
@@ -113,7 +113,7 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
     if expected_datetimes[0] < min_time:
         assert all_nan_space.sel(time_utc=slice(None, min_time - freq)).all(dim="time_utc")
 
-    # Check all the values before the first timestamp available in the data are NaN
+    # Check all the values after the last timestamp available in the data are NaN
     if expected_datetimes[-1] > max_time:
         assert all_nan_space.sel(time_utc=slice(max_time + freq, None)).all(dim="time_utc")
 
@@ -145,7 +145,6 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
 
     # Check the target-times are as expected
     expected_target_times = pd.date_range(t0 + interval_start, t0 + interval_end, freq=freq)
-
     valid_times = da_slice.init_time_utc + da_slice.step
     assert (valid_times == expected_target_times).all()
 
@@ -154,7 +153,7 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
     expected_init_times = pd.to_datetime(
         [t if t < t0 else t0 for t in expected_target_times],
     ).floor(NWP_FREQ)
-    assert (expected_init_times==da_slice.init_time_utc.values).all()
+    assert (expected_init_times == da_slice.init_time_utc.values).all()
 
 
 @pytest.mark.parametrize("dropout_hours", [1, 2, 5])
@@ -187,4 +186,4 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
     expected_init_times = pd.to_datetime(
         [t if t < t0_delayed else t0_delayed for t in expected_target_times],
     ).floor(NWP_FREQ)
-    assert (expected_init_times==da_slice.init_time_utc.values).all()
+    assert (expected_init_times == da_slice.init_time_utc.values).all()

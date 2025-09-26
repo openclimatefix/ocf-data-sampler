@@ -1,6 +1,5 @@
 """Tests for configuration saving functionality."""
 
-import os
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 
@@ -8,11 +7,9 @@ from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configura
 def test_save_yaml_configuration_basic(tmp_path, test_config_gsp_path):
     """Save an empty configuration object"""
     config = load_yaml_configuration(test_config_gsp_path)
-
-    filepath = f"{tmp_path}/config.yaml"
+    filepath = tmp_path / "config.yaml"
     save_yaml_configuration(config, filepath)
-
-    assert os.path.exists(filepath)
+    assert filepath.exists()
 
 
 def test_save_load_yaml_configuration(tmp_path, test_config_filename):
@@ -21,10 +18,7 @@ def test_save_load_yaml_configuration(tmp_path, test_config_filename):
     # Start with this config
     initial_config = load_yaml_configuration(test_config_filename)
 
-    # Save it
-    filepath = f"{tmp_path}/config.yaml"
+    # Save it - then load and check it is identical
+    filepath = tmp_path / "config.yaml"
     save_yaml_configuration(initial_config, filepath)
-
-    # Load it and check it is still the same
-    loaded_config = load_yaml_configuration(filepath)
-    assert loaded_config == initial_config
+    assert load_yaml_configuration(filepath) == initial_config

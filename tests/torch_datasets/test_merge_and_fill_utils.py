@@ -31,9 +31,7 @@ def test_fill_nans_in_arrays():
     array_with_nans = np.array([1.0, np.nan, 3.0, np.nan])
     nested_dict = {
         "array1": array_with_nans,
-        "nested": {
-            "array2": np.array([np.nan, 2.0, np.nan, 4.0]),
-        },
+        "nested": {"array2": np.array([np.nan, 2.0, np.nan, 4.0])},
         "string_key": "not_an_array",
     }
 

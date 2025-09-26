@@ -18,7 +18,6 @@ def test_open_satellite(sat_zarr_path):
     # There are 11 channels
     # There are 100 x 100 pixels
     assert da.shape == (288, 11, 100, 100)
-
     assert len(np.unique(da.coords["channel"])) == da.shape[1]
 
 
@@ -35,7 +34,7 @@ def test_open_satellite_bad_dtype(tmp_path: Path):
             ),
         },
         coords={
-            "time": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="5min")),
+            "time": pd.date_range("2023-01-01", periods=10, freq="5min"),
             "variable": [1, 2],
             "y_geostationary": np.arange(4),
             "x_geostationary": np.arange(4),
