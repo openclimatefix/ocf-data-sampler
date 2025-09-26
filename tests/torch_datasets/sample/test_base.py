@@ -14,7 +14,7 @@ from ocf_data_sampler.torch_datasets.sample.base import (
 )
 
 
-class TestSample(SampleBase):
+class SampleForTesting(SampleBase):
     """
     SampleBase for testing purposes
     Minimal implementations - abstract methods
@@ -29,7 +29,7 @@ class TestSample(SampleBase):
         return None
 
     @override
-    def to_numpy(self) -> None:
+    def to_numpy(self) -> dict:
         return {key: np.array(value) for key, value in self._data.items()}
 
     @override
@@ -46,7 +46,7 @@ class TestSample(SampleBase):
 def test_sample_base_initialisation():
     """Initialisation of SampleBase subclass"""
 
-    sample = TestSample()
+    sample = SampleForTesting()
     assert hasattr(sample, "_data"), "Sample should have _data attribute"
     assert sample._data == {}, "Sample should start with empty dict"
 
@@ -54,20 +54,19 @@ def test_sample_base_initialisation():
 def test_sample_base_save_load(tmp_path):
     """Test basic save and load functionality"""
 
-    sample = TestSample()
+    sample = SampleForTesting()
     sample._data["test_data"] = [1, 2, 3]
 
     save_path = tmp_path / "test_sample.dat"
     sample.save(save_path)
     assert save_path.exists()
 
-    loaded_sample = TestSample.load(save_path)
-    assert isinstance(loaded_sample, TestSample)
+    loaded_sample = SampleForTesting.load(save_path)
+    assert isinstance(loaded_sample, SampleForTesting)
 
 
 def test_sample_base_abstract_methods():
     """Test abstract method enforcement"""
-
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
         SampleBase()
 
@@ -75,7 +74,7 @@ def test_sample_base_abstract_methods():
 def test_sample_base_to_numpy():
     """Test the to_numpy functionality"""
 
-    sample = TestSample()
+    sample = SampleForTesting()
     sample._data = {
         "int_data": 42,
         "list_data": [1, 2, 3],
@@ -83,17 +82,13 @@ def test_sample_base_to_numpy():
     numpy_data = sample.to_numpy()
 
     assert isinstance(numpy_data, dict)
-    assert all(isinstance(value, np.ndarray) for value in numpy_data.values())
+    assert all(isinstance(v, np.ndarray) for v in numpy_data.values())
     assert np.array_equal(numpy_data["list_data"], np.array([1, 2, 3]))
 
 
 def test_batch_to_tensor_nested():
     """Test nested dictionary conversion"""
-    batch = {
-        "outer": {
-            "inner": np.array([1, 2, 3]),
-        },
-    }
+    batch = {"outer": {"inner": np.array([1, 2, 3])}}
     tensor_batch = batch_to_tensor(batch)
 
     assert torch.equal(tensor_batch["outer"]["inner"], torch.tensor([1, 2, 3]))
@@ -104,10 +99,7 @@ def test_batch_to_tensor_mixed_types():
     batch = {
         "tensor_data": np.array([1, 2, 3]),
         "string_data": "not_a_tensor",
-        "nested": {
-            "numbers": np.array([4, 5, 6]),
-            "text": "still_not_a_tensor",
-        },
+        "nested": {"numbers": np.array([4, 5, 6]), "text": "still_not_a_tensor"},
     }
     tensor_batch = batch_to_tensor(batch)
 
@@ -147,15 +139,14 @@ def test_batch_to_tensor_multidimensional():
 
 def test_copy_batch_to_device():
     """Test moving tensors to a different device"""
-    device = torch.device("cuda", index=0) if torch.cuda.is_available() else  torch.device("cpu")
+    device = torch.device("cuda", index=0) if torch.cuda.is_available() else torch.device("cpu")
     batch = {
         "tensor_data": torch.tensor([1, 2, 3]),
-        "nested": {
-            "matrix": torch.tensor([[1, 2], [3, 4]]),
-        },
+        "nested": {"matrix": torch.tensor([[1, 2], [3, 4]])},
         "non_tensor": "unchanged",
     }
     moved_batch = copy_batch_to_device(batch, device)
+
     assert moved_batch["tensor_data"].device == device
     assert moved_batch["nested"]["matrix"].device == device
     assert moved_batch["non_tensor"] == "unchanged"  # Non-tensors should remain unchanged

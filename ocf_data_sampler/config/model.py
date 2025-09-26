@@ -7,7 +7,7 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 from collections.abc import Iterator
 from typing import Literal
 
-from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
 
 NWP_PROVIDERS = [
@@ -23,10 +23,7 @@ NWP_PROVIDERS = [
 class Base(BaseModel):
     """Pydantic Base model where no extras can be added."""
 
-    class Config:
-        """Config class."""
-
-        extra = "forbid"  # forbid use of extra kwargs
+    model_config = ConfigDict(extra="forbid")
 
 
 class General(Base):
@@ -91,10 +88,15 @@ class DropoutMixin(Base):
     )
 
     dropout_fraction: float | list[float] = Field(
-        default=0,
+        default=0.0,
         description="Either a float(Chance of dropout being applied to each sample) or a list of "
         "floats (probability that dropout of the corresponding timedelta is applied)",
     )
+
+    dropout_value: float = Field(
+        default=0.0,
+        description="The value to use for dropped out values. "
+        "Idea is to use -1, but to be backwards comptaible we've put the default as 0")
 
     @field_validator("dropout_timedeltas_minutes")
     def dropout_timedeltas_minutes_negative(cls, v: list[int]) -> list[int]:

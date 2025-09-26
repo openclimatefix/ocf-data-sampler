@@ -206,7 +206,7 @@ class AbstractPVNetUKDataset(PickleCacheMixin, Dataset):
 
         # Combine all the modalities and fill NaNs
         combined_sample = merge_dicts(numpy_modalities)
-        combined_sample = fill_nans_in_arrays(combined_sample)
+        combined_sample = fill_nans_in_arrays(combined_sample, config=self.config)
 
         return combined_sample
 

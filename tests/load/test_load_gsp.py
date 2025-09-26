@@ -15,9 +15,7 @@ def test_get_gsp_boundaries(version, expected_length):
 
     assert isinstance(df, pd.DataFrame)
     assert len(df) == expected_length
-    assert "x_osgb" in df.columns
-    assert "y_osgb" in df.columns
-
+    assert {"x_osgb", "y_osgb"}.issubset(df.columns)
     assert df.index.is_unique
 
 
@@ -27,12 +25,8 @@ def test_open_gsp(uk_gsp_zarr_path):
 
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "gsp_id")
-
-    assert "effective_capacity_mwp" in da.coords
-    assert "x_osgb" in da.coords
-    assert "y_osgb" in da.coords
+    assert {"effective_capacity_mwp", "x_osgb", "y_osgb"}.issubset(da.coords)
     assert da.shape == (49, 318)
-
     assert len(np.unique(da.coords["gsp_id"])) == da.shape[1]
 
 
@@ -48,7 +42,7 @@ def test_open_gsp_bad_dtype(tmp_path: Path):
             "capacity_mwp": (("gsp_id",), [90.0, 110.0]),
         },
         coords={
-            "datetime_gmt": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30T")),
+            "datetime_gmt": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30min")),
             "gsp_id": [1, 2],
         },
     )

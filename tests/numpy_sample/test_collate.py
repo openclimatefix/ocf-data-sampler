@@ -3,19 +3,15 @@ from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import PVNetUKRegionalDat
 
 
 def test_stack_np_samples_into_batch(pvnet_config_filename):
-    # Create dataset object
+
+    # Create dataset object - generate two samples
     dataset = PVNetUKRegionalDataset(pvnet_config_filename)
-
-    # Generate 2 samples
-    sample1 = dataset[0]
-    sample2 = dataset[1]
-
-    batch = stack_np_samples_into_batch([sample1, sample2])
+    batch = stack_np_samples_into_batch([dataset[0], dataset[1]])
 
     assert isinstance(batch, dict)
     assert "nwp" in batch
     assert isinstance(batch["nwp"], dict)
     assert "ukv" in batch["nwp"]
-    assert "gsp" in batch
-    assert "satellite_actual" in batch
-    assert "t0" in batch
+
+    for key in ("gsp", "satellite_actual", "t0"):
+        assert key in batch

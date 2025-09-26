@@ -1,6 +1,5 @@
 """Torch dataset for sites."""
 
-import numpy as np
 import pandas as pd
 import xarray as xr
 from torch.utils.data import Dataset
@@ -140,7 +139,7 @@ def process_and_combine_datasets(
 
     # Combine all the modalities and fill NaNs
     combined_sample = merge_dicts(numpy_modalities)
-    combined_sample = fill_nans_in_arrays(combined_sample)
+    combined_sample = fill_nans_in_arrays(combined_sample, config=config)
 
     return combined_sample
 
@@ -331,7 +330,12 @@ class SitesDatasetConcurrent(PickleCacheMixin, Dataset):
         self.config = config
 
         # get all locations
-        self.locations = get_locations(datasets_dict["site"])
+        locations = get_locations(datasets_dict["site"])
+        self.locations = add_alterate_coordinate_projections(
+            locations,
+            datasets_dict,
+            primary_coords="lon_lat",
+        )
 
         # Get t0 times where all input data is available
         valid_t0s = self.find_valid_t0s(datasets_dict)
@@ -436,25 +440,3 @@ class SitesDatasetConcurrent(PickleCacheMixin, Dataset):
             site_samples.append(site_numpy_sample)
 
         return stack_np_samples_into_batch(site_samples)
-
-
-def coarsen_data(xr_data: xr.Dataset, coarsen_to_deg: float = 0.1) -> xr.Dataset:
-    """Coarsen the data to a specified resolution in degrees.
-
-    Args:
-        xr_data: xarray dataset to coarsen
-        coarsen_to_deg: resolution to coarsen to in degrees
-    """
-    if "latitude" in xr_data.coords and "longitude" in xr_data.coords:
-        step = np.abs(xr_data.latitude.values[1] - xr_data.latitude.values[0])
-        step = np.round(step, 4)
-        coarsen_factor = int(coarsen_to_deg / step)
-        if coarsen_factor > 1:
-            xr_data = xr_data.coarsen(
-                latitude=coarsen_factor,
-                longitude=coarsen_factor,
-                boundary="pad",
-                coord_func="min",
-            ).mean()
-
-    return xr_data

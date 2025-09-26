@@ -27,11 +27,8 @@ def da_sat_like():
 
 
 def test_convert_satellite_to_numpy_sample(da_sat_like):
-    # Call the function
     numpy_sample = convert_satellite_to_numpy_sample(da_sat_like)
 
-    # Assert the output type
+    # Assert output type and shape of sample
     assert isinstance(numpy_sample, dict)
-
-    # Assert the shape of the numpy sample
     assert (numpy_sample[SatelliteSampleKey.satellite_actual] == da_sat_like.values).all()
