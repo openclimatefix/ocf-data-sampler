@@ -32,7 +32,7 @@ def test_open_site_variable_capacity(default_data_site_model_variable_capacity):
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "site_id")
     assert "capacity_kwp" in da.coords
-    assert (da.capacity_kwp.data == generation_ds['capacity_kwp']).all()
+    assert (da.capacity_kwp.data == generation_ds["capacity_kwp"]).all()
     assert "latitude" in da.coords
     assert "longitude" in da.coords
     assert da.shape == (49, 10)
