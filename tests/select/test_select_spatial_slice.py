@@ -9,7 +9,6 @@ from ocf_data_sampler.select.select_spatial_slice import (
 )
 
 
-
 def test_get_idx_of_pixel_closest_to_poi(da):
     idx_location = _get_pixel_index_location(da, location=Location(x=10, y=10, coord_system="osgb"))
     assert idx_location == (110, 110)
