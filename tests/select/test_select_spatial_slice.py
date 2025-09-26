@@ -9,21 +9,6 @@ from ocf_data_sampler.select.select_spatial_slice import (
 )
 
 
-@pytest.fixture(scope="module")
-def da():
-    # Create dummy data
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
-
-    da = xr.DataArray(
-        np.random.normal(size=(len(x), len(y))),
-        coords={
-            "x_osgb": (["x_osgb"], x),
-            "y_osgb": (["y_osgb"], y),
-        },
-    )
-    return da
-
 
 def test_get_idx_of_pixel_closest_to_poi(da):
     idx_location = _get_pixel_index_location(da, location=Location(x=10, y=10, coord_system="osgb"))
