@@ -390,10 +390,10 @@ def create_site_data(
             "generation_kw": da_gen,
         },
     )
-    
+
     data_path = tmp_path_base / f"sites_data_{param_key}.netcdf"
     metadata_path = tmp_path_base / f"sites_metadata_{param_key}.csv"
-    
+
     generation_ds.to_netcdf(data_path)
     meta_df.to_csv(metadata_path, index=False)
 
