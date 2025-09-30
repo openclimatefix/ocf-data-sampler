@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
-from tests.constants import NWP_FREQ
+from tests.conftest import NWP_FREQ
 
 
 @pytest.mark.parametrize("t0_str", ["12:30", "12:40", "12:00"])

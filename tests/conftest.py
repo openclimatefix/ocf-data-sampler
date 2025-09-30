@@ -14,6 +14,7 @@ from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
+NWP_FREQ = pd.Timedelta("3h")
 
 uk_sat_area_string = """msg_seviri_rss_3km:
     description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution

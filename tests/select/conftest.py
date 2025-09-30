@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from tests.constants import NWP_FREQ
+from tests.conftest import NWP_FREQ
 
 
 @pytest.fixture(scope="module")
