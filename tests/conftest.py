@@ -1,5 +1,4 @@
 import hashlib
-import os
 from pathlib import Path
 
 import dask.array
@@ -12,7 +11,9 @@ from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configura
 from ocf_data_sampler.config.model import Site, SolarPosition
 from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
 
-_top_test_directory = os.path.dirname(os.path.realpath(__file__))
+TEST_DIR = Path(__file__).parent
+TEST_DATA_DIR = TEST_DIR / "test_data"
+CONFIG_DIR = TEST_DATA_DIR / "configs"
 
 NWP_FREQ = pd.Timedelta("3h")
 
@@ -40,19 +41,23 @@ uk_sat_area_string = """msg_seviri_rss_3km:
 
 @pytest.fixture()
 def test_config_filename():
-    return f"{_top_test_directory}/test_data/configs/test_config.yaml"
+    return str(CONFIG_DIR / "test_config.yaml")
+
 
 @pytest.fixture()
 def test_config_gsp_path():
-    return f"{_top_test_directory}/test_data/configs/gsp_test_config.yaml"
+    return str(CONFIG_DIR / "gsp_test_config.yaml")
+
 
 @pytest.fixture(scope="session")
 def site_test_config_path():
-    return f"{_top_test_directory}/test_data/configs/site_test_config.yaml"
+    return str(CONFIG_DIR / "site_test_config.yaml")
+
 
 @pytest.fixture(scope="session")
 def config_filename():
-    return f"{_top_test_directory}/test_data/configs/pvnet_test_config.yaml"
+    return str(CONFIG_DIR / "pvnet_test_config.yaml")
+
 
 @pytest.fixture(scope="session")
 def session_tmp_path(tmp_path_factory):
@@ -149,7 +154,6 @@ def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
 
 @pytest.fixture()
 def ds_nwp_ukv_time_sliced():
-
     t0 = pd.to_datetime("2024-01-02 00:00")
     x = np.arange(-100, 100, 10)
     y = np.arange(-100, 100, 10)
@@ -269,7 +273,6 @@ def icon_eu_zarr_path(session_tmp_path):
 
 @pytest.fixture(scope="session")
 def nwp_cloudcasting_zarr_path(session_tmp_path):
-
     init_times = pd.date_range(start="2023-01-01 00:00", freq="1h", periods=2)
     steps = pd.timedelta_range("15min", "180min", freq="15min")
 
@@ -349,7 +352,7 @@ def create_site_data(
 ) -> Site:
     """
     Make fake data for sites
-    Returns: filename for netcdf file, and csv metadata
+    Returns: Site model with paths to generated netcdf file and csv metadata
     """
     param_tuple = (num_sites, start_time_str, end_time_str, time_freq,
                    site_interval_start_minutes, site_interval_end_minutes,
@@ -387,14 +390,16 @@ def create_site_data(
             "generation_kw": da_gen,
         },
     )
-    filename_data_path = tmp_path_base / f"sites_data_{param_key}.netcdf"
-    filename_csv_path = tmp_path_base / f"sites_metadata_{param_key}.csv"
-    generation_ds.to_netcdf(filename_data_path)
-    meta_df.to_csv(filename_csv_path, index=False)
+    
+    data_path = tmp_path_base / f"sites_data_{param_key}.netcdf"
+    metadata_path = tmp_path_base / f"sites_metadata_{param_key}.csv"
+    
+    generation_ds.to_netcdf(data_path)
+    meta_df.to_csv(metadata_path, index=False)
 
     site_model = Site(
-        file_path=str(filename_data_path),
-        metadata_file_path=str(filename_csv_path),
+        file_path=str(data_path),
+        metadata_file_path=str(metadata_path),
         interval_start_minutes=site_interval_start_minutes,
         interval_end_minutes=site_interval_end_minutes,
         time_resolution_minutes=site_time_resolution_minutes,
@@ -428,9 +433,9 @@ def pvnet_config_filename(
     config.input_data.satellite.zarr_path = sat_zarr_path
     config.input_data.gsp.zarr_path = uk_gsp_zarr_path
 
-    filename = f"{tmp_path}/configuration.yaml"
-    save_yaml_configuration(config, filename)
-    return filename
+    config_path = tmp_path / "configuration.yaml"
+    save_yaml_configuration(config, str(config_path))
+    return str(config_path)
 
 
 @pytest.fixture(scope="session")
@@ -459,9 +464,9 @@ def site_config_filename(
         interval_end_minutes=60,
     )
 
-    config_output_path = tmp_path / "configuration_site_test.yaml"
-    save_yaml_configuration(config, str(config_output_path))
-    yield str(config_output_path)
+    config_path = tmp_path / "configuration_site_test.yaml"
+    save_yaml_configuration(config, str(config_path))
+    yield str(config_path)
 
 
 @pytest.fixture()
