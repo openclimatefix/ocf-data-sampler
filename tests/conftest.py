@@ -14,6 +14,7 @@ from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
 
 _top_test_directory = os.path.dirname(os.path.realpath(__file__))
 
+NWP_FREQ = pd.Timedelta("3h")
 
 uk_sat_area_string = """msg_seviri_rss_3km:
     description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
@@ -466,3 +467,21 @@ def site_config_filename(
 @pytest.fixture()
 def sites_dataset(site_config_filename):
     return SitesDataset(site_config_filename)
+
+
+@pytest.fixture(scope="session")
+def da_sat_like():
+    """Create dummy data which looks like satellite data"""
+    x = np.arange(-100, 100)
+    y = np.arange(-100, 100)
+    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq="5min")
+
+    da_sat = xr.DataArray(
+        np.random.normal(size=(len(datetimes), len(x), len(y))),
+        coords={
+            "time_utc": (["time_utc"], datetimes),
+            "x_geostationary": (["x_geostationary"], x),
+            "y_geostationary": (["y_geostationary"], y),
+        },
+    )
+    return da_sat

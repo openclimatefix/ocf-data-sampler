@@ -9,45 +9,12 @@ import numpy as np
 import pytest
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.config.load import load_yaml_configuration
 from ocf_data_sampler.numpy_sample import GSPSampleKey, NWPSampleKey, SatelliteSampleKey
 from ocf_data_sampler.torch_datasets.sample.uk_regional import UKRegionalSample
 
 
-@pytest.fixture
-def numpy_sample():
-    """Synthetic data generation"""
-    expected_gsp_shape = (7,)
-    expected_nwp_ukv_shape = (4, 1, 2, 2)
-    expected_sat_shape = (7, 1, 2, 2)
-    expected_solar_shape = (7,)
-
-    nwp_data = {
-        "nwp": np.random.rand(*expected_nwp_ukv_shape),
-        "x": np.array([1, 2]),
-        "y": np.array([1, 2]),
-        NWPSampleKey.channel_names: ["t"],
-    }
-
-    return {
-        "nwp": {
-            "ukv": nwp_data,
-        },
-        GSPSampleKey.gsp: np.random.rand(*expected_gsp_shape),
-        SatelliteSampleKey.satellite_actual: np.random.rand(*expected_sat_shape),
-        "solar_azimuth": np.random.rand(*expected_solar_shape),
-        "solar_elevation": np.random.rand(*expected_solar_shape),
-    }
-
-
-@pytest.fixture
-def pvnet_configuration_object(pvnet_config_filename) -> Configuration:
-    """Loads the configuration from the temporary file path."""
-    return load_yaml_configuration(pvnet_config_filename)
-
-
-def test_sample_save_load(numpy_sample):
-    sample = UKRegionalSample(numpy_sample)
+def test_sample_save_load(numpy_sample_gsp):
+    sample = UKRegionalSample(numpy_sample_gsp)
 
     with tempfile.NamedTemporaryFile(suffix=".pt") as tf:
         sample.save(tf.name)
@@ -74,9 +41,9 @@ def test_load_corrupted_file():
             UKRegionalSample.load(tf.name)
 
 
-def test_to_numpy(numpy_sample):
+def test_to_numpy(numpy_sample_gsp):
     """To numpy conversion check"""
-    sample = UKRegionalSample(numpy_sample)
+    sample = UKRegionalSample(numpy_sample_gsp)
     numpy_data = sample.to_numpy()
 
     # Check returned data matches
@@ -93,9 +60,9 @@ def test_to_numpy(numpy_sample):
     assert numpy_data["solar_elevation"].shape == (7,)
 
 
-def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration, caplog):
+def test_validate_sample(numpy_sample_gsp, pvnet_configuration_object: Configuration, caplog):
     """Test the validate_sample method succeeds with no warnings for a valid sample."""
-    sample = UKRegionalSample(numpy_sample)
+    sample = UKRegionalSample(numpy_sample_gsp)
     with caplog.at_level(logging.WARNING):
         result = sample.validate_sample(pvnet_configuration_object)
 
@@ -105,16 +72,16 @@ def test_validate_sample(numpy_sample, pvnet_configuration_object: Configuration
 
 
 def test_validate_sample_with_missing_keys(
-    numpy_sample,
+    numpy_sample_gsp,
     pvnet_configuration_object: Configuration,
 ):
     """Test validation raises ValueError when configured satellite data is missing."""
-    modified_data = numpy_sample.copy()
+    modified_data = numpy_sample_gsp.copy()
     sat_key = SatelliteSampleKey.satellite_actual
     if sat_key in modified_data:
         modified_data.pop(sat_key)
     else:
-        pytest.fail(f"Fixture 'numpy_sample' did not contain the key to be removed: {sat_key}")
+        pytest.fail(f"Fixture 'numpy_sample_gsp' did not contain the key to be removed: {sat_key}")
 
     sample = UKRegionalSample(modified_data)
     expected_error_pattern = f"^Configuration expects Satellite data \\('{sat_key}'\\).*missing"
@@ -124,11 +91,11 @@ def test_validate_sample_with_missing_keys(
 
 
 def test_validate_sample_with_wrong_shapes(
-    numpy_sample,
+    numpy_sample_gsp,
     pvnet_configuration_object: Configuration,
 ):
     """Test validation raises ValueError when data shape is incorrect (GSP)."""
-    modified_data = numpy_sample.copy()
+    modified_data = numpy_sample_gsp.copy()
     modified_data[GSPSampleKey.gsp] = np.random.rand(10)
 
     sample = UKRegionalSample(modified_data)
@@ -138,11 +105,11 @@ def test_validate_sample_with_wrong_shapes(
 
 
 def test_validate_sample_with_missing_solar_coors(
-    numpy_sample,
+    numpy_sample_gsp,
     pvnet_configuration_object: Configuration,
 ):
     """Test validation raises ValueError when solar data is missing."""
-    modified_data = numpy_sample.copy()
+    modified_data = numpy_sample_gsp.copy()
     solar_key = "solar_azimuth"
     modified_data.pop(solar_key)
 
@@ -154,11 +121,11 @@ def test_validate_sample_with_missing_solar_coors(
 
 
 def test_validate_sample_with_wrong_solar_shapes(
-    numpy_sample,
+    numpy_sample_gsp,
     pvnet_configuration_object: Configuration,
 ):
     """Test validation raises ValueError when solar data shape is incorrect."""
-    modified_data = numpy_sample.copy()
+    modified_data = numpy_sample_gsp.copy()
     modified_data["solar_azimuth"] = np.random.rand(10)
 
     sample = UKRegionalSample(modified_data)
@@ -168,12 +135,12 @@ def test_validate_sample_with_wrong_solar_shapes(
 
 
 def test_validate_sample_with_unexpected_provider(
-    numpy_sample,
+    numpy_sample_gsp,
     pvnet_configuration_object: Configuration,
     caplog,
 ):
     """Test validation passes and logs a warning for an unexpected NWP provider."""
-    modified_data = numpy_sample.copy()
+    modified_data = numpy_sample_gsp.copy()
     unexpected_provider = "unexpected_provider"
     nwp_data = {
         "nwp": np.random.rand(4, 1, 2, 2).astype(np.float32),
@@ -203,12 +170,12 @@ def test_validate_sample_with_unexpected_provider(
 
 
 def test_validate_sample_with_unexpected_component(
-    numpy_sample,
+    numpy_sample_gsp,
     pvnet_configuration_object: Configuration,
     caplog,
 ):
     """Test validation passes and logs a warning for an unexpected component."""
-    modified_data = numpy_sample.copy()
+    modified_data = numpy_sample_gsp.copy()
     unexpected_key = "unexpected_component_key_xyz"
     modified_data[unexpected_key] = np.random.rand(7).astype(np.float32)
 

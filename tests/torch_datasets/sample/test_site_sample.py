@@ -5,43 +5,14 @@ Site class testing - SiteSample
 import tempfile
 
 import numpy as np
-import pytest
 
-from ocf_data_sampler.numpy_sample import NWPSampleKey, SatelliteSampleKey, SiteSampleKey
+from ocf_data_sampler.numpy_sample import SatelliteSampleKey, SiteSampleKey
 from ocf_data_sampler.torch_datasets.sample.site import SiteSample
 
 
-@pytest.fixture
-def numpy_sample():
-    """Synthetic data generation"""
-    expected_site_shape = (7,)
-    expected_nwp_ukv_shape = (4, 1, 2, 2)
-    expected_sat_shape = (7, 1, 2, 2)
-    expected_solar_shape = (7,)
-
-    nwp_data = {
-        "nwp": np.random.rand(*expected_nwp_ukv_shape),
-        "x": np.array([1, 2]),
-        "y": np.array([1, 2]),
-        NWPSampleKey.channel_names: ["t"],
-    }
-
-    return {
-        "nwp": {"ukv": nwp_data},
-        SiteSampleKey.generation: np.random.rand(*expected_site_shape),
-        SatelliteSampleKey.satellite_actual: np.random.rand(*expected_sat_shape),
-        "solar_azimuth": np.random.rand(*expected_solar_shape),
-        "solar_elevation": np.random.rand(*expected_solar_shape),
-        "date_cos": np.random.rand(*expected_solar_shape),
-        "date_sin": np.random.rand(*expected_solar_shape),
-        "time_cos": np.random.rand(*expected_solar_shape),
-        "time_sin": np.random.rand(*expected_solar_shape),
-    }
-
-
-def test_site_sample_with_data(numpy_sample):
+def test_site_sample_with_data(numpy_sample_site):
     """Testing of defined sample with actual data"""
-    sample = SiteSample(numpy_sample)
+    sample = SiteSample(numpy_sample_site)
 
     assert isinstance(sample._data, dict)
     assert sample._data["satellite_actual"].shape == (7, 1, 2, 2)
@@ -51,8 +22,8 @@ def test_site_sample_with_data(numpy_sample):
     assert sample._data["date_sin"].shape == (7,)
 
 
-def test_sample_save_load(numpy_sample):
-    sample = SiteSample(numpy_sample)
+def test_sample_save_load(numpy_sample_site):
+    sample = SiteSample(numpy_sample_site)
 
     with tempfile.NamedTemporaryFile(suffix=".pt") as tf:
         sample.save(tf.name)
@@ -70,9 +41,9 @@ def test_sample_save_load(numpy_sample):
         )
 
 
-def test_to_numpy(numpy_sample):
+def test_to_numpy(numpy_sample_site):
     """To numpy conversion"""
-    sample = SiteSample(numpy_sample)
+    sample = SiteSample(numpy_sample_site)
     numpy_data = sample.to_numpy()
 
     assert isinstance(numpy_data, dict)
