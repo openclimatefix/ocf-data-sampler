@@ -217,7 +217,9 @@ class SitesDataset(PickleCacheMixin, Dataset):
         """
         # Get valid time period for nwp and satellite
         datasets_without_site = {k: v for k, v in datasets_dict.items() if k != "site"}
-        valid_time_periods = find_valid_time_periods(datasets_without_site, self.config)
+
+        if len(datasets_without_site) > 0:
+            valid_time_periods = find_valid_time_periods(datasets_without_site, self.config)
 
         # Loop over each location in system id and obtain valid periods
         sites = datasets_dict["site"]
@@ -236,9 +238,13 @@ class SitesDataset(PickleCacheMixin, Dataset):
                 interval_start=minutes(site_config.interval_start_minutes),
                 interval_end=minutes(site_config.interval_end_minutes),
             )
-            valid_time_periods_per_site = intersection_of_multiple_dataframes_of_periods(
-                [valid_time_periods, time_periods],
-            )
+
+            if len(datasets_without_site) > 0:
+                valid_time_periods_per_site = intersection_of_multiple_dataframes_of_periods(
+                    [valid_time_periods, time_periods],
+                )
+            else:
+                valid_time_periods_per_site = time_periods
 
             # Fill out contiguous time periods to get t0 times
             valid_t0_times_per_site = fill_time_periods(
