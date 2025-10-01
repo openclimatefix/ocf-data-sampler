@@ -1,8 +1,7 @@
 import numpy as np
 import pytest
 
-from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.config.load import load_yaml_configuration
+from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.numpy_sample import (
     GSPSampleKey,
     NWPSampleKey,
@@ -11,61 +10,51 @@ from ocf_data_sampler.numpy_sample import (
 )
 
 
-@pytest.fixture
-def numpy_sample_site():
-    """Synthetic data generation"""
-    expected_site_shape = (7,)
-    expected_nwp_ukv_shape = (4, 1, 2, 2)
-    expected_sat_shape = (7, 1, 2, 2)
-    expected_solar_shape = (7,)
-
+def _create_base_sample(target_shape=(7,), target_key=None, target_value=None):
+    """Create base numpy sample with common structure"""
     nwp_data = {
-        "nwp": np.random.rand(*expected_nwp_ukv_shape),
+        "nwp": np.random.rand(4, 1, 2, 2),
         "x": np.array([1, 2]),
         "y": np.array([1, 2]),
         NWPSampleKey.channel_names: ["t"],
     }
 
-    return {
+    sat_shape = (7, 1, 2, 2)
+    sample = {
         "nwp": {"ukv": nwp_data},
-        SiteSampleKey.generation: np.random.rand(*expected_site_shape),
-        SatelliteSampleKey.satellite_actual: np.random.rand(*expected_sat_shape),
-        "solar_azimuth": np.random.rand(*expected_solar_shape),
-        "solar_elevation": np.random.rand(*expected_solar_shape),
-        "date_cos": np.random.rand(*expected_solar_shape),
-        "date_sin": np.random.rand(*expected_solar_shape),
-        "time_cos": np.random.rand(*expected_solar_shape),
-        "time_sin": np.random.rand(*expected_solar_shape),
+        SatelliteSampleKey.satellite_actual: np.random.rand(*sat_shape),
+        "solar_azimuth": np.random.rand(*target_shape),
+        "solar_elevation": np.random.rand(*target_shape),
     }
+
+    if target_key and target_value is not None:
+        sample[target_key] = target_value
+
+    return sample
+
+
+@pytest.fixture(scope="module")
+def numpy_sample_site():
+    """Synthetic site sample data"""
+    shape = (7,)
+    sample = _create_base_sample(shape, SiteSampleKey.generation, np.random.rand(*shape))
+    sample.update({
+        "date_cos": np.random.rand(*shape),
+        "date_sin": np.random.rand(*shape),
+        "time_cos": np.random.rand(*shape),
+        "time_sin": np.random.rand(*shape),
+    })
+    return sample
 
 
 @pytest.fixture
 def numpy_sample_gsp():
-    """Synthetic data generation"""
-    expected_gsp_shape = (7,)
-    expected_nwp_ukv_shape = (4, 1, 2, 2)
-    expected_sat_shape = (7, 1, 2, 2)
-    expected_solar_shape = (7,)
-
-    nwp_data = {
-        "nwp": np.random.rand(*expected_nwp_ukv_shape),
-        "x": np.array([1, 2]),
-        "y": np.array([1, 2]),
-        NWPSampleKey.channel_names: ["t"],
-    }
-
-    return {
-        "nwp": {
-            "ukv": nwp_data,
-        },
-        GSPSampleKey.gsp: np.random.rand(*expected_gsp_shape),
-        SatelliteSampleKey.satellite_actual: np.random.rand(*expected_sat_shape),
-        "solar_azimuth": np.random.rand(*expected_solar_shape),
-        "solar_elevation": np.random.rand(*expected_solar_shape),
-    }
+    """Synthetic GSP sample data"""
+    shape = (7,)
+    return _create_base_sample(shape, GSPSampleKey.gsp, np.random.rand(*shape))
 
 
 @pytest.fixture
 def pvnet_configuration_object(pvnet_config_filename) -> Configuration:
-    """Loads the configuration from the temporary file path."""
+    """Load configuration from temporary file path"""
     return load_yaml_configuration(pvnet_config_filename)
