@@ -9,7 +9,7 @@ import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import Site, SolarPosition
-from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
+from ocf_data_sampler.torch_datasets.datasets.energy_forecast import EnergyForecastDataset
 
 # Constants
 TEST_DIR = Path(__file__).parent
@@ -351,7 +351,7 @@ def site_config_filename(tmp_path, site_test_config_path, nwp_ukv_zarr_path,
 
 @pytest.fixture()
 def sites_dataset(site_config_filename):
-    return SitesDataset(site_config_filename)
+    return EnergyForecastDataset(site_config_filename)
 
 
 @pytest.fixture(scope="session")

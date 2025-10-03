@@ -7,15 +7,15 @@ from torch.utils.data import DataLoader
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
-from ocf_data_sampler.torch_datasets.datasets.pvnet_uk import (
-    PVNetUKConcurrentDataset,
-    PVNetUKRegionalDataset,
+from ocf_data_sampler.torch_datasets.datasets.energy_forecast import (
+    EnergyForecastConcurrentDataset,
+    EnergyForecastDataset,
 )
 from ocf_data_sampler.torch_datasets.sample.base import batch_to_tensor, copy_batch_to_device
 
 
 def test_pvnet_uk_regional_dataset(pvnet_config_filename):
-    dataset = PVNetUKRegionalDataset(pvnet_config_filename)
+    dataset = EnergyForecastDataset(pvnet_config_filename)
 
     assert len(dataset.locations) == 317 # Quantity of regional GSPs
     # NB. I have not checked the value (39 below) is in fact correct
@@ -63,7 +63,7 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
 
 
 def test_pvnet_uk_regional_dataset_limit_gsp_ids(pvnet_config_filename):
-    dataset = PVNetUKRegionalDataset(pvnet_config_filename, gsp_ids=[1, 2, 3])
+    dataset = EnergyForecastDataset(pvnet_config_filename, gsp_ids=[1, 2, 3])
 
     assert len(dataset.locations) == 3  # Quantity of regional GSPs
     assert len(dataset.datasets_dict["gsp"].gsp_id) == 3
@@ -77,7 +77,7 @@ def test_pvnet_no_gsp(tmp_path, pvnet_config_filename):
     save_yaml_configuration(config, new_config_path)
 
     # Create dataset object and geneerate sample
-    dataset = PVNetUKRegionalDataset(new_config_path)
+    dataset = EnergyForecastDataset(new_config_path)
     _ = dataset[0]
 
 
@@ -85,7 +85,7 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     # Create dataset object using limited set of GSPs
     gsp_ids = [1, 2, 3]
     num_gsps = len(gsp_ids)
-    dataset = PVNetUKConcurrentDataset(pvnet_config_filename, gsp_ids=gsp_ids)
+    dataset = EnergyForecastConcurrentDataset(pvnet_config_filename, gsp_ids=gsp_ids)
 
     assert len(dataset.locations) == num_gsps  # Quantity of regional GSPs
     # NB. I have not checked the value (39 below) is in fact correct
@@ -145,8 +145,8 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
     save_yaml_configuration(config_with_solar, config_with_solar_path)
 
     # Create datasets with both configs
-    dataset_without_solar = PVNetUKRegionalDataset(config_without_solar_path, gsp_ids=[1])
-    dataset_with_solar = PVNetUKRegionalDataset(config_with_solar_path, gsp_ids=[1])
+    dataset_without_solar = EnergyForecastDataset(config_without_solar_path, gsp_ids=[1])
+    dataset_with_solar = EnergyForecastDataset(config_with_solar_path, gsp_ids=[1])
 
     # Generate samples
     sample_without_solar = dataset_without_solar[0]
@@ -162,8 +162,8 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
 
 
 def test_pvnet_uk_regional_dataset_raw_sample_iteration(pvnet_config_filename):
-    """Tests iterating raw samples (dict of tensors) from PVNetUKRegionalDataset"""
-    dataset = PVNetUKRegionalDataset(pvnet_config_filename)
+    """Tests iterating raw samples (dict of tensors) from EnergyForecastDataset"""
+    dataset = EnergyForecastDataset(pvnet_config_filename)
     dataloader = DataLoader(
         dataset,
         batch_size=None,
@@ -218,7 +218,7 @@ def test_pvnet_uk_regional_dataset_raw_sample_iteration(pvnet_config_filename):
 
 def test_pvnet_uk_regional_dataset_pickle(tmp_path, pvnet_config_filename):
     pickle_path = f"{tmp_path}.pkl"
-    dataset = PVNetUKRegionalDataset(pvnet_config_filename)
+    dataset = EnergyForecastDataset(pvnet_config_filename)
 
     # Assert path is in pickle object
     dataset.presave_pickle(pickle_path)
@@ -229,14 +229,14 @@ def test_pvnet_uk_regional_dataset_pickle(tmp_path, pvnet_config_filename):
     _ = pickle.loads(pickle_bytes)  # noqa: S301
 
     # Check we can still pickle and unpickle if we don't presave
-    dataset = PVNetUKRegionalDataset(pvnet_config_filename)
+    dataset = EnergyForecastDataset(pvnet_config_filename)
     pickle_bytes = pickle.dumps(dataset)
     _ = pickle.loads(pickle_bytes)  # noqa: S301
 
 
 def test_pvnet_uk_regional_dataset_batch_size_2(pvnet_config_filename):
-    """Tests making batches from PVNetUKRegionalDataset"""
-    dataset = PVNetUKRegionalDataset(pvnet_config_filename)
+    """Tests making batches from EnergyForecastDataset"""
+    dataset = EnergyForecastDataset(pvnet_config_filename)
     dataloader = DataLoader(
         dataset,
         batch_size=2,
