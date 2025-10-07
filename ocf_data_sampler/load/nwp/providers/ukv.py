@@ -21,14 +21,13 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
     """
     ds = open_zarr_paths(zarr_path, backend="tensorstore")
 
-    ds = ds.rename(
-        {
-            "init_time": "init_time_utc",
-            "variable": "channel",
-            "x": "x_osgb",
-            "y": "y_osgb",
-        },
-    )
+    ds = ds.rename({"init_time": "init_time_utc", "variable": "channel"})
+
+    # Support legacy dim names
+    if "x" in ds.dims:
+        ds = ds.rename({"x": "x_osgb"})
+    if "y" in ds.dims:
+        ds = ds.rename({"y": "y_osgb"})
 
     check_time_unique_increasing(ds.init_time_utc)
 
