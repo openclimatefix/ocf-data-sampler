@@ -2,13 +2,20 @@
 Base class testing - SampleBase
 """
 
+import logging
+import tempfile
+
 import numpy as np
 import pytest
 import torch
-import tempfile
 
-from ocf_data_sampler.numpy_sample import SatelliteSampleKey, GSPSampleKey, NWPSampleKey
-
+from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.numpy_sample import (
+    GSPSampleKey,
+    NWPSampleKey,
+    SatelliteSampleKey,
+    SiteSampleKey,
+)
 from ocf_data_sampler.torch_datasets.sample.base import (
     Sample,
     batch_to_tensor,
@@ -16,23 +23,10 @@ from ocf_data_sampler.torch_datasets.sample.base import (
 )
 
 
-import logging
-
-from ocf_data_sampler.config import Configuration
-
-
-def test_sample_base_initialisation():
-    """Initialisation of SampleBase subclass"""
-
-    sample = Sample()
-    assert hasattr(sample, "_data"), "Sample should have _data attribute"
-    assert sample._data == {}, "Sample should start with empty dict"
-
-
 def test_sample_base_save_load(tmp_path):
     """Test basic save and load functionality"""
 
-    sample = Sample()
+    sample = Sample(data={})
     sample._data["test_data"] = [1, 2, 3]
 
     save_path = tmp_path / "test_sample.dat"
@@ -43,16 +37,10 @@ def test_sample_base_save_load(tmp_path):
     assert isinstance(loaded_sample, Sample)
 
 
-def test_sample_base_abstract_methods():
-    """Test abstract method enforcement"""
-    with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-        SampleBase()
-
-
 def test_sample_base_to_numpy():
     """Test the to_numpy functionality"""
 
-    sample = Sample()
+    sample = Sample(data={})
     sample._data = {
         "int_data": 42,
         "list_data": [1, 2, 3],
@@ -152,12 +140,12 @@ def test_sample_save_load(numpy_sample_site):
         assert set(loaded._data) == set(sample._data)
         assert isinstance(loaded._data["nwp"], dict)
         assert "ukv" in loaded._data["nwp"]
-        assert loaded._data[SampleKey.generation].shape == (7,)
+        assert loaded._data[SiteSampleKey.generation].shape == (7,)
         assert loaded._data[SatelliteSampleKey.satellite_actual].shape == (7, 1, 2, 2)
 
         np.testing.assert_array_almost_equal(
-            loaded._data[SampleKey.generation],
-            sample._data[SampleKey.generation],
+            loaded._data[SiteSampleKey.generation],
+            sample._data[SiteSampleKey.generation],
         )
 
 
@@ -181,7 +169,7 @@ def test_to_numpy(numpy_sample_site):
     nwp_data = numpy_data["nwp"]["ukv"]
     assert "nwp" in nwp_data
     assert nwp_data["nwp"].shape == (4, 1, 2, 2)
-c
+
 def test_load_corrupted_file():
     """Test loading - corrupted / empty file"""
     with tempfile.NamedTemporaryFile(suffix=".pt") as tf, open(tf.name, "wb") as f:

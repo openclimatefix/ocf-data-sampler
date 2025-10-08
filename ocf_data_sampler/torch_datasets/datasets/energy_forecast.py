@@ -10,9 +10,9 @@ from ocf_data_sampler.load.gsp import get_gsp_boundaries
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.numpy_sample import (
     convert_gsp_to_numpy_sample,
-    convert_site_to_numpy_sample,
     convert_nwp_to_numpy_sample,
     convert_satellite_to_numpy_sample,
+    convert_site_to_numpy_sample,
     encode_datetimes,
     make_sun_position_numpy_sample,
 )
@@ -53,6 +53,8 @@ def get_locations(
     Args:
         gsp_ids: List of GSP IDs to include. Defaults to all GSPs except national
         version: Version of GSP boundaries to use. Defaults to "20220314"
+        location_type: Type of location to get. Options are "gsp" or "site"
+        site_dataset: xarray dataset of sites. Required if location_type is "site"
     """
     locations = []
 
@@ -120,7 +122,7 @@ class AbstractEnergyForecastDataset(PickleCacheMixin, Dataset):
             datasets_dict = get_dataset_dict(config.input_data)
 
         # Get t0 times where all input data is available
-        if config.input_data.gsp: 
+        if config.input_data.gsp:
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
         else:
             valid_t0_times = self.find_valid_t0_and_site_ids(datasets_dict)
@@ -134,12 +136,15 @@ class AbstractEnergyForecastDataset(PickleCacheMixin, Dataset):
 
         # Construct list of locations to sample from
         if config.input_data.gsp:
-            locations = get_locations(gsp_ids=gsp_ids, version=config.input_data.gsp.boundaries_version)
+            locations = get_locations(
+                gsp_ids=gsp_ids,
+                version=config.input_data.gsp.boundaries_version,
+                )
             primary_coords = "osgb"
         else:
             locations = get_locations(site_dataset=datasets_dict["site"])
             primary_coords = "lon_lat"
-        
+
         self.locations = add_alterate_coordinate_projections(
             locations,
             datasets_dict,
@@ -285,7 +290,7 @@ class AbstractEnergyForecastDataset(PickleCacheMixin, Dataset):
             freq=minutes(config.input_data.gsp.time_resolution_minutes),
         )
         return valid_t0_times
-    
+
     def find_valid_t0_and_site_ids(
         self,
         datasets_dict: dict,

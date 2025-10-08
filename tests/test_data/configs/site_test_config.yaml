@@ -1,6 +1,6 @@
 general:
   name: "site_dataset_test_run"
-  description: "Test configuration specifically for SitesDataset"
+  description: "Test configuration specifically for EnergyForecastDataset"
 
 input_data:
   nwp:

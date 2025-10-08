@@ -60,7 +60,7 @@ def copy_batch_to_device(batch: TensorBatch, device: torch.device) -> TensorBatc
             batch_copy[k] = v
     return batch_copy
 
-class Sample():
+class Sample:
     """Handles PVNet sample operations."""
 
     def __init__(self, data: NumpySample) -> None:

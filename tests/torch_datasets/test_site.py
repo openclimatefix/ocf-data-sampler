@@ -3,11 +3,11 @@ from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
-from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
+from ocf_data_sampler.torch_datasets.datasets.energy_forecast import EnergyForecastDataset
 
 
 def test_site(site_config_filename):
-    dataset = SitesDataset(site_config_filename)
+    dataset = EnergyForecastDataset(site_config_filename)
     # (10 sites * 24 valid t0s per site = 240)
     assert len(dataset) == 240
 
@@ -48,12 +48,12 @@ def test_site(site_config_filename):
 
 
 def test_site_time_filter_start(site_config_filename):
-    dataset = SitesDataset(site_config_filename, start_time="2024-01-01")
+    dataset = EnergyForecastDataset(site_config_filename, start_time="2024-01-01")
     assert len(dataset) == 0
 
 
 def test_site_time_filter_end(site_config_filename):
-    dataset = SitesDataset(site_config_filename, end_time="2000-01-01")
+    dataset = EnergyForecastDataset(site_config_filename, end_time="2000-01-01")
     assert len(dataset) == 0
 
 
@@ -103,8 +103,8 @@ def test_solar_position_decoupling_site(tmp_path, site_config_filename):
     save_yaml_configuration(config_with_solar, config_with_solar_path)
 
     # Create datasets and generate samples
-    dataset_without_solar = SitesDataset(config_without_solar_path)
-    dataset_with_solar = SitesDataset(config_with_solar_path)
+    dataset_without_solar = EnergyForecastDataset(config_without_solar_path)
+    dataset_with_solar = EnergyForecastDataset(config_with_solar_path)
     sample_without_solar = dataset_without_solar[0]
     sample_with_solar = dataset_with_solar[0]
 
