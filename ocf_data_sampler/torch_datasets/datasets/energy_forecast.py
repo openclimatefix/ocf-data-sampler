@@ -125,7 +125,7 @@ class AbstractEnergyForecastDataset(PickleCacheMixin, Dataset):
         if config.input_data.gsp:
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
         else:
-            valid_t0_times = self.find_valid_t0_and_site_ids(datasets_dict)
+            valid_t0_times = self.find_valid_t0_and_site_ids(datasets_dict, config)
 
         # Filter t0 times to given range
         if start_time is not None:
@@ -294,6 +294,7 @@ class AbstractEnergyForecastDataset(PickleCacheMixin, Dataset):
     def find_valid_t0_and_site_ids(
         self,
         datasets_dict: dict,
+        config: Configuration,
     ) -> pd.DataFrame:
         """Find the t0 times where all of the requested input data is available for sites.
 
@@ -307,12 +308,12 @@ class AbstractEnergyForecastDataset(PickleCacheMixin, Dataset):
         """
         # Get valid time period for nwp and satellite
         datasets_without_site = {k: v for k, v in datasets_dict.items() if k != "site"}
-        valid_time_periods = find_valid_time_periods(datasets_without_site, self.config)
+        valid_time_periods = find_valid_time_periods(datasets_without_site, config)
 
         # Loop over each location in system id and obtain valid periods
         sites = datasets_dict["site"]
         site_ids = sites.site_id.values
-        site_config = self.config.input_data.site
+        site_config = config.input_data.site
         valid_t0_and_site_ids = []
         for site_id in site_ids:
             site = sites.sel(site_id=site_id)
