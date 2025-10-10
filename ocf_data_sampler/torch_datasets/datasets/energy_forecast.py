@@ -124,15 +124,17 @@ class AbstractEnergyForecastDataset(PickleCacheMixin, Dataset):
         # Get t0 times where all input data is available
         if config.input_data.gsp:
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
+            filter_times = valid_t0_times
         else:
             valid_t0_times = self.find_valid_t0_and_site_ids(datasets_dict, config)
+            filter_times = valid_t0_times["t0"]
 
         # Filter t0 times to given range
         if start_time is not None:
-            valid_t0_times = valid_t0_times[valid_t0_times >= pd.Timestamp(start_time)]
+            valid_t0_times = valid_t0_times[filter_times >= pd.Timestamp(start_time)]
 
         if end_time is not None:
-            valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
+            valid_t0_times = valid_t0_times[filter_times <= pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
         if config.input_data.gsp:
@@ -142,7 +144,7 @@ class AbstractEnergyForecastDataset(PickleCacheMixin, Dataset):
                 )
             primary_coords = "osgb"
         else:
-            locations = get_locations(site_dataset=datasets_dict["site"])
+            locations = get_locations(site_dataset=datasets_dict["site"], location_type="site")
             primary_coords = "lon_lat"
 
         self.locations = add_alterate_coordinate_projections(

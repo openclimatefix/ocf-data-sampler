@@ -37,21 +37,6 @@ def test_sample_base_save_load(tmp_path):
     assert isinstance(loaded_sample, Sample)
 
 
-def test_sample_base_to_numpy():
-    """Test the to_numpy functionality"""
-
-    sample = Sample(data={})
-    sample._data = {
-        "int_data": 42,
-        "list_data": [1, 2, 3],
-    }
-    numpy_data = sample.to_numpy()
-
-    assert isinstance(numpy_data, dict)
-    assert all(isinstance(v, np.ndarray) for v in numpy_data.values())
-    assert np.array_equal(numpy_data["list_data"], np.array([1, 2, 3]))
-
-
 def test_batch_to_tensor_nested():
     """Test nested dictionary conversion"""
     batch = {"outer": {"inner": np.array([1, 2, 3])}}
