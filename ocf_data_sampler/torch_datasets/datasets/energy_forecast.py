@@ -439,7 +439,10 @@ class EnergyForecastConcurrentDataset(AbstractEnergyForecastDataset):
 
     @override
     def __len__(self) -> int:
-        return len(self.valid_t0_times)
+        if self.config.input_data.gsp:
+            return len(self.valid_t0_times)
+        # site specific as t0s repeated for all sites
+        return len(self.valid_t0_times)//len(self.locations)
 
     def _get_sample(self, t0: pd.Timestamp) -> NumpyBatch:
         """Generate a concurrent PVNet sample for given init-time.
@@ -448,6 +451,7 @@ class EnergyForecastConcurrentDataset(AbstractEnergyForecastDataset):
             t0: init-time for sample
         """
         # Slice by time then load to avoid loading the data multiple times from disk
+
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
@@ -456,20 +460,24 @@ class EnergyForecastConcurrentDataset(AbstractEnergyForecastDataset):
 
         # Prepare sample for each GSP
         for location in self.locations:
-            sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
-            gsp_numpy_sample = self.process_and_combine_datasets(
-                sample_dict,
+            sliced_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
+            numpy_sample = self.process_and_combine_datasets(
+                sliced_sample_dict,
                 t0,
                 location,
             )
-            samples.append(gsp_numpy_sample)
+            samples.append(numpy_sample)
 
         # Stack samples
         return stack_np_samples_into_batch(samples)
 
     @override
     def __getitem__(self, idx: int) -> NumpyBatch:
-        return self._get_sample(self.valid_t0_times[idx])
+        if self.config.input_data.gsp:
+            return self._get_sample(self.valid_t0_times[idx])
+        # site specific as t0s repeated for all sites
+        t_index = idx % len(self.valid_t0_times)//len(self.locations)
+        return self._get_sample(self.valid_t0_times["t0"][t_index])
 
     def get_sample(self, t0: pd.Timestamp) -> NumpyBatch:
         """Generate a sample for the given init-time.
