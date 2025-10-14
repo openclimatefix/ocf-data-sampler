@@ -1,10 +1,16 @@
+<<<<<<< HEAD:ocf_data_sampler/torch_datasets/sample/base.py
+<<<<<<< HEAD:ocf_data_sampler/torch_datasets/sample/base.py
 """Sample class implementation for dataset handling and visualisation."""
 
 import logging
+=======
+"""Functions to convert batches to tensors and move them to a given device."""
+>>>>>>> origin/main:ocf_data_sampler/torch_datasets/utils/torch_batch_utils.py
 
 import numpy as np
 import torch
 
+<<<<<<< HEAD:ocf_data_sampler/torch_datasets/sample/base.py
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.numpy_sample import (
     GSPSampleKey,
@@ -19,6 +25,10 @@ from ocf_data_sampler.torch_datasets.utils.validation_utils import (
 )
 
 logger = logging.getLogger(__name__)
+=======
+from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, TensorBatch
+
+>>>>>>> origin/main:ocf_data_sampler/torch_datasets/utils/torch_batch_utils.py
 
 def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
     """Recursively converts numpy arrays in nested dict to torch tensors.

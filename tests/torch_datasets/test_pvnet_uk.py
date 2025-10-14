@@ -11,7 +11,10 @@ from ocf_data_sampler.torch_datasets.datasets.energy_forecast import (
     EnergyForecastConcurrentDataset,
     EnergyForecastDataset,
 )
-from ocf_data_sampler.torch_datasets.sample.base import batch_to_tensor, copy_batch_to_device
+from ocf_data_sampler.torch_datasets.utils.torch_batch_utils import (
+    batch_to_tensor,
+    copy_batch_to_device,
+)
 
 
 def test_pvnet_uk_regional_dataset(pvnet_config_filename):
