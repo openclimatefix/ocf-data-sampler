@@ -1,1 +1,1 @@
-from .energy_forecast import EnergyForecastDataset, EnergyForecastConcurrentDataset
+from .pvnet_dataset import PVNetDataset, PVNetConcurrentDataset

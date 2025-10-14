@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 
-from ocf_data_sampler.torch_datasets.datasets.energy_forecast import EnergyForecastDataset
+from ocf_data_sampler.torch_datasets.datasets.pvnet_dataset import PVNetDataset
 from ocf_data_sampler.torch_datasets.utils.time_slice_for_dataset import slice_datasets_by_time
 
 
 def test_time_slice_for_dataset_site_dropout(site_config_filename):
-    dataset = EnergyForecastDataset(site_config_filename)
+    dataset = PVNetDataset(site_config_filename)
     config = dataset.config
 
     # Set dropout
