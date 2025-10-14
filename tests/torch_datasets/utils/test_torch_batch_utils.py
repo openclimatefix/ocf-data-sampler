@@ -1,6 +1,3 @@
-"""
-Base class testing - SampleBase
-"""
 import numpy as np
 import pytest
 import torch
