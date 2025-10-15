@@ -9,7 +9,7 @@ import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import Site, SolarPosition
-from ocf_data_sampler.torch_datasets.datasets.pvnet_dataset import PVNetDataset
+from ocf_data_sampler.torch_datasets.pvnet_dataset import PVNetDataset
 
 # Constants
 TEST_DIR = Path(__file__).parent

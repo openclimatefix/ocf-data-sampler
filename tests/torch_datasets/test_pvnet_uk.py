@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
-from ocf_data_sampler.torch_datasets.datasets.pvnet_dataset import (
+from ocf_data_sampler.torch_datasets.pvnet_dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
 )
@@ -66,7 +66,7 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
 
 
 def test_pvnet_uk_regional_dataset_limit_gsp_ids(pvnet_config_filename):
-    dataset = PVNetDataset(pvnet_config_filename, gsp_ids=[1, 2, 3])
+    dataset = PVNetDataset(pvnet_config_filename, location_ids=[1, 2, 3])
 
     assert len(dataset.locations) == 3  # Quantity of regional GSPs
     assert len(dataset.datasets_dict["gsp"].gsp_id) == 3
@@ -88,7 +88,7 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     # Create dataset object using limited set of GSPs
     gsp_ids = [1, 2, 3]
     num_gsps = len(gsp_ids)
-    dataset = PVNetConcurrentDataset(pvnet_config_filename, gsp_ids=gsp_ids)
+    dataset = PVNetConcurrentDataset(pvnet_config_filename, location_ids=gsp_ids)
 
     assert len(dataset.locations) == num_gsps  # Quantity of regional GSPs
     # NB. I have not checked the value (39 below) is in fact correct
@@ -148,8 +148,8 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
     save_yaml_configuration(config_with_solar, config_with_solar_path)
 
     # Create datasets with both configs
-    dataset_without_solar = PVNetDataset(config_without_solar_path, gsp_ids=[1])
-    dataset_with_solar = PVNetDataset(config_with_solar_path, gsp_ids=[1])
+    dataset_without_solar = PVNetDataset(config_without_solar_path, location_ids=[1])
+    dataset_with_solar = PVNetDataset(config_with_solar_path, location_ids=[1])
 
     # Generate samples
     sample_without_solar = dataset_without_solar[0]

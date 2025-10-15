@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from ocf_data_sampler.torch_datasets.datasets.pvnet_dataset import PVNetDataset
+from ocf_data_sampler.torch_datasets.pvnet_dataset import PVNetDataset
 from ocf_data_sampler.torch_datasets.utils.time_slice_for_dataset import slice_datasets_by_time
 
 

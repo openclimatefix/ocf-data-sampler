@@ -1,5 +1,5 @@
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
-from ocf_data_sampler.torch_datasets.datasets.pvnet_dataset import PVNetDataset
+from ocf_data_sampler.torch_datasets.pvnet_dataset import PVNetDataset
 
 
 def test_stack_np_samples_into_batch(pvnet_config_filename):
