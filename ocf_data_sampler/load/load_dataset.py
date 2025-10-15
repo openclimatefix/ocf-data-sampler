@@ -8,13 +8,13 @@ from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
 
 def get_dataset_dict(
     input_config: InputData,
-    gsp_ids: list[int] | None = None,
+    location_ids: list[int] | None = None,
 ) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
     """Construct dictionary of all of the input data sources.
 
     Args:
         input_config: InputData configuration object
-        gsp_ids: List of GSP IDs to load. If None, all GSPs are loaded (not National).
+        location_ids: List of IDs to load. If None, all locations are loaded (not National).
     """
     datasets_dict = {}
 
@@ -27,11 +27,11 @@ def get_dataset_dict(
             public=input_config.gsp.public,
         )
 
-        if gsp_ids is None:
+        if location_ids is None:
             # Remove national (gsp_id=0)
             da_gsp = da_gsp.sel(gsp_id=slice(1, None))
         else:
-            da_gsp = da_gsp.sel(gsp_id=gsp_ids)
+            da_gsp = da_gsp.sel(gsp_id=location_ids)
 
         datasets_dict["gsp"] = da_gsp
 
