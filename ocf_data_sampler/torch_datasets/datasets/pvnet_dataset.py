@@ -94,7 +94,7 @@ def get_locations(
 
 
 class AbstractPVNetDataset(PickleCacheMixin, Dataset):
-    """Abstract class for energy forecasting datasets."""
+    """Abstract class for PVNet datasets."""
 
     def __init__(
         self,
@@ -349,7 +349,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
 
 class PVNetDataset(AbstractPVNetDataset):
-    """A torch Dataset for creating PVNet UK regional samples."""
+    """A torch Dataset for creating PVNet samples."""
 
     @override
     def __init__(
@@ -435,7 +435,7 @@ class PVNetDataset(AbstractPVNetDataset):
 
 
 class PVNetConcurrentDataset(AbstractPVNetDataset):
-    """A torch Dataset for creating concurrent regional/site samples."""
+    """A torch Dataset for creating concurrent PVNet location samples."""
 
     @override
     def __len__(self) -> int:
