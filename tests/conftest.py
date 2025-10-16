@@ -271,7 +271,10 @@ def create_site_data(
     if variable_capacity:
         ds = xr.Dataset({
             "capacity_kwp": xr.DataArray(
-                np.tile(rng.uniform(1,100,1)*base["capacity_kwp"], (len(times), 1)).astype(np.float32), coords=coords,
+                np.tile(
+                    rng.uniform(1,100,1)*base["capacity_kwp"],
+                    (len(times), 1)).astype(np.float32),
+                coords=coords,
             ),
             "generation_kw": xr.DataArray(
                 rng.uniform(0, 200, (len(times), num_sites)).astype(np.float32), coords=coords,
