@@ -1,36 +1,9 @@
-"""Base class for handling flat/nested data structures with NWP consideration."""
-
-from abc import ABC, abstractmethod
+"""Functions to convert batches to tensors and move them to a given device."""
 
 import numpy as np
 import torch
 
-from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample, TensorBatch
-
-
-class SampleBase(ABC):
-    """Abstract base class for all sample types."""
-
-    @abstractmethod
-    def to_numpy(self) -> NumpySample:
-        """Convert sample data to numpy format."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def plot(self) -> None:
-        """Create a visualisation of the data."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def save(self, path: str) -> None:
-        """Saves the sample to disk in the implementations' required format."""
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def load(cls, path: str) -> "SampleBase":
-        """Load a sample from disk from the implementations' format."""
-        raise NotImplementedError
+from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, TensorBatch
 
 
 def batch_to_tensor(batch: NumpyBatch) -> TensorBatch:
