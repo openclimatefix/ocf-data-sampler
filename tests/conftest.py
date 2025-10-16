@@ -252,6 +252,7 @@ def create_site_data(
     interval_start: int = -30,
     interval_end: int = 60,
     time_resolution: int = 30,
+    variable_capacity: bool = False,
 ) -> Site:
     """Create fake site data with reproducible random generation"""
     params = (num_sites, start_time, end_time, freq, interval_start, interval_end, time_resolution)
@@ -261,22 +262,30 @@ def create_site_data(
     site_ids = list(range(num_sites))
 
     base = {
-        "capacity_kwp": np.array(
-            [0.1, 1.1, 4, 6, 8, 9, 15, 2, 3, 5, 7, 10, 12, 1, 0.5],
-        )[:num_sites],
+        "capacity_kwp": np.full(num_sites, 1),
         "longitude": np.round(np.linspace(-4, -3, num_sites), 2),
         "latitude": np.round(np.linspace(51, 52, num_sites), 2),
     }
 
     coords = (("time_utc", times), ("site_id", site_ids))
-    ds = xr.Dataset({
-        "capacity_kwp": xr.DataArray(
-            np.tile(base["capacity_kwp"], (len(times), 1)).astype(np.float32), coords=coords,
-        ),
-        "generation_kw": xr.DataArray(
-            rng.uniform(0, 200, (len(times), num_sites)).astype(np.float32), coords=coords,
-        ),
-    })
+    if variable_capacity:
+        ds = xr.Dataset({
+            "capacity_kwp": xr.DataArray(
+                np.tile(
+                    rng.uniform(1,100,1)*base["capacity_kwp"],
+                    (len(times), 1)).astype(np.float32),
+                coords=coords,
+            ),
+            "generation_kw": xr.DataArray(
+                rng.uniform(0, 200, (len(times), num_sites)).astype(np.float32), coords=coords,
+            ),
+        })
+    else:
+        ds = xr.Dataset({
+            "generation_kw": xr.DataArray(
+                rng.uniform(0, 200, (len(times), num_sites)).astype(np.float32), coords=coords,
+            ),
+        })
 
     data_path = tmp_path / f"sites_data_{key}.netcdf"
     meta_path = tmp_path / f"sites_metadata_{key}.csv"
@@ -294,13 +303,14 @@ def create_site_data(
 
 
 @pytest.fixture(scope="session")
-def data_sites(session_tmp_path, session_rng):
+def default_data_site_model(session_tmp_path, session_rng):
     return create_site_data(session_tmp_path, session_rng)
 
 
 @pytest.fixture(scope="session")
-def default_data_site_model(data_sites):
-    return data_sites
+def default_data_site_model_variable_capacity(session_tmp_path, session_rng):
+    return create_site_data(session_tmp_path, session_rng, variable_capacity=True)
+
 
 
 # Config fixtures

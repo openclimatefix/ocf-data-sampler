@@ -18,6 +18,22 @@ def test_open_site(default_data_site_model):
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "site_id")
     assert {"capacity_kwp", "latitude", "longitude"}.issubset(da.coords)
+    assert (da.capacity_kwp.data == 1).all()
+    assert da.shape == (49, 10)
+
+    assert len(np.unique(da.coords["site_id"])) == da.shape[1]
+
+
+def test_open_site_variable_capacity(default_data_site_model_variable_capacity):
+    """Test the site data loader with valid data."""
+    site_model = default_data_site_model_variable_capacity
+    da = open_site(site_model.file_path, site_model.metadata_file_path)
+    generation_ds = xr.open_dataset(site_model.file_path)
+
+    assert isinstance(da, xr.DataArray)
+    assert da.dims == ("time_utc", "site_id")
+    assert {"capacity_kwp", "latitude", "longitude"}.issubset(da.coords)
+    assert (da.capacity_kwp.data == generation_ds["capacity_kwp"]).all()
     assert da.shape == (49, 10)
     assert len(np.unique(da.coords["site_id"])) == da.shape[1]
 
