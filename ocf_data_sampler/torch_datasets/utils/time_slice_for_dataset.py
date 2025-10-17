@@ -67,7 +67,7 @@ def slice_datasets_by_time(
         )
 
     if "gsp" in datasets_dict:
-        gsp_config = config.input_data.gsp
+        gsp_config = config.input_data.generation
 
         da_gsp = select_time_slice(
             datasets_dict["gsp"],

@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from ocf_data_sampler.load.gsp import get_gsp_boundaries, open_gsp
+from ocf_data_sampler.load.generation import get_gsp_boundaries, open_generation
 
 
 @pytest.mark.parametrize("version, expected_length", [("20220314", 318), ("20250109", 332)])
@@ -21,7 +21,7 @@ def test_get_gsp_boundaries(version, expected_length):
 
 def test_open_gsp(uk_gsp_zarr_path):
     """Test the GSP data loader with valid data."""
-    da = open_gsp(uk_gsp_zarr_path)
+    da = open_generation(uk_gsp_zarr_path)
 
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "gsp_id")
@@ -49,4 +49,4 @@ def test_open_gsp_bad_dtype(tmp_path: Path):
     bad_ds.to_zarr(zarr_path)
 
     with pytest.raises(TypeError, match="generation_mw should be floating"):
-        open_gsp(zarr_path=zarr_path)
+        open_generation(zarr_path=zarr_path)

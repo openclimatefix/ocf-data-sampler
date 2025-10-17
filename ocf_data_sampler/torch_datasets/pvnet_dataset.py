@@ -9,19 +9,17 @@ from torch.utils.data import Dataset
 from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-from ocf_data_sampler.load.gsp import get_gsp_boundaries
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.numpy_sample import (
-    convert_gsp_to_numpy_sample,
+    convert_generation_to_numpy_sample,
     convert_nwp_to_numpy_sample,
     convert_satellite_to_numpy_sample,
-    convert_site_to_numpy_sample,
     encode_datetimes,
     make_sun_position_numpy_sample,
 )
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
-from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
+from ocf_data_sampler.numpy_sample.generation import GenerationSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import (
     Location,
@@ -73,51 +71,32 @@ class PickleCacheMixin:
 
 def get_locations(
     location_ids: list[int] | None = None,
-    version: str = "20220314",
-    location_type: str = "gsp",
-    site_dataset: xr.Dataset | None = None,
+    generation_data: xr.DataArray | None = None,
 ) -> list[Location]:
-    """Get list of locations of all GSPs.
+    """Get list of locations of all locations.
 
     Args:
-        location_ids: List of GSP IDs to include. Defaults to all GSPs except national
-        version: Version of GSP boundaries to use. Defaults to "20220314"
-        location_type: Type of location to get. Options are "gsp" or "site"
-        site_dataset: xarray dataset of sites. Required if location_type is "site"
+        location_ids: List of location IDs to include. Defaults to all locations except national
+        generation_data: xarray dataarray of generation data with location info
     """
     locations = []
 
-    if location_type == "gsp":
-        df_gsp_loc = get_gsp_boundaries(version)
+    # Default location IDs is all except national (location_id=0)
+    if location_ids is None:
+        location_ids = generation_data.location_id.values
+        location_ids = location_ids[location_ids != 0]
 
-        # Default GSP IDs is all except national (location_id=0)
-        if location_ids is None:
-            location_ids = df_gsp_loc.index.values
-            location_ids = location_ids[location_ids != 0]
+    generation_data = generation_data.loc[location_ids]
 
-        df_gsp_loc = df_gsp_loc.loc[location_ids]
-
-        for location_id in location_ids:
-            locations.append(
-                Location(
-                    x=df_gsp_loc.loc[location_id].x_osgb,
-                    y=df_gsp_loc.loc[location_id].y_osgb,
-                    coord_system="osgb",
-                    id=int(location_id),
-                ),
-            )
-    else:
-
-        for site_id in site_dataset.site_id.values:
-
-            site = site_dataset.sel(site_id=site_id)
-            location = Location(
-                id=site_id,
-                x=site.longitude.values,
-                y=site.latitude.values,
+    for location_id in location_ids:
+        locations.append(
+            Location(
+                x=generation_data.loc[location_id].longitude,
+                y=generation_data.loc[location_id].latitude,
                 coord_system="lon_lat",
-            )
-            locations.append(location)
+                id=int(location_id),
+            ),
+        )
 
     return locations
 
@@ -138,24 +117,25 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
-            location_ids: List of GSP IDs to create samples for. Defaults to all
+            location_ids: List of location IDs to create samples for. Defaults to all
         """
         super().__init__()
 
         config = load_yaml_configuration(config_filename)
 
-        # Get dataset depending on whether GSP or sites
-        if config.input_data.gsp:
-            datasets_dict = get_dataset_dict(config.input_data, location_ids=location_ids)
-        else:
-            datasets_dict = get_dataset_dict(config.input_data)
+        # Get dataset depending on whether location or sites
+        datasets_dict = get_dataset_dict(config.input_data, location_ids=location_ids)
 
         # Get t0 times where all input data is available
-        if config.input_data.gsp:
+
+        print(datasets_dict["generation"], 'Generation Data')
+        complete_generation = not datasets_dict["generation"].isnull().any()
+
+        if complete_generation:
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
             filter_times = valid_t0_times
         else:
-            valid_t0_times = self.find_valid_t0_and_site_ids(datasets_dict, config)
+            valid_t0_times = self.find_valid_t0_and_location_ids(datasets_dict, config)
             filter_times = valid_t0_times["t0"]
 
         # Filter t0 times to given range
@@ -166,20 +146,14 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             valid_t0_times = valid_t0_times[filter_times <= pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
-        if config.input_data.gsp:
-            locations = get_locations(
-                location_ids=location_ids,
-                version=config.input_data.gsp.boundaries_version,
-                )
-            primary_coords = "osgb"
-        else:
-            locations = get_locations(site_dataset=datasets_dict["site"], location_type="site")
-            primary_coords = "lon_lat"
+        locations = get_locations(
+            location_ids=location_ids,
+            )
 
         self.locations = add_alterate_coordinate_projections(
             locations,
             datasets_dict,
-            primary_coords=primary_coords,
+            primary_coords="lon_lat",
         )
 
         self.valid_t0_times = valid_t0_times
@@ -235,40 +209,32 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
             numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
-        if "gsp" in dataset_dict:
-            gsp_config = self.config.input_data.gsp
-            da_gsp = dataset_dict["gsp"]
-            da_gsp = da_gsp / da_gsp.effective_capacity_mwp.values
+        if "generation" in dataset_dict:
+            generation_config = self.config.input_data.generation
+            da_generation = dataset_dict["generation"]
+            da_generation = da_generation / da_generation.effective_capacity_mwp.values
 
             # Convert to NumpyBatch
             numpy_modalities.append(
-                convert_gsp_to_numpy_sample(
-                    da_gsp,
-                    t0_idx=-gsp_config.interval_start_minutes / gsp_config.time_resolution_minutes,
+                convert_generation_to_numpy_sample(
+                    da_generation,
+                    t0_idx=(
+                        -generation_config.interval_start_minutes
+                        / generation_config.time_resolution_minutes,
                 ),
+            ),
             )
-
-            # Add GSP location data
-
-            osgb_x, osgb_y = location.in_coord_system("osgb")
 
             numpy_modalities.append(
                 {
-                    GSPSampleKey.gsp_id: location.id,
-                    GSPSampleKey.x_osgb: osgb_x,
-                    GSPSampleKey.y_osgb: osgb_y,
+                    GenerationSampleKey.location_id: location.id,
+                    GenerationSampleKey.latitude: da_generation.latitude.values,
+                    GenerationSampleKey.longitude: da_generation.longitude.values,
                 },
             )
 
-        if "site" in dataset_dict:
-            da_sites = dataset_dict["site"]
-            da_sites = da_sites / da_sites.capacity_kwp.values
-
-            # Convert to NumpyBatch
-            numpy_modalities.append(convert_site_to_numpy_sample(da_sites))
-
             # add datetime features
-            datetimes = pd.DatetimeIndex(da_sites.time_utc.values)
+            datetimes = pd.DatetimeIndex(da_generation.time_utc.values)
             datetime_features = encode_datetimes(datetimes=datetimes)
 
             numpy_modalities.append(datetime_features)
@@ -284,20 +250,13 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                 freq=minutes(solar_config.time_resolution_minutes),
             )
 
-            if self.config.input_data.gsp:
-                # Convert OSGB coordinates to lon/lat
-                lon, lat = location.in_coord_system("lon_lat")
-
-                # Calculate solar positions and add to modalities
-                numpy_modalities.append(make_sun_position_numpy_sample(datetimes, lon, lat))
-            else:
-                numpy_modalities.append(
-                    make_sun_position_numpy_sample(
-                        datetimes,
-                        da_sites.longitude.values,
-                        da_sites.latitude.values,
-                        ),
-                    )
+            numpy_modalities.append(
+                make_sun_position_numpy_sample(
+                    datetimes,
+                    da_generation.longitude.values,
+                    da_generation.latitude.values,
+                    ),
+                )
 
         # Combine all the modalities and fill NaNs
         combined_sample = merge_dicts(numpy_modalities)
@@ -318,11 +277,11 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Fill out the contiguous time periods to get the t0 times
         valid_t0_times = fill_time_periods(
             valid_time_periods,
-            freq=minutes(config.input_data.gsp.time_resolution_minutes),
+            freq=minutes(config.input_data.generation.time_resolution_minutes),
         )
         return valid_t0_times
 
-    def find_valid_t0_and_site_ids(
+    def find_valid_t0_and_location_ids(
         self,
         datasets_dict: dict,
         config: Configuration,
@@ -391,7 +350,7 @@ class PVNetDataset(AbstractPVNetDataset):
 
         super().__init__(config_filename, start_time, end_time, location_ids)
 
-        # Construct a lookup for locations - useful for users to construct sample by GSP ID
+        # Construct a lookup for locations - useful for users to construct sample by location ID
         location_lookup = {loc.id: loc for loc in self.locations}
 
         # Assign coords and indices to self
@@ -399,7 +358,7 @@ class PVNetDataset(AbstractPVNetDataset):
 
     @override
     def __len__(self) -> int:
-        if self.config.input_data.gsp:
+        if self.config.input_data.generation:
             return len(self.locations)*len(self.valid_t0_times)
         # For sites all t0 and site combinations already present
         return len(self.valid_t0_times)
@@ -424,7 +383,7 @@ class PVNetDataset(AbstractPVNetDataset):
         if idx >= len(self):
             raise ValueError(f"Index {idx} out of range for dataset of length {len(self)}")
 
-        if self.config.input_data.gsp:
+        if self.config.input_data.generation:
 
             # t_index will be between 0 and len(self.valid_t0_times)-1
             t_index = idx % len(self.valid_t0_times)
@@ -468,7 +427,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
     @override
     def __len__(self) -> int:
-        if self.config.input_data.gsp:
+        if self.config.input_data.generation:
             return len(self.valid_t0_times)
         # site specific as t0s repeated for all sites
         return len(self.valid_t0_times)//len(self.locations)
@@ -487,7 +446,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
         samples = []
 
-        # Prepare sample for each GSP
+        # Prepare sample for each location
         for location in self.locations:
             sliced_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
             numpy_sample = self.process_and_combine_datasets(
@@ -502,7 +461,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> NumpyBatch:
-        if self.config.input_data.gsp:
+        if self.config.input_data.generation:
             return self._get_sample(self.valid_t0_times[idx])
         # site specific as t0s repeated for all sites
         t_index = idx % len(self.valid_t0_times)//len(self.locations)

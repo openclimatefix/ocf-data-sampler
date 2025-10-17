@@ -223,17 +223,34 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
 @pytest.fixture(scope="session")
 def ds_uk_gsp(session_rng):
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    gsp_ids = np.arange(318)
-    coords = (("datetime_gmt", times), ("gsp_id", gsp_ids))
+    location_ids = np.arange(318)
+    # Rough UK bounding box
+    lat_min, lat_max = 49.9, 58.7
+    lon_min, lon_max = -8.6, 1.8
 
-    capacity = np.ones((len(times), len(gsp_ids)))
-    generation = session_rng.uniform(0, 200, (len(times), len(gsp_ids))).astype(np.float32)
+    # Generate random uniform points
+    latitudes = session_rng.uniform(lat_min, lat_max, len(location_ids)).astype('float64')
+    longitudes = session_rng.uniform(lon_min, lon_max, len(location_ids)).astype('float64')
 
-    return xr.Dataset({
-        "capacity_mwp": xr.DataArray(capacity, coords=coords),
-        "installedcapacity_mwp": xr.DataArray(capacity, coords=coords),
-        "generation_mw": xr.DataArray(generation, coords=coords),
-    })
+    capacity = np.ones((len(times), len(location_ids)))
+
+    generation = session_rng.uniform(0, 200, (len(times), len(location_ids))).astype(np.float32)
+
+
+    # Build Dataset
+    return xr.Dataset(
+        data_vars={
+            "capacity_mwp": (("time_utc", "location_id"), capacity),
+            "generation_mw": (("time_utc", "location_id"), generation),
+        },
+        coords={
+            "time_utc": times,
+            "location_id": location_ids,
+            "latitude": ("location_id", latitudes),
+            "longitude": ("location_id", longitudes),
+        },
+    )
+
 
 
 @pytest.fixture(scope="session")
@@ -325,7 +342,7 @@ def pvnet_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path,
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
     config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.gsp.zarr_path = uk_gsp_zarr_path
+    config.input_data.generation.zarr_path = uk_gsp_zarr_path
 
     path = tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))
@@ -339,7 +356,7 @@ def site_config_filename(tmp_path, site_test_config_path, nwp_ukv_zarr_path,
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
     config.input_data.satellite.zarr_path = sat_zarr_path
     config.input_data.site = default_data_site_model
-    config.input_data.gsp = None
+    config.input_data.generation = None
     config.input_data.solar_position = SolarPosition(
         time_resolution_minutes=30, interval_start_minutes=-30, interval_end_minutes=60,
     )

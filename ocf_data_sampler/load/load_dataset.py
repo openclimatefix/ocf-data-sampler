@@ -3,7 +3,7 @@
 import xarray as xr
 
 from ocf_data_sampler.config import InputData
-from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
+from ocf_data_sampler.load import open_generation, open_nwp, open_sat_data
 
 
 def get_dataset_dict(
@@ -19,21 +19,20 @@ def get_dataset_dict(
     datasets_dict = {}
 
     # Load GSP data unless the path is None
-    if input_config.gsp and input_config.gsp.zarr_path:
+    if input_config.generation and input_config.generation.zarr_path:
 
-        da_gsp = open_gsp(
-            zarr_path=input_config.gsp.zarr_path,
-            boundaries_version=input_config.gsp.boundaries_version,
-            public=input_config.gsp.public,
+        da_generation = open_generation(
+            zarr_path=input_config.generation.zarr_path,
+            public=input_config.generation.public,
         )
 
         if location_ids is None:
             # Remove national (gsp_id=0)
-            da_gsp = da_gsp.sel(gsp_id=slice(1, None))
+            da_generation = da_generation.sel(location_id=slice(1, None))
         else:
-            da_gsp = da_gsp.sel(gsp_id=location_ids)
+            da_generation = da_generation.sel(location_id=location_ids)
 
-        datasets_dict["gsp"] = da_gsp
+        datasets_dict["generation"] = da_generation
 
     # Load NWP data if in config
     if input_config.nwp:
@@ -58,13 +57,5 @@ def get_dataset_dict(
         da_sat = da_sat.sel(channel=list(sat_config.channels))
 
         datasets_dict["sat"] = da_sat
-
-    if input_config.site:
-        da_sites = open_site(
-            generation_file_path=input_config.site.file_path,
-            metadata_file_path=input_config.site.metadata_file_path,
-        )
-
-        datasets_dict["site"] = da_sites
 
     return datasets_dict

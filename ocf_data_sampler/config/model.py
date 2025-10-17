@@ -293,18 +293,13 @@ class MultiNWP(RootModel):
         return self.root.items()
 
 
-class GSP(TimeWindowMixin, DropoutMixin):
-    """GSP configuration model."""
+class Generation(TimeWindowMixin, DropoutMixin):
+    """Generation configuration model."""
 
     zarr_path: str = Field(
         ...,
         description="Absolute or relative zarr filepath. Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
-    )
-
-    boundaries_version: Literal["20220314", "20250109"] = Field(
-        "20220314",
-        description="Version of the GSP boundaries to use. Options are '20220314' or '20250109'.",
     )
 
     public: bool = Field(False, description="Whether the NWP data is public or private")
@@ -335,23 +330,11 @@ class InputData(Base):
 
     satellite: Satellite | None = None
     nwp: MultiNWP | None = None
-    gsp: GSP | None = None
-    site: Site | None = None
+    generation: Generation | None = None
     solar_position: SolarPosition | None = None
-
-    @model_validator(mode="after")
-    def check_site_or_gsp(self) -> "InputData":
-        """Ensure that either `site` or `gsp` is provided in the input data."""
-        if self.site is None and self.gsp is None:
-            raise ValueError(
-                "You must provide either `site` or `gsp` in the `input_data`",
-            )
-
-        return self
-
 
 class Configuration(Base):
     """Configuration model for the dataset."""
 
     general: General = General()
-    input_data: InputData = Field(default_factory=InputData)
+    input_data: InputData = InputData()

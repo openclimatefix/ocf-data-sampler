@@ -3,7 +3,7 @@
 import numpy as np
 
 from ocf_data_sampler.config.model import Configuration
-from ocf_data_sampler.numpy_sample.gsp import GSPSampleKey
+from ocf_data_sampler.numpy_sample.generation import GenerationSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.numpy_sample.satellite import SatelliteSampleKey
 from ocf_data_sampler.numpy_sample.site import SiteSampleKey
@@ -32,8 +32,8 @@ def fill_nans_in_arrays(
             if np.isnan(v).any():
                 fill_value = 0.0
                 if config is not None:
-                    if k == GSPSampleKey.gsp:
-                        fill_value = config.input_data.gsp.dropout_value
+                    if k == GenerationSampleKey.generation:
+                        fill_value = config.input_data.generation.dropout_value
                     elif k == SiteSampleKey.generation:
                         fill_value = config.input_data.site.dropout_value
                     elif k == SatelliteSampleKey.satellite_actual:

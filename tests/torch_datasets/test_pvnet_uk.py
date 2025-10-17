@@ -29,7 +29,7 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
     assert isinstance(sample, dict)
 
     # Specific keys should always be present
-    required_keys = ["nwp", "satellite_actual", "gsp", "t0"]
+    required_keys = ["nwp", "satellite_actual", "generation", "t0"]
     for key in required_keys:
         assert key in sample
 
@@ -62,33 +62,33 @@ def test_pvnet_uk_regional_dataset(pvnet_config_filename):
     # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
     assert sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
     # 3 hours of 30 minute data (inclusive)
-    assert sample["gsp"].shape == (7,)
+    assert sample["generation"].shape == (7,)
 
 
 def test_pvnet_uk_regional_dataset_limit_gsp_ids(pvnet_config_filename):
     dataset = PVNetDataset(pvnet_config_filename, location_ids=[1, 2, 3])
 
     assert len(dataset.locations) == 3  # Quantity of regional GSPs
-    assert len(dataset.datasets_dict["gsp"].gsp_id) == 3
+    assert len(dataset.datasets_dict["generation"].gsp_id) == 3
 
 
 def test_pvnet_no_gsp(tmp_path, pvnet_config_filename):
     # Create new config without GSP inputs
     config = load_yaml_configuration(pvnet_config_filename)
-    config.input_data.gsp.zarr_path = ""
+    config.input_data.generation.zarr_path = ""
     new_config_path = tmp_path / "pvnet_config_no_gsp.yaml"
     save_yaml_configuration(config, new_config_path)
 
-    # Create dataset object and geneerate sample
+    # Create dataset object and generate sample
     dataset = PVNetDataset(new_config_path)
     _ = dataset[0]
 
 
 def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     # Create dataset object using limited set of GSPs
-    gsp_ids = [1, 2, 3]
-    num_gsps = len(gsp_ids)
-    dataset = PVNetConcurrentDataset(pvnet_config_filename, location_ids=gsp_ids)
+    location_ids = [1, 2, 3]
+    num_gsps = len(location_ids)
+    dataset = PVNetConcurrentDataset(pvnet_config_filename, location_ids=location_ids)
 
     assert len(dataset.locations) == num_gsps  # Quantity of regional GSPs
     # NB. I have not checked the value (39 below) is in fact correct
@@ -98,7 +98,7 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     sample = dataset[0]
     assert isinstance(sample, dict)
 
-    required_keys = ["nwp", "satellite_actual", "gsp"]
+    required_keys = ["nwp", "satellite_actual", "generation"]
     for key in required_keys:
         assert key in sample
 
@@ -124,7 +124,7 @@ def test_pvnet_uk_concurrent_dataset(pvnet_config_filename):
     # Shape assertion checking
     assert sample["satellite_actual"].shape == (num_gsps, 7, 1, 2, 2)
     assert sample["nwp"]["ukv"]["nwp"].shape == (num_gsps, 4, 1, 2, 2)
-    assert sample["gsp"].shape == (num_gsps, 7)
+    assert sample["generation"].shape == (num_gsps, 7)
 
 
 def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
@@ -185,17 +185,17 @@ def test_pvnet_uk_regional_dataset_raw_sample_iteration(pvnet_config_filename):
     required_keys = [
         "nwp",
         "satellite_actual",
-        "gsp",
+        "generation",
         "solar_azimuth",
         "solar_elevation",
-        "gsp_id",
+        "location_id",
     ]
     for key in required_keys:
         assert key in raw_sample, f"Raw Sample: Expected key '{key}' not found"
 
     # Type assertions
     assert isinstance(raw_sample["satellite_actual"], torch.Tensor)
-    assert isinstance(raw_sample["gsp"], torch.Tensor)
+    assert isinstance(raw_sample["generation"], torch.Tensor)
     assert isinstance(raw_sample["solar_azimuth"], torch.Tensor)
     assert isinstance(raw_sample["solar_elevation"], torch.Tensor)
     assert isinstance(raw_sample["nwp"], dict)
@@ -206,7 +206,7 @@ def test_pvnet_uk_regional_dataset_raw_sample_iteration(pvnet_config_filename):
     # Shape assertions
     assert raw_sample["satellite_actual"].shape == (7, 1, 2, 2)
     assert raw_sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
-    assert raw_sample["gsp"].shape == (7,)
+    assert raw_sample["generation"].shape == (7,)
 
     # Solar position shapes - no batch dimension
     solar_config = dataset.config.input_data.solar_position
@@ -216,7 +216,7 @@ def test_pvnet_uk_regional_dataset_raw_sample_iteration(pvnet_config_filename):
     assert raw_sample["solar_azimuth"].shape == (expected_time_steps,)
     assert raw_sample["solar_elevation"].shape == (expected_time_steps,)
 
-    assert isinstance(raw_sample["gsp_id"], int | np.integer)
+    assert isinstance(raw_sample["location_id"], int | np.integer)
 
 
 def test_pvnet_uk_regional_dataset_pickle(tmp_path, pvnet_config_filename):
@@ -258,10 +258,10 @@ def test_pvnet_uk_regional_dataset_batch_size_2(pvnet_config_filename):
     required_keys = [
         "nwp",
         "satellite_actual",
-        "gsp",
+        "generation",
         "solar_azimuth",
         "solar_elevation",
-        "gsp_id",
+        "location_id",
         "t0",
     ]
     for key in required_keys:
@@ -269,7 +269,7 @@ def test_pvnet_uk_regional_dataset_batch_size_2(pvnet_config_filename):
 
     # Type assertions
     assert isinstance(batch["satellite_actual"], torch.Tensor)
-    assert isinstance(batch["gsp"], torch.Tensor)
+    assert isinstance(batch["generation"], torch.Tensor)
     assert isinstance(batch["solar_azimuth"], torch.Tensor)
     assert isinstance(batch["solar_elevation"], torch.Tensor)
     assert isinstance(batch["nwp"], dict)
@@ -281,5 +281,5 @@ def test_pvnet_uk_regional_dataset_batch_size_2(pvnet_config_filename):
     # Shape assertions
     assert batch["satellite_actual"].shape == (2, 7, 1, 2, 2)
     assert batch["nwp"]["ukv"]["nwp"].shape == (2, 4, 1, 2, 2)
-    assert batch["gsp"].shape == (2, 7)
+    assert batch["generation"].shape == (2, 7)
     assert batch["t0"].shape == (2,)
