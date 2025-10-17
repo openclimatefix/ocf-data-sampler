@@ -15,16 +15,16 @@ def _validate_configuration(config):
     return Configuration(**config.model_dump())
 
 
-def test_default_configuration(test_config_gsp_path):
+def test_default_configuration():
     """Test default pydantic class"""
-    load_yaml_configuration(test_config_gsp_path)
+    _ = Configuration()
 
 
-def test_extra_field_error(test_config_gsp_path):
+def test_extra_field_error():
     """
     Check an extra parameters in config causes error
     """
-    configuration = load_yaml_configuration(test_config_gsp_path)
+    configuration = Configuration()
     configuration_dict = configuration.model_dump()
     configuration_dict["extra_field"] = "extra_value"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
@@ -152,11 +152,3 @@ def test_accum_channels_validation(test_config_filename):
     )
     with pytest.raises(ValidationError, match=expected_error):
         _validate_configuration(invalid_config)
-
-
-def test_configuration_requires_site_or_gsp():
-    """
-    Test that Configuration raises an error if both site and gsp are None in input_data.
-    """
-    with pytest.raises(ValidationError, match="You must provide either `site` or `gsp`"):
-        Configuration()

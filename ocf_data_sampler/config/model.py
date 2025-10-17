@@ -5,7 +5,6 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 """
 
 from collections.abc import Iterator
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
@@ -303,22 +302,6 @@ class Generation(TimeWindowMixin, DropoutMixin):
     )
 
     public: bool = Field(False, description="Whether the NWP data is public or private")
-
-
-class Site(TimeWindowMixin, DropoutMixin):
-    """Site configuration model."""
-
-    file_path: str = Field(
-        ...,
-        description="The NetCDF files holding the power timeseries.",
-    )
-    metadata_file_path: str = Field(
-        ...,
-        description="The CSV files describing power system",
-    )
-
-    # TODO validate the netcdf for sites
-    # TODO validate the csv for metadata
 
 
 class SolarPosition(TimeWindowMixin):

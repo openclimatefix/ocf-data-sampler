@@ -86,13 +86,14 @@ def get_locations(
         location_ids = generation_data.location_id.values
         location_ids = location_ids[location_ids != 0]
 
-    generation_data = generation_data.loc[location_ids]
+    generation_data = generation_data.sel(location_id=location_ids)
 
     for location_id in location_ids:
+        gen_data = generation_data.sel(location_id=location_id)
         locations.append(
             Location(
-                x=generation_data.loc[location_id].longitude,
-                y=generation_data.loc[location_id].latitude,
+                x=gen_data.longitude.values,
+                y=gen_data.latitude.values,
                 coord_system="lon_lat",
                 id=int(location_id),
             ),
@@ -128,7 +129,6 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         # Get t0 times where all input data is available
 
-        print(datasets_dict["generation"], 'Generation Data')
         complete_generation = not datasets_dict["generation"].isnull().any()
 
         if complete_generation:
@@ -148,6 +148,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Construct list of locations to sample from
         locations = get_locations(
             location_ids=location_ids,
+            generation_data=datasets_dict["generation"],
             )
 
         self.locations = add_alterate_coordinate_projections(
@@ -239,24 +240,24 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
             numpy_modalities.append(datetime_features)
 
-        # Only add solar position if explicitly configured
-        if self.config.input_data.solar_position is not None:
-            solar_config = self.config.input_data.solar_position
+            # Only add solar position if explicitly configured
+            if self.config.input_data.solar_position is not None:
+                solar_config = self.config.input_data.solar_position
 
-            # Create datetime range for solar position calculation
-            datetimes = pd.date_range(
-                t0 + minutes(solar_config.interval_start_minutes),
-                t0 + minutes(solar_config.interval_end_minutes),
-                freq=minutes(solar_config.time_resolution_minutes),
-            )
-
-            numpy_modalities.append(
-                make_sun_position_numpy_sample(
-                    datetimes,
-                    da_generation.longitude.values,
-                    da_generation.latitude.values,
-                    ),
+                # Create datetime range for solar position calculation
+                datetimes = pd.date_range(
+                    t0 + minutes(solar_config.interval_start_minutes),
+                    t0 + minutes(solar_config.interval_end_minutes),
+                    freq=minutes(solar_config.time_resolution_minutes),
                 )
+
+                numpy_modalities.append(
+                    make_sun_position_numpy_sample(
+                        datetimes,
+                        da_generation.longitude.values,
+                        da_generation.latitude.values,
+                        ),
+                    )
 
         # Combine all the modalities and fill NaNs
         combined_sample = merge_dicts(numpy_modalities)

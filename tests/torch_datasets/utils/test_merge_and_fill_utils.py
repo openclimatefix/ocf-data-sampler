@@ -4,7 +4,6 @@ from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.numpy_sample.generation import GenerationSampleKey
 from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.numpy_sample.satellite import SatelliteSampleKey
-from ocf_data_sampler.numpy_sample.site import SiteSampleKey
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
     merge_dicts,
@@ -46,7 +45,7 @@ def test_fill_nans_on_numpy_samples(test_config_filename):
     """Test the fill_nans_in_arrays function from configuration"""
 
     configuration = load_yaml_configuration(test_config_filename)
-    # set custom satellite and nwp values, gsp can be left as default 0.0
+    # set custom satellite and nwp values, generation can be left as default 0.0
     configuration.input_data.satellite.dropout_value = -1.0
     configuration.input_data.nwp["ukv"].dropout_value = -2.0
 
@@ -69,16 +68,16 @@ def test_fill_nans_on_numpy_samples(test_config_filename):
     assert np.array_equal(result["ukv"][NWPSampleKey.nwp], np.array([-2.0, 2.0, -2.0, 4.0]))
 
 
-def test_fill_nans_on_numpy_samples_site(site_test_config_path):
+def test_fill_nans_on_numpy_samples(config_filename):
     """Test the fill_nans_in_arrays function from site configuration"""
 
-    configuration = load_yaml_configuration(site_test_config_path)
-    configuration.input_data.site.dropout_value = 7.0
+    configuration = load_yaml_configuration(config_filename)
+    configuration.input_data.generation.dropout_value = 7.0
     array_with_nans = np.array([1.0, np.nan, 3.0, np.nan])
     dict = {
-        SiteSampleKey.generation: array_with_nans,
+        GenerationSampleKey.generation: array_with_nans,
     }
 
     result = fill_nans_in_arrays(dict, config=configuration)
 
-    assert np.array_equal(result[SiteSampleKey.generation], np.array([1.0, 7.0, 3.0, 7.0]))
+    assert np.array_equal(result[GenerationSampleKey.generation], np.array([1.0, 7.0, 3.0, 7.0]))

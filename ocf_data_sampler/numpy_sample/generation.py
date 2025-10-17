@@ -6,7 +6,7 @@ from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 
 class GenerationSampleKey:
-    """Keys for the GSP sample dictionary."""
+    """Keys for the Generation sample dictionary."""
 
     generation = "generation"
     effective_capacity_mwp = "effective_capacity_mwp"

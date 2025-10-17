@@ -1,9 +1,7 @@
 """Functions for loading GSP data."""
 
-from importlib.resources import files
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 
 

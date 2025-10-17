@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.numpy_sample import LocationSampleKey, NWPSampleKey, SatelliteSampleKey
+from ocf_data_sampler.numpy_sample import GenerationSampleKey, NWPSampleKey, SatelliteSampleKey
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def calculate_expected_shapes(
 
     # Calculate GSP shape
     gsp_config = input_data.generation
-    expected_shapes[LocationSampleKey.generation] = (
+    expected_shapes[GenerationSampleKey.generation] = (
         _calculate_time_steps(
             gsp_config.interval_start_minutes,
             gsp_config.interval_end_minutes,

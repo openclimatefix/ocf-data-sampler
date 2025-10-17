@@ -66,47 +66,25 @@ def slice_datasets_by_time(
             da=sliced_datasets_dict["sat"],
         )
 
-    if "gsp" in datasets_dict:
-        gsp_config = config.input_data.generation
+    if "generation" in datasets_dict:
+        generation_config = config.input_data.generation
 
-        da_gsp = select_time_slice(
-            datasets_dict["gsp"],
+        da_generation = select_time_slice(
+            datasets_dict["generation"],
             t0,
-            time_resolution=minutes(gsp_config.time_resolution_minutes),
-            interval_start=minutes(gsp_config.interval_start_minutes),
-            interval_end=minutes(gsp_config.interval_end_minutes),
+            time_resolution=minutes(generation_config.time_resolution_minutes),
+            interval_start=minutes(generation_config.interval_start_minutes),
+            interval_end=minutes(generation_config.interval_end_minutes),
         )
 
-        # Dropout on the past GSP, but not the future GSP
-        da_gsp = apply_history_dropout(
+        # Dropout on the past generation, but not the future generation
+        da_generation = apply_history_dropout(
             t0,
-            dropout_timedeltas=minutes(gsp_config.dropout_timedeltas_minutes),
-            dropout_frac=gsp_config.dropout_fraction,
-            da=da_gsp,
+            dropout_timedeltas=minutes(generation_config.dropout_timedeltas_minutes),
+            dropout_frac=generation_config.dropout_fraction,
+            da=da_generation,
         )
 
-        sliced_datasets_dict["gsp"] = da_gsp
-
-    if "site" in datasets_dict:
-        site_config = config.input_data.site
-
-        da_site = select_time_slice(
-            datasets_dict["site"],
-            t0,
-            time_resolution=minutes(site_config.time_resolution_minutes),
-            interval_start=minutes(site_config.interval_start_minutes),
-            interval_end=minutes(site_config.interval_end_minutes),
-        )
-
-        # Apply the randomly sampled dropout on the past site not the future
-        da_site = apply_history_dropout(
-            t0,
-            dropout_timedeltas=minutes(site_config.dropout_timedeltas_minutes),
-            dropout_frac=site_config.dropout_fraction,
-            da=da_site,
-        )
-
-        sliced_datasets_dict["site"] = da_site
-
+        sliced_datasets_dict["generation"] = da_generation
 
     return sliced_datasets_dict

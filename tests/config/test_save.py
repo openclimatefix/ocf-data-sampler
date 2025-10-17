@@ -4,9 +4,9 @@
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 
 
-def test_save_yaml_configuration_basic(tmp_path, test_config_gsp_path):
+def test_save_yaml_configuration_basic(tmp_path, config_filename):
     """Save an empty configuration object"""
-    config = load_yaml_configuration(test_config_gsp_path)
+    config = load_yaml_configuration(config_filename)
     filepath = tmp_path / "config.yaml"
     save_yaml_configuration(config, filepath)
     assert filepath.exists()
