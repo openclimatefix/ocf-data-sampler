@@ -66,18 +66,3 @@ def test_fill_nans_on_numpy_samples(test_config_filename):
         result[SatelliteSampleKey.satellite_actual], np.array([1.0, -1.0, 3.0, -1.0]),
     )
     assert np.array_equal(result["ukv"][NWPSampleKey.nwp], np.array([-2.0, 2.0, -2.0, 4.0]))
-
-
-def test_fill_nans_on_numpy_samples(config_filename):
-    """Test the fill_nans_in_arrays function from site configuration"""
-
-    configuration = load_yaml_configuration(config_filename)
-    configuration.input_data.generation.dropout_value = 7.0
-    array_with_nans = np.array([1.0, np.nan, 3.0, np.nan])
-    dict = {
-        GenerationSampleKey.generation: array_with_nans,
-    }
-
-    result = fill_nans_in_arrays(dict, config=configuration)
-
-    assert np.array_equal(result[GenerationSampleKey.generation], np.array([1.0, 7.0, 3.0, 7.0]))
