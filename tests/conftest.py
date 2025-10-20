@@ -249,7 +249,6 @@ def ds_site_generation(session_rng):
     global_times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
     n_times = len(global_times)
 
-    # Use 10 locations with IDs 1–10
     location_ids = np.arange(1, 11)
     n_sites = len(location_ids)
 
@@ -274,7 +273,9 @@ def ds_site_generation(session_rng):
 
         # Fill only active period with random data
         capacity[active_slice, i] = 1.0
-        generation[active_slice, i] = session_rng.uniform(0, 200, end_idx - start_idx).astype("float32")
+        generation[active_slice, i] = (
+            session_rng.uniform(0, 200, end_idx - start_idx).astype("float32")
+        )
 
     # Build Dataset
     return xr.Dataset(
