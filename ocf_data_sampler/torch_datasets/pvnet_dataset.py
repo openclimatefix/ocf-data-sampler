@@ -129,9 +129,9 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         # Get t0 times where all input data is available
 
-        complete_generation = not datasets_dict["generation"].isnull().any()
+        self.complete_generation = not datasets_dict["generation"].isnull().any()
 
-        if complete_generation:
+        if self.complete_generation:
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
             filter_times = valid_t0_times
         else:
@@ -287,54 +287,54 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         datasets_dict: dict,
         config: Configuration,
     ) -> pd.DataFrame:
-        """Find the t0 times where all of the requested input data is available for sites.
+        """Find the t0 times where all of the requested input data is available for each location.
 
         The idea is to
         1. Get valid time period for nwp and satellite
-        2. For each site location, find valid periods for that location
+        2. For each location, find valid periods for that location
 
         Args:
             datasets_dict: A dictionary of input datasets
             config: Configuration file
         """
         # Get valid time period for nwp and satellite
-        datasets_without_site = {k: v for k, v in datasets_dict.items() if k != "site"}
-        valid_time_periods = find_valid_time_periods(datasets_without_site, config)
+        datasets_without_generation = {k: v for k, v in datasets_dict.items() if k != "generation"}
+        valid_time_periods = find_valid_time_periods(datasets_without_generation, config)
 
         # Loop over each location in system id and obtain valid periods
-        sites = datasets_dict["site"]
-        site_ids = sites.site_id.values
-        site_config = config.input_data.site
-        valid_t0_and_site_ids = []
-        for site_id in site_ids:
-            site = sites.sel(site_id=site_id)
+        generations = datasets_dict["generation"]
+        location_ids = generations.location_id.values
+        generation_config = config.input_data.generation
+        valid_t0_and_location_ids = []
+        for location_id in location_ids:
+            generation = generations.sel(location_id=location_id)
             # Drop NaN values
-            site = site.dropna(dim="time_utc")
+            generation = generation.dropna(dim="time_utc")
 
             # Obtain valid time periods for this location
             time_periods = find_contiguous_t0_periods(
-                pd.DatetimeIndex(site["time_utc"]),
-                time_resolution=minutes(site_config.time_resolution_minutes),
-                interval_start=minutes(site_config.interval_start_minutes),
-                interval_end=minutes(site_config.interval_end_minutes),
+                pd.DatetimeIndex(generation.time_utc.values),
+                time_resolution=minutes(generation_config.time_resolution_minutes),
+                interval_start=minutes(generation_config.interval_start_minutes),
+                interval_end=minutes(generation_config.interval_end_minutes),
             )
-            valid_time_periods_per_site = intersection_of_multiple_dataframes_of_periods(
+            valid_time_periods_per_location = intersection_of_multiple_dataframes_of_periods(
                 [valid_time_periods, time_periods],
             )
 
             # Fill out contiguous time periods to get t0 times
-            valid_t0_times_per_site = fill_time_periods(
-                valid_time_periods_per_site,
-                freq=minutes(site_config.time_resolution_minutes),
+            valid_t0_times_per_location = fill_time_periods(
+                valid_time_periods_per_location,
+                freq=minutes(generation_config.time_resolution_minutes),
             )
 
-            valid_t0_per_site = pd.DataFrame(index=valid_t0_times_per_site)
-            valid_t0_per_site["site_id"] = site_id
-            valid_t0_and_site_ids.append(valid_t0_per_site)
+            valid_t0_per_location = pd.DataFrame(index=valid_t0_times_per_location)
+            valid_t0_per_location["location_id"] = location_id
+            valid_t0_and_location_ids.append(valid_t0_per_location)
 
-        valid_t0_and_site_ids = pd.concat(valid_t0_and_site_ids)
-        valid_t0_and_site_ids.index.name = "t0"
-        return valid_t0_and_site_ids.reset_index()
+        valid_t0_and_location_ids = pd.concat(valid_t0_and_location_ids)
+        valid_t0_and_location_ids.index.name = "t0"
+        return valid_t0_and_location_ids.reset_index()
 
 
 class PVNetDataset(AbstractPVNetDataset):
@@ -359,7 +359,7 @@ class PVNetDataset(AbstractPVNetDataset):
 
     @override
     def __len__(self) -> int:
-        if self.config.input_data.generation:
+        if self.complete_generation:
             return len(self.locations)*len(self.valid_t0_times)
         # For sites all t0 and site combinations already present
         return len(self.valid_t0_times)
@@ -384,7 +384,7 @@ class PVNetDataset(AbstractPVNetDataset):
         if idx >= len(self):
             raise ValueError(f"Index {idx} out of range for dataset of length {len(self)}")
 
-        if self.config.input_data.generation:
+        if self.complete_generation:
 
             # t_index will be between 0 and len(self.valid_t0_times)-1
             t_index = idx % len(self.valid_t0_times)
