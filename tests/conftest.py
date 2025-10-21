@@ -331,15 +331,15 @@ def pvnet_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path,
     return str(path)
 
 
-@pytest.fixture()
-def pvnet_site_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path,
+@pytest.fixture(scope="session")
+def pvnet_site_config_filename(session_tmp_path, config_filename, nwp_ukv_zarr_path,
                           site_generation_zarr_path, sat_zarr_path):
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
     config.input_data.satellite.zarr_path = sat_zarr_path
     config.input_data.generation.zarr_path = site_generation_zarr_path
 
-    path = tmp_path / "configuration.yaml"
+    path = session_tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))
     return str(path)
 

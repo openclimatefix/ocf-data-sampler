@@ -70,23 +70,18 @@ class PickleCacheMixin:
                 self.__dict__.update(saved_state)
 
 def get_locations(
-    location_ids: list[int] | None = None,
     generation_data: xr.DataArray | None = None,
 ) -> list[Location]:
     """Get list of locations of all locations.
 
     Args:
-        location_ids: List of location IDs to include. Defaults to all locations except national
         generation_data: xarray dataarray of generation data with location info
     """
     locations = []
 
     # Default location IDs is all except national (location_id=0)
-    if location_ids is None:
-        location_ids = generation_data.location_id.values
-        location_ids = location_ids[location_ids != 0]
-
-    generation_data = generation_data.sel(location_id=location_ids)
+    location_ids = generation_data.location_id.values
+    location_ids = location_ids[location_ids != 0]
 
     for location_id in location_ids:
         gen_data = generation_data.sel(location_id=location_id)
@@ -110,7 +105,6 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         config_filename: str,
         start_time: str | None = None,
         end_time: str | None = None,
-        location_ids: list[int] | None = None,
     ) -> None:
         """A torch Dataset for creating PVNet UK samples.
 
@@ -118,17 +112,14 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
-            location_ids: List of location IDs to create samples for. Defaults to all
         """
         super().__init__()
 
         config = load_yaml_configuration(config_filename)
 
-        # Get dataset depending on whether location or sites
-        datasets_dict = get_dataset_dict(config.input_data, location_ids=location_ids)
+        datasets_dict = get_dataset_dict(config.input_data)
 
-        # Get t0 times where all input data is available
-
+        # Check if generation data has nans
         self.complete_generation = not datasets_dict["generation"].isnull().any()
 
         if self.complete_generation:
@@ -147,7 +138,6 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         # Construct list of locations to sample from
         locations = get_locations(
-            location_ids=location_ids,
             generation_data=datasets_dict["generation"],
             )
 
@@ -346,10 +336,9 @@ class PVNetDataset(AbstractPVNetDataset):
         config_filename: str,
         start_time: str | None = None,
         end_time: str | None = None,
-        location_ids: list[int] | None = None,
     ) -> None:
 
-        super().__init__(config_filename, start_time, end_time, location_ids)
+        super().__init__(config_filename, start_time, end_time)
 
         # Construct a lookup for locations - useful for users to construct sample by location ID
         location_lookup = {loc.id: loc for loc in self.locations}
@@ -396,10 +385,10 @@ class PVNetDataset(AbstractPVNetDataset):
             t0 = self.valid_t0_times[t_index]
         else:
             # Get the coordinates of the sample
-            t0, site_id = self.valid_t0_times.iloc[idx]
+            t0, location_id = self.valid_t0_times.iloc[idx]
 
-            # Get location from site id
-            location = self.location_lookup[site_id]
+            # Get location from location id
+            location = self.location_lookup[location_id]
 
         return self._get_sample(t0, location)
 
@@ -416,7 +405,7 @@ class PVNetDataset(AbstractPVNetDataset):
         if t0 not in self.valid_t0_times:
             raise ValueError(f"Input init time '{t0!s}' not in valid times")
         if location_id not in self.location_lookup:
-            raise ValueError(f"Input region/site '{location_id}' not known")
+            raise ValueError(f"Input location '{location_id}' not known")
 
         location = self.location_lookup[location_id]
 
@@ -428,10 +417,13 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
     @override
     def __len__(self) -> int:
-        if self.config.input_data.generation:
+        if self.complete_generation:
             return len(self.valid_t0_times)
-        # site specific as t0s repeated for all sites
-        return len(self.valid_t0_times)//len(self.locations)
+        raise(
+            NotImplementedError(
+                "PVNetConcurrentDataset not implemented for non-complete generation datasets.",
+                )
+            )
 
     def _get_sample(self, t0: pd.Timestamp) -> NumpyBatch:
         """Generate a concurrent PVNet sample for given init-time.
@@ -462,11 +454,13 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> NumpyBatch:
-        if self.config.input_data.generation:
+        if self.complete_generation:
             return self._get_sample(self.valid_t0_times[idx])
-        # site specific as t0s repeated for all sites
-        t_index = idx % len(self.valid_t0_times)//len(self.locations)
-        return self._get_sample(self.valid_t0_times["t0"][t_index])
+        raise(
+            NotImplementedError(
+                "PVNetConcurrentDataset not implemented for non-complete generation datasets.",
+                )
+            )
 
     def get_sample(self, t0: pd.Timestamp) -> NumpyBatch:
         """Generate a sample for the given init-time.

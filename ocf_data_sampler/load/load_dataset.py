@@ -1,20 +1,21 @@
 """Loads all data sources."""
 
+import logging
+
 import xarray as xr
 
 from ocf_data_sampler.config import InputData
 from ocf_data_sampler.load import open_generation, open_nwp, open_sat_data
 
+logger = logging.getLogger(__name__)
 
 def get_dataset_dict(
     input_config: InputData,
-    location_ids: list[int] | None = None,
 ) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
     """Construct dictionary of all of the input data sources.
 
     Args:
         input_config: InputData configuration object
-        location_ids: List of IDs to load. If None, all locations are loaded (not National).
     """
     datasets_dict = {}
 
@@ -26,13 +27,10 @@ def get_dataset_dict(
             public=input_config.generation.public,
         )
 
-        if location_ids is None:
-            # Remove national (gsp_id=0)
-            da_generation = da_generation.sel(location_id=slice(1, None))
-        else:
-            da_generation = da_generation.sel(location_id=location_ids)
+        da_generation = da_generation.sel(location_id=slice(1, None))
 
         datasets_dict["generation"] = da_generation
+        logger.warning("If location ID 0 present this has been filtered out.")
 
     # Load NWP data if in config
     if input_config.nwp:
