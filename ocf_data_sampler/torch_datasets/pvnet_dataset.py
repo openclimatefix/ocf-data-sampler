@@ -417,13 +417,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
     @override
     def __len__(self) -> int:
-        if self.complete_generation:
-            return len(self.valid_t0_times)
-        raise(
-            NotImplementedError(
-                "PVNetConcurrentDataset not implemented for non-complete generation datasets.",
-                )
-            )
+        return len(self.valid_t0_times)
 
     def _get_sample(self, t0: pd.Timestamp) -> NumpyBatch:
         """Generate a concurrent PVNet sample for given init-time.
@@ -454,13 +448,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> NumpyBatch:
-        if self.complete_generation:
-            return self._get_sample(self.valid_t0_times[idx])
-        raise(
-            NotImplementedError(
-                "PVNetConcurrentDataset not implemented for non-complete generation datasets.",
-                )
-            )
+        return self._get_sample(self.valid_t0_times[idx])
 
     def get_sample(self, t0: pd.Timestamp) -> NumpyBatch:
         """Generate a sample for the given init-time.

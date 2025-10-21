@@ -21,8 +21,8 @@ def convert_generation_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = No
     """Convert from Xarray to NumpySample.
 
     Args:
-        da: Xarray DataArray containing GSP data
-        t0_idx: Index of the t0 timestamp in the time dimension of the GSP data
+        da: Xarray DataArray containing generation data
+        t0_idx: Index of the t0 timestamp in the time dimension of the generation data
     """
     sample = {
         GenerationSampleKey.generation: da.values,
