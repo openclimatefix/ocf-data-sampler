@@ -26,10 +26,10 @@ def get_dataset_dict(input_config: InputData) -> dict[str, dict[xr.DataArray] | 
         datasets_dict["nwp"] = {}
         for nwp_source, nwp_config in input_config.nwp.items():
             da_nwp = open_nwp(
-                nwp_config.zarr_path, 
-                provider=nwp_config.provider, 
+                nwp_config.zarr_path,
+                provider=nwp_config.provider,
                 ensemble_member=nwp_config.ensemble_member,
-                means_path=nwp.means_path,
+                means_path=nwp_config.means_path,
             )
 
             da_nwp = da_nwp.sel(channel=list(nwp_config.channels))

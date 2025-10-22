@@ -21,8 +21,6 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
     """
     ds = open_zarr_paths(zarr_path)
 
-    ds = ds.to_array()
-
     ds = ds.rename(
         {
             "init_time": "init_time_utc",
@@ -39,4 +37,4 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
     ds = ds.transpose("init_time_utc", "step", "channel", "x_osgb", "y_osgb")
 
     # TODO: should we control the dtype of the DataArray?
-    return ds
+    return get_xr_data_array_from_xr_dataset(ds)
