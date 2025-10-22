@@ -45,7 +45,7 @@ def calculate_expected_shapes(
     expected_shapes = {}
     input_data = config.input_data
 
-    # Calculate GSP shape
+    # Calculate generation shape
     gsp_config = input_data.generation
     expected_shapes[GenerationSampleKey.generation] = (
         _calculate_time_steps(
@@ -110,7 +110,7 @@ def validation_warning(
     Args:
         message: The base warning message string.
         warning_type: The category of the warning (e.g., 'unexpected_component').
-        component: Optional component identifier (e.g., 'gsp').
+        component: Optional component identifier (e.g., 'generation').
         providers: Optional list of provider names (e.g., ['ukv']).
 
     Returns:

@@ -19,7 +19,7 @@ def get_dataset_dict(
     """
     datasets_dict = {}
 
-    # Load GSP data unless the path is None
+    # Load generation data unless the path is None
     if input_config.generation and input_config.generation.zarr_path:
 
         da_generation = open_generation(
@@ -28,9 +28,9 @@ def get_dataset_dict(
         )
 
         da_generation = da_generation.sel(location_id=slice(1, None))
+        logger.warning("If location ID 0 present this has been filtered out.")
 
         datasets_dict["generation"] = da_generation
-        logger.warning("If location ID 0 present this has been filtered out.")
 
     # Load NWP data if in config
     if input_config.nwp:

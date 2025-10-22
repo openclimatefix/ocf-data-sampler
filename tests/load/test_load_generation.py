@@ -9,7 +9,7 @@ from ocf_data_sampler.load.generation import open_generation
 
 
 def test_open_generation(generation_zarr_path):
-    """Test the GSP data loader with valid data."""
+    """Test the generation data loader with valid data."""
     da = open_generation(generation_zarr_path)
 
     assert isinstance(da, xr.DataArray)
@@ -24,7 +24,7 @@ def test_open_generation_bad_dtype(tmp_path: Path):
     zarr_path = tmp_path / "bad_generation.zarr"
 
     # Create dataset where generation_mw is integer
-    # Use valid GSP IDs - check against boundaries file passes
+    # Use valid location IDs - check against boundaries file passes
     bad_ds = xr.Dataset(
         data_vars={
             "generation_mw": (("time_utc", "location_id"), np.random.randint(0, 100, (10, 2))),

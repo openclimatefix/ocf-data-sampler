@@ -2,7 +2,6 @@
 
 The aim of this folder is to create torch datasets which can easily be used in our ML models and ML deployment that use pvnet.
 
-## generation 
 
 ## Note on t0 time (prediction time)
 t0 represents the time the forecast is made and relates to a time of one of the generation values.   

@@ -41,10 +41,10 @@ def test_fill_nans_in_arrays():
     assert result["string_key"] == "not_an_array"
 
 
-def test_fill_nans_on_numpy_samples(test_config_filename):
+def test_fill_nans_on_numpy_samples(config_filename):
     """Test the fill_nans_in_arrays function from configuration"""
 
-    configuration = load_yaml_configuration(test_config_filename)
+    configuration = load_yaml_configuration(config_filename)
     # set custom satellite and nwp values, generation can be left as default 0.0
     configuration.input_data.satellite.dropout_value = -1.0
     configuration.input_data.nwp["ukv"].dropout_value = -2.0

@@ -126,6 +126,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
             filter_times = valid_t0_times
         else:
+            # If non overlapping times per location, find valid t0s per location id
             valid_t0_times = self.find_valid_t0_and_location_ids(datasets_dict, config)
             filter_times = valid_t0_times["t0"]
 
@@ -350,7 +351,7 @@ class PVNetDataset(AbstractPVNetDataset):
     def __len__(self) -> int:
         if self.complete_generation:
             return len(self.locations)*len(self.valid_t0_times)
-        # For sites all t0 and site combinations already present
+        # For non overlapping gen time periods all t0 and location combinations already present
         return len(self.valid_t0_times)
 
     def _get_sample(self, t0: pd.Timestamp, location: Location) -> NumpySample:
@@ -399,7 +400,7 @@ class PVNetDataset(AbstractPVNetDataset):
 
         Args:
             t0: init-time for sample
-            location_id: id for region/site
+            location_id: id for location
         """
         # Check the user has asked for a sample which we have the data for
         if t0 not in self.valid_t0_times:

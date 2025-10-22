@@ -17,9 +17,9 @@ def slice_datasets_by_space(
         location: The location to sample around
         config: Configuration object.
     """
-    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "generation", "site"}):
+    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "generation"}):
         raise ValueError(
-            "'datasets_dict' should only contain keys 'nwp', 'sat', 'generation', 'site'",
+            "'datasets_dict' should only contain keys 'nwp', 'sat', 'generation'",
         )
 
     sliced_datasets_dict = {}

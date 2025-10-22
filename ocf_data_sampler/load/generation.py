@@ -1,13 +1,13 @@
 """Functions for loading generation data.
 
-Generation data should be stored in a Zarr format with the following data variables and coordinates:
+Generation data schema: a Zarr file with the following data variables and dimensions/coordinates:
 
-- generation_mw (variable): Floating point data representing the generation in MW
-- capacity_mwp (variable): Floating point data representing the capacity in MWp
-- time_utc (dimension/coordinate): Datetime64 data representing the UTC timestamps
-- location_id (dimension/coordinate): Integer data representing the location IDs
-- longitude (coordinate): Floating point data representing the longitudes of the locations
-- latitude (coordinate): Floating point data representing the latitudes of the locations
+- generation_mw (variable): Floating point representing the generation in MW
+- capacity_mwp (variable): Floating point representing the capacity in MWp
+- time_utc (dimension/coordinate): Datetime64 representing the UTC timestamps
+- location_id (dimension/coordinate): Integer representing the location IDs
+- longitude (coordinate): Floating point representing the longitudes of the locations
+- latitude (coordinate): Floating point representing the latitudes of the locations
 
 """
 

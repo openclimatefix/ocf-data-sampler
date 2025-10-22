@@ -31,11 +31,11 @@ def test_extra_field_error():
         Configuration(**configuration_dict)
 
 
-def test_incorrect_interval_start_minutes(test_config_filename):
+def test_incorrect_interval_start_minutes(config_filename):
     """
     Check a history length not divisible by time resolution causes error
     """
-    configuration, provider = _load_config_and_provider(test_config_filename)
+    configuration, provider = _load_config_and_provider(config_filename)
     configuration.input_data.nwp[provider].interval_start_minutes = -1111
     with pytest.raises(
         ValueError,
@@ -45,11 +45,11 @@ def test_incorrect_interval_start_minutes(test_config_filename):
         _validate_configuration(configuration)
 
 
-def test_incorrect_interval_end_minutes(test_config_filename):
+def test_incorrect_interval_end_minutes(config_filename):
     """
     Check a forecast length not divisible by time resolution causes error
     """
-    configuration, provider = _load_config_and_provider(test_config_filename)
+    configuration, provider = _load_config_and_provider(config_filename)
     configuration.input_data.nwp[provider].interval_end_minutes = 1111
     with pytest.raises(
         ValueError,
@@ -59,21 +59,21 @@ def test_incorrect_interval_end_minutes(test_config_filename):
         _validate_configuration(configuration)
 
 
-def test_incorrect_nwp_provider(test_config_filename):
+def test_incorrect_nwp_provider(config_filename):
     """
     Check an unexpected nwp provider causes error
     """
-    configuration, provider = _load_config_and_provider(test_config_filename)
+    configuration, provider = _load_config_and_provider(config_filename)
     configuration.input_data.nwp[provider].provider = "unexpected_provider"
     with pytest.raises(Exception, match="NWP provider"):
         _validate_configuration(configuration)
 
 
-def test_incorrect_dropout(test_config_filename):
+def test_incorrect_dropout(config_filename):
     """
     Check a dropout timedelta over 0 causes error and 0 doesn't
     """
-    configuration, provider = _load_config_and_provider(test_config_filename)
+    configuration, provider = _load_config_and_provider(config_filename)
 
     # Check that a positive number is not allowed
     configuration.input_data.nwp[provider].dropout_timedeltas_minutes = [120]
@@ -85,11 +85,11 @@ def test_incorrect_dropout(test_config_filename):
     _validate_configuration(configuration)
 
 
-def test_incorrect_dropout_fraction(test_config_filename):
+def test_incorrect_dropout_fraction(config_filename):
     """
     Check dropout fraction outside of range causes error
     """
-    configuration, provider = _load_config_and_provider(test_config_filename)
+    configuration, provider = _load_config_and_provider(config_filename)
 
     configuration.input_data.nwp[provider].dropout_fraction = 1.1
     with pytest.raises(ValidationError, match=r"Dropout fractions must be in range *"):
@@ -112,11 +112,11 @@ def test_incorrect_dropout_fraction(test_config_filename):
         _validate_configuration(configuration)
 
 
-def test_inconsistent_dropout_use(test_config_filename):
+def test_inconsistent_dropout_use(config_filename):
     """
     Check dropout fraction outside of range causes error
     """
-    configuration = load_yaml_configuration(test_config_filename)
+    configuration = load_yaml_configuration(config_filename)
     configuration.input_data.satellite.dropout_fraction = 1.0
     configuration.input_data.satellite.dropout_timedeltas_minutes = []
     with pytest.raises(
@@ -134,9 +134,9 @@ def test_inconsistent_dropout_use(test_config_filename):
         _validate_configuration(configuration)
 
 
-def test_accum_channels_validation(test_config_filename):
+def test_accum_channels_validation(config_filename):
     """Test accum_channels validation with required normalization constants."""
-    config, nwp_name = _load_config_and_provider(test_config_filename)
+    config, nwp_name = _load_config_and_provider(config_filename)
 
     # Test invalid channel scenario
     invalid_config = config.model_copy(deep=True)

@@ -1,4 +1,4 @@
-"""Convert GSP to Numpy Sample."""
+"""Convert Generation data to Numpy Sample."""
 
 import xarray as xr
 

@@ -48,17 +48,6 @@ def session_tmp_path(tmp_path_factory):
     return tmp_path_factory.mktemp("data")
 
 
-# Config path fixtures
-@pytest.fixture()
-def test_config_filename():
-    return str(CONFIG_DIR / "test_config.yaml")
-
-
-@pytest.fixture()
-def test_config_gsp_path():
-    return str(CONFIG_DIR / "gsp_test_config.yaml")
-
-
 @pytest.fixture(scope="session")
 def config_filename():
     return str(CONFIG_DIR / "pvnet_test_config.yaml")
@@ -211,7 +200,6 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     yield save_zarr(ds, session_tmp_path, "cloudcasting.zarr", chunks)
 
 
-# GSP data
 @pytest.fixture(scope="session")
 def ds_generation(session_rng):
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
@@ -242,7 +230,7 @@ def ds_generation(session_rng):
         },
     )
 
-# Site data (non overlapping time periods) and starting with id 1
+# location data (non overlapping time periods) and starting with id 1
 @pytest.fixture(scope="session")
 def ds_site_generation(session_rng):
     # Define a global time range (covers all possible site periods)
@@ -300,23 +288,6 @@ def generation_zarr_path(session_tmp_path, ds_generation):
 @pytest.fixture(scope="session")
 def site_generation_zarr_path(session_tmp_path, ds_site_generation):
     yield save_zarr(ds_site_generation, session_tmp_path, "site_generation.zarr")
-
-
-# Config fixtures
-def update_config(config, **paths):
-    """Update config with zarr paths"""
-    mapping = {"nwp_ukv": ("nwp", "ukv"), "satellite": ("satellite",), "gsp": ("gsp",)}
-    for key, path in paths.items():
-        obj = config.input_data
-        for attr in mapping[key][:-1]:
-            obj = getattr(obj, attr)
-        if key == "nwp_ukv":
-            obj["ukv"].zarr_path = path
-        else:
-            setattr(obj, mapping[key][-1], type(getattr(obj, mapping[key][-1]))(zarr_path=path)
-                    if path else None)
-    return config
-
 
 @pytest.fixture()
 def pvnet_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path,
