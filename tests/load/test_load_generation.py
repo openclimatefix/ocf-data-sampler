@@ -20,7 +20,7 @@ def test_open_generation(generation_zarr_path):
 
 
 def test_open_generation_bad_dtype(tmp_path: Path):
-    """Test that open_gsp raises a TypeError on incorrect data dtypes."""
+    """Test that open_generation raises a TypeError on incorrect data dtypes."""
     zarr_path = tmp_path / "bad_generation.zarr"
 
     # Create dataset where generation_mw is integer

@@ -15,7 +15,7 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
         GenerationSampleKey.time_utc,
     }
     assert isinstance(numpy_sample, dict)
-    assert set(numpy_sample) <= expected_keys
+    assert set(numpy_sample) == expected_keys
 
     # Assert content and capacity values
     assert np.array_equal(numpy_sample[GenerationSampleKey.generation], da.values)

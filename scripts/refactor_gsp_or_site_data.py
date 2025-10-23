@@ -40,7 +40,7 @@ def reformat_legacy_gsp_data(gsp_zarr_path: str, gsp_metadata_csv_path: str,
             gsp_meta_merge.set_index("location_id").loc[ds_gsp.location_id.values, "longitude"],
             ),
     )
-    
+
     # Filter out any times with nans
     mask = ds_with_meta["generation_mw"].isnull().any(dim="location_id")
     times_to_drop = ds_with_meta.coords["time_utc"].values[mask.values]

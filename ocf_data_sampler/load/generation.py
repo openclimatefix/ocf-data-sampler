@@ -2,12 +2,15 @@
 
 Generation data schema: a Zarr file with the following data variables and dimensions/coordinates:
 
-- generation_mw (variable): Floating point representing the generation in MW
-- capacity_mwp (variable): Floating point representing the capacity in MWp
-- time_utc (dimension/coordinate): Datetime64 representing the UTC timestamps
-- location_id (dimension/coordinate): Integer representing the location IDs
+
+- generation_mw (data variable): Floating point representing the generation in MW
+- capacity_mwp (data variable): Floating point representing the capacity in MWp
+- time_utc (dimension): Datetime64 representing the UTC timestamps
+- location_id (dimension): Integer representing the location IDs
 - longitude (coordinate): Floating point representing the longitudes of the locations
 - latitude (coordinate): Floating point representing the latitudes of the locations
+
+Both data variables depend on the dimensions time_utc and location_id.
 
 """
 
