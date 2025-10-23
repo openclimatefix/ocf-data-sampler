@@ -124,18 +124,23 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         if self.complete_generation:
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
-            filter_times = valid_t0_times
+
+            # Filter t0 times to given range
+            if start_time is not None:
+                valid_t0_times = valid_t0_times[valid_t0_times >= pd.Timestamp(start_time)]
+
+            if end_time is not None:
+                valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
         else:
             # If non overlapping times per location, find valid t0s per location id
             valid_t0_times = self.find_valid_t0_and_location_ids(datasets_dict, config)
-            filter_times = valid_t0_times["t0"]
 
-        # Filter t0 times to given range
-        if start_time is not None:
-            valid_t0_times = valid_t0_times[filter_times >= pd.Timestamp(start_time)]
+            # Filter t0 times to given range
+            if start_time is not None:
+                valid_t0_times = valid_t0_times[valid_t0_times["t0"] >= pd.Timestamp(start_time)]
 
-        if end_time is not None:
-            valid_t0_times = valid_t0_times[filter_times <= pd.Timestamp(end_time)]
+            if end_time is not None:
+                valid_t0_times = valid_t0_times[valid_t0_times["t0"] <= pd.Timestamp(end_time)]
 
         # Construct list of locations to sample from
         locations = get_locations(

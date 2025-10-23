@@ -40,8 +40,13 @@ def reformat_legacy_gsp_data(gsp_zarr_path: str, gsp_metadata_csv_path: str,
             gsp_meta_merge.set_index("location_id").loc[ds_gsp.location_id.values, "longitude"],
             ),
     )
+    
+    # Filter out any times with nans
+    mask = ds_with_meta["generation_mw"].isnull().any(dim="location_id")
+    times_to_drop = ds_with_meta.coords["time_utc"].values[mask.values]
+    ds_with_meta_dropped = ds_with_meta.drop_sel({"time_utc": times_to_drop})
 
-    ds_with_meta.drop_encoding().to_zarr(save_path, mode="w")
+    ds_with_meta_dropped.drop_encoding().to_zarr(save_path, mode="w")
 
 def reformat_legacy_site_data(site_netcdf_path: str, site_metadata_csv_path: str,
                               save_path: str) -> None:
