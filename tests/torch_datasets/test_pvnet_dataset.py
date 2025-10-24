@@ -20,7 +20,7 @@ from ocf_data_sampler.torch_datasets.utils.torch_batch_utils import (
 def test_pvnet_dataset(pvnet_config_filename):
     dataset = PVNetDataset(pvnet_config_filename)
 
-    assert len(dataset.locations) == 317 # Quantity of regional GSPs
+    assert len(dataset.locations) == 317  # Quantity of regional GSPs
     # NB. I have not checked the value (39 below) is in fact correct
     assert len(dataset.valid_t0_times) == 39
     assert len(dataset) == 317 * 39
@@ -70,7 +70,7 @@ def test_pvnet_dataset_sites(pvnet_site_config_filename):
 
     assert len(dataset.locations) == 10
     # max possible t0s is 10 * 39 if full, so should be less than that
-    assert len(dataset.valid_t0_times) < 10 * 39
+    assert len(dataset.valid_t0_and_location_ids) < 10 * 39
 
     sample = dataset[0]
     assert isinstance(sample, dict)
@@ -205,7 +205,8 @@ def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
 
     # Assertions for the raw sample
     assert isinstance(
-        raw_sample, dict,
+        raw_sample,
+        dict,
     ), "Sample yielded by DataLoader with batch_size=None should be a dict"
 
     required_keys = [

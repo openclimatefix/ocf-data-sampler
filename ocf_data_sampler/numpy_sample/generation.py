@@ -9,7 +9,7 @@ class GenerationSampleKey:
     """Keys for the Generation sample dictionary."""
 
     generation = "generation"
-    effective_capacity_mwp = "effective_capacity_mwp"
+    capacity_mwp = "capacity_mwp"
     time_utc = "time_utc"
     t0_idx = "t0_idx"
     location_id = "location_id"
@@ -26,7 +26,7 @@ def convert_generation_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = No
     """
     sample = {
         GenerationSampleKey.generation: da.values,
-        GenerationSampleKey.effective_capacity_mwp: da.effective_capacity_mwp.values[0],
+        GenerationSampleKey.capacity_mwp: da.capacity_mwp.values[0],
         GenerationSampleKey.time_utc: da["time_utc"].values.astype(float),
     }
 

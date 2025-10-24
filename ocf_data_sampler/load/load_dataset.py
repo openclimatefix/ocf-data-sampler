@@ -9,6 +9,7 @@ from ocf_data_sampler.load import open_generation, open_nwp, open_sat_data
 
 logger = logging.getLogger(__name__)
 
+
 def get_dataset_dict(
     input_config: InputData,
 ) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
@@ -21,14 +22,14 @@ def get_dataset_dict(
 
     # Load generation data unless the path is None
     if input_config.generation and input_config.generation.zarr_path:
-
         da_generation = open_generation(
             zarr_path=input_config.generation.zarr_path,
             public=input_config.generation.public,
         )
 
-        da_generation = da_generation.sel(location_id=slice(1, None))
-        logger.warning("If location ID 0 present this has been filtered out.")
+        if len(da_generation.location_id) > 0:  # for backwards compatibility
+            da_generation = da_generation.sel(location_id=slice(1, None))
+            logger.warning("If location ID 0 present this has been filtered out.")
 
         datasets_dict["generation"] = da_generation
 

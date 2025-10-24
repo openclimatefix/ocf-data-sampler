@@ -15,14 +15,12 @@ def minutes(minutes: int | list[float]) -> pd.Timedelta | pd.TimedeltaIndex:
 
 def compute(xarray_dict: dict) -> dict:
     """Eagerly load a nested dictionary of xarray DataArrays."""
-    # Load these keys first because they don't use tensorstore
-    priority_keys = ["generation"]
-    for key in priority_keys:
-        if key in xarray_dict:
-            xarray_dict[key] = xarray_dict[key].compute()
+    # Load this key first because it doesn't use tensorstore
+    if "generation" in xarray_dict:
+        xarray_dict["generation"] = xarray_dict["generation"].compute()
 
     # Load the rest
-    keys = [k for k in xarray_dict if k not in priority_keys]
+    keys = [k for k in xarray_dict if k != "generation"]
     for k in keys:
         v = xarray_dict[k]
         if isinstance(v, dict):

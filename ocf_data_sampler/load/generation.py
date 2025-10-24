@@ -45,7 +45,7 @@ def open_generation(
     )
 
     ds = ds.assign_coords(
-        effective_capacity_mwp=ds.capacity_mwp,
+        capacity_mwp=ds.capacity_mwp,
     )
 
     da = ds.generation_mw
@@ -57,7 +57,7 @@ def open_generation(
     coord_dtypes = {
         "time_utc": np.datetime64,
         "location_id": np.integer,
-        "effective_capacity_mwp": np.floating,
+        "capacity_mwp": np.floating,
         "longitude": np.floating,
         "latitude": np.floating,
     }

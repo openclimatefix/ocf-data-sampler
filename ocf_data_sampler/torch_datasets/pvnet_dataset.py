@@ -41,8 +41,10 @@ from ocf_data_sampler.utils import minutes, tensorstore_compute
 
 xr.set_options(keep_attrs=True)
 
+
 class PickleCacheMixin:
     """A mixin for classes that need to cache their state using pickle."""
+
     def __init__(self, *args: list, **kwargs: dict) -> None:
         """Initialize the pickle path and call the parent constructor."""
         self._pickle_path = None
@@ -66,11 +68,12 @@ class PickleCacheMixin:
         self.__dict__.update(state)
         if self._pickle_path and os.path.exists(self._pickle_path):
             with open(self._pickle_path, "rb") as f:
-                saved_state = pickle.load(f) # noqa: S301
+                saved_state = pickle.load(f)  # noqa: S301
                 self.__dict__.update(saved_state)
 
+
 def get_locations(
-    generation_data: xr.DataArray | None = None,
+    generation_data: xr.DataArray,
 ) -> list[Location]:
     """Get list of locations of all locations.
 
@@ -78,10 +81,7 @@ def get_locations(
         generation_data: xarray dataarray of generation data with location info
     """
     locations = []
-
-    # Default location IDs is all except national (location_id=0)
     location_ids = generation_data.location_id.values
-    location_ids = location_ids[location_ids != 0]
 
     for location_id in location_ids:
         gen_data = generation_data.sel(location_id=location_id)
@@ -132,20 +132,23 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             if end_time is not None:
                 valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
         else:
-            # If non overlapping times per location, find valid t0s per location id
-            valid_t0_times = self.find_valid_t0_and_location_ids(datasets_dict, config)
+            # If non-identical times per location, find valid t0s per location id
+            valid_t0_and_location_ids = self.find_valid_t0_and_location_ids(datasets_dict, config)
+            valid_t0_times = None
 
             # Filter t0 times to given range
             if start_time is not None:
-                valid_t0_times = valid_t0_times[valid_t0_times["t0"] >= pd.Timestamp(start_time)]
+                valid_t0_and_location_ids = valid_t0_and_location_ids[
+                    valid_t0_and_location_ids["t0"] >= pd.Timestamp(start_time)
+                ]
 
             if end_time is not None:
-                valid_t0_times = valid_t0_times[valid_t0_times["t0"] <= pd.Timestamp(end_time)]
+                valid_t0_and_location_ids = valid_t0_and_location_ids[
+                    valid_t0_and_location_ids["t0"] <= pd.Timestamp(end_time)
+                ]
 
         # Construct list of locations to sample from
-        locations = get_locations(
-            generation_data=datasets_dict["generation"],
-            )
+        locations = get_locations(generation_data=datasets_dict["generation"])
 
         self.locations = add_alterate_coordinate_projections(
             locations,
@@ -153,7 +156,11 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             primary_coords="lon_lat",
         )
 
-        self.valid_t0_times = valid_t0_times
+        # Assign valid times or valid times and location ids
+        if valid_t0_times is not None:
+            self.valid_t0_times = valid_t0_times
+        else:
+            self.valid_t0_and_location_ids = valid_t0_and_location_ids
 
         # Assign config and input data to self
         self.config = config
@@ -183,7 +190,6 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             nwp_numpy_modalities = {}
 
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
-
                 # Standardise and convert to NumpyBatch
                 channel_means = self.means_dict["nwp"][nwp_key]
                 channel_stds = self.stds_dict["nwp"][nwp_key]
@@ -209,7 +215,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         if "generation" in dataset_dict:
             generation_config = self.config.input_data.generation
             da_generation = dataset_dict["generation"]
-            da_generation = da_generation / da_generation.effective_capacity_mwp.values
+            da_generation = da_generation / da_generation.capacity_mwp.values
 
             # Convert to NumpyBatch
             numpy_modalities.append(
@@ -218,15 +224,15 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                     t0_idx=(
                         -generation_config.interval_start_minutes
                         / generation_config.time_resolution_minutes,
+                    ),
                 ),
-            ),
             )
 
             numpy_modalities.append(
                 {
                     GenerationSampleKey.location_id: location.id,
-                    GenerationSampleKey.latitude: da_generation.latitude.values,
                     GenerationSampleKey.longitude: da_generation.longitude.values,
+                    GenerationSampleKey.latitude: da_generation.latitude.values,
                 },
             )
 
@@ -252,8 +258,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                         datetimes,
                         da_generation.longitude.values,
                         da_generation.latitude.values,
-                        ),
-                    )
+                    ),
+                )
 
         # Combine all the modalities and fill NaNs
         combined_sample = merge_dicts(numpy_modalities)
@@ -329,8 +335,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             valid_t0_and_location_ids.append(valid_t0_per_location)
 
         valid_t0_and_location_ids = pd.concat(valid_t0_and_location_ids)
-        valid_t0_and_location_ids.index.name = "t0"
-        return valid_t0_and_location_ids.reset_index()
+        return valid_t0_and_location_ids.reset_index(names="t0")
 
 
 class PVNetDataset(AbstractPVNetDataset):
@@ -343,7 +348,6 @@ class PVNetDataset(AbstractPVNetDataset):
         start_time: str | None = None,
         end_time: str | None = None,
     ) -> None:
-
         super().__init__(config_filename, start_time, end_time)
 
         # Construct a lookup for locations - useful for users to construct sample by location ID
@@ -355,9 +359,9 @@ class PVNetDataset(AbstractPVNetDataset):
     @override
     def __len__(self) -> int:
         if self.complete_generation:
-            return len(self.locations)*len(self.valid_t0_times)
-        # For non overlapping gen time periods all t0 and location combinations already present
-        return len(self.valid_t0_times)
+            return len(self.locations) * len(self.valid_t0_times)
+        # For non-identical generation time periods all t0 and location combinations already present
+        return len(self.valid_t0_and_location_ids)
 
     def _get_sample(self, t0: pd.Timestamp, location: Location) -> NumpySample:
         """Generate the PVNet sample for given coordinates.
@@ -374,13 +378,11 @@ class PVNetDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> NumpySample:
-
         # Get the coordinates of the sample
         if idx >= len(self):
             raise ValueError(f"Index {idx} out of range for dataset of length {len(self)}")
 
         if self.complete_generation:
-
             # t_index will be between 0 and len(self.valid_t0_times)-1
             t_index = idx % len(self.valid_t0_times)
 
@@ -391,7 +393,7 @@ class PVNetDataset(AbstractPVNetDataset):
             t0 = self.valid_t0_times[t_index]
         else:
             # Get the coordinates of the sample
-            t0, location_id = self.valid_t0_times.iloc[idx]
+            t0, location_id = self.valid_t0_and_location_ids.iloc[idx]
 
             # Get location from location id
             location = self.location_lookup[location_id]
@@ -408,7 +410,7 @@ class PVNetDataset(AbstractPVNetDataset):
             location_id: id for location
         """
         # Check the user has asked for a sample which we have the data for
-        if t0 not in self.valid_t0_times:
+        if t0 not in self.valid_t0_times or self.valid_t0_and_location_ids:
             raise ValueError(f"Input init time '{t0!s}' not in valid times")
         if location_id not in self.location_lookup:
             raise ValueError(f"Input location '{location_id}' not known")

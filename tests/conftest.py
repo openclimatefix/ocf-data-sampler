@@ -169,9 +169,9 @@ def icon_eu_zarr_path(session_tmp_path, session_rng):
 
         da = xr.DataArray(
             data,
-            coords={"step": step, "channel": channels, "latitude": lat,
-                    "longitude": lon, "init_time_utc": time_utc},
-            dims=("step", "channel", "latitude", "longitude"),
+            coords={"step": step, "channel": channels, "longitude": lon,
+                    "latitude": lat, "init_time_utc": time_utc},
+            dims=("step", "channel", "longitude", "latitude"),
             attrs=attrs,
         )
         da.coords["valid_time"] = da.init_time_utc + da.step
@@ -209,8 +209,8 @@ def ds_generation(session_rng):
     lon_min, lon_max = -8.6, 1.8
 
     # Generate random uniform points
-    latitudes = session_rng.uniform(lat_min, lat_max, len(location_ids)).astype("float64")
     longitudes = session_rng.uniform(lon_min, lon_max, len(location_ids)).astype("float64")
+    latitudes = session_rng.uniform(lat_min, lat_max, len(location_ids)).astype("float64")
 
     capacity = np.ones((len(times), len(location_ids)))
 
@@ -225,8 +225,8 @@ def ds_generation(session_rng):
         coords={
             "time_utc": times,
             "location_id": location_ids,
-            "latitude": ("location_id", latitudes),
             "longitude": ("location_id", longitudes),
+            "latitude": ("location_id", latitudes),
         },
     )
 
@@ -244,8 +244,8 @@ def ds_site_generation(session_rng):
     lat_min, lat_max = 49.9, 58.7
     lon_min, lon_max = -8.6, 1.8
 
-    latitudes = session_rng.uniform(lat_min, lat_max, n_sites).astype("float64")
     longitudes = session_rng.uniform(lon_min, lon_max, n_sites).astype("float64")
+    latitudes = session_rng.uniform(lat_min, lat_max, n_sites).astype("float64")
 
     # Initialize with NaNs
     capacity = np.full((n_times, n_sites), np.nan, dtype="float32")
@@ -274,8 +274,8 @@ def ds_site_generation(session_rng):
         coords={
             "time_utc": global_times,
             "location_id": location_ids,
-            "latitude": ("location_id", latitudes),
             "longitude": ("location_id", longitudes),
+            "latitude": ("location_id", latitudes),
         },
     )
 

@@ -14,7 +14,7 @@ def test_open_generation(generation_zarr_path):
 
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "location_id")
-    assert {"effective_capacity_mwp", "longitude", "latitude"}.issubset(da.coords)
+    assert {"capacity_mwp", "longitude", "latitude"}.issubset(da.coords)
     assert da.shape == (49, 318)
     assert len(np.unique(da.coords["location_id"])) == da.shape[1]
 
