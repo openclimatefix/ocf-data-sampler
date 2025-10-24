@@ -112,7 +112,8 @@ def reformat_legacy_site_data(
             longitude=(
                 "location_id",
                 site_meta.set_index("location_id").loc[
-                    ds_with_meta.location_id.values, "longitude"
+                    ds_with_meta.location_id.values,
+                    "longitude",
                 ],
             ),
         )
