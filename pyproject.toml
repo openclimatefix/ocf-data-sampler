@@ -36,6 +36,7 @@ dependencies = [
     "pyresample",
     "h5netcdf",
     "xarray-tensorstore==0.1.5",
+    "tensorstore==0.1.77",
     "zarr>=3",
 ]
 
