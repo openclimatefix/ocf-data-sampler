@@ -199,7 +199,11 @@ def icon_eu_zarr_path(session_tmp_path, session_rng):
         da.coords["valid_time"] = da.init_time_utc + da.step
 
         paths.append(
-            save_zarr(da.to_dataset(name="icon_eu_data"), session_tmp_path, f"20211101_{hour}.zarr")
+            save_zarr(
+                da.to_dataset(name="icon_eu_data"),
+                session_tmp_path,
+                f"20211101_{hour}.zarr",
+            ),
         )
 
     return paths
@@ -291,7 +295,7 @@ def ds_site_generation(session_rng):
         # Fill only active period with random data
         capacity[active_slice, i] = 1.0
         generation[active_slice, i] = session_rng.uniform(0, 200, end_idx - start_idx).astype(
-            "float32"
+            "float32",
         )
 
     # Build Dataset
@@ -321,7 +325,11 @@ def site_generation_zarr_path(session_tmp_path, ds_site_generation):
 
 @pytest.fixture()
 def pvnet_config_filename(
-    tmp_path, config_filename, nwp_ukv_zarr_path, generation_zarr_path, sat_zarr_path
+    tmp_path,
+    config_filename,
+    nwp_ukv_zarr_path,
+    generation_zarr_path,
+    sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
@@ -335,7 +343,11 @@ def pvnet_config_filename(
 
 @pytest.fixture(scope="session")
 def pvnet_site_config_filename(
-    session_tmp_path, config_filename, nwp_ukv_zarr_path, site_generation_zarr_path, sat_zarr_path
+    session_tmp_path,
+    config_filename,
+    nwp_ukv_zarr_path,
+    site_generation_zarr_path,
+    sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
