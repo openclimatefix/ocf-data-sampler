@@ -1,39 +1,40 @@
 """Loads all data sources."""
 
+import logging
+
 import xarray as xr
 
 from ocf_data_sampler.config import InputData
-from ocf_data_sampler.load import open_gsp, open_nwp, open_sat_data, open_site
+from ocf_data_sampler.load import open_generation, open_nwp, open_sat_data
+
+logger = logging.getLogger(__name__)
 
 
 def get_dataset_dict(
     input_config: InputData,
-    location_ids: list[int] | None = None,
 ) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
     """Construct dictionary of all of the input data sources.
 
     Args:
         input_config: InputData configuration object
-        location_ids: List of IDs to load. If None, all locations are loaded (not National).
     """
     datasets_dict = {}
 
-    # Load GSP data unless the path is None
-    if input_config.gsp and input_config.gsp.zarr_path:
-
-        da_gsp = open_gsp(
-            zarr_path=input_config.gsp.zarr_path,
-            boundaries_version=input_config.gsp.boundaries_version,
-            public=input_config.gsp.public,
+    # Load generation data unless the path is None
+    if input_config.generation and input_config.generation.zarr_path:
+        da_generation = open_generation(
+            zarr_path=input_config.generation.zarr_path,
+            public=input_config.generation.public,
         )
 
-        if location_ids is None:
-            # Remove national (gsp_id=0)
-            da_gsp = da_gsp.sel(gsp_id=slice(1, None))
-        else:
-            da_gsp = da_gsp.sel(gsp_id=location_ids)
+        # Remove location_id 0 if more than one location present
+        if len(da_generation.location_id) > 0 and 0 in da_generation.location_id.values:
+            da_generation = da_generation.sel(location_id=slice(1, None))
+            logger.warning(
+                "Id 0 has been filtered out, this is only used for summation models.",
+            )
 
-        datasets_dict["gsp"] = da_gsp
+        datasets_dict["generation"] = da_generation
 
     # Load NWP data if in config
     if input_config.nwp:
@@ -58,13 +59,5 @@ def get_dataset_dict(
         da_sat = da_sat.sel(channel=list(sat_config.channels))
 
         datasets_dict["sat"] = da_sat
-
-    if input_config.site:
-        da_sites = open_site(
-            generation_file_path=input_config.site.file_path,
-            metadata_file_path=input_config.site.metadata_file_path,
-        )
-
-        datasets_dict["site"] = da_sites
 
     return datasets_dict

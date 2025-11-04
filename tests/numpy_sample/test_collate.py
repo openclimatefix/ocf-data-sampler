@@ -13,5 +13,5 @@ def test_stack_np_samples_into_batch(pvnet_config_filename):
     assert isinstance(batch["nwp"], dict)
     assert "ukv" in batch["nwp"]
 
-    for key in ("gsp", "satellite_actual", "t0"):
+    for key in ("generation", "satellite_actual", "t0"):
         assert key in batch
