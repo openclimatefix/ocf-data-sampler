@@ -74,10 +74,23 @@ def save_zarr(ds, path, filename, chunks=None):
 # Satellite data
 @pytest.fixture(scope="session")
 def sat_zarr_path(session_tmp_path):
-    variables = ["IR_016", "IR_039", "IR_087", "IR_097", "IR_108", "IR_120",
-                 "IR_134", "VIS006", "VIS008", "WV_062", "WV_073"]
+    variables = [
+        "IR_016",
+        "IR_039",
+        "IR_087",
+        "IR_097",
+        "IR_108",
+        "IR_120",
+        "IR_134",
+        "VIS006",
+        "VIS008",
+        "WV_062",
+        "WV_073",
+    ]
     data = dask.array.zeros(
-        (len(variables), 288, 100, 100), chunks=(-1, 10, -1, -1), dtype=np.float32,
+        (len(variables), 288, 100, 100),
+        chunks=(-1, 10, -1, -1),
+        dtype=np.float32,
     )
     data[:, 10, :, :] = np.nan
 
@@ -158,9 +171,13 @@ def icon_eu_zarr_path(session_tmp_path, session_rng):
     lat = np.linspace(29.5, 35.69, 100)
     lon = np.linspace(-23.5, -17.31, 100)
 
-    attrs = {"Conventions": "CF-1.7", "GRIB_centre": "edzw",
-             "GRIB_centreDescription": "Offenbach", "GRIB_edition": 2,
-             "institution": "Offenbach"}
+    attrs = {
+        "Conventions": "CF-1.7",
+        "GRIB_centre": "edzw",
+        "GRIB_centreDescription": "Offenbach",
+        "GRIB_edition": 2,
+        "institution": "Offenbach",
+    }
 
     paths = []
     for hour in ["00", "06"]:
@@ -169,15 +186,21 @@ def icon_eu_zarr_path(session_tmp_path, session_rng):
 
         da = xr.DataArray(
             data,
-            coords={"step": step, "channel": channels, "longitude": lon,
-                    "latitude": lat, "init_time_utc": time_utc},
+            coords={
+                "step": step,
+                "channel": channels,
+                "longitude": lon,
+                "latitude": lat,
+                "init_time_utc": time_utc,
+            },
             dims=("step", "channel", "longitude", "latitude"),
             attrs=attrs,
         )
         da.coords["valid_time"] = da.init_time_utc + da.step
 
-        paths.append(save_zarr(da.to_dataset(name="icon_eu_data"),
-                              session_tmp_path, f"20211101_{hour}.zarr"))
+        paths.append(
+            save_zarr(da.to_dataset(name="icon_eu_data"), session_tmp_path, f"20211101_{hour}.zarr")
+        )
 
     return paths
 
@@ -195,8 +218,13 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     data = session_rng.uniform(0, 1, shape).astype(np.float32)
 
     ds = create_xr_dataset(coords, data, "sat_pred", attrs={"area": UK_SAT_AREA})
-    chunks = {"init_time": 1, "step": -1, "variable": -1,
-              "x_geostationary": 50, "y_geostationary": 50}
+    chunks = {
+        "init_time": 1,
+        "step": -1,
+        "variable": -1,
+        "x_geostationary": 50,
+        "y_geostationary": 50,
+    }
     yield save_zarr(ds, session_tmp_path, "cloudcasting.zarr", chunks)
 
 
@@ -230,6 +258,7 @@ def ds_generation(session_rng):
         },
     )
 
+
 # location data (non overlapping time periods) and starting with id 1
 @pytest.fixture(scope="session")
 def ds_site_generation(session_rng):
@@ -261,8 +290,8 @@ def ds_site_generation(session_rng):
 
         # Fill only active period with random data
         capacity[active_slice, i] = 1.0
-        generation[active_slice, i] = (
-            session_rng.uniform(0, 200, end_idx - start_idx).astype("float32")
+        generation[active_slice, i] = session_rng.uniform(0, 200, end_idx - start_idx).astype(
+            "float32"
         )
 
     # Build Dataset
@@ -280,18 +309,20 @@ def ds_site_generation(session_rng):
     )
 
 
-
 @pytest.fixture(scope="session")
 def generation_zarr_path(session_tmp_path, ds_generation):
     yield save_zarr(ds_generation, session_tmp_path, "generation.zarr")
+
 
 @pytest.fixture(scope="session")
 def site_generation_zarr_path(session_tmp_path, ds_site_generation):
     yield save_zarr(ds_site_generation, session_tmp_path, "site_generation.zarr")
 
+
 @pytest.fixture()
-def pvnet_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path,
-                          generation_zarr_path, sat_zarr_path):
+def pvnet_config_filename(
+    tmp_path, config_filename, nwp_ukv_zarr_path, generation_zarr_path, sat_zarr_path
+):
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
     config.input_data.satellite.zarr_path = sat_zarr_path
@@ -303,8 +334,9 @@ def pvnet_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path,
 
 
 @pytest.fixture(scope="session")
-def pvnet_site_config_filename(session_tmp_path, config_filename, nwp_ukv_zarr_path,
-                          site_generation_zarr_path, sat_zarr_path):
+def pvnet_site_config_filename(
+    session_tmp_path, config_filename, nwp_ukv_zarr_path, site_generation_zarr_path, sat_zarr_path
+):
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
     config.input_data.satellite.zarr_path = sat_zarr_path
