@@ -1,4 +1,4 @@
-""""Function for adding more projections to location objects."""
+""" "Function for adding more projections to location objects."""
 
 import numpy as np
 
@@ -36,23 +36,27 @@ def add_alterate_coordinate_projections(
 
     # Find all the coord systems required by all datasets
     for da in datasets_list:
-
         # Fid the dataset required by this dataset
         coord_system, *_ = find_coord_system(da)
 
         # Skip if the projections in this coord system have already been computed
         if coord_system not in computed_coord_systems:
-
             # If using geostationary coords we need to extract the area definition string
-            area_string = da.attrs["area"] if coord_system=="geostationary" else None
+            area_string = da.attrs["area"] if coord_system == "geostationary" else None
 
-            new_xs, new_ys = convert_coordinates(
-                x=xs,
-                y=ys,
-                from_coords=primary_coords,
-                target_coords=coord_system,
-                area_string=area_string,
-            )
+            # Transform coordinates element-by-element to avoid numpy deprecation warnings in pyproj
+            new_xs = []
+            new_ys = []
+            for x, y in zip(xs, ys, strict=True):
+                new_x, new_y = convert_coordinates(
+                    x=float(x),
+                    y=float(y),
+                    from_coords=primary_coords,
+                    target_coords=coord_system,
+                    area_string=area_string,
+                )
+                new_xs.append(new_x)
+                new_ys.append(new_y)
 
             # Add the projection to the locations objects
             for x, y, loc in zip(new_xs, new_ys, locations, strict=True):
@@ -62,13 +66,19 @@ def add_alterate_coordinate_projections(
 
     # Add lon-lat to start since it is required to compute the solar coords
     if "lon_lat" not in computed_coord_systems:
-        new_xs, new_ys = convert_coordinates(
-            x=xs,
-            y=ys,
-            from_coords=primary_coords,
-            target_coords="lon_lat",
-            area_string=None,
-        )
+        # Transform coordinates element-by-element to avoid numpy deprecation warnings in pyproj
+        new_xs = []
+        new_ys = []
+        for x, y in zip(xs, ys, strict=False):
+            new_x, new_y = convert_coordinates(
+                x=float(x),
+                y=float(y),
+                from_coords=primary_coords,
+                target_coords="lon_lat",
+                area_string=None,
+            )
+            new_xs.append(new_x)
+            new_ys.append(new_y)
 
         # Add the projection to the locations objects
         for x, y, loc in zip(new_xs, new_ys, locations, strict=False):
