@@ -1,5 +1,6 @@
 """Torch dataset for UK PVNet."""
 
+import logging
 import os
 import pickle
 
@@ -40,6 +41,8 @@ from ocf_data_sampler.torch_datasets.utils import (
 from ocf_data_sampler.utils import minutes, tensorstore_compute
 
 xr.set_options(keep_attrs=True)
+
+logger = logging.getLogger(__name__)
 
 
 class PickleCacheMixin:
@@ -132,6 +135,9 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             if end_time is not None:
                 valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
         else:
+            logger.info(
+                "Generation data has nans so t0s are handled separately for each location_id.",
+            )
             # If non-identical times per location, find valid t0s per location id
             valid_t0_and_location_ids = self.find_valid_t0_and_location_ids(datasets_dict, config)
             valid_t0_times = None

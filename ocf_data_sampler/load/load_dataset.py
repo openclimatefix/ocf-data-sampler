@@ -27,9 +27,12 @@ def get_dataset_dict(
             public=input_config.generation.public,
         )
 
-        if len(da_generation.location_id) > 0:  # for backwards compatibility
+        # Remove location_id 0 if more than one location present
+        if len(da_generation.location_id) > 0 and 0 in da_generation.location_id.values:
             da_generation = da_generation.sel(location_id=slice(1, None))
-            logger.warning("If location ID 0 present this has been filtered out.")
+            logger.warning(
+                "Id 0 has been filtered out, this is only used for summation models.",
+            )
 
         datasets_dict["generation"] = da_generation
 
