@@ -3,9 +3,11 @@
 import logging
 import os
 import pickle
+import warnings
 
 import pandas as pd
 import xarray as xr
+from pydantic.warnings import UnsupportedFieldAttributeWarning
 from torch.utils.data import Dataset
 from typing_extensions import override
 
@@ -39,6 +41,9 @@ from ocf_data_sampler.torch_datasets.utils import (
     slice_datasets_by_time,
 )
 from ocf_data_sampler.utils import minutes, tensorstore_compute
+
+# Ignore pydantic warning which doesn't cause an issue
+warnings.filterwarnings("ignore", category=UnsupportedFieldAttributeWarning)
 
 xr.set_options(keep_attrs=True)
 
