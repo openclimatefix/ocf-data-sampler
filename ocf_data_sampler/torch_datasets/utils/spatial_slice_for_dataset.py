@@ -17,9 +17,9 @@ def slice_datasets_by_space(
         location: The location to sample around
         config: Configuration object.
     """
-    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp", "site"}):
+    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "generation"}):
         raise ValueError(
-            "'datasets_dict' should only contain keys 'nwp', 'sat', 'gsp', 'site'",
+            "'datasets_dict' should only contain keys 'nwp', 'sat', 'generation'",
         )
 
     sliced_datasets_dict = {}
@@ -45,10 +45,11 @@ def slice_datasets_by_space(
             width_pixels=sat_config.image_size_pixels_width,
         )
 
-    if "gsp" in datasets_dict:
-        sliced_datasets_dict["gsp"] = datasets_dict["gsp"].sel(gsp_id=location.id)
+    if "generation" in datasets_dict:
+        sliced_datasets_dict["generation"] = (
+            datasets_dict["generation"]
+            .sel(location_id=location.id)
+        )
 
-    if "site" in datasets_dict:
-        sliced_datasets_dict["site"] = datasets_dict["site"].sel(site_id=location.id)
 
     return sliced_datasets_dict

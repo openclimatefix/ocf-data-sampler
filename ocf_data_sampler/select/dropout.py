@@ -1,6 +1,6 @@
 """Functions for simulating dropout in time series data.
 
-This is used for the following types of data: GSP, Satellite and Site
+This is used for the following types of data: Generation or Satellite
 This is not used for NWP
 """
 

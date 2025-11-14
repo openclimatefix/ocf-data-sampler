@@ -3,7 +3,7 @@ general:
   name: example
 
 input_data:
-  gsp:
+  generation:
     zarr_path: tests/data/gsp/test.zarr
     interval_start_minutes: -60
     interval_end_minutes: 120

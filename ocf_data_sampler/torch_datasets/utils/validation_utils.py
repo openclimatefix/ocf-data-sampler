@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.numpy_sample import GSPSampleKey, NWPSampleKey, SatelliteSampleKey
+from ocf_data_sampler.numpy_sample import GenerationSampleKey, NWPSampleKey, SatelliteSampleKey
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +45,9 @@ def calculate_expected_shapes(
     expected_shapes = {}
     input_data = config.input_data
 
-    # Calculate GSP shape
-    gsp_config = input_data.gsp
-    expected_shapes[GSPSampleKey.gsp] = (
+    # Calculate generation shape
+    gsp_config = input_data.generation
+    expected_shapes[GenerationSampleKey.generation] = (
         _calculate_time_steps(
             gsp_config.interval_start_minutes,
             gsp_config.interval_end_minutes,
@@ -110,7 +110,7 @@ def validation_warning(
     Args:
         message: The base warning message string.
         warning_type: The category of the warning (e.g., 'unexpected_component').
-        component: Optional component identifier (e.g., 'gsp').
+        component: Optional component identifier (e.g., 'generation').
         providers: Optional list of provider names (e.g., ['ukv']).
 
     Returns:

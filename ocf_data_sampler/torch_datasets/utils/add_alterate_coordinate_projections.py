@@ -9,7 +9,7 @@ from ocf_data_sampler.select.geospatial import convert_coordinates, find_coord_s
 def add_alterate_coordinate_projections(
     locations: list[Location],
     datasets_dict: dict,
-    primary_coords: str,
+    primary_coords: str = "lon_lat",
 ) -> list[Location]:
     """Add (in-place) coordinate projections for all dataset to a set of locations.
 
@@ -21,8 +21,8 @@ def add_alterate_coordinate_projections(
     Returns:
         List of locations with all coordinate projections added
     """
-    if primary_coords not in ["osgb", "lon_lat"]:
-        raise ValueError("Only osbg and lon_lat are currently supported")
+    if primary_coords != "lon_lat":
+        raise ValueError("Only lon_lat locations are currently supported")
 
     xs, ys = np.array([loc.in_coord_system(primary_coords) for loc in locations]).T
 
