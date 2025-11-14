@@ -418,6 +418,14 @@ class PVNetDataset(AbstractPVNetDataset):
             location_id: id for location
         """
         # Check the user has asked for a sample which we have the data for
+        self.validate_sample_request(t0, location_id)
+
+        location = self.location_lookup[location_id]
+
+        return self._get_sample(t0, location)
+
+    def validate_sample_request(self, t0: pd.Timestamp, location_id: int) -> None:
+        """Validate if a sample request for the given coordinates is valid."""
         if self.complete_generation:
             if t0 not in self.valid_t0_times:
                 raise ValueError(f"Input init time '{t0!s}' not in valid times")
@@ -432,10 +440,6 @@ class PVNetDataset(AbstractPVNetDataset):
                     f"Input t0 time '{t0!s}' and location id '{location_id}' "
                     f"pair not in valid t0 and location pairs",
                 )
-
-        location = self.location_lookup[location_id]
-
-        return self._get_sample(t0, location)
 
 
 class PVNetConcurrentDataset(AbstractPVNetDataset):
