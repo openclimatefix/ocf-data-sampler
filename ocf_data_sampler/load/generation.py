@@ -18,10 +18,7 @@ import numpy as np
 import xarray as xr
 
 
-def open_generation(
-    zarr_path: str,
-    public: bool = False,
-) -> xr.DataArray:
+def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
     """Open and eagerly load the generation data and validates its data types.
 
     Args:
@@ -44,9 +41,7 @@ def open_generation(
         backend_kwargs=backend_kwargs,
     )
 
-    ds = ds.assign_coords(
-        capacity_mwp=ds.capacity_mwp,
-    )
+    ds = ds.assign_coords(capacity_mwp=ds.capacity_mwp)
 
     da = ds.generation_mw
 
