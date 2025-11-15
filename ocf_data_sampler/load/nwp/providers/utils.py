@@ -72,6 +72,7 @@ def _dask_open_zarr_paths(zarr_path: str | list[str], time_dim: str, public: boo
 
 
 def _tensostore_open_zarr_paths(zarr_path: str | list[str], time_dim: str) -> xr.Dataset:
+
     if "*" in str(zarr_path):
         zarr_path = sorted(glob(zarr_path))
 
@@ -80,3 +81,4 @@ def _tensostore_open_zarr_paths(zarr_path: str | list[str], time_dim: str) -> xr
     else:
         ds = open_zarr(zarr_path)
     return ds
+
