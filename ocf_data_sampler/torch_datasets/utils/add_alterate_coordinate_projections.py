@@ -36,7 +36,8 @@ def add_alterate_coordinate_projections(
 
     # Find all the coord systems required by all datasets
     for da in datasets_list:
-        # Fid the dataset required by this dataset
+        
+        # Find the coordinate system required by this dataset
         coord_system, *_ = find_coord_system(da)
 
         # Skip if the projections in this coord system have already been computed
