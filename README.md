@@ -1,7 +1,7 @@
 # ocf-data-sampler
  
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-16-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-17-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![tags badge](https://img.shields.io/github/v/tag/openclimatefix/ocf-data-sampler?include_prereleases&sort=semver&color=FFAC5F)](https://github.com/openclimatefix/ocf-data-sampler/tags)
@@ -91,6 +91,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/utsav-pal"><img src="https://avatars.githubusercontent.com/u/159793156?v=4?s=100" width="100px;" alt="utsav-pal"/><br /><sub><b>utsav-pal</b></sub></a><br /><a href="https://github.com/openclimatefix/ocf-data-sampler/commits?author=utsav-pal" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/zaryab-ali"><img src="https://avatars.githubusercontent.com/u/85732412?v=4?s=100" width="100px;" alt="zaryab-ali"/><br /><sub><b>zaryab-ali</b></sub></a><br /><a href="https://github.com/openclimatefix/ocf-data-sampler/commits?author=zaryab-ali" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/theoteske"><img src="https://avatars.githubusercontent.com/u/76984006?v=4?s=100" width="100px;" alt="Theo Teske"/><br /><sub><b>Theo Teske</b></sub></a><br /><a href="https://github.com/openclimatefix/ocf-data-sampler/commits?author=theoteske" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
