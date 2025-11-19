@@ -1,5 +1,4 @@
 """Loads all data sources."""
-
 import xarray as xr
 
 from ocf_data_sampler.config import InputData
@@ -46,17 +45,14 @@ def get_dataset_dict(
             )
 
             da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
-
             datasets_dict["nwp"][nwp_source] = da_nwp
 
     # Load satellite data if in config
     if input_config.satellite:
         sat_config = input_config.satellite
 
-        da_sat = open_sat_data(sat_config.zarr_path)
-
+        da_sat = open_sat_data(zarr_path=sat_config.zarr_path)
         da_sat = da_sat.sel(channel=list(sat_config.channels))
-
         datasets_dict["sat"] = da_sat
 
     if input_config.site:
@@ -64,7 +60,6 @@ def get_dataset_dict(
             generation_file_path=input_config.site.file_path,
             metadata_file_path=input_config.site.metadata_file_path,
         )
-
         datasets_dict["site"] = da_sites
 
     return datasets_dict
