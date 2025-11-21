@@ -2,15 +2,15 @@
 
 Generation data schema: a Zarr file with the following data variables and dimensions/coordinates:
 
-
-- generation_mw (data variable): Floating point representing the generation in MW
-- capacity_mwp (data variable): Floating point representing the capacity in MWp
-- time_utc (dimension): Datetime64 representing the UTC timestamps
-- location_id (dimension): Integer representing the location IDs
-- longitude (coordinate): Floating point representing the longitudes of the locations
-- latitude (coordinate): Floating point representing the latitudes of the locations
-
-Both data variables depend on the dimensions time_utc and location_id.
+Dimensions: (time_utc, location_id)
+Data Variables:
+    generation_mw (time_utc, location_id): float32 representing the generation in MW
+    capacity_mwp (time_utc, location_id): float32 representing the capacity in MW peak
+Coordinates:
+    time_utc (time_utc): datetime64[ns] representing the time in utc
+    location_id (location_id): int representing the location IDs
+    longitute (location_id): float representing the longitudes of the locations
+    latitude (location_id): float representing the latitudes of the locations
 
 """
 
@@ -45,7 +45,7 @@ def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
 
     da = ds.generation_mw
 
-    # Validate data types directly in loading function
+    # Validate data types
     if not np.issubdtype(da.dtype, np.floating):
         raise TypeError(f"generation_mw should be floating, not {da.dtype}")
 
