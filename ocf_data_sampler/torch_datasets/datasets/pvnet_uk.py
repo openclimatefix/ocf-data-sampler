@@ -120,13 +120,48 @@ class AbstractPVNetUKDataset(PickleCacheMixin, Dataset):
         self.means_dict = means_dict
         self.stds_dict = stds_dict
 
-    def process_and_combine_datasets(
+
+    def normalize_datasets(self, dataset_dict: dict) -> dict:
+        """Normalise the datasets.
+
+        Args:
+            dataset_dict: Dictionary of xarray datasets
+        """
+        if "nwp" in dataset_dict:
+
+            for nwp_key, da_nwp in dataset_dict["nwp"].items():
+
+                # Standardise in-place
+                channel_means = self.means_dict["nwp"][nwp_key]
+                channel_stds = self.stds_dict["nwp"][nwp_key]
+
+                da_nwp.values = (da_nwp.values - channel_means) / channel_stds
+
+        if "sat" in dataset_dict:
+            da_sat = dataset_dict["sat"]
+
+            # Standardise in-place
+            channel_means = self.means_dict["sat"]
+            channel_stds = self.stds_dict["sat"]
+
+            da_sat.values = (da_sat.values - channel_means) / channel_stds
+
+
+        if "gsp" in dataset_dict:
+            # Standardise not in-place
+            da_gsp = dataset_dict["gsp"]
+            dataset_dict["gsp"] = da_gsp / da_gsp.effective_capacity_mwp.values
+
+        return dataset_dict
+
+
+    def convert_to_numpysample(
         self,
         dataset_dict: dict,
         t0: pd.Timestamp,
         location: Location,
     ) -> NumpySample:
-        """Normalise and convert data to numpy arrays.
+        """Convert data to numpy arrays and add solar coords.
 
         Args:
             dataset_dict: Dictionary of xarray datasets
@@ -139,44 +174,25 @@ class AbstractPVNetUKDataset(PickleCacheMixin, Dataset):
             nwp_numpy_modalities = {}
 
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
-
-                # Standardise and convert to NumpyBatch
-                channel_means = self.means_dict["nwp"][nwp_key]
-                channel_stds = self.stds_dict["nwp"][nwp_key]
-
-                da_nwp = (da_nwp - channel_means) / channel_stds
-
                 nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
-            # Combine the NWPs into NumpyBatch
+            # Combine all the NWPs into NumpySample
             numpy_modalities.append({NWPSampleKey.nwp: nwp_numpy_modalities})
 
         if "sat" in dataset_dict:
-            da_sat = dataset_dict["sat"]
-
-            # Standardise and convert to NumpyBatch
-            channel_means = self.means_dict["sat"]
-            channel_stds = self.stds_dict["sat"]
-
-            da_sat = (da_sat - channel_means) / channel_stds
-
-            numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
+            numpy_modalities.append(convert_satellite_to_numpy_sample(dataset_dict["sat"]))
 
         if "gsp" in dataset_dict:
             gsp_config = self.config.input_data.gsp
-            da_gsp = dataset_dict["gsp"]
-            da_gsp = da_gsp / da_gsp.effective_capacity_mwp.values
 
-            # Convert to NumpyBatch
             numpy_modalities.append(
                 convert_gsp_to_numpy_sample(
-                    da_gsp,
+                    dataset_dict["gsp"],
                     t0_idx=-gsp_config.interval_start_minutes / gsp_config.time_resolution_minutes,
                 ),
             )
 
         # Add GSP location data
-
         osgb_x, osgb_y = location.in_coord_system("osgb")
 
         numpy_modalities.append(
@@ -263,7 +279,8 @@ class PVNetUKRegionalDataset(AbstractPVNetUKDataset):
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
-        return self.process_and_combine_datasets(sample_dict, t0, location)
+        sample_dict = self.normalize_datasets(sample_dict)
+        return self.convert_to_numpysample(sample_dict, t0, location)
 
     @override
     def __getitem__(self, idx: int) -> NumpySample:
@@ -320,13 +337,14 @@ class PVNetUKConcurrentDataset(AbstractPVNetUKDataset):
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = tensorstore_compute(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
+        sample_dict = self.normalize_datasets(sample_dict)
 
         gsp_samples = []
 
         # Prepare sample for each GSP
         for location in self.locations:
             gsp_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
-            gsp_numpy_sample = self.process_and_combine_datasets(
+            gsp_numpy_sample = self.convert_to_numpysample(
                 gsp_sample_dict,
                 t0,
                 location,
