@@ -30,7 +30,7 @@ dependencies = [
     "dask",
     "matplotlib",
     "pvlib",
-    "pydantic",
+    "pydantic>=2.11.8",
     "pyproj",
     "pyaml_env",
     "pyresample",
