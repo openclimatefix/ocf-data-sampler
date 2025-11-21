@@ -30,7 +30,7 @@ dependencies = [
     "dask",
     "matplotlib",
     "pvlib",
-    "pydantic",
+    "pydantic==2.5.3", # This can be unpinned once nowcasting_datamodel is removed from uk-pvnet-app
     "pyproj",
     "pyaml_env",
     "pyresample",
