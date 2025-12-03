@@ -19,7 +19,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         datasets_dict: A dictionary of input datasets
         config: Configuration file
     """
-    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "gsp"}):
+    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "generation"}):
         raise ValueError(f"Invalid keys in datasets_dict: {datasets_dict.keys()}")
 
     # Used to store contiguous time periods from each data source
@@ -87,17 +87,17 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
 
         contiguous_time_periods["sat"] = time_periods
 
-    if "gsp" in datasets_dict:
-        gsp_config = config.input_data.gsp
+    if "generation" in datasets_dict:
+        generation_config = config.input_data.generation
 
         time_periods = find_contiguous_t0_periods(
-            pd.DatetimeIndex(datasets_dict["gsp"]["time_utc"]),
-            time_resolution=minutes(gsp_config.time_resolution_minutes),
-            interval_start=minutes(gsp_config.interval_start_minutes),
-            interval_end=minutes(gsp_config.interval_end_minutes),
+            pd.DatetimeIndex(datasets_dict["generation"]["time_utc"]),
+            time_resolution=minutes(generation_config.time_resolution_minutes),
+            interval_start=minutes(generation_config.interval_start_minutes),
+            interval_end=minutes(generation_config.interval_end_minutes),
         )
 
-        contiguous_time_periods["gsp"] = time_periods
+        contiguous_time_periods["generation"] = time_periods
 
     # just get the values (not the keys)
     contiguous_time_periods_values = list(contiguous_time_periods.values())

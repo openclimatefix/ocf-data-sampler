@@ -152,6 +152,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "theoteske",
+      "name": "Theo Teske",
+      "avatar_url": "https://avatars.githubusercontent.com/u/76984006?v=4",
+      "profile": "https://github.com/theoteske",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

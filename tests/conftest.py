@@ -1,4 +1,3 @@
-import hashlib
 from pathlib import Path
 
 import dask.array
@@ -8,8 +7,6 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
-from ocf_data_sampler.config.model import Site, SolarPosition
-from ocf_data_sampler.torch_datasets.datasets.site import SitesDataset
 
 # Constants
 TEST_DIR = Path(__file__).parent
@@ -51,22 +48,6 @@ def session_tmp_path(tmp_path_factory):
     return tmp_path_factory.mktemp("data")
 
 
-# Config path fixtures
-@pytest.fixture()
-def test_config_filename():
-    return str(CONFIG_DIR / "test_config.yaml")
-
-
-@pytest.fixture()
-def test_config_gsp_path():
-    return str(CONFIG_DIR / "gsp_test_config.yaml")
-
-
-@pytest.fixture(scope="session")
-def site_test_config_path():
-    return str(CONFIG_DIR / "site_test_config.yaml")
-
-
 @pytest.fixture(scope="session")
 def config_filename():
     return str(CONFIG_DIR / "pvnet_test_config.yaml")
@@ -93,10 +74,23 @@ def save_zarr(ds, path, filename, chunks=None):
 # Satellite data
 @pytest.fixture(scope="session")
 def sat_zarr_path(session_tmp_path):
-    variables = ["IR_016", "IR_039", "IR_087", "IR_097", "IR_108", "IR_120",
-                 "IR_134", "VIS006", "VIS008", "WV_062", "WV_073"]
+    variables = [
+        "IR_016",
+        "IR_039",
+        "IR_087",
+        "IR_097",
+        "IR_108",
+        "IR_120",
+        "IR_134",
+        "VIS006",
+        "VIS008",
+        "WV_062",
+        "WV_073",
+    ]
     data = dask.array.zeros(
-        (len(variables), 288, 100, 100), chunks=(-1, 10, -1, -1), dtype=np.float32,
+        (len(variables), 288, 100, 100),
+        chunks=(-1, 10, -1, -1),
+        dtype=np.float32,
     )
     data[:, 10, :, :] = np.nan
 
@@ -177,9 +171,13 @@ def icon_eu_zarr_path(session_tmp_path, session_rng):
     lat = np.linspace(29.5, 35.69, 100)
     lon = np.linspace(-23.5, -17.31, 100)
 
-    attrs = {"Conventions": "CF-1.7", "GRIB_centre": "edzw",
-             "GRIB_centreDescription": "Offenbach", "GRIB_edition": 2,
-             "institution": "Offenbach"}
+    attrs = {
+        "Conventions": "CF-1.7",
+        "GRIB_centre": "edzw",
+        "GRIB_centreDescription": "Offenbach",
+        "GRIB_edition": 2,
+        "institution": "Offenbach",
+    }
 
     paths = []
     for hour in ["00", "06"]:
@@ -188,15 +186,25 @@ def icon_eu_zarr_path(session_tmp_path, session_rng):
 
         da = xr.DataArray(
             data,
-            coords={"step": step, "channel": channels, "latitude": lat,
-                    "longitude": lon, "init_time_utc": time_utc},
-            dims=("step", "channel", "latitude", "longitude"),
+            coords={
+                "step": step,
+                "channel": channels,
+                "longitude": lon,
+                "latitude": lat,
+                "init_time_utc": time_utc,
+            },
+            dims=("step", "channel", "longitude", "latitude"),
             attrs=attrs,
         )
         da.coords["valid_time"] = da.init_time_utc + da.step
 
-        paths.append(save_zarr(da.to_dataset(name="icon_eu_data"),
-                              session_tmp_path, f"20211101_{hour}.zarr"))
+        paths.append(
+            save_zarr(
+                da.to_dataset(name="icon_eu_data"),
+                session_tmp_path,
+                f"20211101_{hour}.zarr",
+            ),
+        )
 
     return paths
 
@@ -214,154 +222,141 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     data = session_rng.uniform(0, 1, shape).astype(np.float32)
 
     ds = create_xr_dataset(coords, data, "sat_pred", attrs={"area": UK_SAT_AREA})
-    chunks = {"init_time": 1, "step": -1, "variable": -1,
-              "x_geostationary": 50, "y_geostationary": 50}
+    chunks = {
+        "init_time": 1,
+        "step": -1,
+        "variable": -1,
+        "x_geostationary": 50,
+        "y_geostationary": 50,
+    }
     yield save_zarr(ds, session_tmp_path, "cloudcasting.zarr", chunks)
 
 
-# GSP data
 @pytest.fixture(scope="session")
-def ds_uk_gsp(session_rng):
+def ds_generation(session_rng):
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    gsp_ids = np.arange(318)
-    coords = (("datetime_gmt", times), ("gsp_id", gsp_ids))
+    location_ids = np.arange(318)
+    # Rough UK bounding box
+    lat_min, lat_max = 49.9, 58.7
+    lon_min, lon_max = -8.6, 1.8
 
-    capacity = np.ones((len(times), len(gsp_ids)))
-    generation = session_rng.uniform(0, 200, (len(times), len(gsp_ids))).astype(np.float32)
+    # Generate random uniform points
+    longitudes = session_rng.uniform(lon_min, lon_max, len(location_ids)).astype("float64")
+    latitudes = session_rng.uniform(lat_min, lat_max, len(location_ids)).astype("float64")
 
-    return xr.Dataset({
-        "capacity_mwp": xr.DataArray(capacity, coords=coords),
-        "installedcapacity_mwp": xr.DataArray(capacity, coords=coords),
-        "generation_mw": xr.DataArray(generation, coords=coords),
-    })
+    capacity = np.ones((len(times), len(location_ids)))
+
+    generation = session_rng.uniform(0, 200, (len(times), len(location_ids))).astype(np.float32)
+
+    # Build Dataset
+    return xr.Dataset(
+        data_vars={
+            "capacity_mwp": (("time_utc", "location_id"), capacity),
+            "generation_mw": (("time_utc", "location_id"), generation),
+        },
+        coords={
+            "time_utc": times,
+            "location_id": location_ids,
+            "longitude": ("location_id", longitudes),
+            "latitude": ("location_id", latitudes),
+        },
+    )
 
 
+# location data (non overlapping time periods) and starting with id 1
 @pytest.fixture(scope="session")
-def uk_gsp_zarr_path(session_tmp_path, ds_uk_gsp):
-    yield save_zarr(ds_uk_gsp, session_tmp_path, "uk_gsp.zarr")
+def ds_site_generation(session_rng):
+    # Define a global time range (covers all possible site periods)
+    global_times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
+    n_times = len(global_times)
 
+    location_ids = np.arange(1, 11)
+    n_sites = len(location_ids)
 
-# Site data
-def create_site_data(
-    tmp_path: Path,
-    rng: np.random.Generator,
-    num_sites: int = 10,
-    start_time: str = "2023-01-01 00:00",
-    end_time: str = "2023-01-02 00:00",
-    freq: str = "30min",
-    interval_start: int = -30,
-    interval_end: int = 60,
-    time_resolution: int = 30,
-    variable_capacity: bool = False,
-) -> Site:
-    """Create fake site data with reproducible random generation"""
-    params = (num_sites, start_time, end_time, freq, interval_start, interval_end, time_resolution)
-    key = hashlib.sha256(str(params).encode()).hexdigest()
+    # Rough UK bounding box
+    lat_min, lat_max = 49.9, 58.7
+    lon_min, lon_max = -8.6, 1.8
 
-    times = pd.date_range(start_time, end_time, freq=freq)
-    site_ids = list(range(num_sites))
+    longitudes = session_rng.uniform(lon_min, lon_max, n_sites).astype("float64")
+    latitudes = session_rng.uniform(lat_min, lat_max, n_sites).astype("float64")
 
-    base = {
-        "capacity_kwp": np.full(num_sites, 1),
-        "longitude": np.round(np.linspace(-4, -3, num_sites), 2),
-        "latitude": np.round(np.linspace(51, 52, num_sites), 2),
-    }
+    # Initialize with NaNs
+    capacity = np.full((n_times, n_sites), np.nan, dtype="float32")
+    generation = np.full((n_times, n_sites), np.nan, dtype="float32")
 
-    coords = (("time_utc", times), ("site_id", site_ids))
-    if variable_capacity:
-        ds = xr.Dataset({
-            "capacity_kwp": xr.DataArray(
-                np.tile(
-                    rng.uniform(1,100,1)*base["capacity_kwp"],
-                    (len(times), 1)).astype(np.float32),
-                coords=coords,
-            ),
-            "generation_kw": xr.DataArray(
-                rng.uniform(0, 200, (len(times), num_sites)).astype(np.float32), coords=coords,
-            ),
-        })
-    else:
-        ds = xr.Dataset({
-            "generation_kw": xr.DataArray(
-                rng.uniform(0, 200, (len(times), num_sites)).astype(np.float32), coords=coords,
-            ),
-        })
+    # Each location gets its own time window (at least 5 hours = 10 half-hour intervals)
+    min_length = 10
+    for i, _ in enumerate(location_ids):
+        start_idx = session_rng.integers(0, n_times - min_length)
+        max_possible_end = n_times
+        end_idx = session_rng.integers(start_idx + min_length, max_possible_end)
+        active_slice = slice(start_idx, end_idx)
 
-    data_path = tmp_path / f"sites_data_{key}.netcdf"
-    meta_path = tmp_path / f"sites_metadata_{key}.csv"
+        # Fill only active period with random data
+        capacity[active_slice, i] = 1.0
+        generation[active_slice, i] = session_rng.uniform(0, 200, end_idx - start_idx).astype(
+            "float32",
+        )
 
-    ds.to_netcdf(data_path)
-    pd.DataFrame({"site_id": site_ids, **base}).to_csv(meta_path, index=False)
-
-    return Site(
-        file_path=str(data_path),
-        metadata_file_path=str(meta_path),
-        interval_start_minutes=interval_start,
-        interval_end_minutes=interval_end,
-        time_resolution_minutes=time_resolution,
+    # Build Dataset
+    return xr.Dataset(
+        data_vars={
+            "capacity_mwp": (("time_utc", "location_id"), capacity),
+            "generation_mw": (("time_utc", "location_id"), generation),
+        },
+        coords={
+            "time_utc": global_times,
+            "location_id": location_ids,
+            "longitude": ("location_id", longitudes),
+            "latitude": ("location_id", latitudes),
+        },
     )
 
 
 @pytest.fixture(scope="session")
-def default_data_site_model(session_tmp_path, session_rng):
-    return create_site_data(session_tmp_path, session_rng)
+def generation_zarr_path(session_tmp_path, ds_generation):
+    yield save_zarr(ds_generation, session_tmp_path, "generation.zarr")
 
 
 @pytest.fixture(scope="session")
-def default_data_site_model_variable_capacity(session_tmp_path, session_rng):
-    return create_site_data(session_tmp_path, session_rng, variable_capacity=True)
-
-
-
-# Config fixtures
-def update_config(config, **paths):
-    """Update config with zarr paths"""
-    mapping = {"nwp_ukv": ("nwp", "ukv"), "satellite": ("satellite",), "gsp": ("gsp",)}
-    for key, path in paths.items():
-        obj = config.input_data
-        for attr in mapping[key][:-1]:
-            obj = getattr(obj, attr)
-        if key == "nwp_ukv":
-            obj["ukv"].zarr_path = path
-        else:
-            setattr(obj, mapping[key][-1], type(getattr(obj, mapping[key][-1]))(zarr_path=path)
-                    if path else None)
-    return config
+def site_generation_zarr_path(session_tmp_path, ds_site_generation):
+    yield save_zarr(ds_site_generation, session_tmp_path, "site_generation.zarr")
 
 
 @pytest.fixture()
-def pvnet_config_filename(tmp_path, config_filename, nwp_ukv_zarr_path,
-                          uk_gsp_zarr_path, sat_zarr_path):
+def pvnet_config_filename(
+    tmp_path,
+    config_filename,
+    nwp_ukv_zarr_path,
+    generation_zarr_path,
+    sat_zarr_path,
+):
     config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
     config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.gsp.zarr_path = uk_gsp_zarr_path
+    config.input_data.generation.zarr_path = generation_zarr_path
 
     path = tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))
     return str(path)
 
 
-@pytest.fixture()
-def site_config_filename(tmp_path, site_test_config_path, nwp_ukv_zarr_path,
-                         sat_zarr_path, default_data_site_model):
-    config = load_yaml_configuration(site_test_config_path)
+@pytest.fixture(scope="session")
+def pvnet_site_config_filename(
+    session_tmp_path,
+    config_filename,
+    nwp_ukv_zarr_path,
+    site_generation_zarr_path,
+    sat_zarr_path,
+):
+    config = load_yaml_configuration(config_filename)
     config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
     config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.site = default_data_site_model
-    config.input_data.gsp = None
-    config.input_data.solar_position = SolarPosition(
-        time_resolution_minutes=30, interval_start_minutes=-30, interval_end_minutes=60,
-    )
+    config.input_data.generation.zarr_path = site_generation_zarr_path
 
-    path = tmp_path / "configuration_site_test.yaml"
+    path = session_tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))
-    yield str(path)
-
-
-@pytest.fixture()
-def sites_dataset(site_config_filename):
-    return SitesDataset(site_config_filename)
+    return str(path)
 
 
 @pytest.fixture(scope="session")
