@@ -1,4 +1,4 @@
-"""gencast provider loader."""
+"""Loader for any GDM WP data."""
 
 import xarray as xr
 
