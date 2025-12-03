@@ -11,7 +11,7 @@ from ocf_data_sampler.load.utils import (
 
 
 def open_gdm(zarr_path: str | list[str]) -> xr.DataArray:
-    """Opens the ECMWF IFS NWP data.
+    """Opens GDM NWP data.
 
     Args:
         zarr_path: Path to the zarr(s) to open
