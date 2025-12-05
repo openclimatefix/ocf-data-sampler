@@ -28,7 +28,7 @@ def get_dataset_dict(
         )
 
         # Remove location_id 0 if more than one location present
-        if len(da_generation.location_id) > 0 and 0 in da_generation.location_id.values:
+        if len(da_generation.location_id) > 1 and 0 in da_generation.location_id.values:
             da_generation = da_generation.sel(location_id=slice(1, None))
             logger.info(
                 "Id 0 has been filtered out, this is only used for summation models.",
