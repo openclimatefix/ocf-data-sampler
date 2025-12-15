@@ -18,7 +18,6 @@ def _convert_generation(da: xr.DataArray, sample: NumpySample) -> None:
         "capacity_mwp": da.capacity_mwp.values[0],
     }
 
-    # Use generation as the reference time axis
     sample["metadata"]["time_utc"] = da.time_utc.values.astype(float)
 
 
