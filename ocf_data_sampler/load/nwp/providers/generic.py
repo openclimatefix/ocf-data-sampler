@@ -1,4 +1,4 @@
-"""ECMWF provider loaders."""
+"""Generic NWP provider loaders."""
 
 import xarray as xr
 
@@ -9,9 +9,8 @@ from ocf_data_sampler.load.utils import (
     make_spatial_coords_increasing,
 )
 
-
-def open_ifs(zarr_path: str | list[str]) -> xr.DataArray:
-    """Opens the ECMWF IFS NWP data.
+def open_generic(zarr_path: str | list[str]) -> xr.DataArray:
+    """Opens generic NWP data with lon/lat coords.
 
     Args:
         zarr_path: Path to the zarr(s) to open
@@ -19,11 +18,17 @@ def open_ifs(zarr_path: str | list[str]) -> xr.DataArray:
     Returns:
         Xarray DataArray of the NWP data
     """
-    ds = open_zarr_paths(zarr_path, backend="tensorstore")
+    # LEGACY SUPPORT - different names
+    try:
+        ds = open_zarr_paths(zarr_path, backend="tensorstore", time_dim="init_time")
+    except KeyError as e:
+        ds = open_zarr_paths(zarr_path, backend="tensorstore", time_dim="init_time_utc")
 
-    # LEGACY SUPPORT - rename variable to channel if it exists
-    ds = ds.rename({"init_time": "init_time_utc", "variable": "channel"})
-
+    if "init_time" in ds.coords:
+        ds = ds.rename({"init_time": "init_time_utc"})
+    if "variable" in ds.coords:
+        ds = ds.rename({"variable": "channel"})
+    
     check_time_unique_increasing(ds.init_time_utc)
 
     ds = make_spatial_coords_increasing(ds, x_coord="longitude", y_coord="latitude")
