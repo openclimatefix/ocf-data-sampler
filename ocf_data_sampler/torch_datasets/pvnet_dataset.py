@@ -40,7 +40,7 @@ from ocf_data_sampler.torch_datasets.utils import (
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
-from ocf_data_sampler.utils import minutes, load_data_dict
+from ocf_data_sampler.utils import load_data_dict, minutes
 
 # Ignore pydantic warning which doesn't cause an issue
 warnings.filterwarnings("ignore", category=UnsupportedFieldAttributeWarning)
