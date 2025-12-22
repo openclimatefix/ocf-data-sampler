@@ -64,4 +64,4 @@ def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
 
     # Below we load the data eagerly into memory - this makes the dataset faster to sample from, but
     # at the cost of a little extra memory usage
-    return da.compute()
+    return da.load()

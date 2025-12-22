@@ -40,7 +40,7 @@ from ocf_data_sampler.torch_datasets.utils import (
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
-from ocf_data_sampler.utils import minutes, tensorstore_compute
+from ocf_data_sampler.utils import minutes, load_data_dict
 
 # Ignore pydantic warning which doesn't cause an issue
 warnings.filterwarnings("ignore", category=UnsupportedFieldAttributeWarning)
@@ -376,7 +376,7 @@ class PVNetDataset(AbstractPVNetDataset):
         """
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-        sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = load_data_dict(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
         return self.process_and_combine_datasets(sample_dict, t0, location)
 
@@ -454,7 +454,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
         # Slice by time then load to avoid loading the data multiple times from disk
 
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
-        sample_dict = tensorstore_compute(sample_dict)
+        sample_dict = load_data_dict(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
 
         samples = []
