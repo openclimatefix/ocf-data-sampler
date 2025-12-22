@@ -1,5 +1,6 @@
 """Miscellaneous helper functions."""
 
+import numpy as np
 import pandas as pd
 from xarray_tensorstore import read
 
@@ -15,9 +16,9 @@ def minutes(minutes: int | list[float]) -> pd.Timedelta | pd.TimedeltaIndex:
 
 def load(xarray_dict: dict) -> dict:
     """Eagerly load a nested dictionary of xarray DataArrays."""
-    # Load this key first because it doesn't use tensorstore
-    if "generation" in xarray_dict:
-        xarray_dict["generation"] = xarray_dict["generation"].load()
+    # Check the generation data
+    if "generation" in xarray_dict and not isinstance(xarray_dict["generation"].data, np.ndarray):
+        raise ValueError("Generation data is expected to already be loaded")
 
     # Load the rest
     keys = [k for k in xarray_dict if k != "generation"]
