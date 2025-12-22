@@ -165,11 +165,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Construct list of locations to sample from
         locations = get_locations(generation_data=datasets_dict["generation"])
 
-        self.locations = add_alterate_coordinate_projections(
-            locations,
-            datasets_dict,
-            primary_coords="lon_lat",
-        )
+        self.locations = add_alterate_coordinate_projections(locations, datasets_dict)
 
         # Assign config and input data to self
         self.config = config
