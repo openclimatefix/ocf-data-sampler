@@ -16,7 +16,7 @@ def minutes(minutes: int | list[float]) -> pd.Timedelta | pd.TimedeltaIndex:
 
 def load(xarray_dict: dict) -> dict:
     """Eagerly load a nested dictionary of xarray DataArrays."""
-    # Check the generation data
+    # Check the generation data is loaded
     if "generation" in xarray_dict and not isinstance(xarray_dict["generation"].data, np.ndarray):
         raise ValueError("Generation data is expected to already be loaded")
 
