@@ -19,7 +19,6 @@ def add_alterate_coordinate_projections(
     Returns:
         List of locations with all coordinate projections added
     """
-
     xs, ys = np.array([loc.in_coord_system("lon_lat") for loc in locations]).T
 
     datasets_list = []
