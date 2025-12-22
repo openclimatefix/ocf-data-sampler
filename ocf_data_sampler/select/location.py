@@ -7,7 +7,7 @@ allowed_coord_systems = {"osgb", "lon_lat", "geostationary"}
 class Location:
     """A spatial location."""
 
-    def __init__(self, x: float, y: float, coord_system: int, id: int | str | None = None) -> None:
+    def __init__(self, x: float, y: float, coord_system: str, id: int | str | None = None) -> None:
         """A spatial location.
 
         Args:
@@ -42,7 +42,7 @@ class Location:
                 f"{list(self._projections.keys())}",
             )
 
-    def add_coord_system(self, x: float, y: float, coord_system: int) -> None:
+    def add_coord_system(self, x: float, y: float, coord_system: str) -> None:
         """Add the equivalent location in a different coordinate system.
 
         Args:
