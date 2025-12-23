@@ -329,6 +329,9 @@ class T0Embedding(Base):
                 
             if not period[:-1].isdigit():
                 raise ValueError(f"{period[:-1]} not recognised as an integer")
+
+            if not int(period[:-1])>0:
+                raise ValueError(f"{period[:-1]} must be > 0")
         
         return periods
 
