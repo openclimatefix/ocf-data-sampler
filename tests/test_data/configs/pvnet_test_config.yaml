@@ -54,3 +54,4 @@ input_data:
 
   t0_embedding:
     periods: ["1h", "24h", "1y"]
+    embeddings: ["cyclic", "cyclic", "cyclic"]

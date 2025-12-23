@@ -1,5 +1,7 @@
 """Functions to create trigonometric date and time inputs."""
 
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 
@@ -29,15 +31,25 @@ def encode_datetimes(datetimes: pd.DatetimeIndex) -> NumpySample:
     }
 
 
-def get_t0_embedding(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarray]:
+def get_t0_embedding(
+    t0: pd.Timestamp,
+    periods: list[str],
+    embeddings: list[Literal["cyclic", "linear"]],
+) -> dict[str, np.ndarray]:
     """Creates dictionary of sin and cos t0 time embeddings.
 
     Args:
         t0: The time to create sin-cos embeddings for
-        periods: List of periods to cos-sin encode (e.g., "1h", "Nh", "1y", "Ny")
+        periods: List of periods to encode (e.g., "1h", "Nh", "1y", "Ny")
+        embeddings: How to represent each of these periods. Either "cyclic" or "linear". When cyclic
+            the period is sin-cos embedded, else it is 0-1 scaled as fraction through the period.
     """
-    period_fracs = []
-    for period_str in periods:
+    features = []
+
+    if len(periods)!=len(embeddings):
+        raise ValueError("`periods` and `embeddings` must be the same length")
+
+    for period_str, embedding in zip(periods, embeddings, strict=True):
 
         if period_str.endswith("h"):
             period_hours = int(period_str.removesuffix("h"))
@@ -55,13 +67,12 @@ def get_t0_embedding(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarr
         else:
             raise ValueError(f"Invalid period format: {period_str}")
 
-        period_fracs.append(frac)
+        if embedding=="cyclic":
+            radians = 2 * np.pi * frac
+            features.extend([np.sin(radians), np.cos(radians)])
+        elif embedding=="linear":
+            features.append(frac)
+        else:
+            raise ValueError(f"embedding option {embedding} not recognised")
 
-    period_radians = 2 * np.pi * np.array(period_fracs, dtype=np.float32)
-
-    # Interleave Sin/Cos (using the slicing method)
-    t0_embedding = np.empty(len(periods)*2, dtype=np.float32)
-    t0_embedding[::2] = np.sin(period_radians)
-    t0_embedding[1::2] = np.cos(period_radians)
-
-    return {"t0_embedding": t0_embedding}
+    return {"t0_embedding": np.array(features, dtype=np.float32)}

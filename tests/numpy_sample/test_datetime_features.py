@@ -23,28 +23,37 @@ def test_encode_datetimes():
 
 def test_get_t0_embedding():
 
-    def check(t0s, period_strs, xs, period_floats):
+    def check(t0s, period_strs, embeddings, xs, period_floats):
         # Test the results are expected for each t0 time
         for x, t0 in zip(xs, t0s, strict=False):
-            results = get_t0_embedding(t0, periods=period_strs)["t0_embedding"]
+            results = get_t0_embedding(t0, period_strs, embeddings)["t0_embedding"]
 
             expected_results = []
-            for p in period_floats:
-                expected_results.extend([np.sin(2*np.pi*(x / p)), np.cos(2*np.pi*(x / p))])
+            for p, emb in zip(period_floats, embeddings, strict=False):
+                if emb=="cyclic":
+                    expected_results.extend([np.sin(2*np.pi*(x / p)), np.cos(2*np.pi*(x / p))])
+                elif emb=="linear":
+                    expected_results.append(x / p)
+                else:
+                    raise ValueError
+
             expected_results = np.array(expected_results)
+
+            assert len(expected_results)==len(results)
 
             if not np.allclose(results, expected_results, atol=1e-6):
                 raise ValueError(f"{results}!={expected_results}")
 
     # Define some t0 times and periods to check
     t0s = pd.date_range("2024-01-01 00:00", "2024-01-01 06:00")
-    period_strs = ["1h", "2h", "6h"]
+    period_strs = ["1h", "1h", "2h", "6h"]
+    embeddings = ["linear", "cyclic", "cyclic", "cyclic"]
 
     # Equivalent times and periods in float form
     xs = np.linspace(0, 6, num=len(t0s))
-    period_floats = [1,2,6]
+    period_floats = [1, 1, 2, 6]
 
-    check(t0s, period_strs, xs, period_floats)
+    check(t0s, period_strs, embeddings, xs, period_floats)
 
     # Repeat the check focusing on year periods rather than hours
     t0s = pd.to_datetime(
@@ -54,6 +63,8 @@ def test_get_t0_embedding():
         ],
     )
     period_strs = ["1y", "2y"]
+    embeddings = ["cyclic", "cyclic"]
+
 
     # Equivalent times and periods in float form
     # Note:
@@ -63,5 +74,5 @@ def test_get_t0_embedding():
     xs = np.array([0, 0, 1/366, 161/366, 1, 1+1/365], dtype=np.float32)
     period_floats = [1, 2]
 
-    check(t0s, period_strs, xs, period_floats)
+    check(t0s, period_strs, embeddings, xs, period_floats)
 

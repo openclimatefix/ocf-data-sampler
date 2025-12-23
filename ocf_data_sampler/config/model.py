@@ -314,11 +314,16 @@ class T0Embedding(Base):
 
     periods: list[str] = Field(
         default=[],
-        description="""List of periods to cos-sin encode (e.g., "1h", "Nh", "1y", "Ny")""",
+        description="""List of periods to embed (e.g., "1h", "Nh", "1y", "Ny")""",
+    )
+
+    embeddings: list[str] = Field(
+        default=[],
+        description="List of embeddings to use for each period.",
     )
 
     @field_validator("periods")
-    def dropout_fractions(cls, periods: list[str]) -> list[str]:
+    def validate_periods(cls, periods: list[str]) -> list[str]:
         """Validate 'periods'."""
         for period in periods:
 
@@ -341,6 +346,21 @@ class T0Embedding(Base):
                 )
 
         return periods
+
+    @field_validator("embeddings")
+    def validate_embeddings(cls, embeddings: list[str]) -> list[str]:
+        """Validator for 'embeddings'."""
+        for embedding in embeddings:
+            if embedding not in ["cyclic", "linear"]:
+                raise ValueError(f"Embedding ({embedding}) must be cyclic or linear")
+        return embeddings
+
+    @model_validator(mode="after")
+    def check_periods_and_embeddings_len(self) -> "T0Embedding":
+        """Validate each period has an embedding."""
+        if len(self.periods)!=len(self.embeddings):
+            raise ValueError("The number of periods and embeddings must match")
+        return self
 
 
 class InputData(Base):
