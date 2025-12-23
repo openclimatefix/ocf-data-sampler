@@ -36,7 +36,6 @@ def get_t0_embedding(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarr
         t0: The time to create sin-cos embeddings for
         periods: List of periods to cos-sin encode (e.g., "1h", "Nh", "1y", "Ny")
     """
-
     period_fracs = []
     for period_str in periods:
 
@@ -52,10 +51,10 @@ def get_t0_embedding(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarr
                 raise ValueError("The period in years must be >0")
             days_in_year = 366 if t0.is_leap_year else 365
             frac = (((t0.dayofyear-1) / days_in_year) + t0.year % period_years) / period_years
-        
+
         else:
             raise ValueError(f"Invalid period format: {period_str}")
-        
+
         period_fracs.append(frac)
 
     period_radians = 2 * np.pi * np.array(period_fracs, dtype=np.float32)
@@ -64,5 +63,5 @@ def get_t0_embedding(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarr
     t0_embedding = np.empty(len(periods)*2, dtype=np.float32)
     t0_embedding[::2] = np.sin(period_radians)
     t0_embedding[1::2] = np.cos(period_radians)
-    
+
     return {"t0_embedding": t0_embedding}

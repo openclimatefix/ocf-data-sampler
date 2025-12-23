@@ -310,6 +310,8 @@ class SolarPosition(TimeWindowMixin):
 
 
 class T0Embedding(Base):
+    """Configuration for the t0 time embedding."""
+
     periods: list[str] = Field(
         default=[],
         description="""List of periods to cos-sin encode (e.g., "1h", "Nh", "1y", "Ny")""",
@@ -318,21 +320,20 @@ class T0Embedding(Base):
     @field_validator("periods")
     def dropout_fractions(cls, periods: list[str]) -> list[str]:
         """Validate 'periods'."""
-
         for period in periods:
-            
+
             if not isinstance(period, str):
                 raise ValueError(f"Each period must be a string, found {type(period)}")
-            
+
             if period[-1] not in ["h", "y"]:
                 raise ValueError(f"""Unit {period[-1]} needs to in ["h","y"]""")
-                
+
             if not period[:-1].isdigit():
                 raise ValueError(f"{period[:-1]} not recognised as an integer")
 
             if not int(period[:-1])>0:
                 raise ValueError(f"{period[:-1]} must be > 0")
-        
+
         return periods
 
 
