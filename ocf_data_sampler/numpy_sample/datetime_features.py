@@ -29,11 +29,11 @@ def encode_datetimes(datetimes: pd.DatetimeIndex) -> NumpySample:
     }
 
 
-def get_t0_sin_cos_embeddings(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarray]:
+def get_t0_sin_cos_embedding(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarray]:
     """Creates dictionary of sin and cos t0 time embeddings.
 
     Args:
-        t0: The time to create radian embeddings for
+        t0: The time to create sin-cos embeddings for
         periods: List of periods to cos-sin encode (e.g., "1h", "Nh", "1y", "Ny")
     """
 
@@ -61,8 +61,8 @@ def get_t0_sin_cos_embeddings(t0: pd.Timestamp, periods: list[str]) -> dict[str,
     period_radians = 2 * np.pi * np.array(period_fracs, dtype=np.float32)
 
     # Interleave Sin/Cos (using the slicing method)
-    t0_encodings = np.empty(len(periods)*2, dtype=np.float32)
-    t0_encodings[::2] = np.sin(period_radians)
-    t0_encodings[1::2] = np.cos(period_radians)
+    t0_embedding = np.empty(len(periods)*2, dtype=np.float32)
+    t0_embedding[::2] = np.sin(period_radians)
+    t0_embedding[1::2] = np.cos(period_radians)
     
-    return {"t0_encodings": t0_encodings}
+    return {"t0_embedding": t0_embedding}

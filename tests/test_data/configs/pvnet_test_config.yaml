@@ -51,3 +51,6 @@ input_data:
     interval_start_minutes: -15
     interval_end_minutes: 15
     time_resolution_minutes: 5
+
+  t0_embedding:
+    periods: ["1h", "24h", "1y"]

@@ -309,6 +309,30 @@ class SolarPosition(TimeWindowMixin):
     """Solar position configuration model."""
 
 
+class T0Embedding(Base):
+    periods: list[str] = Field(
+        default=[],
+        description="""List of periods to cos-sin encode (e.g., "1h", "Nh", "1y", "Ny")""",
+    )
+
+    @field_validator("periods")
+    def dropout_fractions(cls, periods: list[str]) -> list[str]:
+        """Validate 'periods'."""
+
+        for period in periods:
+            
+            if not isinstance(period, str):
+                raise ValueError(f"Each period must be a string, found {type(period)}")
+            
+            if period[-1] not in ["h", "y"]:
+                raise ValueError(f"""Unit {period[-1]} needs to in ["h","y"]""")
+                
+            if not period[:-1].isdigit():
+                raise ValueError(f"{period[:-1]} not recognised as an integer")
+        
+        return periods
+
+
 class InputData(Base):
     """Input data model."""
 
@@ -316,6 +340,8 @@ class InputData(Base):
     nwp: MultiNWP | None = None
     generation: Generation | None = None
     solar_position: SolarPosition | None = None
+    t0_embedding: T0Embedding | None = None
+
 
 class Configuration(Base):
     """Configuration model for the dataset."""
