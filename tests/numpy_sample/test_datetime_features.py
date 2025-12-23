@@ -25,14 +25,14 @@ def test_get_t0_embedding():
 
     def check(t0s, period_strs, xs, period_floats):
         # Test the results are expected for each t0 time
-        for x, t0 in zip(xs, t0s):
+        for x, t0 in zip(xs, t0s, strict=False):
             results = get_t0_embedding(t0, periods=period_strs)["t0_embedding"]
 
             expected_results = []
             for p in period_floats:
                 expected_results.extend([np.sin(2*np.pi*(x / p)), np.cos(2*np.pi*(x / p))])
             expected_results = np.array(expected_results)
-            
+
             if not np.allclose(results, expected_results, atol=1e-6):
                 raise ValueError(f"{results}!={expected_results}")
 
@@ -51,12 +51,12 @@ def test_get_t0_embedding():
         [
             "2020-01-01 00:00", "2020-01-01 23:30", "2020-01-02 00:00",
             "2020-06-10 00:00", "2021-01-01 00:00", "2021-01-02 00:00",
-        ]
+        ],
     )
     period_strs = ["1y", "2y"]
 
     # Equivalent times and periods in float form
-    # Note:
+    # Note:
     # - When doing year encoding we don't consider time of day
     # - 2020 is a leap year but 2021 is not
     # - 2020-06-10 is the 162nd day of that year
