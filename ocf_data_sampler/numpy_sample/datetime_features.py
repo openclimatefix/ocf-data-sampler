@@ -36,13 +36,15 @@ def get_t0_embedding(
     periods: list[str],
     embeddings: list[Literal["cyclic", "linear"]],
 ) -> dict[str, np.ndarray]:
-    """Creates dictionary of sin and cos t0 time embeddings.
+    """Creates dictionary of t0 time embeddings.
 
     Args:
         t0: The time to create sin-cos embeddings for
         periods: List of periods to encode (e.g., "1h", "Nh", "1y", "Ny")
         embeddings: How to represent each of these periods. Either "cyclic" or "linear". When cyclic
             the period is sin-cos embedded, else it is 0-1 scaled as fraction through the period.
+            Note that using "cyclic" adds 2 elements to the output vector to embed a period whilst
+            "linear" adds only 1 element.
     """
     features = []
 
