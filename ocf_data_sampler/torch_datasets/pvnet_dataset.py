@@ -18,7 +18,7 @@ from ocf_data_sampler.numpy_sample import (
     convert_nwp_to_numpy_sample,
     convert_satellite_to_numpy_sample,
     encode_datetimes,
-    get_t0_sin_cos_embedding,
+    get_t0_embedding,
     make_sun_position_numpy_sample,
 )
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
@@ -255,7 +255,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         if self.config.input_data.t0_embedding is not None:
             periods = self.config.input_data.t0_embedding.periods
-            numpy_modalities.append(get_t0_sin_cos_embedding(t0, periods))
+            numpy_modalities.append(get_t0_embedding(t0, periods))
 
         # Only add solar position if explicitly configured
         if self.config.input_data.solar_position is not None:

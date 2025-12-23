@@ -3,7 +3,7 @@ import pandas as pd
 
 from ocf_data_sampler.numpy_sample.datetime_features import (
     encode_datetimes,
-    get_t0_sin_cos_embedding,
+    get_t0_embedding,
 )
 
 
@@ -21,12 +21,12 @@ def test_encode_datetimes():
         assert np.all(np.abs(features[key]) <= 1)
 
 
-def test_get_t0_sin_cos_embedding():
+def test_get_t0_embedding():
 
     def check(t0s, period_strs, xs, period_floats):
         # Test the results are expected for each t0 time
         for x, t0 in zip(xs, t0s):
-            results = get_t0_sin_cos_embedding(t0, periods=period_strs)["t0_embedding"]
+            results = get_t0_embedding(t0, periods=period_strs)["t0_embedding"]
 
             expected_results = []
             for p in period_floats:

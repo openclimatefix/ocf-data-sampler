@@ -29,7 +29,7 @@ def encode_datetimes(datetimes: pd.DatetimeIndex) -> NumpySample:
     }
 
 
-def get_t0_sin_cos_embedding(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarray]:
+def get_t0_embedding(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarray]:
     """Creates dictionary of sin and cos t0 time embeddings.
 
     Args:
