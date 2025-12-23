@@ -325,14 +325,20 @@ class T0Embedding(Base):
             if not isinstance(period, str):
                 raise ValueError(f"Each period must be a string, found {type(period)}")
 
-            if period[-1] not in ["h", "y"]:
-                raise ValueError(f"""Unit {period[-1]} needs to in ["h","y"]""")
+            unit = period[-1]
+            if unit not in ["h", "y"]:
+                raise ValueError(f"""Unit {unit} needs to in ["h","y"]""")
 
             if not period[:-1].isdigit():
                 raise ValueError(f"{period[:-1]} not recognised as an integer")
 
-            if not int(period[:-1])>0:
-                raise ValueError(f"{period[:-1]} must be > 0")
+            if unit=="h" and not int(period[:-1])>0:
+                raise ValueError(f"When using unit y the period {period[:-1]} must be > 0")
+
+            if unit=="y" and not (1<=int(period[:-1])<=24):
+                raise ValueError(
+                    f"When using unit h the period {period[:-1]} must be in interval [1, 24]",
+                )
 
         return periods
 

@@ -41,8 +41,8 @@ def get_t0_embedding(t0: pd.Timestamp, periods: list[str]) -> dict[str, np.ndarr
 
         if period_str.endswith("h"):
             period_hours = int(period_str.removesuffix("h"))
-            if not period_hours>0:
-                raise ValueError("The period in hours must be >0")
+            if not (1<=period_hours<=24):
+                raise ValueError("The period in hours must be in interval [1, 24]")
             frac = (t0.hour + t0.minute / 60) / period_hours
 
         elif period_str.endswith("y"):
