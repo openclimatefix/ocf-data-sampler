@@ -1,5 +1,6 @@
 """Miscellaneous helper functions."""
 
+import numpy as np
 import pandas as pd
 from xarray_tensorstore import read
 
@@ -13,20 +14,20 @@ def minutes(minutes: int | list[float]) -> pd.Timedelta | pd.TimedeltaIndex:
     return pd.to_timedelta(minutes, unit="m")
 
 
-def compute(xarray_dict: dict) -> dict:
+def load(xarray_dict: dict) -> dict:
     """Eagerly load a nested dictionary of xarray DataArrays."""
-    # Load this key first because it doesn't use tensorstore
-    if "generation" in xarray_dict:
-        xarray_dict["generation"] = xarray_dict["generation"].compute()
+    # Check the generation data is loaded
+    if "generation" in xarray_dict and not isinstance(xarray_dict["generation"].data, np.ndarray):
+        raise ValueError("Generation data is expected to already be loaded")
 
     # Load the rest
     keys = [k for k in xarray_dict if k != "generation"]
     for k in keys:
         v = xarray_dict[k]
         if isinstance(v, dict):
-            xarray_dict[k] = compute(v)
+            xarray_dict[k] = load(v)
         else:
-            xarray_dict[k] = v.compute()
+            xarray_dict[k] = v.load()
     return xarray_dict
 
 
@@ -41,7 +42,7 @@ def tensorstore_read(xarray_dict: dict) -> dict:
     return xarray_dict
 
 
-def tensorstore_compute(xarray_dict: dict) -> dict:
+def load_data_dict(xarray_dict: dict) -> dict:
     """Eagerly read and load a nested dictionary of xarray-tensorstore DataArrays."""
-    return compute(tensorstore_read(xarray_dict))
+    return load(tensorstore_read(xarray_dict))
 
