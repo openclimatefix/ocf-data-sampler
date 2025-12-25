@@ -4,18 +4,25 @@ import xarray as xr
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 from ocf_data_sampler.numpy_sample.converter import _convert_nwp
+import warnings
 
-# class NWPSampleKey:
-#     """Keys for NWP NumpySample."""
+class NWPSampleKey:
+    """Deprecated. Use 'nwp' key in NumpySample dictionary."""
 
-#     nwp = "nwp"
-#     channel_names = "nwp_channel_names"
-#     init_time_utc = "nwp_init_time_utc"
-#     step = "nwp_step"
-#     target_time_utc = "nwp_target_time_utc"
-#     t0_idx = "nwp_t0_idx"
-
-
+    nwp = "nwp"
+    channel_names = "nwp_channel_names"
+    init_time_utc = "nwp_init_time_utc"
+    step = "nwp_step"
+    target_time_utc = "nwp_target_time_utc"
+    t0_idx = "nwp_t0_idx"
+     
+    @staticmethod
+    def __getattr__(name):
+        warnings.warn(
+            f"'{name}' is deprecated. Use the dictionary key in NumpySample instead.",
+            DeprecationWarning,
+        )
+        return super().__getattr__(name)
 def convert_nwp_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = None) -> NumpySample:
     """Convert from Xarray to NWP NumpySample.
 
