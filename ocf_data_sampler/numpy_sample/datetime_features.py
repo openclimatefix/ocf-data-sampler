@@ -62,7 +62,7 @@ def get_t0_embedding(
         if embedding=="cyclic":
             radians = 2 * np.pi * frac
             features.extend([np.sin(radians), np.cos(radians)])
-        
+
         elif embedding=="linear":
             features.append(frac)
 
