@@ -337,12 +337,12 @@ class T0Embedding(Base):
             if not period[:-1].isdigit():
                 raise ValueError(f"{period[:-1]} not recognised as an integer")
 
-            if unit=="h" and not int(period[:-1])>0:
-                raise ValueError(f"When using unit y the period {period[:-1]} must be > 0")
+            if unit=="y" and not int(period[:-1])>0:
+                raise ValueError(f"When using unit y the period (={period[:-1]}) must be > 0")
 
-            if unit=="y" and not (1<=int(period[:-1])<=24):
+            if unit=="h" and not (1<=int(period[:-1])<=24):
                 raise ValueError(
-                    f"When using unit h the period {period[:-1]} must be in interval [1, 24]",
+                    f"When using unit h the period (={period[:-1]}) must be in interval [1, 24]",
                 )
 
         return periods
