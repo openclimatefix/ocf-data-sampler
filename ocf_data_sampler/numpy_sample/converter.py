@@ -8,40 +8,80 @@ with shared fields stored under `metadata`.
 
 from typing import Callable
 import xarray as xr
+import numpy as np
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 
 def _convert_generation(da: xr.DataArray, sample: NumpySample) -> None:
     """Convert generation DataArray into numpy sample."""
-    sample["generation"] = {
-        "values": da.values,
-        "capacity_mwp": da.capacity_mwp.values[0],
-    }
+    # sample["generation"] = {
+    #     "values": da.values,
+    #     "capacity_mwp": da.capacity_mwp.values[0],
+    # }
+    sample["generation"] = da.values
+    sample["capacity_mwp"] = da.capacity_mwp.values[0]
+    sample["time_utc"] = _datetime_or_timedelta_to_seconds(da.time_utc.values)
 
-    sample["metadata"]["time_utc"] = da.time_utc.values.astype(float)
+    sample["metadata"]["time_utc"] = _datetime_or_timedelta_to_seconds(
+        da.time_utc.values
+    )
 
 
-def _convert_nwp(da: xr.DataArray, sample: NumpySample) -> None:
-    """Convert NWP DataArray into numpy sample."""
-    sample["nwp"] = {
-        "values": da.values,
-        "channel_names": da.channel.values,
-        "init_time_utc": da.init_time_utc.values.astype(float),
-        "step_hours": (da.step.values / 3600).astype(int),
-        "target_time_utc": (
-            da.init_time_utc.values + da.step.values
-        ).astype(float),
-    }
+def _convert_nwp(
+    nwp_dict: dict[str, xr.DataArray],
+    sample: NumpySample,
+) -> None:
+    """Convert dict of NWP DataArrays into numpy sample."""
+
+    nwp_samples = {}
+
+    for nwp_key, da in nwp_dict.items():
+        # Provide legacy keys expected elsewhere in the codebase/tests.
+        nwp_samples[nwp_key] = {
+            "nwp": da.values,
+            "nwp_channel_names": da.channel.values,
+            "nwp_init_time_utc": _datetime_or_timedelta_to_seconds(
+                da.init_time_utc.values
+            ),
+            "nwp_step": (
+        _datetime_or_timedelta_to_seconds(da.step.values) / 3600
+    ).astype(int),
+            "nwp_target_time_utc": _datetime_or_timedelta_to_seconds(
+                da.init_time_utc.values + da.step.values
+            ),
+        }
+
+    sample["nwp"] = nwp_samples
+
 
 
 def _convert_satellite(da: xr.DataArray, sample: NumpySample) -> None:
     """Convert satellite DataArray into numpy sample."""
+    # Backwards-compatible top-level array key expected by callers/tests
+    sample["satellite_actual"] = da.values
+
+    # Newer structured representation kept under `satellite`
     sample["satellite"] = {
         "values": da.values,
-        "time_utc": da.time_utc.values.astype(float),
+        "time_utc": _datetime_or_timedelta_to_seconds(da.time_utc.values),
         "x_geostationary": da.x_geostationary.values,
         "y_geostationary": da.y_geostationary.values,
     }
+
+
+def _datetime_or_timedelta_to_seconds(arr: np.ndarray) -> np.ndarray:
+    """Convert numpy datetime64 or timedelta64 array to float seconds since epoch.
+
+    Returns a float numpy array with seconds.
+    """
+    if arr.dtype.kind == "m":
+        # datetime64
+        return arr.astype("datetime64[ns]").astype("int64") / 1e9
+    if arr.dtype.kind == "t":
+        # timedelta64
+        return arr.astype("timedelta64[ns]").astype("int64") / 1e9
+    # Fallback: try to convert to float directly
+    return arr.astype(float)
 
 
 # Registry of supported modalities

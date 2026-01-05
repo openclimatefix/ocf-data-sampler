@@ -29,11 +29,10 @@ def convert_satellite_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = Non
         da: xarray DataArray containing satellite data
         t0_idx: Index of the t0 timestamp in the time dimension of the satellite data
     """
-    sample = {
-        "metadata" : {
-            "t0_idx" : t0_idx
-        }
-    }
+    sample = {"metadata": {"t0_idx": t0_idx}}
 
-    sample = _convert_satellite(da,sample)
+    # _convert_satellite mutates `sample` in-place and returns None when used
+    # via the unified converter. Do not overwrite `sample` with the return
+    # value to preserve the dictionary.
+    _convert_satellite(da, sample)
     return sample
