@@ -48,33 +48,22 @@ def get_t0_embedding(
     """
     features = []
 
-    if len(periods)!=len(embeddings):
-        raise ValueError("`periods` and `embeddings` must be the same length")
-
     for period_str, embedding in zip(periods, embeddings, strict=True):
 
         if period_str.endswith("h"):
             period_hours = int(period_str.removesuffix("h"))
-            if not (1<=period_hours<=24):
-                raise ValueError("The period in hours must be in interval [1, 24]")
             frac = (t0.hour + t0.minute / 60) / period_hours
 
         elif period_str.endswith("y"):
             period_years = int(period_str.removesuffix("y"))
-            if not period_years > 0:
-                raise ValueError("The period in years must be >0")
             days_in_year = 366 if t0.is_leap_year else 365
             frac = (((t0.dayofyear-1) / days_in_year) + t0.year % period_years) / period_years
-
-        else:
-            raise ValueError(f"Invalid period format: {period_str}")
 
         if embedding=="cyclic":
             radians = 2 * np.pi * frac
             features.extend([np.sin(radians), np.cos(radians)])
+        
         elif embedding=="linear":
             features.append(frac)
-        else:
-            raise ValueError(f"embedding option {embedding} not recognised")
 
     return {"t0_embedding": np.array(features, dtype=np.float32)}
