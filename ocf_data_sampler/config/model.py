@@ -309,6 +309,60 @@ class SolarPosition(TimeWindowMixin):
     """Solar position configuration model."""
 
 
+class T0Embedding(Base):
+    """Configuration for the t0 time embedding."""
+
+    periods: list[str] = Field(
+        default=[],
+        description="""List of periods to embed (e.g., "1h", "Nh", "1y", "Ny")""",
+    )
+
+    embeddings: list[str] = Field(
+        default=[],
+        description="List of embeddings to use for each period.",
+    )
+
+    @field_validator("periods")
+    def validate_periods(cls, periods: list[str]) -> list[str]:
+        """Validate 'periods'."""
+        for period in periods:
+
+            if not isinstance(period, str):
+                raise ValueError(f"Each period must be a string, found {type(period)}")
+
+            unit = period[-1]
+            if unit not in ["h", "y"]:
+                raise ValueError(f"""Unit {unit} needs to in ["h","y"]""")
+
+            if not period[:-1].isdigit():
+                raise ValueError(f"{period[:-1]} not recognised as an integer")
+
+            if unit=="y" and not int(period[:-1])>0:
+                raise ValueError(f"When using unit y the period (={period[:-1]}) must be > 0")
+
+            if unit=="h" and not (1<=int(period[:-1])<=24):
+                raise ValueError(
+                    f"When using unit h the period (={period[:-1]}) must be in interval [1, 24]",
+                )
+
+        return periods
+
+    @field_validator("embeddings")
+    def validate_embeddings(cls, embeddings: list[str]) -> list[str]:
+        """Validator for 'embeddings'."""
+        for embedding in embeddings:
+            if embedding not in ["cyclic", "linear"]:
+                raise ValueError(f"Embedding ({embedding}) must be cyclic or linear")
+        return embeddings
+
+    @model_validator(mode="after")
+    def check_periods_and_embeddings_len(self) -> "T0Embedding":
+        """Validate each period has an embedding."""
+        if len(self.periods)!=len(self.embeddings):
+            raise ValueError("The number of periods and embeddings must match")
+        return self
+
+
 class InputData(Base):
     """Input data model."""
 
@@ -316,6 +370,8 @@ class InputData(Base):
     nwp: MultiNWP | None = None
     generation: Generation | None = None
     solar_position: SolarPosition | None = None
+    t0_embedding: T0Embedding | None = None
+
 
 class Configuration(Base):
     """Configuration model for the dataset."""
