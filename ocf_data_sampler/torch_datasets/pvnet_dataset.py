@@ -247,7 +247,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Add datetime features
         generation_config = self.config.input_data.generation
         datetimes = pd.date_range(
-            t0 + minutes(generation_config.time_resolution_minutes),
+            t0 + minutes(generation_config.interval_start_minutes),
             t0 + minutes(generation_config.interval_end_minutes),
             freq=minutes(generation_config.time_resolution_minutes),
         )

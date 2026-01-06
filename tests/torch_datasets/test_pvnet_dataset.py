@@ -63,6 +63,9 @@ def test_pvnet_dataset(pvnet_config_filename):
     assert sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
     # 3 hours of 30 minute data (inclusive)
     assert sample["generation"].shape == (7,)
+    # Datetime encoding keys same shape as the generation
+    for datetime_key in ["date_sin", "date_cos", "time_sin", "time_cos"]:
+        assert sample[datetime_key].shape == (7,)
     # The config uses 3 periods each of which generates a sin and cos embedding
     assert sample["t0_embedding"].shape == (6,)
 
