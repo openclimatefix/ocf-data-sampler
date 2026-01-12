@@ -16,6 +16,7 @@ from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.numpy_sample import (
     convert_xarray_dict_to_numpy_sample,
     encode_datetimes,
+    get_t0_embedding,
     make_sun_position_numpy_sample,
 )
 
