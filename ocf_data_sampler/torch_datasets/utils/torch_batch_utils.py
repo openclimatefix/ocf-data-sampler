@@ -8,17 +8,17 @@ from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, TensorBatch
 
 def batch_to_tensor(batch: dict) -> dict:
     """Convert numpy arrays in batch to torch tensors.
-    
+
     Handles special cases like timestamps and nested dictionaries.
-    
+
     Args:
         batch: Dictionary potentially containing numpy arrays
-        
+
     Returns:
         Dictionary with numpy arrays converted to tensors
     """
     result = {}
-    
+
     for key, value in batch.items():
         if key == "t0":
             # Convert pandas Timestamps to seconds since epoch
@@ -27,6 +27,7 @@ def batch_to_tensor(batch: dict) -> dict:
                 if value.dtype == object and len(value) > 0:
                     # Pandas Timestamp objects
                     import pandas as pd
+
                     if isinstance(value[0], pd.Timestamp):
                         # Convert to seconds since epoch
                         seconds = np.array([ts.timestamp() for ts in value])
@@ -35,29 +36,28 @@ def batch_to_tensor(batch: dict) -> dict:
                         result[key] = torch.from_numpy(value)
                 else:
                     result[key] = torch.from_numpy(value)
-            elif hasattr(value, 'timestamp'):
+            elif hasattr(value, "timestamp"):
                 # Single pandas Timestamp
                 result[key] = torch.tensor(value.timestamp()).float()
             else:
                 result[key] = value
-                
+
         elif isinstance(value, np.ndarray):
             # Avoid converting string or object arrays to tensors
             if value.dtype.kind in ("U", "S") or value.dtype == object:
                 result[key] = value
             else:
                 result[key] = torch.from_numpy(value)
-            
+
         elif isinstance(value, dict):
             # Recursively handle nested dictionaries (like NWP)
             result[key] = batch_to_tensor(value)
-            
+
         else:
             # Keep as is (scalars, lists, etc.)
             result[key] = value
-    
-    return result
 
+    return result
 
 
 def copy_batch_to_device(batch: TensorBatch, device: torch.device) -> TensorBatch:

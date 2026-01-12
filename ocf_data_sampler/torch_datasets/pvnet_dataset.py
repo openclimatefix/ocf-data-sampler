@@ -24,8 +24,6 @@ from ocf_data_sampler.numpy_sample import (
 
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
-from ocf_data_sampler.numpy_sample.generation import GenerationSampleKey
-from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import (
     Location,
     fill_time_periods,
@@ -192,8 +190,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
     ) -> NumpySample:
         """Process and combine xarray datasets into a unified NumpySample.
 
-        This replaces the old approach of calling individual convert_*_to_numpy_sample
-        functions with a single unified converter.
+        This is the unified conversion approach that replaces individual 
+        convert_*_to_numpy_sample functions.
 
         Args:
             sample_dict: Dictionary of xarray DataArrays by modality
@@ -218,13 +216,13 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         # Add NWP data (can be multiple sources)
         if "nwp" in sample_dict:
-            # NWP is already a dict of DataArrays by source
             xarray_dict["nwp"] = sample_dict["nwp"]
 
-        # Add satellite if present (dataset utilities use key 'sat')
+        # Add satellite if present (use 'satellite' key for unified converter)
         if "sat" in sample_dict:
             xarray_dict["satellite"] = sample_dict["sat"]
 
+        # Use the unified converter - this replaces all the old convert_*_to_numpy_sample calls
         sample = convert_xarray_dict_to_numpy_sample(
             xarray_dict,
             t0_idx=t0_idx,
@@ -233,12 +231,12 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Add location information
         sample["location_id"] = location.id
         if hasattr(location, "x"):
-            sample["longitude"] = location.x  # Location uses x for longitude
+            sample["longitude"] = location.x
         if hasattr(location, "y"):
-            sample["latitude"] = location.y  # Location uses y for latitude
+            sample["latitude"] = location.y
 
         # Add datetime encodings if time_utc is present (from generation data)
-        # This must happen before removing datetime64 arrays
+        # Must happen before removing datetime64 arrays
         if "time_utc" in sample:
             datetimes = pd.to_datetime(sample["time_utc"])
             datetime_sample = encode_datetimes(datetimes)
@@ -246,7 +244,6 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         # Add solar position if configured
         if self.config.input_data.solar_position is not None:
-            # Generate datetime array from config
             solar_config = self.config.input_data.solar_position
             time_resolution = pd.Timedelta(solar_config.time_resolution_minutes, unit="minutes")
             start_offset = pd.Timedelta(solar_config.interval_start_minutes, unit="minutes")
@@ -266,7 +263,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         # Add t0 embedding if configured
         if hasattr(self.config.input_data, "t0_embedding") and \
-        self.config.input_data.t0_embedding is not None:
+           self.config.input_data.t0_embedding is not None:
             t0_embedding_sample = get_t0_embedding(
                 t0=t0,
                 periods=self.config.input_data.t0_embedding.periods,
@@ -274,13 +271,12 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             )
             sample.update(t0_embedding_sample)
         
-        # Remove datetime64 arrays at the end (after all processing that needs them)
+        # Clean up datetime64 arrays (must be last)
         for key, value in list(sample.items()):
             if isinstance(value, np.ndarray) and np.issubdtype(value.dtype, np.datetime64):
                 del sample[key]
 
         return sample
-
 
     @staticmethod
     def find_valid_t0_times(datasets_dict: dict, config: Configuration) -> pd.DatetimeIndex:
@@ -382,12 +378,15 @@ class PVNetDataset(AbstractPVNetDataset):
             t0: init-time for sample
             location: location for sample
         """
+        # Slice data by space and time
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
         
-        # Use the unified converter and processing
+        # Use unified conversion - this is the main change!
+        # Previously this would call multiple convert_*_to_numpy_sample functions
+        # Now it's all handled by process_and_combine_datasets
         sample = self.process_and_combine_datasets(sample_dict, t0, location)
         
         # Add t0 timestamp to sample (required by tests and batch processing)
@@ -467,14 +466,13 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
             t0: init-time for sample
         """
         # Slice by time then load to avoid loading the data multiple times from disk
-
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
 
         samples = []
 
-        # Prepare sample for each location
+        # Prepare sample for each location using unified conversion
         for location in self.locations:
             sliced_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
             numpy_sample = self.process_and_combine_datasets(
@@ -484,7 +482,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
             )
             samples.append(numpy_sample)
 
-        # Stack samples
+        # Stack samples into batch
         return stack_np_samples_into_batch(samples)
 
     @override
@@ -499,7 +497,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
         Args:
             t0: init-time for sample
         """
-        # Check data is availablle for init-time t0
+        # Check data is available for init-time t0
         if t0 not in self.valid_t0_times:
             raise ValueError(f"Input init time '{t0!s}' not in valid times")
         return self._get_sample(t0)

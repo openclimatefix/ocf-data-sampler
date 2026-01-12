@@ -1,31 +1,25 @@
-"""
-Unified conversion of xarray DataArrays into a single NumpySample.
+"""Unified conversion of xarray DataArrays into a single NumpySample.
 
 This replaces the modality-specific numpy conversion functions and removes the need
 for scattered *SampleKey classes. The returned sample is structured by modality,
 with shared fields stored under `metadata`.
 """
 
-from typing import Callable
-import xarray as xr
+from collections.abc import Callable
+
 import numpy as np
+import xarray as xr
+
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 
 def _convert_generation(da: xr.DataArray, sample: NumpySample) -> None:
     """Convert generation DataArray into numpy sample."""
-    # sample["generation"] = {
-    #     "values": da.values,
-    #     "capacity_mwp": da.capacity_mwp.values[0],
-    # }
     sample["generation"] = da.values
     sample["capacity_mwp"] = da.capacity_mwp.values[0]
+
     # Keep original datetime64 values for downstream functions that expect datetimes
     sample["time_utc"] = da.time_utc.values
-
-    # sample["metadata"]["time_utc"] = _datetime_or_timedelta_to_seconds(
-    #     da.time_utc.values
-    # )
 
 
 def _convert_nwp(
@@ -33,7 +27,6 @@ def _convert_nwp(
     sample: NumpySample,
 ) -> None:
     """Convert dict of NWP DataArrays into numpy sample."""
-
     nwp_samples = {}
 
     for nwp_key, da in nwp_dict.items():
@@ -42,18 +35,17 @@ def _convert_nwp(
             "nwp": da.values,
             "nwp_channel_names": da.channel.values,
             "nwp_init_time_utc": _datetime_or_timedelta_to_seconds(
-                da.init_time_utc.values
+                da.init_time_utc.values,
             ),
             "nwp_step": (
-        _datetime_or_timedelta_to_seconds(da.step.values) / 3600
-    ).astype(int),
+                _datetime_or_timedelta_to_seconds(da.step.values) / 3600
+            ).astype(int),
             "nwp_target_time_utc": _datetime_or_timedelta_to_seconds(
-                da.init_time_utc.values + da.step.values
+                da.init_time_utc.values + da.step.values,
             ),
         }
 
     sample["nwp"] = nwp_samples
-
 
 
 def _convert_satellite(da: xr.DataArray, sample: NumpySample) -> None:
@@ -81,7 +73,7 @@ def _datetime_or_timedelta_to_seconds(arr: np.ndarray) -> np.ndarray:
         was_scalar = True
     else:
         was_scalar = False
-    
+
     # IMPORTANT: "M" is for datetime64, "m" is for timedelta64
     if arr.dtype.kind == "M":
         # datetime64 - convert to seconds since epoch
@@ -92,7 +84,7 @@ def _datetime_or_timedelta_to_seconds(arr: np.ndarray) -> np.ndarray:
     else:
         # Fallback: try to convert to float directly
         result = arr.astype(float)
-    
+
     return result[0] if was_scalar else result
 
 
@@ -111,8 +103,7 @@ def convert_xarray_dict_to_numpy_sample(
     *,
     t0_idx: int | None = None,
 ) -> NumpySample:
-    """
-    Convert a dictionary of xarray DataArrays into a unified NumpySample.
+    """Convert a dictionary of xarray DataArrays into a unified NumpySample.
 
     Args:
         data:
@@ -126,9 +117,6 @@ def convert_xarray_dict_to_numpy_sample(
             A nested dictionary organised by modality with shared metadata.
     """
     sample: NumpySample = {
-        # "metadata": {
-        #     "t0_idx": t0_idx,
-        # }
         "t0_idx": t0_idx,
     }
 

@@ -1,6 +1,5 @@
 """Location object."""
 
-
 allowed_coord_systems = {"osgb", "lon_lat", "geostationary"}
 
 
@@ -23,7 +22,7 @@ class Location:
     @staticmethod
     def _check_valid_coord_system(coord_system: str) -> None:
         if coord_system not in allowed_coord_systems:
-            raise ValueError(f"Coordinate  {coord_system} is not supported")
+            raise ValueError(f"Coordinate {coord_system} is not supported")
 
     def in_coord_system(self, coord_system: str) -> tuple[float, float]:
         """Get the location in a specified coordinate system.
@@ -35,12 +34,12 @@ class Location:
 
         if coord_system in self._projections:
             return self._projections[coord_system]
-        else:
-            raise ValueError(
-                f"Requested the coodinate in {coord_system}. This has not yet been added. "
-                "The current available coordinate systems are "
-                f"{list(self._projections.keys())}",
-            )
+
+        raise ValueError(
+            f"Requested the coordinate in {coord_system}. This has not yet been added. "
+            "The current available coordinate systems are "
+            f"{list(self._projections.keys())}",
+        )
 
     def add_coord_system(self, x: float, y: float, coord_system: str) -> None:
         """Add the equivalent location in a different coordinate system.
@@ -52,10 +51,10 @@ class Location:
         """
         self._check_valid_coord_system(coord_system)
         if coord_system in self._projections:
-            if not (x, y)==self._projections[coord_system]:
+            if (x, y) != self._projections[coord_system]:
                 raise ValueError(
-                    f"Tried to re-add coordinate projection {coord_system}, but the supplied"
-                    f"coodrinate values ({x}, {y}) do not match the already stored values "
+                    f"Tried to re-add coordinate projection {coord_system}, but the supplied "
+                    f"coordinate values ({x}, {y}) do not match the already stored values "
                     f"{self._projections[coord_system]}",
                 )
         else:
@@ -64,12 +63,10 @@ class Location:
     @property
     def x(self) -> float:
         """Return the east-west coordinate (prefer `lon_lat` when available)."""
-        # Prefer lon_lat projection if available, else osgb, else first available
         if "lon_lat" in self._projections:
             return self._projections["lon_lat"][0]
         if "osgb" in self._projections:
             return self._projections["osgb"][0]
-        # Fallback to first stored projection
         return next(iter(self._projections.values()))[0]
 
     @property
@@ -84,9 +81,10 @@ class Location:
     # Provide aliases for clarity
     @property
     def longitude(self) -> float:
+        """Alias for :pyattr:`x` (longitude)."""
         return self.x
 
     @property
     def latitude(self) -> float:
+        """Alias for :pyattr:`y` (latitude)."""
         return self.y
-
