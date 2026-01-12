@@ -61,3 +61,32 @@ class Location:
         else:
             self._projections[coord_system] = (x, y)
 
+    @property
+    def x(self) -> float:
+        """Return the east-west coordinate (prefer `lon_lat` when available)."""
+        # Prefer lon_lat projection if available, else osgb, else first available
+        if "lon_lat" in self._projections:
+            return self._projections["lon_lat"][0]
+        if "osgb" in self._projections:
+            return self._projections["osgb"][0]
+        # Fallback to first stored projection
+        return next(iter(self._projections.values()))[0]
+
+    @property
+    def y(self) -> float:
+        """Return the north-south coordinate (prefer `lon_lat` when available)."""
+        if "lon_lat" in self._projections:
+            return self._projections["lon_lat"][1]
+        if "osgb" in self._projections:
+            return self._projections["osgb"][1]
+        return next(iter(self._projections.values()))[1]
+
+    # Provide aliases for clarity
+    @property
+    def longitude(self) -> float:
+        return self.x
+
+    @property
+    def latitude(self) -> float:
+        return self.y
+

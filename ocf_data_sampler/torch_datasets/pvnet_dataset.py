@@ -11,6 +11,8 @@ from pydantic.warnings import UnsupportedFieldAttributeWarning
 from torch.utils.data import Dataset
 from typing_extensions import override
 
+import numpy as np
+
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.numpy_sample import (
@@ -184,75 +186,101 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
     def process_and_combine_datasets(
         self,
-        dataset_dict: dict,
+        sample_dict: dict[str, xr.DataArray],
         t0: pd.Timestamp,
-        location: Location,
+        location: Location
     ) -> NumpySample:
-        """Normalise and convert data to numpy arrays.
+        """Process and combine xarray datasets into a unified NumpySample.
+
+        This replaces the old approach of calling individual convert_*_to_numpy_sample
+        functions with a single unified converter.
 
         Args:
-            dataset_dict: Dictionary of xarray datasets
-            t0: init-time for sample
-            location: location of the sample
+            sample_dict: Dictionary of xarray DataArrays by modality
+            t0: The t0 timestamp for this sample
+            location: The location for this sample
+
+        Returns:
+            NumpySample with all modalities combined
         """
-        xarray_modalities: dict[str, xr.DataArray] = {}
+        # Find t0 index in the generation data
+        t0_idx = None
+        if "generation" in sample_dict:
+            gen_da = sample_dict["generation"]
+            t0_idx = int(np.where(gen_da.time_utc.values == t0)[0][0])
+            
+        # Build dictionary of xarray data for unified conversion
+        xarray_dict = {}
 
-        if "nwp" in dataset_dict:
-            for nwp_key, da_nwp in dataset_dict["nwp"].items():
-                channel_means = self.means_dict["nwp"][nwp_key]
-                channel_stds = self.stds_dict["nwp"][nwp_key]
-                dataset_dict["nwp"][nwp_key] = (da_nwp - channel_means) / channel_stds
+        # Add generation if present
+        if "generation" in sample_dict:
+            xarray_dict["generation"] = sample_dict["generation"]
 
-            # flatten multiple NWPs into one dict entry
-            xarray_modalities["nwp"] = dataset_dict["nwp"]
+        # Add NWP data (can be multiple sources)
+        if "nwp" in sample_dict:
+            # NWP is already a dict of DataArrays by source
+            xarray_dict["nwp"] = sample_dict["nwp"]
 
-        if "sat" in dataset_dict:
-            da_sat = dataset_dict["sat"]
-            da_sat = (da_sat - self.means_dict["sat"]) / self.stds_dict["sat"]
-            xarray_modalities["satellite"] = da_sat
+        # Add satellite if present (dataset utilities use key 'sat')
+        if "sat" in sample_dict:
+            xarray_dict["satellite"] = sample_dict["sat"]
 
-        if "generation" in dataset_dict:
-            da_gen = dataset_dict["generation"]
-            da_gen = da_gen / da_gen.capacity_mwp.values
-            xarray_modalities["generation"] = da_gen
-
-        #  Single unified conversion call 
         sample = convert_xarray_dict_to_numpy_sample(
-            xarray_modalities,
-            t0_idx=self.t0_idx,
+            xarray_dict,
+            t0_idx=t0_idx,
         )
 
-        # Add metadata & extras (UNCHANGED)
-        sample["t0"] = t0.timestamp()
+        # Add location information
+        sample["location_id"] = location.id
+        if hasattr(location, "x"):
+            sample["longitude"] = location.x  # Location uses x for longitude
+        if hasattr(location, "y"):
+            sample["latitude"] = location.y  # Location uses y for latitude
 
-        if "generation" in dataset_dict:
-            sample.update(
-                {
-                    GenerationSampleKey.location_id: location.id,
-                    GenerationSampleKey.longitude: da_gen.longitude.values,
-                    GenerationSampleKey.latitude: da_gen.latitude.values,
-                }
+        # Add datetime encodings if time_utc is present (from generation data)
+        # This must happen before removing datetime64 arrays
+        if "time_utc" in sample:
+            datetimes = pd.to_datetime(sample["time_utc"])
+            datetime_sample = encode_datetimes(datetimes)
+            sample.update(datetime_sample)
+
+        # Add solar position if configured
+        if self.config.input_data.solar_position is not None:
+            # Generate datetime array from config
+            solar_config = self.config.input_data.solar_position
+            time_resolution = pd.Timedelta(solar_config.time_resolution_minutes, unit="minutes")
+            start_offset = pd.Timedelta(solar_config.interval_start_minutes, unit="minutes")
+            end_offset = pd.Timedelta(solar_config.interval_end_minutes, unit="minutes")
+            datetimes = pd.date_range(
+                start=t0 + start_offset,
+                end=t0 + end_offset,
+                freq=time_resolution,
             )
+            
+            solar_sample = make_sun_position_numpy_sample(
+                datetimes=datetimes,
+                lon=location.x,
+                lat=location.y,
+            )
+            sample.update(solar_sample)
 
-            datetimes = pd.DatetimeIndex(da_gen.time_utc.values)
-            sample.update(encode_datetimes(datetimes))
+        # Add t0 embedding if configured
+        if hasattr(self.config.input_data, "t0_embedding") and \
+        self.config.input_data.t0_embedding is not None:
+            t0_embedding_sample = get_t0_embedding(
+                t0=t0,
+                periods=self.config.input_data.t0_embedding.periods,
+                embeddings=self.config.input_data.t0_embedding.embeddings,
+            )
+            sample.update(t0_embedding_sample)
+        
+        # Remove datetime64 arrays at the end (after all processing that needs them)
+        for key, value in list(sample.items()):
+            if isinstance(value, np.ndarray) and np.issubdtype(value.dtype, np.datetime64):
+                del sample[key]
 
-            if self.config.input_data.solar_position is not None:
-                solar_cfg = self.config.input_data.solar_position
-                solar_times = pd.date_range(
-                    t0 + minutes(solar_cfg.interval_start_minutes),
-                    t0 + minutes(solar_cfg.interval_end_minutes),
-                    freq=minutes(solar_cfg.time_resolution_minutes),
-                )
-                sample.update(
-                    make_sun_position_numpy_sample(
-                        solar_times,
-                        da_gen.longitude.values,
-                        da_gen.latitude.values,
-                    )
-                )
+        return sample
 
-        return fill_nans_in_arrays(sample, config=self.config)  
 
     @staticmethod
     def find_valid_t0_times(datasets_dict: dict, config: Configuration) -> pd.DatetimeIndex:
@@ -358,7 +386,14 @@ class PVNetDataset(AbstractPVNetDataset):
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
-        return self.process_and_combine_datasets(sample_dict, t0, location)
+        
+        # Use the unified converter and processing
+        sample = self.process_and_combine_datasets(sample_dict, t0, location)
+        
+        # Add t0 timestamp to sample (required by tests and batch processing)
+        sample["t0"] = t0
+        
+        return sample
 
     @override
     def __getitem__(self, idx: int) -> NumpySample:

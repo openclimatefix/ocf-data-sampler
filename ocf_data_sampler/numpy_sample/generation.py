@@ -34,9 +34,10 @@ def convert_generation_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = No
         t0_idx: Index of the t0 timestamp in the time dimension of the generation data
     """
     sample: NumpySample = {
-        "metadata": {
-            "t0_idx": t0_idx,
-        }
+        # "metadata": {
+        #     "t0_idx": t0_idx,
+        # }
+        "t0_idx": t0_idx,
     }
 
     _convert_generation(da, sample)
