@@ -19,14 +19,20 @@ def _convert_generation(da: xr.DataArray, sample: NumpySample) -> None:
     sample["capacity_mwp"] = da.capacity_mwp.values[0]
 
     # Keep original datetime64 values for downstream functions that expect datetimes
-    sample["time_utc"] = da.time_utc.values
+    sample["time_utc"] = _datetime_or_timedelta_to_seconds(da.time_utc.values)
 
 
 def _convert_nwp(
-    nwp_dict: dict[str, xr.DataArray],
+    nwp_dict_or_da: "dict[str, xr.DataArray] | xr.DataArray",
     sample: NumpySample,
 ) -> None:
-    """Convert dict of NWP DataArrays into numpy sample."""
+    """Convert dict of NWP DataArrays (or single DataArray) into numpy sample."""
+
+    if isinstance(nwp_dict_or_da, xr.DataArray):
+        nwp_dict = {nwp_dict_or_da.name or "nwp": nwp_dict_or_da}
+    else:
+        nwp_dict = nwp_dict_or_da
+
     nwp_samples = {}
 
     for nwp_key, da in nwp_dict.items():
@@ -46,6 +52,7 @@ def _convert_nwp(
         }
 
     sample["nwp"] = nwp_samples
+
 
 
 def _convert_satellite(da: xr.DataArray, sample: NumpySample) -> None:

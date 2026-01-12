@@ -13,6 +13,7 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
         GenerationSampleKey.generation,
         GenerationSampleKey.capacity_mwp,
         GenerationSampleKey.time_utc,
+        "t0_idx",
     }
     assert isinstance(numpy_sample, dict)
     assert set(numpy_sample) == expected_keys
