@@ -21,14 +21,19 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
     """
     ds = open_zarr_paths(zarr_path, backend="tensorstore")
 
-    ds = ds.rename(
-        {
-            "init_time": "init_time_utc",
-            "variable": "channel",
-            "x": "x_osgb",
-            "y": "y_osgb",
-        },
-    )
+    # Build rename dictionary conditionally based on existing dimensions
+    rename_dict = {
+        "init_time": "init_time_utc",
+        "variable": "channel",
+    }
+    
+    # Only rename x,y to x_osgb,y_osgb if the legacy names exist
+    if "x" in ds.dims:
+        rename_dict["x"] = "x_osgb"
+    if "y" in ds.dims:
+        rename_dict["y"] = "y_osgb"
+
+    ds = ds.rename(rename_dict)
 
     check_time_unique_increasing(ds.init_time_utc)
 
