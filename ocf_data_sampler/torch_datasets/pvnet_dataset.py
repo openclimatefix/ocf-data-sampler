@@ -254,8 +254,9 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         numpy_modalities.append(encode_datetimes(datetimes=datetimes))
 
         if self.config.input_data.t0_embedding is not None:
-            emb_conf = self.config.input_data.t0_embedding
-            numpy_modalities.append(get_t0_embedding(t0, emb_conf.periods, emb_conf.embeddings))
+            numpy_modalities.append(
+                get_t0_embedding(t0, self.config.input_data.t0_embedding.embeddings),
+            )
 
         # Only add solar position if explicitly configured
         if self.config.input_data.solar_position is not None:

@@ -53,5 +53,4 @@ input_data:
     time_resolution_minutes: 5
 
   t0_embedding:
-    periods: ["1h", "24h", "1y"]
-    embeddings: ["cyclic", "cyclic", "cyclic"]
+    embeddings: [["1h", "cyclic"], ["24h", "cyclic"], ["1y", "cyclic"]]
