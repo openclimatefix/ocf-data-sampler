@@ -5,6 +5,7 @@ Prefix with a protocol like s3:// to read from alternative filesystems.
 """
 
 from collections.abc import Iterator
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
@@ -309,23 +310,22 @@ class SolarPosition(TimeWindowMixin):
     """Solar position configuration model."""
 
 
+_embedding_type = list[tuple[str, Literal["cyclic", "linear"]]]
 class T0Embedding(Base):
     """Configuration for the t0 time embedding."""
 
-    periods: list[str] = Field(
-        default=[],
-        description="""List of periods to embed (e.g., "1h", "Nh", "1y", "Ny")""",
+    embeddings: _embedding_type = Field(
+        ...,
+        description="""The periods to encode (e.g., "1h", "Nh", "1y", "Ny") and their representation
+            (either "cyclic" or "linear"). When cyclic, the period is sin-cos embedded, else it is
+            0-1 scaled as fraction through the period. Note that using "cyclic" adds 2 elements to
+            the output vector to embed a period whilst "linear" adds only 1 element.""",
     )
 
-    embeddings: list[str] = Field(
-        default=[],
-        description="List of embeddings to use for each period.",
-    )
-
-    @field_validator("periods")
-    def validate_periods(cls, periods: list[str]) -> list[str]:
+    @field_validator("embeddings")
+    def validate_embeddings(cls, embeddings: _embedding_type) -> _embedding_type:
         """Validate 'periods'."""
-        for period in periods:
+        for period, embedding_type in embeddings:
 
             if not isinstance(period, str):
                 raise ValueError(f"Each period must be a string, found {type(period)}")
@@ -345,22 +345,10 @@ class T0Embedding(Base):
                     f"When using unit h the period (={period[:-1]}) must be in interval [1, 24]",
                 )
 
-        return periods
+            if embedding_type not in ["cyclic", "linear"]:
+                raise ValueError(f"Embedding ({embedding_type}) must be cyclic or linear")
 
-    @field_validator("embeddings")
-    def validate_embeddings(cls, embeddings: list[str]) -> list[str]:
-        """Validator for 'embeddings'."""
-        for embedding in embeddings:
-            if embedding not in ["cyclic", "linear"]:
-                raise ValueError(f"Embedding ({embedding}) must be cyclic or linear")
         return embeddings
-
-    @model_validator(mode="after")
-    def check_periods_and_embeddings_len(self) -> "T0Embedding":
-        """Validate each period has an embedding."""
-        if len(self.periods)!=len(self.embeddings):
-            raise ValueError("The number of periods and embeddings must match")
-        return self
 
 
 class InputData(Base):
