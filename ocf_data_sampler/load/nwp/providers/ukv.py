@@ -21,14 +21,20 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
     """
     ds = open_zarr_paths(zarr_path, backend="tensorstore")
 
-    ds = ds.rename(
-        {
-            "init_time": "init_time_utc",
-            "variable": "channel",
-            "x": "x_osgb",
-            "y": "y_osgb",
-        },
-    )
+    # Define the desired mapping
+    rename_map = {
+        "init_time": "init_time_utc",
+        "variable": "channel",
+        "x": "x_osgb",
+        "y": "y_osgb",
+    }
+
+    # Only rename if the source key exists in the dataset's dimensions or coordinates
+    # This prevents KeyErrors when the new UKV data already has "x_osgb" and "y_osgb"
+    actual_rename = {k: v for k, v in rename_map.items() if k in ds.dims or k in ds.coords}
+
+    if actual_rename:
+        ds = ds.rename(actual_rename)
 
     check_time_unique_increasing(ds.init_time_utc)
 
