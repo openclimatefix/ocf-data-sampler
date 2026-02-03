@@ -33,10 +33,10 @@ def test_find_contiguous_t0_periods():
     interval_end = pd.Timedelta(15, "min")
 
     datetimes = pd.date_range(
-        "2023-01-01 12:00", 
-        "2023-01-01 17:00", 
-        freq=freq, 
-        unit="ns"
+        "2023-01-01 12:00",
+        "2023-01-01 17:00",
+        freq=freq,
+        unit="ns",
     ).delete([5, 6, 30])
 
     periods = find_contiguous_t0_periods(
@@ -82,10 +82,10 @@ def test_find_contiguous_t0_periods_nwp():
     # Create 3-hourly init times with a few time stamps missing
     freq = pd.Timedelta(3, "h")
     init_times = pd.date_range(
-        "2023-01-01 03:00", 
-        "2023-01-02 21:00", 
-        freq=freq, 
-        unit="ns"
+        "2023-01-01 03:00",
+        "2023-01-02 21:00",
+        freq=freq,
+        unit="ns",
     ).delete([1, 4, 5, 6, 7, 9, 10])
 
     # Choose some history durations and max stalenesses
