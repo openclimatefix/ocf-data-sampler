@@ -27,7 +27,6 @@ def _convert_nwp(
     sample: NumpySample,
 ) -> None:
     """Convert dict of NWP DataArrays (or single DataArray) into numpy sample."""
-
     if isinstance(nwp_dict_or_da, xr.DataArray):
         nwp_dict = {nwp_dict_or_da.name or "nwp": nwp_dict_or_da}
     else:

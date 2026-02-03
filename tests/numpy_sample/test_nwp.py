@@ -1,4 +1,4 @@
-from ocf_data_sampler.numpy_sample import NWPSampleKey, convert_nwp_to_numpy_sample
+from ocf_data_sampler.numpy_sample import convert_nwp_to_numpy_sample
 
 
 def test_convert_nwp_to_numpy_sample(ds_nwp_ukv_time_sliced):

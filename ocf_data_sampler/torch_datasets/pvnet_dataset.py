@@ -5,13 +5,12 @@ import os
 import pickle
 import warnings
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 from pydantic.warnings import UnsupportedFieldAttributeWarning
 from torch.utils.data import Dataset
 from typing_extensions import override
-
-import numpy as np
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
@@ -21,7 +20,6 @@ from ocf_data_sampler.numpy_sample import (
     get_t0_embedding,
     make_sun_position_numpy_sample,
 )
-
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.select import (
@@ -34,9 +32,7 @@ from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
     diff_nwp_data,
-    fill_nans_in_arrays,
     find_valid_time_periods,
-    merge_dicts,
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
@@ -186,11 +182,11 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         self,
         sample_dict: dict[str, xr.DataArray],
         t0: pd.Timestamp,
-        location: Location
+        location: Location,
     ) -> NumpySample:
         """Process and combine xarray datasets into a unified NumpySample.
 
-        This is the unified conversion approach that replaces individual 
+        This is the unified conversion approach that replaces individual
         convert_*_to_numpy_sample functions.
 
         Args:
@@ -206,7 +202,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         if "generation" in sample_dict:
             gen_da = sample_dict["generation"]
             t0_idx = int(np.where(gen_da.time_utc.values == t0)[0][0])
-            
+
         # Build dictionary of xarray data for unified conversion
         xarray_dict = {}
 
@@ -253,7 +249,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                 end=t0 + end_offset,
                 freq=time_resolution,
             )
-            
+
             solar_sample = make_sun_position_numpy_sample(
                 datetimes=datetimes,
                 lon=location.x,
@@ -270,7 +266,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                 embeddings=self.config.input_data.t0_embedding.embeddings,
             )
             sample.update(t0_embedding_sample)
-        
+
         # Clean up datetime64 arrays (must be last)
         for key, value in list(sample.items()):
             if isinstance(value, np.ndarray) and np.issubdtype(value.dtype, np.datetime64):
@@ -383,15 +379,15 @@ class PVNetDataset(AbstractPVNetDataset):
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
-        
+
         # Use unified conversion - this is the main change!
         # Previously this would call multiple convert_*_to_numpy_sample functions
         # Now it's all handled by process_and_combine_datasets
         sample = self.process_and_combine_datasets(sample_dict, t0, location)
-        
+
         # Add t0 timestamp to sample (required by tests and batch processing)
         sample["t0"] = t0
-        
+
         return sample
 
     @override

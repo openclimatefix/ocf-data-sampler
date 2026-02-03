@@ -3,7 +3,7 @@
 import numpy as np
 import torch
 
-from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, TensorBatch
+from ocf_data_sampler.numpy_sample.common_types import TensorBatch
 
 
 def batch_to_tensor(batch: dict) -> dict:
