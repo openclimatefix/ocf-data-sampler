@@ -262,7 +262,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
            self.config.input_data.t0_embedding is not None:
             t0_embedding_sample = get_t0_embedding(
                 t0=t0,
-                periods=self.config.input_data.t0_embedding.periods,
+                #periods=self.config.input_data.t0_embedding.periods,
+                #(removed for test_collate.py for periods attribute)
                 embeddings=self.config.input_data.t0_embedding.embeddings,
             )
             sample.update(t0_embedding_sample)
