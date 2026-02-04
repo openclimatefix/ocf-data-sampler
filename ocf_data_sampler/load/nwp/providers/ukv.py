@@ -31,8 +31,7 @@ def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
 
     # Only rename if the source key exists in the dataset's dimensions or coordinates
     # This prevents KeyErrors when the new UKV data already has "x_osgb" and "y_osgb"
-    actual_rename = {k: v for k, v in rename_map.items() if k in ds.dims or k in ds.coords}
-
+    actual_rename = {k: v for k, v in rename_map.items() if k in ds.coords}
     if actual_rename:
         ds = ds.rename(actual_rename)
 
