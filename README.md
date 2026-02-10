@@ -38,8 +38,22 @@ Instead of trying to accommodate for all these differences and make all the sour
 
 You can install **ocf-data-sampler** for development as follows:
 
+1. **Clone the repository:**
 ``` 
 pip install git+https://github.com/openclimatefix/ocf-data-sampler.git
+```
+2. **Set up a virtual environment**:
+```
+python -m venv venv
+.\venv\Scripts\activate
+```
+3. **Install with development dependencies:**
+```
+pip install -e ".[dev]"
+```
+4. **Manual Dask Installation : If you encounter a ModuleNotFoundError: No module named 'dask':**
+```
+pip install dask[complete]
 ```
 
 ### Running the test suite
@@ -48,8 +62,9 @@ The tests in this project use `pytest`. Once you have it installed, you can run 
 
 ```
 cd ocf-data-sampler
-pytest
+pytest 
 ``` 
+Use ```python -m pytest``` to run tests via the python module
 
 ## Contributing and community
 
