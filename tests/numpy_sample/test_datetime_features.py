@@ -9,7 +9,7 @@ from ocf_data_sampler.numpy_sample.datetime_features import (
 
 def test_encode_datetimes():
     # Pick summer solstice day and calculate encoding features
-    datetimes = pd.to_datetime(["2024-06-20 12:00", "2024-06-20 12:30", "2024-06-20 13:00"])
+    datetimes = pd.to_datetime(["2024-06-20 12:00", "2024-06-20 12:30", "2024-06-20 13:00"]).values
     features = encode_datetimes(datetimes)
 
     assert len(features) == 4
@@ -45,7 +45,7 @@ def test_get_t0_embedding():
                 raise ValueError(f"{results}!={expected_results}")
 
     # Define some t0 times and periods to check
-    t0s = pd.date_range("2024-01-01 00:00", "2024-01-01 06:00")
+    t0s = pd.date_range("2024-01-01 00:00", "2024-01-01 06:00").values
     embeddings = [("1h", "linear"), ("1h", "cyclic"), ("2h", "cyclic"), ("6h", "cyclic")]
 
     # Equivalent times and periods in float form
@@ -60,7 +60,7 @@ def test_get_t0_embedding():
             "2020-01-01 00:00", "2020-01-01 23:30", "2020-01-02 00:00",
             "2020-06-10 00:00", "2021-01-01 00:00", "2021-01-02 00:00",
         ],
-    )
+    ).values
     embeddings = [("1y", "cyclic"), ("2y", "cyclic")]
 
 

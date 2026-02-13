@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 from ocf_data_sampler.torch_datasets.pvnet_dataset import PVNetDataset
 from ocf_data_sampler.torch_datasets.utils.time_slice_for_dataset import slice_datasets_by_time
@@ -15,7 +14,7 @@ def test_time_slice_for_dataset_site_dropout(pvnet_config_filename):
 
     sliced = slice_datasets_by_time(
         datasets_dict=dataset.datasets_dict,
-        t0=pd.Timestamp("2023-01-01 12:00"),
+        t0=np.datetime64("2023-01-01 12:00"),
         config=config,
     )
 

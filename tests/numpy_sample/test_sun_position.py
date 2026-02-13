@@ -12,7 +12,7 @@ from ocf_data_sampler.numpy_sample.sun_position import (
 def test_calculate_azimuth_and_elevation(lat):
 
     # Summer solstice day and sun angle calculation
-    datetimes = pd.to_datetime(["2024-06-20 12:00"])
+    datetimes =  np.array(["2024-06-20 12:00"], dtype="datetime64[ns]")
     azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon=0, lat=lat)
 
     assert len(azimuth) == len(datetimes)
@@ -27,7 +27,7 @@ def test_calculate_azimuth_and_elevation_random():
     np.random.seed(0)
 
     # Pick day of summer solstice
-    datetimes = pd.to_datetime(["2024-06-20 12:00"])
+    datetimes = np.array(["2024-06-20 12:00"], dtype="datetime64[ns]")
 
     # For 100 random locations - calculate azimuth and elevations
     azimuths, elevations = [], []
@@ -48,7 +48,7 @@ def test_calculate_azimuth_and_elevation_random():
 
 
 def test_make_sun_position_numpy_sample():
-    datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min")
+    datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min").values
     sample = make_sun_position_numpy_sample(datetimes, lon=0, lat=51.5)
 
     # Assertion accounting for solar coord normalisation

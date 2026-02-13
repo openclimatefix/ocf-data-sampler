@@ -1,16 +1,17 @@
 """Select a time slice from a Dataset or DataArray."""
 
 import numpy as np
-import pandas as pd
 import xarray as xr
+
+from ocf_data_sampler.time_utils import date_range, datetime_ceil
 
 
 def select_time_slice(
     da: xr.DataArray,
-    t0: pd.Timestamp,
-    interval_start: pd.Timedelta,
-    interval_end: pd.Timedelta,
-    time_resolution: pd.Timedelta,
+    t0: np.datetime64,
+    interval_start: np.timedelta64,
+    interval_end: np.timedelta64,
+    time_resolution: np.timedelta64,
 ) -> xr.DataArray:
     """Select a time slice from a DataArray.
 
@@ -24,19 +25,18 @@ def select_time_slice(
     start_dt = t0 + interval_start
     end_dt = t0 + interval_end
 
-    start_dt = start_dt.ceil(time_resolution)
-    end_dt = end_dt.ceil(time_resolution)
+    start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
 
     return da.sel(time_utc=slice(start_dt, end_dt))
 
 
 def select_time_slice_nwp(
     da: xr.DataArray,
-    t0: pd.Timestamp,
-    interval_start: pd.Timedelta,
-    interval_end: pd.Timedelta,
-    time_resolution: pd.Timedelta,
-    dropout_timedeltas: list[pd.Timedelta] | None = None,
+    t0: np.datetime64,
+    interval_start: np.timedelta64,
+    interval_end: np.timedelta64,
+    time_resolution: np.timedelta64,
+    dropout_timedeltas: list[np.timedelta64] | None = None,
     dropout_frac: float | None = 0,
 ) -> xr.DataArray:
     """Select a time slice from an NWP DataArray.
@@ -55,7 +55,7 @@ def select_time_slice_nwp(
         dropout_timedeltas = []
 
     if len(dropout_timedeltas)>0:
-        if not all(t < pd.Timedelta(0) for t in dropout_timedeltas):
+        if not all(t < np.timedelta64(0) for t in dropout_timedeltas):
             raise ValueError("dropout timedeltas must be negative")
         if len(dropout_timedeltas) < 1:
             raise ValueError("dropout timedeltas must have at least one element")
@@ -65,9 +65,10 @@ def select_time_slice_nwp(
 
     consider_dropout = len(dropout_timedeltas) > 0 and dropout_frac > 0
 
-    start_dt = (t0 + interval_start).ceil(time_resolution)
-    end_dt = (t0 + interval_end).ceil(time_resolution)
-    target_times = pd.date_range(start_dt, end_dt, freq=time_resolution)
+    start_dt = t0 + interval_start
+    end_dt = t0 + interval_end
+    start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
+    target_times = date_range(start_dt, end_dt, freq=time_resolution)
 
     # Potentially apply NWP dropout
     if consider_dropout and (np.random.uniform() < dropout_frac):

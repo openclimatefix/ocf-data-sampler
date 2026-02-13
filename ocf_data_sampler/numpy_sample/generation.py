@@ -24,9 +24,15 @@ def convert_generation_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = No
         da: Xarray DataArray containing generation data
         t0_idx: Index of the t0 timestamp in the time dimension of the generation data
     """
+    generation_values = da.sel(gen_param="generation_mw").values
+    capacity_value = da.sel(gen_param="capacity_mwp").values[0]
+
+    if capacity_value!=0:
+        generation_values = generation_values/capacity_value
+
     sample = {
-        GenerationSampleKey.generation: da.values,
-        GenerationSampleKey.capacity_mwp: da.capacity_mwp.values[0],
+        GenerationSampleKey.generation: generation_values,
+        GenerationSampleKey.capacity_mwp: capacity_value,
         GenerationSampleKey.time_utc: da["time_utc"].values.astype(float),
     }
 

@@ -9,7 +9,7 @@ from ocf_data_sampler.select.find_contiguous_time_periods import (
     find_contiguous_t0_periods_nwp,
     intersection_of_multiple_dataframes_of_periods,
 )
-from ocf_data_sampler.utils import minutes
+from ocf_data_sampler.time_utils import minutes
 
 
 def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.DataFrame:
@@ -46,7 +46,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
 
             # This is the max staleness we can use considering the max step of the input data
             max_possible_staleness = (
-                pd.Timedelta(da["step"].max().item())
+                da["step"].values.max()
                 - minutes(nwp_config.interval_end_minutes)
                 - end_buffer
             )
@@ -63,10 +63,10 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
                     )
 
             # Find the first forecast step
-            first_forecast_step = pd.Timedelta(da["step"].min().item())
+            first_forecast_step = da["step"].values[0]
 
             time_periods = find_contiguous_t0_periods_nwp(
-                init_times=pd.DatetimeIndex(da["init_time_utc"]),
+                init_times=da["init_time_utc"].values,
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 max_staleness=max_staleness,
                 max_dropout=max_dropout,
@@ -79,7 +79,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         sat_config = config.input_data.satellite
 
         time_periods = find_contiguous_t0_periods(
-            pd.DatetimeIndex(datasets_dict["sat"]["time_utc"]),
+            datasets_dict["sat"]["time_utc"].values,
             time_resolution=minutes(sat_config.time_resolution_minutes),
             interval_start=minutes(sat_config.interval_start_minutes),
             interval_end=minutes(sat_config.interval_end_minutes),
@@ -91,7 +91,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         generation_config = config.input_data.generation
 
         time_periods = find_contiguous_t0_periods(
-            pd.DatetimeIndex(datasets_dict["generation"]["time_utc"]),
+            datasets_dict["generation"]["time_utc"].values,
             time_resolution=minutes(generation_config.time_resolution_minutes),
             interval_start=minutes(generation_config.interval_start_minutes),
             interval_end=minutes(generation_config.interval_end_minutes),

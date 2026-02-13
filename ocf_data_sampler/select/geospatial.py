@@ -131,7 +131,7 @@ def find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
     """
     # We only look at the dimensional coords. It is possible that other coordinate systems are
     # included as non-dimensional coords
-    dimensional_coords = set(da.xindexes)
+    dimensional_coords = set(da.dims)
 
     coord_systems = {
         "lon_lat": ["longitude", "latitude"],
