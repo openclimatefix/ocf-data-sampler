@@ -88,6 +88,7 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
     interval_end = pd.Timedelta(3, "h")
     freq = pd.Timedelta("1h")
 
+    
     # Make the selection
     da_slice = select_time_slice_nwp(
         da_nwp_like,

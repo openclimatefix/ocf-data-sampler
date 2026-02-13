@@ -89,6 +89,7 @@ def open_zarr(
     path: str,
     context: ts.Context | None = None,
     mask_and_scale: bool = True,
+    consolidated: bool = False
 ) -> xr.Dataset:
     """Open an xarray.Dataset from zarr using TensorStore.
 
@@ -106,7 +107,7 @@ def open_zarr(
         context = ts.Context()
 
     # Avoid using dask by settung `chunks=None`
-    ds = xr.open_zarr(path, chunks=None, mask_and_scale=mask_and_scale)
+    ds = xr.open_zarr(path, chunks=None, mask_and_scale=mask_and_scale, consolidated=consolidated)
 
     if mask_and_scale:
         _raise_if_mask_and_scale_used_for_data_vars(ds)
@@ -129,6 +130,7 @@ def open_zarrs(
     concat_dim: str,
     context: ts.Context | None = None,
     mask_and_scale: bool = True,
+    consolidated: bool = False,
     data_source: str = "unknown",
 ) -> xr.Dataset:
     """Open multiple zarrs with TensorStore.
@@ -146,7 +148,13 @@ def open_zarrs(
     if context is None:
         context = ts.Context()
 
-    ds_list = [xr.open_zarr(p, mask_and_scale=mask_and_scale, decode_timedelta=True) for p in paths]
+    ds_list = [
+        xr.open_zarr(
+            path, 
+            mask_and_scale=mask_and_scale, 
+            decode_timedelta=True, 
+            consolidated=consolidated
+        ) for path in paths]
     try:
         ds = xr.concat(
             ds_list,
@@ -157,10 +165,12 @@ def open_zarrs(
             join="exact",
         )
     except ValueError:
-        logger.warning(f"Coordinate mismatch found in {data_source} input data. "
-                       f"The coordinates will be overwritten! "
-                       f"This might be fine for satellite data. "
-                       f"Proceed with caution.")
+        logger.warning(
+            f"Coordinate mismatch found in {data_source} input data. "
+            f"The coordinates will be overwritten! "
+            f"This might be fine for satellite data. "
+            f"Proceed with caution."
+        )
         ds = xr.concat(
             ds_list,
             dim=concat_dim,

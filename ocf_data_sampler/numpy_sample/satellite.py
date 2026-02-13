@@ -1,5 +1,5 @@
 """Convert Satellite to NumpySample."""
-
+import numpy as np
 import xarray as xr
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
@@ -24,9 +24,9 @@ def convert_satellite_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = Non
     """
     sample = {
         SatelliteSampleKey.satellite_actual: da.values,
-        SatelliteSampleKey.time_utc: da.time_utc.values.astype(float),
-        SatelliteSampleKey.x_geostationary: da.x_geostationary.values,
-        SatelliteSampleKey.y_geostationary: da.y_geostationary.values,
+        SatelliteSampleKey.time_utc: np.array(da.time_utc).astype(float),
+        SatelliteSampleKey.x_geostationary: np.array(da.x_geostationary),
+        SatelliteSampleKey.y_geostationary: np.array(da.y_geostationary),
     }
 
     if t0_idx is not None:

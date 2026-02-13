@@ -40,7 +40,7 @@ def slice_datasets_by_time(
             sliced_datasets_dict["nwp"][nwp_key] = select_time_slice_nwp(
                 da_nwp,
                 t0,
-                time_resolution=minutes(nwp_config.time_resolution_minutes),
+                time_resolution=f"{nwp_config.time_resolution_minutes}min",
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 interval_end=minutes(interval_end_mins),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
@@ -53,7 +53,7 @@ def slice_datasets_by_time(
         sliced_datasets_dict["sat"] = select_time_slice(
             datasets_dict["sat"],
             t0,
-            time_resolution=minutes(sat_config.time_resolution_minutes),
+            time_resolution=f"{sat_config.time_resolution_minutes}min",
             interval_start=minutes(sat_config.interval_start_minutes),
             interval_end=minutes(sat_config.interval_end_minutes),
         )
@@ -72,7 +72,7 @@ def slice_datasets_by_time(
         da_generation = select_time_slice(
             datasets_dict["generation"],
             t0,
-            time_resolution=minutes(generation_config.time_resolution_minutes),
+            time_resolution=f"{generation_config.time_resolution_minutes}min",
             interval_start=minutes(generation_config.interval_start_minutes),
             interval_end=minutes(generation_config.interval_end_minutes),
         )
