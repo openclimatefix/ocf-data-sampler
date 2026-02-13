@@ -40,7 +40,7 @@ def test_load_cloudcasting(nwp_cloudcasting_zarr_path):
 def test_load_ukv_new_coords(tmp_path):
     """Test UKV loader handles data that already has new coordinate names."""
     zarr_path = tmp_path / "new_ukv_coords.zarr"
-    
+
     # Create a mock dataset that already uses the new naming convention
     new_coords_array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
@@ -54,10 +54,10 @@ def test_load_ukv_new_coords(tmp_path):
         },
     )
     new_coords_array.to_zarr(zarr_path)
-    
+
     # This should succeed without KeyError
     da = open_nwp(zarr_path=zarr_path, provider="ukv")
-    
+
     assert isinstance(da, DataArray)
     assert "x_osgb" in da.coords
     assert "y_osgb" in da.coords

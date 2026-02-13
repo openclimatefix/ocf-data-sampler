@@ -14,17 +14,13 @@ from typing_extensions import override
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
 from ocf_data_sampler.numpy_sample import (
-    convert_generation_to_numpy_sample,
-    convert_nwp_to_numpy_sample,
-    convert_satellite_to_numpy_sample,
+    convert_xarray_dict_to_numpy_sample,
     encode_datetimes,
     get_t0_embedding,
     make_sun_position_numpy_sample,
 )
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
-from ocf_data_sampler.numpy_sample.generation import GenerationSampleKey
-from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
 from ocf_data_sampler.select import (
     Location,
     fill_time_periods,
@@ -198,49 +194,48 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         """
         numpy_modalities = [{"t0": t0.timestamp()}]
 
-        if "nwp" in dataset_dict:
-            nwp_numpy_modalities = {}
+        # Standardise modalities first
+        xr_dict_for_conversion = {}
 
+        # NWP
+        if "nwp" in dataset_dict:
+            xr_dict_for_conversion["nwp"] = {}
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
-                # Standardise and convert to NumpyBatch
                 channel_means = self.means_dict["nwp"][nwp_key]
                 channel_stds = self.stds_dict["nwp"][nwp_key]
+                xr_dict_for_conversion["nwp"][nwp_key] = (da_nwp - channel_means) / channel_stds
 
-                da_nwp = (da_nwp - channel_means) / channel_stds
-
-                nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
-
-            # Combine the NWPs into NumpyBatch
-            numpy_modalities.append({NWPSampleKey.nwp: nwp_numpy_modalities})
-
+        # Satellite
         if "sat" in dataset_dict:
             da_sat = dataset_dict["sat"]
-
-            # Standardise and convert to NumpyBatch
             channel_means = self.means_dict["sat"]
             channel_stds = self.stds_dict["sat"]
+            xr_dict_for_conversion["satellite"] = (da_sat - channel_means) / channel_stds
 
-            da_sat = (da_sat - channel_means) / channel_stds
-
-            numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
-
+        # Generation
+        da_generation = None
         if "generation" in dataset_dict:
             da_generation = dataset_dict["generation"]
             da_generation = da_generation / da_generation.capacity_mwp.values
+            xr_dict_for_conversion["generation"] = da_generation
 
-            # Convert to NumpyBatch
-            numpy_modalities.append(
-                convert_generation_to_numpy_sample(
-                    da_generation,
-                    t0_idx=self.t0_idx,
-                ),
-            )
+        # Convert everything at once
+        t0_indices = {"generation": self.t0_idx}
 
+        numpy_modalities.append(
+            convert_xarray_dict_to_numpy_sample(
+                xr_dict_for_conversion,
+                t0_indices=t0_indices,
+            ),
+        )
+
+        # Add location metadata
+        if da_generation is not None:
             numpy_modalities.append(
                 {
-                    GenerationSampleKey.location_id: location.id,
-                    GenerationSampleKey.longitude: da_generation.longitude.values,
-                    GenerationSampleKey.latitude: da_generation.latitude.values,
+                    "location_id": location.id,
+                    "longitude": da_generation.longitude.values,
+                    "latitude": da_generation.latitude.values,
                 },
             )
 
