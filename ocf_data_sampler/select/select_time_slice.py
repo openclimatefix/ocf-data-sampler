@@ -24,8 +24,8 @@ def select_time_slice(
     start_dt = t0 + interval_start
     end_dt = t0 + interval_end
 
-    start_dt = start_dt.ceil(time_resolution)
-    end_dt = end_dt.ceil(time_resolution)
+    start_dt = np.datetime64(start_dt.ceil(time_resolution))
+    end_dt = np.datetime64(end_dt.ceil(time_resolution))
 
     return da.sel(time_utc=slice(start_dt, end_dt))
 
@@ -67,7 +67,8 @@ def select_time_slice_nwp(
 
     start_dt = (t0 + interval_start).ceil(time_resolution)
     end_dt = (t0 + interval_end).ceil(time_resolution)
-    target_times = pd.date_range(start_dt, end_dt, freq=time_resolution)
+    time_res = pd.Timedelta(time_resolution)
+    target_times = np.arange(start_dt, end_dt + time_res, time_res)
 
     # Potentially apply NWP dropout
     if consider_dropout and (np.random.uniform() < dropout_frac):
@@ -76,8 +77,8 @@ def select_time_slice_nwp(
         t0_available = t0
 
     # Get the available and relevant init-times
-    t_min = target_times[0] - da.step.values[-1]
-    init_times = da.init_time_utc.values
+    t_min = target_times[0] - np.array(da.step)[-1]
+    init_times = np.array(da.init_time_utc)
     available_init_times = init_times[(t_min<=init_times) & (init_times<=t0_available)]
 
     # Find the most recent available init-times for all target-times

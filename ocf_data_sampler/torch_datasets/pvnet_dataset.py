@@ -5,6 +5,7 @@ import os
 import pickle
 import warnings
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 from pydantic.warnings import UnsupportedFieldAttributeWarning
@@ -21,6 +22,7 @@ from ocf_data_sampler.numpy_sample import (
     get_t0_embedding,
     make_sun_position_numpy_sample,
 )
+from ocf_data_sampler.torch_datasets.fastarray import FastDataArray
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.numpy_sample.generation import GenerationSampleKey
@@ -112,6 +114,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         config_filename: str,
         start_time: str | None = None,
         end_time: str | None = None,
+        use_xarray: bool = True,
     ) -> None:
         """A generic torch Dataset for creating PVNet samples.
 
@@ -171,6 +174,20 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Assign config and input data to self
         self.config = config
         self.datasets_dict = datasets_dict
+        self.use_xarray = use_xarray
+
+        def make_fast(d):
+            new_d = {}
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    new_d[k] = make_fast(v)
+                elif isinstance(v, xr.DataArray):
+                    new_d[k] = FastDataArray.from_xarray(v)
+                else:
+                    raise ValueError
+            return new_d
+
+        self.fast_datasets_dict = make_fast(datasets_dict)
 
         # Assign t0 idx value
         self.t0_idx = (
@@ -206,7 +223,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                 channel_means = self.means_dict["nwp"][nwp_key]
                 channel_stds = self.stds_dict["nwp"][nwp_key]
 
-                da_nwp = (da_nwp - channel_means) / channel_stds
+                da_nwp.data = (da_nwp.data - channel_means) / channel_stds
 
                 nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
 
@@ -220,13 +237,12 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             channel_means = self.means_dict["sat"]
             channel_stds = self.stds_dict["sat"]
 
-            da_sat = (da_sat - channel_means) / channel_stds
+            da_sat.data = (da_sat.data - channel_means) / channel_stds
 
             numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
 
         if "generation" in dataset_dict:
             da_generation = dataset_dict["generation"]
-            da_generation = da_generation / da_generation.capacity_mwp.values
 
             # Convert to NumpyBatch
             numpy_modalities.append(
@@ -239,18 +255,20 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             numpy_modalities.append(
                 {
                     GenerationSampleKey.location_id: location.id,
-                    GenerationSampleKey.longitude: da_generation.longitude.values,
-                    GenerationSampleKey.latitude: da_generation.latitude.values,
+                    GenerationSampleKey.longitude: float(da_generation.longitude),
+                    GenerationSampleKey.latitude: float(da_generation.latitude),
                 },
             )
 
         # Add datetime features
         generation_config = self.config.input_data.generation
-        datetimes = pd.date_range(
+        freq = minutes(generation_config.time_resolution_minutes)
+        datetimes = np.arange(
             t0 + minutes(generation_config.interval_start_minutes),
-            t0 + minutes(generation_config.interval_end_minutes),
-            freq=minutes(generation_config.time_resolution_minutes),
+            t0 + minutes(generation_config.interval_end_minutes) + freq,
+            freq,
         )
+
         numpy_modalities.append(encode_datetimes(datetimes=datetimes))
 
         if self.config.input_data.t0_embedding is not None:
@@ -263,17 +281,18 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             solar_config = self.config.input_data.solar_position
 
             # Create datetime range for solar position calculation
-            datetimes = pd.date_range(
+            freq = minutes(solar_config.time_resolution_minutes)
+            datetimes = np.arange(
                 t0 + minutes(solar_config.interval_start_minutes),
-                t0 + minutes(solar_config.interval_end_minutes),
-                freq=minutes(solar_config.time_resolution_minutes),
+                t0 + minutes(solar_config.interval_end_minutes) + freq,
+                freq,
             )
 
             numpy_modalities.append(
                 make_sun_position_numpy_sample(
                     datetimes,
-                    da_generation.longitude.values,
-                    da_generation.latitude.values,
+                    float(da_generation.longitude),
+                    float(da_generation.latitude),
                 ),
             )
 
@@ -296,7 +315,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Fill out the contiguous time periods to get the t0 times
         valid_t0_times = fill_time_periods(
             valid_time_periods,
-            freq=minutes(config.input_data.generation.time_resolution_minutes),
+            freq=f"{config.input_data.generation.time_resolution_minutes}min",
         )
         return valid_t0_times
 
@@ -343,7 +362,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             # Fill out contiguous time periods to get t0 times
             valid_t0_times_per_location = fill_time_periods(
                 valid_time_periods_per_location,
-                freq=minutes(generation_config.time_resolution_minutes),
+                freq=pd.Timedelta(generation_config.time_resolution_minutes, unit="min"),
             )
 
             valid_t0_per_location = pd.DataFrame(index=valid_t0_times_per_location)
@@ -363,8 +382,9 @@ class PVNetDataset(AbstractPVNetDataset):
         config_filename: str,
         start_time: str | None = None,
         end_time: str | None = None,
+        use_xarray: bool = True,
     ) -> None:
-        super().__init__(config_filename, start_time, end_time)
+        super().__init__(config_filename, start_time, end_time, use_xarray)
 
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
@@ -383,7 +403,12 @@ class PVNetDataset(AbstractPVNetDataset):
             t0: init-time for sample
             location: location for sample
         """
-        sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
+        if self.use_xarray:
+            input_dict = self.datasets_dict
+        else:
+            input_dict = self.fast_datasets_dict
+
+        sample_dict = slice_datasets_by_space(input_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)

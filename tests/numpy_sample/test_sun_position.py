@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
+import pvlib
 import pytest
 
 from ocf_data_sampler.numpy_sample.sun_position import (
     calculate_azimuth_and_elevation,
     make_sun_position_numpy_sample,
+    ephemeris,
 )
 
 
@@ -12,7 +14,7 @@ from ocf_data_sampler.numpy_sample.sun_position import (
 def test_calculate_azimuth_and_elevation(lat):
 
     # Summer solstice day and sun angle calculation
-    datetimes = pd.to_datetime(["2024-06-20 12:00"])
+    datetimes = np.array(["2024-06-20 12:00"], dtype="datetime64[ns]")
     azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon=0, lat=lat)
 
     assert len(azimuth) == len(datetimes)
@@ -27,7 +29,7 @@ def test_calculate_azimuth_and_elevation_random():
     np.random.seed(0)
 
     # Pick day of summer solstice
-    datetimes = pd.to_datetime(["2024-06-20 12:00"])
+    datetimes = np.array(["2024-06-20 12:00"], dtype="datetime64[ns]")
 
     # For 100 random locations - calculate azimuth and elevations
     azimuths, elevations = [], []
@@ -48,10 +50,36 @@ def test_calculate_azimuth_and_elevation_random():
 
 
 def test_make_sun_position_numpy_sample():
-    datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min")
+    datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min").values
     sample = make_sun_position_numpy_sample(datetimes, lon=0, lat=51.5)
 
     # Assertion accounting for solar coord normalisation
     assert {"solar_elevation", "solar_azimuth"} <= set(sample)
     assert np.all((sample["solar_elevation"] >= 0) & (sample["solar_elevation"] <= 1))
     assert np.all((sample["solar_azimuth"] >= 0) & (sample["solar_azimuth"] <= 1))
+
+
+def test_ephemeris():
+
+    latitude = 55.201231
+    longitude = -6.656644
+
+    # Randomly sample datetimes between the two extremes
+    t_min = np.datetime64("1900-01-01 00:00", "ns")
+    t_max = np.datetime64("2100-01-01 00:00", "ns")
+    dt = t_max - t_min
+    random_datetimes = t_min + (np.random.uniform(size=1000) * dt)
+
+    # Test the ephemeris algorithm here aginst pvlib
+    solar_coords = ephemeris(random_datetimes, longitude=longitude, latitude=latitude)
+    pvlib_solar_coords = pvlib.solarposition.get_solarposition(
+        time=pd.to_datetime(random_datetimes),
+        longitude=longitude,
+        latitude=latitude,
+        method="ephemeris",
+    )
+
+    assert np.isclose(solar_coords["elevation"], pvlib_solar_coords["elevation"].values).all()
+    assert np.isclose(solar_coords["azimuth"], pvlib_solar_coords["azimuth"].values).all()
+
+    

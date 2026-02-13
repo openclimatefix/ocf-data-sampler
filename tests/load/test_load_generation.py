@@ -13,9 +13,9 @@ def test_open_generation(generation_zarr_path):
     da = open_generation(generation_zarr_path)
 
     assert isinstance(da, xr.DataArray)
-    assert da.dims == ("time_utc", "location_id")
-    assert {"capacity_mwp", "longitude", "latitude"}.issubset(da.coords)
-    assert da.shape == (49, 318)
+    assert da.dims == ("time_utc", "location_id", "gen_param")
+    assert {"longitude", "latitude"}.issubset(da.coords)
+    assert da.shape == (49, 318, 2)
     assert len(np.unique(da.coords["location_id"])) == da.shape[1]
 
 
@@ -28,7 +28,7 @@ def test_open_generation_bad_dtype(tmp_path: Path):
     bad_ds = xr.Dataset(
         data_vars={
             "generation_mw": (("time_utc", "location_id"), np.random.randint(0, 100, (10, 2))),
-            "capacity_mwp": (("location_id",), [90.0, 110.0]),
+            "capacity_mwp": (("location_id",), [90, 110]),
         },
         coords={
             "time_utc": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30min")),
@@ -37,5 +37,5 @@ def test_open_generation_bad_dtype(tmp_path: Path):
     )
     bad_ds.to_zarr(zarr_path)
 
-    with pytest.raises(TypeError, match="generation_mw should be floating"):
+    with pytest.raises(TypeError, match="generation should be floating"):
         open_generation(zarr_path=zarr_path)

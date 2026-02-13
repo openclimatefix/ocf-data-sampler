@@ -41,18 +41,15 @@ def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
         backend_kwargs=backend_kwargs,
     )
 
-    ds = ds.assign_coords(capacity_mwp=ds.capacity_mwp)
-
-    da = ds.generation_mw
+    da = ds.to_dataarray("gen_param").transpose("time_utc", "location_id", "gen_param")
 
     # Validate data types
     if not np.issubdtype(da.dtype, np.floating):
-        raise TypeError(f"generation_mw should be floating, not {da.dtype}")
+        raise TypeError(f"generation should be floating, not {da.dtype}")
 
     coord_dtypes = {
         "time_utc": np.datetime64,
         "location_id": np.integer,
-        "capacity_mwp": np.floating,
         "longitude": np.floating,
         "latitude": np.floating,
     }

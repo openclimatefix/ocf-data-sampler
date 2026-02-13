@@ -24,8 +24,8 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int
 
     x, y = location.in_coord_system(target_coords)
 
-    x_vals = da[x_dim].values
-    y_vals = da[y_dim].values
+    x_vals = np.array(da[x_dim])
+    y_vals = np.array(da[y_dim])
 
     # Check that requested point lies within the data
     if not (x_vals[0] < x < x_vals[-1]):
