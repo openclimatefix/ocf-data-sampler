@@ -13,17 +13,14 @@ from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.load.load_dataset import get_dataset_dict
-
 from ocf_data_sampler.numpy_sample import (
     convert_xarray_dict_to_numpy_sample,
     encode_datetimes,
     get_t0_embedding,
     make_sun_position_numpy_sample,
 )
-
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
-from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample 
-
+from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.select import (
     Location,
     fill_time_periods,
@@ -232,7 +229,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             ),
         )
 
-        # Add location metadata 
+        # Add location metadata
         if da_generation is not None:
             numpy_modalities.append(
                 {

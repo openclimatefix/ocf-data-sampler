@@ -1,5 +1,4 @@
-"""
-Unified conversion function to create a NumpySample from PVNet-style xarray dict.
+"""Unified conversion function to create a NumpySample from PVNet-style xarray dict.
 
 This is intended to replace:
 - numpy_sample/generation.py
@@ -11,21 +10,20 @@ The output format MUST remain identical to the previous conversion functions.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
-import xarray as xr
+if TYPE_CHECKING:
+    import numpy as np
+    import xarray as xr
 
-from ocf_data_sampler.numpy_sample.common_types import NumpySample
-
+    from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 def convert_xarray_dict_to_numpy_sample(
     xr_dict: dict[str, Any],
     *,
     t0_indices: dict[str, int] | None = None,
 ) -> NumpySample:
-    """
-    Convert PVNet-style dictionary of xarray objects into a single NumpySample.
+    """Convert PVNet-style dictionary of xarray objects into a single NumpySample.
 
     Args:
         xr_dict:
@@ -42,7 +40,8 @@ def convert_xarray_dict_to_numpy_sample(
 
         t0_indices:
             Optional dict of t0 indices for each modality.
-            Example:
+
+    Example:
               {
                 "generation": 30,
                 "satellite": 12,
