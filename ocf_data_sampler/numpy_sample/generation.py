@@ -1,6 +1,5 @@
 """Convert Generation data to Numpy Sample."""
 
-import numpy as np
 import xarray as xr
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
@@ -25,15 +24,16 @@ def convert_generation_to_numpy_sample(da: xr.DataArray, t0_idx: int | None = No
         da: Xarray DataArray containing generation data
         t0_idx: Index of the t0 timestamp in the time dimension of the generation data
     """
+    generation_values = da.sel(gen_param="generation_mw").values
+    capacity_value = da.sel(gen_param="capacity_mwp").values[0]
 
-    cap = da.sel(gen_param="capacity_mwp").values[0]
-    gen = da.sel(gen_param="generation_mw").values
-    if cap!=0:
-        gen = gen/cap
+    if capacity_value!=0:
+        generation_values = generation_values/capacity_value
+
     sample = {
-        GenerationSampleKey.generation: gen,
-        GenerationSampleKey.capacity_mwp: cap,
-        GenerationSampleKey.time_utc: np.array(da.time_utc).astype(float),
+        GenerationSampleKey.generation: generation_values,
+        GenerationSampleKey.capacity_mwp: capacity_value,
+        GenerationSampleKey.time_utc: da["time_utc"].values.astype(float),
     }
 
     if t0_idx is not None:

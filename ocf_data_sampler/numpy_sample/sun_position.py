@@ -1,16 +1,22 @@
 """Module for calculating solar position."""
 
 import numpy as np
-import pandas as pd
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 
-def ephemeris(time, latitude, longitude, pressure=101325.0, temperature=12.0):
-    """
-    Python-native solar position calculator.
-    The accuracy of this code is not guaranteed.
-    Consider using the built-in spa_c code or the PyEphem library.
+def ephemeris(
+    time: np.ndarray,
+    latitude: float,
+    longitude: float,
+    pressure: float = 101325.0,
+    temperature: float = 12.0,
+) -> dict[str, np.ndarray]:
+    """Python-native solar position calculator.
+
+    Adapted pvlib's ephemeris function [1].
+
+    [1] https://github.com/pvlib/pvlib-python/blob/main/pvlib/solarposition.py
 
     Parameters
     ----------
@@ -27,7 +33,6 @@ def ephemeris(time, latitude, longitude, pressure=101325.0, temperature=12.0):
         Ambient temperature (C)
 
     """
-
     abber = 20 / 3600.
     LatR = np.radians(latitude)
 
@@ -117,13 +122,13 @@ def ephemeris(time, latitude, longitude, pressure=101325.0, temperature=12.0):
     Refract *= (283/(273. + temperature)) * (pressure/101325.) / 3600.
 
     return {
-            'elevation': SunEl,
-            'azimuth': SunAz,
+            "elevation": SunEl,
+            "azimuth": SunAz,
         }
 
 
 def calculate_azimuth_and_elevation(
-    datetimes: pd.DatetimeIndex,
+    datetimes: np.ndarray,
     lon: float,
     lat: float,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -148,7 +153,7 @@ def calculate_azimuth_and_elevation(
 
 
 def make_sun_position_numpy_sample(
-    datetimes: pd.DatetimeIndex,
+    datetimes: np.ndarray,
     lon: float,
     lat: float,
 ) -> NumpySample:

@@ -18,7 +18,10 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
     assert set(numpy_sample) == expected_keys
 
     # Assert content and capacity values
-    assert np.array_equal(numpy_sample[GenerationSampleKey.generation], da.sel(gen_param="generation_mw").values)
+    assert np.array_equal(
+        numpy_sample[GenerationSampleKey.generation],
+        da.sel(gen_param="generation_mw").values,
+    )
     assert isinstance(numpy_sample[GenerationSampleKey.time_utc], np.ndarray)
     assert numpy_sample[GenerationSampleKey.time_utc].dtype == float
 

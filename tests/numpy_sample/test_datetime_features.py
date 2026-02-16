@@ -10,7 +10,7 @@ from ocf_data_sampler.numpy_sample.datetime_features import (
 def test_encode_datetimes():
     # Pick summer solstice day and calculate encoding features
     datetimes = pd.to_datetime(["2024-06-20 12:00", "2024-06-20 12:30", "2024-06-20 13:00"])
-    features = encode_datetimes(datetimes)
+    features = encode_datetimes(datetimes.values)
 
     assert len(features) == 4
     assert all(len(arr) == len(datetimes) for arr in features.values())

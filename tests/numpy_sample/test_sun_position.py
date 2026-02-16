@@ -5,8 +5,8 @@ import pytest
 
 from ocf_data_sampler.numpy_sample.sun_position import (
     calculate_azimuth_and_elevation,
-    make_sun_position_numpy_sample,
     ephemeris,
+    make_sun_position_numpy_sample,
 )
 
 
@@ -70,7 +70,7 @@ def test_ephemeris():
     dt = t_max - t_min
     random_datetimes = t_min + (np.random.uniform(size=1000) * dt)
 
-    # Test the ephemeris algorithm here aginst pvlib
+    # Test the ephemeris algorithm here aginst pvlib
     solar_coords = ephemeris(random_datetimes, longitude=longitude, latitude=latitude)
     pvlib_solar_coords = pvlib.solarposition.get_solarposition(
         time=pd.to_datetime(random_datetimes),
@@ -82,4 +82,3 @@ def test_ephemeris():
     assert np.isclose(solar_coords["elevation"], pvlib_solar_coords["elevation"].values).all()
     assert np.isclose(solar_coords["azimuth"], pvlib_solar_coords["azimuth"].values).all()
 
-    

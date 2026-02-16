@@ -22,7 +22,6 @@ from ocf_data_sampler.numpy_sample import (
     get_t0_embedding,
     make_sun_position_numpy_sample,
 )
-from ocf_data_sampler.torch_datasets.fastarray import FastDataArray
 from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
 from ocf_data_sampler.numpy_sample.generation import GenerationSampleKey
@@ -33,6 +32,7 @@ from ocf_data_sampler.select import (
     find_contiguous_t0_periods,
     intersection_of_multiple_dataframes_of_periods,
 )
+from ocf_data_sampler.torch_datasets.fastarray import FastDataArray
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
@@ -106,6 +106,19 @@ def get_locations(generation_data: xr.DataArray) -> list[Location]:
     return locations
 
 
+def xarray_to_fastdataarray_dict(dataset_dict: dict) -> dict:
+    """Convert a dictionary of xarray datasets to a dictionary of FastDataArrays."""
+    new_dataset_dict = {}
+    for k, v in dataset_dict.items():
+        if isinstance(v, dict):
+            new_dataset_dict[k] = xarray_to_fastdataarray_dict(v)
+        elif isinstance(v, xr.DataArray):
+            new_dataset_dict[k] = FastDataArray.from_xarray(v)
+        else:
+            raise ValueError
+    return new_dataset_dict
+
+
 class AbstractPVNetDataset(PickleCacheMixin, Dataset):
     """Abstract class for PVNet datasets."""
 
@@ -126,6 +139,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
+            use_xarray: Whether to use xarray.DataArray or FastDataArray as the underlying data
+                structure when sampling
         """
         super().__init__()
 
@@ -175,19 +190,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         self.config = config
         self.datasets_dict = datasets_dict
         self.use_xarray = use_xarray
-
-        def make_fast(d):
-            new_d = {}
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    new_d[k] = make_fast(v)
-                elif isinstance(v, xr.DataArray):
-                    new_d[k] = FastDataArray.from_xarray(v)
-                else:
-                    raise ValueError
-            return new_d
-
-        self.fast_datasets_dict = make_fast(datasets_dict)
+        self.fast_datasets_dict = xarray_to_fastdataarray_dict(datasets_dict)
 
         # Assign t0 idx value
         self.t0_idx = (
@@ -255,8 +258,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             numpy_modalities.append(
                 {
                     GenerationSampleKey.location_id: location.id,
-                    GenerationSampleKey.longitude: float(da_generation.longitude),
-                    GenerationSampleKey.latitude: float(da_generation.latitude),
+                    GenerationSampleKey.longitude: da_generation.longitude.values,
+                    GenerationSampleKey.latitude: da_generation.latitude.values,
                 },
             )
 
@@ -291,8 +294,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             numpy_modalities.append(
                 make_sun_position_numpy_sample(
                     datetimes,
-                    float(da_generation.longitude),
-                    float(da_generation.latitude),
+                    da_generation.longitude.values,
+                    da_generation.latitude.values,
                 ),
             )
 
@@ -403,10 +406,7 @@ class PVNetDataset(AbstractPVNetDataset):
             t0: init-time for sample
             location: location for sample
         """
-        if self.use_xarray:
-            input_dict = self.datasets_dict
-        else:
-            input_dict = self.fast_datasets_dict
+        input_dict = self.datasets_dict if self.use_xarray else self.fast_datasets_dict
 
         sample_dict = slice_datasets_by_space(input_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)

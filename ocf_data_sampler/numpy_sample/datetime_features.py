@@ -8,27 +8,19 @@ import pandas as pd
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 
-import numpy as np
-import pandas as pd
-
-def encode_datetimes(datetimes: pd.DatetimeIndex | np.ndarray) -> dict:
+def encode_datetimes(datetimes: np.ndarray) -> NumpySample:
     """Creates dictionary of sin and cos datetime embeddings.
 
     Args:
-        datetimes: DatetimeIndex to create radian embeddings for
+        datetimes: datetime array to create radian embeddings for
 
     Returns:
         Dictionary of datetime encodings
     """
-    if hasattr(datetimes, "values"):
-        dt_arr = datetimes.values
-    else:
-        dt_arr = datetimes
-
-    minutes_arr = dt_arr.astype("datetime64[m]").astype("int64")
+    minutes_arr = datetimes.astype("datetime64[m]").astype("int64")
     minute_of_day = minutes_arr % (24 * 60)
 
-    day_arr = dt_arr.astype("datetime64[D]")
+    day_arr = datetimes.astype("datetime64[D]")
     year_start_arr = day_arr.astype("datetime64[Y]").astype("datetime64[D]")
     day_of_year = (day_arr - year_start_arr).astype("int64") + 1
 

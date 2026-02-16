@@ -77,8 +77,8 @@ def select_time_slice_nwp(
         t0_available = t0
 
     # Get the available and relevant init-times
-    t_min = target_times[0] - np.array(da.step)[-1]
-    init_times = np.array(da.init_time_utc)
+    t_min = target_times[0] - da.step.values[-1]
+    init_times = da.init_time_utc.values
     available_init_times = init_times[(t_min<=init_times) & (init_times<=t0_available)]
 
     # Find the most recent available init-times for all target-times

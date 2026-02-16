@@ -1,12 +1,12 @@
-from ocf_data_sampler.torch_datasets.fastarray import FastDataArray
+import numpy as np
+import pytest
+import xarray as xr
 
 from ocf_data_sampler.load.generation import open_generation
 from ocf_data_sampler.load.nwp import open_nwp
 from ocf_data_sampler.load.satellite import open_sat_data
+from ocf_data_sampler.torch_datasets.fastarray import FastDataArray
 
-import pytest
-import xarray as xr
-import numpy as np
 
 @pytest.fixture()
 def xr_gen(generation_zarr_path) -> xr.DataArray:
@@ -42,8 +42,8 @@ def test_isel(xr_gen, xr_ukv, xr_sat):
         (fr_gen, xr_gen, {"gen_param": 0}),
         (fr_sat, xr_sat, {"x_geostationary": 13}),
         # slices
-        (fr_gen, xr_gen, {"time_utc": slice(0, 10)}), 
-        (fr_sat, xr_sat, {"time_utc": slice(20, 21)}), 
+        (fr_gen, xr_gen, {"time_utc": slice(0, 10)}),
+        (fr_sat, xr_sat, {"time_utc": slice(20, 21)}),
         (fr_gen, xr_gen, {"time_utc": slice(3, None)}),
         # arrays
         (fr_gen, xr_gen, {"location_id": [0]}),
@@ -83,7 +83,7 @@ def test_sel(xr_gen, xr_ukv, xr_sat):
         (fr_gen, xr_gen, {"gen_param": "generation_mw"}),
         (fr_sat, xr_sat, {"channel": "VIS008"}),
         # slices
-        (fr_gen, xr_gen, {"time_utc": slice(gen_times[3], gen_times[10])}), 
+        (fr_gen, xr_gen, {"time_utc": slice(gen_times[3], gen_times[10])}),
         (fr_gen, xr_gen, {"location_id": slice(2, 5)}),
         (fr_gen, xr_gen, {"location_id": slice(2, None)}),
         # arrays
@@ -102,9 +102,9 @@ def test_sel(xr_gen, xr_ukv, xr_sat):
         (fr_gen, xr_gen, {"time_utc": gen_times[0], "location_id": 3}),
         (fr_gen, xr_gen, {"time_utc": gen_times[0], "gen_param": "generation_mw"}),
         (fr_ukv, xr_ukv, {
-            "init_time_utc": ukv_times[0], 
-            "step": slice(ukv_steps[1], ukv_steps[6]), 
-            "x_osgb": slice(ukv_x[10], ukv_x[15])
+            "init_time_utc": ukv_times[0],
+            "step": slice(ukv_steps[1], ukv_steps[6]),
+            "x_osgb": slice(ukv_x[10], ukv_x[15]),
         }),
     ]
     for fda, xda, indexer in index_tasks_ND:

@@ -11,11 +11,10 @@ def diff_channels(da: xr.DataArray, accum_channels: list[str]) -> xr.DataArray:
         da: The DataArray to slice from
         accum_channels: Channels which are accumulated and need to be differenced
     """
-    if tuple(da.dims)[:2] != ("step", "channel"):
-        raise ValueError("This function assumes the first two dimensions are step then channel",
-                         f"got {tuple(da.dims)}")
+    if da.dims[:2] != ("step", "channel"):
+        raise ValueError("This function assumes the first two dimensions are step then channel")
 
-    all_channels = np.array(da.channel)
+    all_channels = da.channel.values
     accum_channel_inds = [i for i, c in enumerate(all_channels) if c in accum_channels]
 
     # Make a copy of the values to avoid changing the underlying numpy array
