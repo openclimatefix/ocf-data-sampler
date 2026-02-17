@@ -14,12 +14,12 @@ def convert_to_numpy_sample(
     """Convert a dictionary of xarray objects to a NumpySample.
 
     Args:
-        sample: Dictionary of xarray DataArrays, with the same structure as used inside
-            the PVNet Dataset classes. Expected keys are any of:
+        sample: Dictionary of xarray DataArrays, with same structure as used inside
+            PVNet Dataset classes. Expected keys are any of following:
             - "generation": DataArray of generation data
-            - "satellite": DataArray of satellite data
-            - "nwp": dict of DataArrays keyed by provider name (e.g. {"ukv": da, "ecmwf": da})
-        t0: The t0 timestamp for this sample, used to compute datetime encodings and t0_idx
+            - "sat": DataArray of satellite data
+            - "nwp": dict of DataArrays by provider name (e.g. {"ukv": da, "ecmwf": da})
+        t0: t0 timestamp for this sample, used to compute datetime encodings and t0_idx
 
     Returns:
         NumpySample dictionary with all modalities merged
@@ -68,5 +68,5 @@ def convert_to_numpy_sample(
 
 def _get_t0_idx(time_values: np.ndarray, t0: pd.Timestamp | np.datetime64) -> int:
     """Find the index of t0 in an array of time values."""
-    t0_ns = pd.Timestamp(t0).value  # normalise to int nanoseconds regardless of input type
+    t0_ns = pd.Timestamp(t0).value
     return int((time_values.astype("datetime64[ns]").view("int64") == t0_ns).argmax())
