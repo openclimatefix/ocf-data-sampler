@@ -3,12 +3,20 @@
 from typing import Literal
 
 import numpy as np
-import pandas as pd
+from numpy.typing import NDArray
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
+from ocf_data_sampler.time_utils import (
+    get_day_fraction,
+    get_day_of_year,
+    get_hour,
+    get_is_leap_year,
+    get_minute,
+    get_year,
+)
 
 
-def encode_datetimes(datetimes: np.ndarray) -> NumpySample:
+def encode_datetimes(datetimes: NDArray[np.datetime64]) -> NumpySample:
     """Creates dictionary of sin and cos datetime embeddings.
 
     Args:
@@ -17,14 +25,10 @@ def encode_datetimes(datetimes: np.ndarray) -> NumpySample:
     Returns:
         Dictionary of datetime encodings
     """
-    minutes_arr = datetimes.astype("datetime64[m]").astype("int64")
-    minute_of_day = minutes_arr % (24 * 60)
+    day_fraction = get_day_fraction(datetimes)
+    day_of_year = get_day_of_year(datetimes)
 
-    day_arr = datetimes.astype("datetime64[D]")
-    year_start_arr = day_arr.astype("datetime64[Y]").astype("datetime64[D]")
-    day_of_year = (day_arr - year_start_arr).astype("int64") + 1
-
-    time_in_radians = (2 * np.pi) * (minute_of_day / (24 * 60))
+    time_in_radians = (2 * np.pi) * day_fraction
     date_in_radians = (2 * np.pi) * (day_of_year / 365)
 
     return {
@@ -36,7 +40,7 @@ def encode_datetimes(datetimes: np.ndarray) -> NumpySample:
 
 
 def get_t0_embedding(
-    t0: pd.Timestamp,
+    t0: np.datetime64,
     embeddings: list[tuple[str, Literal["cyclic", "linear"]]],
 ) -> dict[str, np.ndarray]:
     """Creates dictionary of t0 time embeddings.
@@ -54,12 +58,15 @@ def get_t0_embedding(
 
         if period_str.endswith("h"):
             period_hours = int(period_str.removesuffix("h"))
-            frac = (t0.hour + t0.minute / 60) / period_hours
+            frac = (get_hour(t0) + get_minute(t0) / 60) / period_hours
 
         elif period_str.endswith("y"):
             period_years = int(period_str.removesuffix("y"))
-            days_in_year = 366 if t0.is_leap_year else 365
-            frac = (((t0.dayofyear-1) / days_in_year) + t0.year % period_years) / period_years
+            days_in_year = 366 if get_is_leap_year(t0) else 365
+            frac = (
+                (((get_day_of_year(t0)-1) / days_in_year) + get_year(t0) % period_years)
+                / period_years
+            )
 
         if embedding_type=="cyclic":
             radians = 2 * np.pi * frac

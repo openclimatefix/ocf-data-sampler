@@ -1,22 +1,9 @@
 """Miscellaneous helper functions."""
 
 import numpy as np
-import pandas as pd
 from xarray_tensorstore import read as xtr_read
 
 from ocf_data_sampler.torch_datasets.fastarray import FastDataArray
-
-
-def minutes(minutes: int | list[float]) -> pd.Timedelta | pd.TimedeltaIndex:
-    """Timedelta minutes.
-
-    Args:
-        minutes: the number of minutes, single value or list
-    """
-    if isinstance(minutes, list):
-        return np.array(minutes, dtype="timedelta64[m]")
-    else:
-        return np.timedelta64(minutes, "m")
 
 
 def load(xarray_dict: dict) -> dict:

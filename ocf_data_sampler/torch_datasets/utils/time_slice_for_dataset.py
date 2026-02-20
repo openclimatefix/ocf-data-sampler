@@ -1,16 +1,16 @@
 """Slice datasets by time."""
 
-import pandas as pd
+import numpy as np
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.dropout import apply_history_dropout
 from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
-from ocf_data_sampler.utils import minutes
+from ocf_data_sampler.time_utils import minutes
 
 
 def slice_datasets_by_time(
     datasets_dict: dict,
-    t0: pd.Timestamp,
+    t0: np.datetime64,
     config: Configuration,
 ) -> dict:
     """Slice the dictionary of input data sources around a given t0 time.
@@ -40,7 +40,7 @@ def slice_datasets_by_time(
             sliced_datasets_dict["nwp"][nwp_key] = select_time_slice_nwp(
                 da_nwp,
                 t0,
-                time_resolution=f"{nwp_config.time_resolution_minutes}min",
+                time_resolution=minutes(nwp_config.time_resolution_minutes),
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 interval_end=minutes(interval_end_mins),
                 dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
@@ -53,7 +53,7 @@ def slice_datasets_by_time(
         sliced_datasets_dict["sat"] = select_time_slice(
             datasets_dict["sat"],
             t0,
-            time_resolution=f"{sat_config.time_resolution_minutes}min",
+            time_resolution=minutes(sat_config.time_resolution_minutes),
             interval_start=minutes(sat_config.interval_start_minutes),
             interval_end=minutes(sat_config.interval_end_minutes),
         )
@@ -72,7 +72,7 @@ def slice_datasets_by_time(
         da_generation = select_time_slice(
             datasets_dict["generation"],
             t0,
-            time_resolution=f"{generation_config.time_resolution_minutes}min",
+            time_resolution=minutes(generation_config.time_resolution_minutes),
             interval_start=minutes(generation_config.interval_start_minutes),
             interval_end=minutes(generation_config.interval_end_minutes),
         )

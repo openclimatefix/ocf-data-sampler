@@ -5,13 +5,12 @@ This is not used for NWP
 """
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 
 
 def apply_history_dropout(
-    t0: pd.Timestamp,
-    dropout_timedeltas: list[pd.Timedelta],
+    t0: np.datetime64,
+    dropout_timedeltas: list[np.timedelta64],
     dropout_frac: float | list[float],
     da: xr.DataArray,
 ) -> xr.DataArray:

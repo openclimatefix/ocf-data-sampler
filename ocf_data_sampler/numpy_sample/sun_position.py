@@ -1,12 +1,14 @@
 """Module for calculating solar position."""
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
+from ocf_data_sampler.time_utils import get_day_fraction, get_day_of_year, get_year
 
 
 def ephemeris(
-    time: np.ndarray,
+    time: NDArray[np.datetime64],
     latitude: float,
     longitude: float,
     pressure: float = 101325.0,
@@ -38,12 +40,10 @@ def ephemeris(
 
     # the SPA algorithm needs time to be expressed in terms of
     # decimal UTC hours of the day of the year.
-    date_arr = time.astype("datetime64[D]")
-    year_arr = time.astype("datetime64[Y]")
-    year_int_arr = time.astype("datetime64[Y]").astype(int) + 1970
+    year_int_arr = get_year(time)
 
-    UnivHr = (time - date_arr).astype(int) / (3600*1e9)
-    UnivDate = (date_arr - year_arr).astype("int64") + 1
+    day_frac = get_day_fraction(time)
+    UnivDate = get_day_of_year(time)
     Yr = year_int_arr - 1900
     YrBegin = 365 * Yr + np.floor((Yr - 1) / 4.) - 0.5
 
@@ -54,12 +54,12 @@ def ephemeris(
     GMST0 = 6 / 24. + 38 / 1440. + (
         45.836 + 8640184.542 * T + 0.0929 * T ** 2) / 86400.
     GMST0 = 360 * (GMST0 - np.floor(GMST0))
-    GMSTi = np.mod(GMST0 + 360 * (1.0027379093 * UnivHr / 24.), 360)
+    GMSTi = np.mod(GMST0 + 360 * (1.0027379093 * day_frac), 360)
 
     # Local apparent sidereal time
     LocAST = np.mod((360 + GMSTi + longitude), 360)
 
-    EpochDate = Ezero + UnivHr / 24.
+    EpochDate = Ezero + day_frac
     T1 = EpochDate / 36525.
 
     ObliquityR = np.radians(
@@ -128,7 +128,7 @@ def ephemeris(
 
 
 def calculate_azimuth_and_elevation(
-    datetimes: np.ndarray,
+    datetimes: NDArray[np.datetime64],
     lon: float,
     lat: float,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -153,7 +153,7 @@ def calculate_azimuth_and_elevation(
 
 
 def make_sun_position_numpy_sample(
-    datetimes: np.ndarray,
+    datetimes: NDArray[np.datetime64],
     lon: float,
     lat: float,
 ) -> NumpySample:
