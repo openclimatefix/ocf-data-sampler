@@ -152,4 +152,4 @@ def get_posix_timestamp(
     Args:
         datetimes: the datetimes to get POSIX timestamps for
     """
-    return datetimes.astype("datetime64[s]").astype(np.float64)
+    return datetimes.astype("datetime64[ns]").astype(np.float64) * 1e-9
