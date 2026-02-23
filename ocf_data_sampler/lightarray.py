@@ -4,6 +4,8 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
+from xarray_tensorstore import _TensorStoreAdapter
+from tensorstore import TensorStore, Future as TensorStoreFuture
 
 
 class LightDataArray:
@@ -13,59 +15,67 @@ class LightDataArray:
 
     def __init__(
         self,
-        data: np.ndarray,
-        dims: tuple[str],
+        data: np.ndarray | TensorStore,
+        dims: tuple[str, ...],
         coords: dict[str, np.ndarray],
-        coord_dims: dict[str, str],
+        coord_dims: dict[str, tuple[str, ...]],
         attrs: None | dict = None,
     ) -> None:
         """A lightweight DataArray-like class."""
+
         self.data = data
         self.dims = dims
         self.coords = coords
         self.coord_dims = coord_dims
         self.attrs = attrs or {}
-        self.future = None
+        self.future: None | TensorStoreFuture = None
 
     @classmethod
     def from_xarray(cls, da: xr.DataArray) -> "LightDataArray":
         """Create a LightDataArray from an Xarray DataArray."""
-        # Get raw data handle
-        raw_handle = da.variable._data
-        while hasattr(raw_handle, "array"):
-            raw_handle = raw_handle.array
 
-        extracted_coords = {}
-        coord_dims = {}
+        # Get raw data handle which can be a numpy array or TensorStore
+        data: TensorStore | np.ndarray
+        if isinstance(da.variable._data, _TensorStoreAdapter):
+            data = da.variable._data.array
+        elif isinstance(da.variable._data, np.ndarray):
+            data = da.variable._data
+        else:
+            raise ValueError(f"Data backend of type {type(da.variable._data)} not supported.")
+
+        coord_values: dict[str, np.ndarray] = {}
+        coord_dims: dict[str, tuple[str, ...]] = {}
 
         for k, v in da.coords.items():
-            # Only pull 1D coords to keep it fast
-            if v.ndim == 1:
-                extracted_coords[k] = v.values
-                # Record which dimension this coordinate belongs to
-                if hasattr(v, "dims") and len(v.dims) == 1:
-                    coord_dims[k] = v.dims[0]
-            elif v.ndim == 0:
-                 extracted_coords[k] = v.values
+            if v.ndim <= 1:
+                coord_values[k] = v.values
+                coord_dims[k] = v.dims
+            else:
+                raise ValueError(
+                    "Coordinates with more than 1 dimension not supported. "
+                    f"Found coord '{k}' with shape {v.shape}."
+                )
 
         return cls(
-            data=raw_handle,
+            data=data,
             dims=da.dims,
-            coords=extracted_coords,
+            coords=coord_values,
             coord_dims=coord_dims,
             attrs=da.attrs,
         )
 
     def to_xarray(self) -> xr.DataArray:
-        """Convert to an Xarray DataArray."""
+        """Convert to an Xarray DataArray.
+        
+        Note this loads the data eagerly.
+        """
         coords_dict = {}
         for c, v in self.coords.items():
-            # Get the dimension name for this coordinate
-            dim_name = self.coord_dims.get(c)
+            cdims = self.coord_dims.get(c, ())
 
             # If it's a 1D array and the dimension is still in our dims list
-            if dim_name in self.dims and getattr(v, "ndim", 0) > 0:
-                coords_dict[c] = ([dim_name], v)
+            if np.ndim(v) == 1 and cdims[0] in self.dims:
+                coords_dict[c] = (cdims, v)
             else:
                 # It's a scalar or a non-indexed coordinate
                 coords_dict[c] = v
@@ -92,40 +102,46 @@ class LightDataArray:
         if indexers is not None:
             indexers_kwargs.update(indexers)
 
-        indexer = [slice(None)] * len(self.dims)
+        axis_indexers = [slice(None)] * len(self.dims)
         new_coords = self.coords.copy()
         dims_to_remove = []
 
-        for dim, val in indexers_kwargs.items():
+        for dim, indexer in indexers_kwargs.items():
             if dim not in self.dims:
-                continue
+                raise KeyError(
+                    f"'{dim}' is not a valid dimension or coordinate for data with dimensions"
+                    f"{self.dims}"
+                )
 
-            axis = self.dims.index(dim)
-            indexer[axis] = val
+            axis_indexers[self.dims.index(dim)] = indexer
 
-            # Find coordinates that depend on this dimension and slice them
+            # Slice the coords which depend on this dimension
             for c_name, c_dim_name in self.coord_dims.items():
-                if c_dim_name == dim and c_name in new_coords:
-                    new_coords[c_name] = new_coords[c_name][val]
+                if c_dim_name == (dim,):
+                    new_coords[c_name] = new_coords[c_name][indexer]
 
-            # Check if this dimension is being collapsed (integer index)
-            if not isinstance(val, (slice, list, tuple, np.ndarray)):
+            # Check if this dimension is being collapsed (e.g. an integer index like .isel(time=0))
+            if isinstance(indexer, int | np.integer):
                 dims_to_remove.append(dim)
 
-        sliced_data = self.data[tuple(indexer)]
+        # Slice the underlying dta
+        sliced_data = self.data[tuple(axis_indexers)]
 
-        # Return raw value if it's a scalar
-        if not hasattr(sliced_data, "ndim") or sliced_data.ndim == 0:
-            return sliced_data
-
-        # Update dims mapping for the new object
+        # Remove dims that have been reduced to points
         remaining_dims = tuple(d for d in self.dims if d not in dims_to_remove)
+
+        # Remove dims from coords that have been reduced to points
+        new_coord_dims = self.coord_dims.copy()
+        for dim in dims_to_remove:
+            for c_name, c_dim_name in self.coord_dims.items():
+                if c_dim_name == (dim,):
+                    new_coord_dims[c_name] = ()
 
         return LightDataArray(
             data=sliced_data,
             dims=remaining_dims,
             coords=new_coords,
-            coord_dims=self.coord_dims,
+            coord_dims=new_coord_dims,
             attrs=self.attrs,
         )
 
@@ -161,32 +177,33 @@ class LightDataArray:
         """
         if indexers is not None:
             indexers_kwargs.update(indexers)
+        
         isel_kwargs = {dim: self._to_index(dim, val) for dim, val in indexers_kwargs.items()}
         return self.isel(**isel_kwargs)
 
     def read(self) -> None:
         """Trigger reading of the data if it's a lazy handle."""
-        if hasattr(self.data, "read"):
+        if isinstance(self.data, TensorStore):
             self.future = self.data.read()
 
     def load(self) -> "LightDataArray":
-        """Load the data if it's not already a numpy array, and return self for chaining."""
-        if isinstance(self.data, np.ndarray):
-            return self
-
-        if self.future is not None:
-            self.data = np.asarray(self.future.result())
-            self.future = None
-        elif hasattr(self.data, "read"):
-            self.data = np.asarray(self.data.read().result())
-        else:
-            self.data = np.asarray(self.data)
+        """Load data in-place and return self."""
+        self.data = self.values
+        self.future = None
         return self
 
     @property
     def values(self) -> np.ndarray:
         """Get the underlying data as numpy array, loading it if necessary."""
-        return self.load().data
+        if isinstance(self.data, TensorStore):
+            # If TensorStore handle reading
+            if self.future is None:
+                return np.asarray(self.data.read().result())
+            else:
+                return np.asarray(self.future.result())
+        else:
+            return np.asarray(self.data)
+
 
     def __getattr__(self, name: str) -> "LightDataArray":
         """Allow access to coordinates via attribute syntax, e.g., da.time."""
@@ -221,7 +238,12 @@ class LightDataArray:
             setattr(self, k, v)
         # Restore the un-picklable attribute to a default state
         self.future = None
-
+    
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Return the shape of the underlying data array."""
+        return self.data.shape
+    
     def __len__(self) -> int:
         """Return the length of the underlying data array."""
-        return len(self.data)
+        return self.shape[0]

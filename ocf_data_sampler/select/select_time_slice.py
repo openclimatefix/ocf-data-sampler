@@ -25,8 +25,7 @@ def select_time_slice(
     start_dt = t0 + interval_start
     end_dt = t0 + interval_end
 
-    start_dt = datetime_ceil(start_dt, time_resolution)
-    end_dt = datetime_ceil(end_dt, time_resolution)
+    start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
 
     return da.sel(time_utc=slice(start_dt, end_dt))
 
@@ -66,8 +65,9 @@ def select_time_slice_nwp(
 
     consider_dropout = len(dropout_timedeltas) > 0 and dropout_frac > 0
 
-    start_dt = datetime_ceil(t0 + interval_start, time_resolution)
-    end_dt = datetime_ceil(t0 + interval_end, time_resolution)
+    start_dt = t0 + interval_start
+    end_dt = t0 + interval_end
+    start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
     target_times = date_range(start_dt, end_dt, time_resolution)
 
     # Potentially apply NWP dropout
