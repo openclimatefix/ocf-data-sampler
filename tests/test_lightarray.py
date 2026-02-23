@@ -5,7 +5,7 @@ import xarray as xr
 from ocf_data_sampler.load.generation import open_generation
 from ocf_data_sampler.load.nwp import open_nwp
 from ocf_data_sampler.load.satellite import open_sat_data
-from ocf_data_sampler.torch_datasets.fastarray import FastDataArray
+from ocf_data_sampler.lightarray import LightDataArray
 
 
 @pytest.fixture()
@@ -22,18 +22,18 @@ def xr_sat(sat_zarr_path) -> xr.DataArray:
 
 
 def test_conversion(xr_gen, xr_ukv, xr_sat):
-    """Test converting xarray DataArray to FastDataArray and back again"""
+    """Test converting xarray DataArray to LightDataArray and back again"""
     for xda in [xr_gen, xr_ukv, xr_sat]:
-        fda = FastDataArray.from_xarray(xda)
+        fda = LightDataArray.from_xarray(xda)
         new_xda = fda.to_xarray()
         assert new_xda.equals(xda)
 
 
 def test_isel(xr_gen, xr_ukv, xr_sat):
 
-    fr_gen = FastDataArray.from_xarray(xr_gen)
-    fr_ukv = FastDataArray.from_xarray(xr_ukv)
-    fr_sat = FastDataArray.from_xarray(xr_sat)
+    fr_gen = LightDataArray.from_xarray(xr_gen)
+    fr_ukv = LightDataArray.from_xarray(xr_ukv)
+    fr_sat = LightDataArray.from_xarray(xr_sat)
 
     index_tasks_1D = [
         # single indexes
@@ -68,9 +68,9 @@ def test_isel(xr_gen, xr_ukv, xr_sat):
 
 def test_sel(xr_gen, xr_ukv, xr_sat):
 
-    fr_gen = FastDataArray.from_xarray(xr_gen)
-    fr_ukv = FastDataArray.from_xarray(xr_ukv)
-    fr_sat = FastDataArray.from_xarray(xr_sat)
+    fr_gen = LightDataArray.from_xarray(xr_gen)
+    fr_ukv = LightDataArray.from_xarray(xr_ukv)
+    fr_sat = LightDataArray.from_xarray(xr_sat)
 
 
     gen_times = xr_gen.time_utc.values

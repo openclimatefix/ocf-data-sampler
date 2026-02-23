@@ -3,7 +3,7 @@
 import numpy as np
 from xarray_tensorstore import read as xtr_read
 
-from ocf_data_sampler.torch_datasets.fastarray import FastDataArray
+from ocf_data_sampler.lightarray import LightDataArray
 
 
 def load(xarray_dict: dict) -> dict:
@@ -30,7 +30,7 @@ def read_data_dict(xarray_dict: dict) -> dict:
         if isinstance(v, dict):
             xarray_dict[k] = read_data_dict(v)
         else:
-            if isinstance(v, FastDataArray):
+            if isinstance(v, LightDataArray):
                 xarray_dict[k].read()
             else:
                 xarray_dict[k] = xtr_read(v)

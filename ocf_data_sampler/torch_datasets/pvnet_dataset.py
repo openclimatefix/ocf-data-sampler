@@ -34,7 +34,7 @@ from ocf_data_sampler.select import (
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.time_utils import date_range, get_posix_timestamp, minutes
-from ocf_data_sampler.torch_datasets.fastarray import FastDataArray
+from ocf_data_sampler.lightarray import LightDataArray
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
@@ -108,14 +108,14 @@ def get_locations(generation_data: xr.DataArray) -> list[Location]:
     return locations
 
 
-def xarray_to_fastdataarray_dict(dataset_dict: dict) -> dict:
-    """Convert a dictionary of xarray datasets to a dictionary of FastDataArrays."""
+def xarray_to_lightarray_dict(dataset_dict: dict) -> dict:
+    """Convert a dictionary of xarray datasets to a dictionary of LightDataArrays."""
     new_dataset_dict = {}
     for k, v in dataset_dict.items():
         if isinstance(v, dict):
-            new_dataset_dict[k] = xarray_to_fastdataarray_dict(v)
+            new_dataset_dict[k] = xarray_to_lightarray_dict(v)
         elif isinstance(v, xr.DataArray):
-            new_dataset_dict[k] = FastDataArray.from_xarray(v)
+            new_dataset_dict[k] = LightDataArray.from_xarray(v)
         else:
             raise ValueError
     return new_dataset_dict
@@ -141,7 +141,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
-            use_xarray: Whether to use xarray.DataArray or FastDataArray as the underlying data
+            use_xarray: Whether to use xarray.DataArray or LightDataArray as the underlying data
                 structure when sampling
         """
         super().__init__()
@@ -192,7 +192,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         self.config = config
         self.datasets_dict = datasets_dict
         self.use_xarray = use_xarray
-        self.fast_datasets_dict = xarray_to_fastdataarray_dict(datasets_dict)
+        self.fast_datasets_dict = xarray_to_lightarray_dict(datasets_dict)
 
         # Assign t0 idx value
         self.t0_idx = (

@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 
 
-class FastDataArray:
+class LightDataArray:
     """A lightweight DataArray-like class."""
 
     __slots__ = ["attrs", "coord_dims", "coords", "data", "dims", "future"]
@@ -28,8 +28,8 @@ class FastDataArray:
         self.future = None
 
     @classmethod
-    def from_xarray(cls, da: xr.DataArray) -> "FastDataArray":
-        """Create a FastDataArray from an Xarray DataArray."""
+    def from_xarray(cls, da: xr.DataArray) -> "LightDataArray":
+        """Create a LightDataArray from an Xarray DataArray."""
         # Get raw data handle
         raw_handle = da.variable._data
         while hasattr(raw_handle, "array"):
@@ -81,7 +81,7 @@ class FastDataArray:
         self,
         indexers: None | dict[str, int | slice | list] = None,
         **indexers_kwargs: object,
-    ) -> "FastDataArray":
+    ) -> "LightDataArray":
         """Select data by integer index along specified dimensions.
 
         Args:
@@ -121,7 +121,7 @@ class FastDataArray:
         # Update dims mapping for the new object
         remaining_dims = tuple(d for d in self.dims if d not in dims_to_remove)
 
-        return FastDataArray(
+        return LightDataArray(
             data=sliced_data,
             dims=remaining_dims,
             coords=new_coords,
@@ -150,7 +150,7 @@ class FastDataArray:
         self,
         indexers: None | dict[str, Any | slice | list] = None,
         **indexers_kwargs: object,
-    ) -> "FastDataArray":
+    ) -> "LightDataArray":
         """Select data by coordinate labels, converting them to indices.
 
         Args:
@@ -169,7 +169,7 @@ class FastDataArray:
         if hasattr(self.data, "read"):
             self.future = self.data.read()
 
-    def load(self) -> "FastDataArray":
+    def load(self) -> "LightDataArray":
         """Load the data if it's not already a numpy array, and return self for chaining."""
         if isinstance(self.data, np.ndarray):
             return self
@@ -188,16 +188,16 @@ class FastDataArray:
         """Get the underlying data as numpy array, loading it if necessary."""
         return self.load().data
 
-    def __getattr__(self, name: str) -> "FastDataArray":
+    def __getattr__(self, name: str) -> "LightDataArray":
         """Allow access to coordinates via attribute syntax, e.g., da.time."""
         if name in self.coords:
             return self[name]
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
-    def __getitem__(self, key: str) -> "FastDataArray":
+    def __getitem__(self, key: str) -> "LightDataArray":
         """Allow access to coordinates via indexing syntax, e.g., da['time']."""
         if key in self.coords:
-            return FastDataArray(
+            return LightDataArray(
                 data=self.coords[key],
                 dims=self.coord_dims[key],
                 coords={key: self.coords[key]},
