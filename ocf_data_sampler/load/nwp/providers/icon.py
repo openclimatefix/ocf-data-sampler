@@ -3,7 +3,7 @@
 import xarray as xr
 
 from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
-from ocf_data_sampler.load.utils import check_time_unique_increasing, make_spatial_coords_increasing
+from ocf_data_sampler.load.utils import assert_values_increasing, make_spatial_coords_increasing
 
 
 def open_icon_eu(zarr_path: str | list[str]) -> xr.DataArray:
@@ -27,7 +27,7 @@ def open_icon_eu(zarr_path: str | list[str]) -> xr.DataArray:
     else:
         raise ValueError("Could not find 'icon_eu_data' DataArray in the ICON-EU Zarr file.")
 
-    check_time_unique_increasing(nwp.init_time_utc)
+    assert_values_increasing(nwp.init_time_utc.values, "init_time_utc")
 
     # 0-78 one hour steps, rest 3 hour steps
     nwp = nwp.isel(step=slice(0, 78))
