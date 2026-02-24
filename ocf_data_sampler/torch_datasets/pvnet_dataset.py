@@ -210,7 +210,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             dataset_dict["generation"] = da_generation / da_generation.capacity_mwp.values
 
         # Convert all xarray modalities to a single NumpySample
-        sample = convert_to_numpy_sample(dataset_dict, t0)
+        sample = convert_to_numpy_sample(dataset_dict, self.t0_idx)
 
         # Add location metadata not present on the DataArray
         if "generation" in dataset_dict:

@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 from ocf_data_sampler.load.generation import open_generation
 from ocf_data_sampler.numpy_sample import convert_to_numpy_sample
@@ -7,8 +6,8 @@ from ocf_data_sampler.numpy_sample import convert_to_numpy_sample
 
 def test_convert_generation_to_numpy_sample(generation_zarr_path):
     da = open_generation(generation_zarr_path).isel(time_utc=slice(0, 10)).sel(location_id=1)
-    t0 = pd.Timestamp(da.time_utc.values[0])
-    numpy_sample = convert_to_numpy_sample({"generation": da}, t0=t0)
+    t0_idx = 0
+    numpy_sample = convert_to_numpy_sample({"generation": da}, t0_idx=t0_idx)
 
     # Assert structure
     assert isinstance(numpy_sample, dict)
@@ -22,5 +21,5 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
     assert numpy_sample["time_utc"].dtype == float
     assert numpy_sample["capacity_mwp"] == da.capacity_mwp.isel(time_utc=0).values
 
-    # Assert t0_idx is correctly computed
+    # Assert t0_idx is passed through
     assert numpy_sample["t0_idx"] == 0

@@ -1,7 +1,6 @@
 """Convert a dictionary of xarray objects to a NumpySample."""
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
@@ -9,7 +8,7 @@ from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 def convert_to_numpy_sample(
     sample: dict[str, xr.DataArray | dict[str, xr.DataArray]],
-    t0: pd.Timestamp,
+    t0_idx: int,
 ) -> NumpySample:
     """Convert a dictionary of xarray objects to a NumpySample.
 
@@ -19,7 +18,7 @@ def convert_to_numpy_sample(
             - "generation": DataArray of generation data
             - "sat": DataArray of satellite data
             - "nwp": dict of DataArrays by provider name (e.g. {"ukv": da, "ecmwf": da})
-        t0: t0 timestamp for this sample, used to compute datetime encodings and t0_idx
+        t0_idx: Index of t0 within generation
 
     Returns:
         NumpySample dictionary with all modalities merged
@@ -28,12 +27,11 @@ def convert_to_numpy_sample(
 
     if "generation" in sample:
         da = sample["generation"]
-        t0_idx = _get_t0_idx(da.time_utc.values, t0)
         numpy_sample.update({
             "generation": da.values,
             "capacity_mwp": da.capacity_mwp.values[0],
             "time_utc": da["time_utc"].values.astype(float),
-            "t0_idx": t0_idx,
+            "t0_idx": int(t0_idx),
             "longitude": float(da.longitude.values),
             "latitude": float(da.latitude.values),
         })
@@ -60,10 +58,3 @@ def convert_to_numpy_sample(
             }
 
     return numpy_sample
-
-
-def _get_t0_idx(time_values: np.ndarray, t0: pd.Timestamp | np.datetime64) -> int:
-    """Find the index of t0 in an array of time values."""
-    time_values = time_values.astype("datetime64[ns]")
-    t0 = np.datetime64(t0, "ns")
-    return int(np.searchsorted(time_values, t0, side="left"))
