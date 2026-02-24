@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pvlib
 import pytest
 
 from ocf_data_sampler.numpy_sample.sun_position import (
@@ -13,12 +14,46 @@ def test_calculate_azimuth_and_elevation(lat):
 
     # Summer solstice day and sun angle calculation
     datetimes =  np.array(["2024-06-20 12:00"], dtype="datetime64[ns]")
-    azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon=0, lat=lat)
+    azimuth, elevation = calculate_azimuth_and_elevation(datetimes, longitude=0, latitude=lat)
 
     assert len(azimuth) == len(datetimes)
     assert len(elevation) == len(datetimes)
     # Elevation should be close to 90 - (23.5 - lat)
     assert np.abs(elevation - (90 - 23.5 + lat)) < 1
+
+
+def test_calculate_azimuth_and_elevation_against_pvlib():
+
+    # Randomly sample datetimes between 1900 and 2100
+    t_min = np.datetime64("1900-01-01 00:00", "ns")
+    t_max = np.datetime64("2100-01-01 00:00", "ns")
+    random_datetimes = t_min + (np.random.uniform(size=1000) * (t_max - t_min))
+
+    # Randomly sample some places on the globe
+    random_longitudes = np.random.uniform(low=-180, high=180, size=20)
+    random_latitudes = np.random.uniform(low=-90, high=90, size=20)
+
+    # For each location, test the solar coords for all sampled datetimes
+    for lon, lat in zip(random_longitudes, random_latitudes, strict=False):
+
+        # Calculate the solar coords for the same positions and times with pvlib and our method
+        azimuth, elevation= calculate_azimuth_and_elevation(
+            random_datetimes,
+            longitude=lon,
+            latitude=lat,
+        )
+        pvlib_solar_coords = pvlib.solarposition.get_solarposition(
+            time=pd.to_datetime(random_datetimes),
+            longitude=lon,
+            latitude=lat,
+            method="ephemeris",
+        )
+        pvlib_azimuth, pvlib_elevation = pvlib_solar_coords[["azimuth", "elevation"]].values.T
+
+        # Check our solar coords are close to pvlibs. The angle tolerance in degrees is:
+        tol_degrees = 1e-6
+        assert np.isclose(elevation, pvlib_elevation, rtol=0, atol=tol_degrees).all()
+        assert np.isclose(azimuth, pvlib_azimuth, rtol=0, atol=tol_degrees).all()
 
 
 def test_calculate_azimuth_and_elevation_random():
@@ -34,7 +69,7 @@ def test_calculate_azimuth_and_elevation_random():
     for _ in range(100):
         lon = np.random.uniform(low=0, high=360)
         lat = np.random.uniform(low=-90, high=90)
-        azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon=lon, lat=lat)
+        azimuth, elevation = calculate_azimuth_and_elevation(datetimes, longitude=lon, latitude=lat)
         azimuths.append(azimuth.item())
         elevations.append(elevation.item())
 
