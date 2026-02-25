@@ -5,15 +5,6 @@ import numpy as np
 from ocf_data_sampler.config.model import Configuration
 
 
-def merge_dicts(list_of_dicts: list[dict]) -> dict:
-    """Merge a list of dictionaries into a single dictionary."""
-    # TODO: This doesn't account for duplicate keys, which will be overwritten
-    combined_dict = {}
-    for d in list_of_dicts:
-        combined_dict.update(d)
-    return combined_dict
-
-
 def fill_nans_in_arrays(
     sample: dict, config: Configuration | None = None, nwp_provider: str | None = None,
 ) -> dict:

@@ -3,23 +3,7 @@ import numpy as np
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
-    merge_dicts,
 )
-
-
-def test_merge_dicts():
-    """Test merge_dicts function"""
-    dict1 = {"a": 1, "b": 2}
-    dict2 = {"c": 3, "d": 4}
-    dict3 = {"e": 5}
-
-    result = merge_dicts([dict1, dict2, dict3])
-    assert result == {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}
-
-    # Test key overwriting
-    dict4 = {"a": 10, "f": 6}
-    result = merge_dicts([dict1, dict4])
-    assert result["a"] == 10
 
 
 def test_fill_nans_in_arrays():
