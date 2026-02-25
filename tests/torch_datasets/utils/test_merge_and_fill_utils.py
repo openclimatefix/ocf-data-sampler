@@ -1,28 +1,9 @@
 import numpy as np
 
 from ocf_data_sampler.config import load_yaml_configuration
-from ocf_data_sampler.numpy_sample.generation import GenerationSampleKey
-from ocf_data_sampler.numpy_sample.nwp import NWPSampleKey
-from ocf_data_sampler.numpy_sample.satellite import SatelliteSampleKey
 from ocf_data_sampler.torch_datasets.utils.merge_and_fill_utils import (
     fill_nans_in_arrays,
-    merge_dicts,
 )
-
-
-def test_merge_dicts():
-    """Test merge_dicts function"""
-    dict1 = {"a": 1, "b": 2}
-    dict2 = {"c": 3, "d": 4}
-    dict3 = {"e": 5}
-
-    result = merge_dicts([dict1, dict2, dict3])
-    assert result == {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}
-
-    # Test key overwriting
-    dict4 = {"a": 10, "f": 6}
-    result = merge_dicts([dict1, dict4])
-    assert result["a"] == 10
 
 
 def test_fill_nans_in_arrays():
@@ -51,18 +32,16 @@ def test_fill_nans_on_numpy_samples(config_filename):
 
     array_with_nans = np.array([1.0, np.nan, 3.0, np.nan])
     # we use copy() to ensure separate arrays for each key
-    dict = {
-        GenerationSampleKey.generation: array_with_nans.copy(),
-        SatelliteSampleKey.satellite_actual: array_with_nans.copy(),
+    sample = {
+        "generation": array_with_nans.copy(),
+        "satellite_actual": array_with_nans.copy(),
         "ukv": {
-            NWPSampleKey.nwp: np.array([np.nan, 2.0, np.nan, 4.0]),
+            "nwp": np.array([np.nan, 2.0, np.nan, 4.0]),
         },
     }
 
-    result = fill_nans_in_arrays(dict, config=configuration)
+    result = fill_nans_in_arrays(sample, config=configuration)
 
-    assert np.array_equal(result[GenerationSampleKey.generation], np.array([1.0, 0.0, 3.0, 0.0]))
-    assert np.array_equal(
-        result[SatelliteSampleKey.satellite_actual], np.array([1.0, -1.0, 3.0, -1.0]),
-    )
-    assert np.array_equal(result["ukv"][NWPSampleKey.nwp], np.array([-2.0, 2.0, -2.0, 4.0]))
+    assert np.array_equal(result["generation"], np.array([1.0, 0.0, 3.0, 0.0]))
+    assert np.array_equal(result["satellite_actual"], np.array([1.0, -1.0, 3.0, -1.0]))
+    assert np.array_equal(result["ukv"]["nwp"], np.array([-2.0, 2.0, -2.0, 4.0]))
