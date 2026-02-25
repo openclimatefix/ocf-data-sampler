@@ -215,25 +215,50 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             t0: init-time for sample
             location: location of the sample
         """
+<<<<<<< HEAD
         # Normalise NWP
+=======
+        numpy_modalities = [{"t0": get_posix_timestamp(t0)}]
+
+>>>>>>> 26e3253 (Speedup: Add optional LightDataArray backend and migrate datetimes to np.datetime64 (#397))
         if "nwp" in dataset_dict:
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
                 channel_means = self.means_dict["nwp"][nwp_key]
                 channel_stds = self.stds_dict["nwp"][nwp_key]
                 dataset_dict["nwp"][nwp_key].data = (da_nwp.data - channel_means) / channel_stds
 
+<<<<<<< HEAD
         # Normalise satellite
+=======
+                da_nwp.data = (da_nwp.data - channel_means) / channel_stds
+
+                nwp_numpy_modalities[nwp_key] = convert_nwp_to_numpy_sample(da_nwp)
+
+            # Combine the NWPs into NumpyBatch
+            numpy_modalities.append({NWPSampleKey.nwp: nwp_numpy_modalities})
+
+>>>>>>> 26e3253 (Speedup: Add optional LightDataArray backend and migrate datetimes to np.datetime64 (#397))
         if "sat" in dataset_dict:
             channel_means = self.means_dict["sat"]
             channel_stds = self.stds_dict["sat"]
             dataset_dict["sat"].data = (dataset_dict["sat"].data - channel_means) / channel_stds
 
+<<<<<<< HEAD
         # Convert all xarray modalities to a single NumpySample
         sample = convert_to_numpy_sample(dataset_dict, self.t0_idx)
+=======
+            da_sat.data = (da_sat.data - channel_means) / channel_stds
+
+            numpy_modalities.append(convert_satellite_to_numpy_sample(da_sat))
+>>>>>>> 26e3253 (Speedup: Add optional LightDataArray backend and migrate datetimes to np.datetime64 (#397))
 
         # Add location metadata not present on the DataArray
         if "generation" in dataset_dict:
+<<<<<<< HEAD
             sample["location_id"] = location.id
+=======
+            da_generation = dataset_dict["generation"]
+>>>>>>> 26e3253 (Speedup: Add optional LightDataArray backend and migrate datetimes to np.datetime64 (#397))
 
         # Add datetime encodings over the full generation time range
         generation_config = self.config.input_data.generation
@@ -242,7 +267,12 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             t0 + minutes(generation_config.interval_end_minutes),
             freq=minutes(generation_config.time_resolution_minutes),
         )
+<<<<<<< HEAD
         sample.update(encode_datetimes(datetimes=datetimes))
+=======
+
+        numpy_modalities.append(encode_datetimes(datetimes=datetimes))
+>>>>>>> 26e3253 (Speedup: Add optional LightDataArray backend and migrate datetimes to np.datetime64 (#397))
 
         # Add t0 embedding if configured
         if self.config.input_data.t0_embedding is not None:
