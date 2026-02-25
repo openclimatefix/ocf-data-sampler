@@ -7,7 +7,7 @@ def concatable_nwp_like_data(ds_nwp_ecmwf):
     """Create two NWP datasets with consecutive init times for concatenation"""
     ds_2 = ds_nwp_ecmwf.copy(deep=True)
     ds_2["init_time"] = pd.date_range(
-        start=ds_nwp_ecmwf.init_time.max().values + pd.Timedelta("6h"),
+        start=ds_nwp_ecmwf.init_time.values.max() + pd.Timedelta("6h"),
         freq="6h",
         periods=len(ds_nwp_ecmwf.init_time),
     )

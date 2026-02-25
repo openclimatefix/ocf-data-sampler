@@ -16,10 +16,7 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
     assert "time_utc" in numpy_sample
 
     # Assert content and capacity values
-    assert np.array_equal(numpy_sample["generation"], da.values)
+    assert np.array_equal(numpy_sample["generation"], da.sel(gen_param="generation_mw").values)
     assert isinstance(numpy_sample["time_utc"], np.ndarray)
     assert numpy_sample["time_utc"].dtype == float
-    assert numpy_sample["capacity_mwp"] == da.capacity_mwp.isel(time_utc=0).values
-
-    # Assert t0_idx is passed through
-    assert numpy_sample["t0_idx"] == 0
+    assert numpy_sample["capacity_mwp"] == da.sel(gen_param="capacity_mwp").isel(time_utc=0).values

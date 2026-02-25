@@ -69,6 +69,24 @@ def test_pvnet_dataset(pvnet_config_filename):
     # The config uses 3 periods each of which generates a sin and cos embedding
     assert sample["t0_embedding"].shape == (6,)
 
+def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
+    dataset = PVNetDataset(pvnet_config_filename, use_xarray=True)
+    sample = dataset[0]
+
+    dataset_nox = PVNetDataset(pvnet_config_filename, use_xarray=False)
+    sample_nox = dataset_nox[0]
+
+    def check_samples_equal(sample0, sample1):
+        for k in sample0:
+            if isinstance(sample0[k], dict):
+                check_samples_equal(sample0[k], sample1[k])
+            elif isinstance(sample0[k], np.ndarray):
+                assert (sample0[k] == sample1[k]).all()
+            else:
+                assert sample0[k] == sample1[k]
+
+    check_samples_equal(sample, sample_nox)
+
 
 def test_pvnet_dataset_sites(pvnet_site_config_filename):
     dataset = PVNetDataset(pvnet_site_config_filename)

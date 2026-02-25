@@ -1,14 +1,14 @@
 """Module for calculating solar position."""
 
 import numpy as np
-import pandas as pd
 import pvlib
+from numpy.typing import NDArray
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
 
 
 def calculate_azimuth_and_elevation(
-    datetimes: pd.DatetimeIndex,
+    datetimes: NDArray[np.datetime64],
     lon: float,
     lat: float,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -34,7 +34,7 @@ def calculate_azimuth_and_elevation(
 
 
 def make_sun_position_numpy_sample(
-    datetimes: pd.DatetimeIndex,
+    datetimes: NDArray[np.datetime64],
     lon: float,
     lat: float,
 ) -> NumpySample:

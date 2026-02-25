@@ -5,18 +5,18 @@ import pandas as pd
 
 from ocf_data_sampler.load.utils import check_time_unique_increasing
 
-ZERO_TDELTA = pd.Timedelta(0)
+ZERO_TDELTA = np.timedelta64(0, "ns")
 
 
 def find_contiguous_time_periods(
-    datetimes: pd.DatetimeIndex,
+    datetimes: np.datetime64,
     min_seq_length: int,
-    max_gap_duration: pd.Timedelta,
+    max_gap_duration: np.timedelta64,
 ) -> pd.DataFrame:
     """Return a pd.DataFrame where each row records the boundary of a contiguous time period.
 
     Args:
-      datetimes: pd.DatetimeIndex. Must be sorted.
+      datetimes: Available datetimes - must be sorted.
       min_seq_length: Sequences of min_seq_length or shorter will be discarded.
       max_gap_duration: If any pair of consecutive `datetimes` is more than `max_gap_duration`
         apart, then this pair of `datetimes` will be considered a "gap" between two contiguous
@@ -34,7 +34,7 @@ def find_contiguous_time_periods(
     check_time_unique_increasing(datetimes)
 
     # Find indices of gaps larger than max_gap:
-    gap_mask = pd.TimedeltaIndex(np.diff(datetimes)) > max_gap_duration
+    gap_mask = np.diff(datetimes) > max_gap_duration
     gap_indices = np.argwhere(gap_mask)[:, 0]
 
     # gap_indicies are the indices into dt_index for the timestep immediately before the gap.
@@ -46,7 +46,7 @@ def find_contiguous_time_periods(
     # Capture the last segment of dt_index.
     segment_boundaries = np.concatenate((segment_boundaries, [len(datetimes)]))
 
-    periods: list[list[pd.Timestamp]] = []
+    periods: list[list[np.datetime64]] = []
     start_i = 0
     for next_start_i in segment_boundaries:
         n_timesteps = next_start_i - start_i
@@ -65,8 +65,8 @@ def find_contiguous_time_periods(
 
 def trim_contiguous_time_periods(
     contiguous_time_periods: pd.DataFrame,
-    interval_start: pd.Timedelta,
-    interval_end: pd.Timedelta,
+    interval_start: np.timedelta64,
+    interval_end: np.timedelta64,
 ) -> pd.DataFrame:
     """Trims contiguous time periods to account for history requirements and forecast horizons.
 
@@ -91,9 +91,9 @@ def trim_contiguous_time_periods(
 
 def find_contiguous_t0_periods(
     datetimes: pd.DatetimeIndex,
-    interval_start: pd.Timedelta,
-    interval_end: pd.Timedelta,
-    time_resolution: pd.Timedelta,
+    interval_start: np.timedelta64,
+    interval_end: np.timedelta64,
+    time_resolution: np.timedelta64,
 ) -> pd.DataFrame:
     """Return a pd.DataFrame where each row records the boundary of a contiguous time period.
 
@@ -133,11 +133,11 @@ def find_contiguous_t0_periods(
 
 
 def find_contiguous_t0_periods_nwp(
-    init_times: pd.DatetimeIndex,
-    interval_start: pd.Timedelta,
-    max_staleness: pd.Timedelta,
-    max_dropout: pd.Timedelta = ZERO_TDELTA,
-    first_forecast_step: pd.Timedelta = ZERO_TDELTA,
+    init_times: np.datetime64,
+    interval_start: np.timedelta64,
+    max_staleness: np.timedelta64,
+    max_dropout: np.timedelta64 = ZERO_TDELTA,
+    first_forecast_step: np.timedelta64 = ZERO_TDELTA,
 ) -> pd.DataFrame:
     """Get all time periods from the NWP init-times which are valid as t0 datetimes.
 
@@ -163,15 +163,15 @@ def find_contiguous_t0_periods_nwp(
 
     check_time_unique_increasing(init_times)
 
-    if max_staleness < pd.Timedelta(0):
+    if max_staleness < ZERO_TDELTA:
         raise ValueError("The max staleness must be positive")
-    if not (pd.Timedelta(0) <= max_dropout <= max_staleness):
+    if not (ZERO_TDELTA <= max_dropout <= max_staleness):
         raise ValueError("The max dropout must be between 0 and the max staleness")
 
     history_drop_buffer = max(first_forecast_step - interval_start, max_dropout)
 
     # Store contiguous periods
-    contiguous_periods: list[list[pd.Timestamp]] = []
+    contiguous_periods: list[list[np.datetime64]] = []
 
     # Begin the first period allowing for the time to the first_forecast_step, the length of the
     # interval sampled from before t0, and the dropout

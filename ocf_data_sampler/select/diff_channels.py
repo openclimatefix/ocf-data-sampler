@@ -20,6 +20,6 @@ def diff_channels(da: xr.DataArray, accum_channels: list[str]) -> xr.DataArray:
     # Make a copy of the values to avoid changing the underlying numpy array
     vals = da.values.copy()
     vals[:-1, accum_channel_inds] = np.diff(vals[:, accum_channel_inds], axis=0)
-    da.values = vals
+    da.data = vals
 
     return da.isel(step=slice(0, -1))
