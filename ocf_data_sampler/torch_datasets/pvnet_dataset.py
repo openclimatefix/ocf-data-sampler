@@ -190,9 +190,11 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         # Assign config and input data to self
         self.config = config
-        self.datasets_dict = datasets_dict
-        self.use_xarray = use_xarray
-        self.light_datasets_dict = xarray_to_lightarray_dict(datasets_dict)
+
+        if use_xarray:
+            self.datasets_dict = datasets_dict
+        else:
+            self.datasets_dict = xarray_to_lightarray_dict(datasets_dict)
 
         # Assign t0 idx value
         self.t0_idx = (
@@ -406,9 +408,7 @@ class PVNetDataset(AbstractPVNetDataset):
             t0: init-time for sample
             location: location for sample
         """
-        input_dict = self.datasets_dict if self.use_xarray else self.light_datasets_dict
-
-        sample_dict = slice_datasets_by_space(input_dict, location, self.config)
+        sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
@@ -486,10 +486,8 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
         Args:
             t0: init-time for sample
         """
-        input_dict = self.datasets_dict if self.use_xarray else self.light_datasets_dict
-
         # Slice by time then load to avoid loading the data multiple times from disk
-        sample_dict = slice_datasets_by_time(input_dict, t0, self.config)
+        sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
         sample_dict = diff_nwp_data(sample_dict, self.config)
 
