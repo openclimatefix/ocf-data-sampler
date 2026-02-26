@@ -6,6 +6,8 @@ import xarray as xr
 
 def assert_values_increasing(values: np.ndarray, label: str = "values") -> None:
     """Assert the values are unique and monotonically increasing."""
+    if len(np.unique(values))!=len(values):
+        raise ValueError(f"{label} must be unique")
     if not (values[:-1] < values[1:]).all():
         raise ValueError(f"{label} must be increasing")
 
