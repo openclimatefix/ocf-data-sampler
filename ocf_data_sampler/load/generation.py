@@ -50,7 +50,7 @@ def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
 
     # Validate data types
     if not np.issubdtype(da.dtype, np.floating):
-        raise TypeError(f"generation should be floating, not {da.dtype}")
+        raise TypeError(f"generation and capacity values should be floating, not {da.dtype}")
 
     coord_dtypes = {
         "time_utc": np.datetime64,

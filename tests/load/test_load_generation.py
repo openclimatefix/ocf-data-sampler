@@ -37,5 +37,5 @@ def test_open_generation_bad_dtype(tmp_path: Path):
     )
     bad_ds.to_zarr(zarr_path)
 
-    with pytest.raises(TypeError, match="generation should be floating"):
+    with pytest.raises(TypeError, match="generation and capacity values should be floating"):
         open_generation(zarr_path=zarr_path)
