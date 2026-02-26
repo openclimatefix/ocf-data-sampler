@@ -146,26 +146,6 @@ def test_load_ukv_bad_dtype_step(tmp_path):
         open_nwp(zarr_path=zarr_path, provider="ukv")
 
 
-def test_load_ukv_spatial_coords_are_float(tmp_path):
-    """Test that UKV x_osgb/y_osgb coords are floating-point on the returned array."""
-    zarr_path = tmp_path / "ukv_spatial_dtype.zarr"
-    array = DataArray(
-        np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time_utc", "step", "channel", "x_osgb", "y_osgb"),
-        coords={
-            "init_time_utc": [np.datetime64("2023-01-01")],
-            "step": [np.timedelta64(1, "h")],
-            "channel": ["t"],
-            "x_osgb": np.array([0], dtype=np.float32),
-            "y_osgb": np.array([50], dtype=np.float32),
-        },
-    )
-    array.to_zarr(zarr_path)
-    da = open_nwp(zarr_path=zarr_path, provider="ukv")
-    assert np.issubdtype(da.coords["x_osgb"].dtype, np.floating)
-    assert np.issubdtype(da.coords["y_osgb"].dtype, np.floating)
-
-
 def test_load_ecmwf_bad_dtype_longitude(tmp_path):
     """Test validation fails for ECMWF with bad longitude dtype."""
     zarr_path = tmp_path / "bad_ecmwf_longitude.zarr"

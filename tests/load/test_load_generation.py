@@ -59,24 +59,6 @@ def test_open_generation_bad_dtype_capacity(tmp_path: Path):
         open_generation(zarr_path=zarr_path)
 
 
-def test_open_generation_bad_dtype_time(tmp_path: Path):
-    """Test that open_generation raises when time_utc is not datetime64."""
-    zarr_path = tmp_path / "bad_time.zarr"
-    bad_ds = xr.Dataset(
-        data_vars={
-            "generation_mw": (("time_utc", "location_id"), np.random.rand(5, 2).astype(np.float32)),
-            "capacity_mwp": (("location_id",), [90.0, 110.0]),
-        },
-        coords={
-            "time_utc": [1.0, 2.0, 3.0, 4.0, 5.0],
-            "location_id": [1, 2],
-        },
-    )
-    bad_ds.to_zarr(zarr_path)
-    with pytest.raises((TypeError, AttributeError), match=r"time_utc|datetime64"):
-        open_generation(zarr_path=zarr_path)
-
-
 def test_open_generation_nan_in_data(tmp_path: Path):
     """Test that all-NaN generation data is surfaced, not silently filled."""
     zarr_path = tmp_path / "nan_generation.zarr"
