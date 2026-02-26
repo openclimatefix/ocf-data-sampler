@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from ocf_data_sampler.load.utils import assert_values_increasing
+from ocf_data_sampler.load.utils import assert_values_unique_increasing
 
 ZERO_TDELTA = np.timedelta64(0, "ns")
 
@@ -33,7 +33,7 @@ def find_contiguous_time_periods(
     if min_seq_length <= 1:
         raise ValueError(f"{min_seq_length=} must be greater than 1")
 
-    assert_values_increasing(datetimes, "datetimes")
+    assert_values_unique_increasing(datetimes, "datetimes")
 
     # Find indices of gaps larger than max_gap:
     gap_mask = np.diff(datetimes) > max_gap_duration
@@ -109,7 +109,7 @@ def find_contiguous_t0_periods(
         pd.DataFrame where each row represents a single time period.  The pd.DataFrame
             has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
-    assert_values_increasing(datetimes, "datetimes")
+    assert_values_unique_increasing(datetimes, "datetimes")
 
     total_duration = interval_end - interval_start
 
@@ -160,7 +160,7 @@ def find_contiguous_t0_periods_nwp(
         pd.DataFrame where each row represents a single time period. The pd.DataFrame
         has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
-    assert_values_increasing(init_times, "init_times")
+    assert_values_unique_increasing(init_times, "init_times")
 
     if len(init_times) == 0:
         raise ValueError("No init-times to use")

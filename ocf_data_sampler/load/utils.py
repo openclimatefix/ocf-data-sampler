@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 
 
-def assert_values_increasing(values: np.ndarray, label: str = "values") -> None:
+def assert_values_unique_increasing(values: np.ndarray, label: str = "values") -> None:
     """Assert the values are unique and monotonically increasing."""
     if len(np.unique(values))!=len(values):
         raise ValueError(f"{label} must be unique")
@@ -31,8 +31,8 @@ def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -
         ds[y_coord] = np.ascontiguousarray(ds[y_coord].values)
 
     # Check the coords are all increasing now
-    assert_values_increasing(ds[x_coord].values, x_coord)
-    assert_values_increasing(ds[y_coord].values, y_coord)
+    assert_values_unique_increasing(ds[x_coord].values, x_coord)
+    assert_values_unique_increasing(ds[y_coord].values, y_coord)
 
     return ds
 

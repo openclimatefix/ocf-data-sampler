@@ -4,7 +4,7 @@ import xarray as xr
 
 from ocf_data_sampler.load.open_xarray_tensorstore import open_zarr, open_zarrs
 from ocf_data_sampler.load.utils import (
-    assert_values_increasing,
+    assert_values_unique_increasing,
     get_xr_data_array_from_xr_dataset,
     make_spatial_coords_increasing,
 )
@@ -31,7 +31,7 @@ def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
     )
 
     ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
-    assert_values_increasing(ds.time_utc.values, "time_utc")
+    assert_values_unique_increasing(ds.time_utc.values, "time_utc")
     ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
 
     data_array = get_xr_data_array_from_xr_dataset(ds)
