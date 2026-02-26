@@ -12,11 +12,11 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
     # Assert structure
     assert isinstance(numpy_sample, dict)
     assert "generation" in numpy_sample
-    assert "capacity_mwp" in numpy_sample
-    assert "time_utc" in numpy_sample
+    assert "capacity" in numpy_sample
+    assert "generation_time_utc" in numpy_sample
 
     # Assert content and capacity values
     assert np.array_equal(numpy_sample["generation"], da.sel(gen_param="generation_mw").values)
-    assert isinstance(numpy_sample["time_utc"], np.ndarray)
-    assert numpy_sample["time_utc"].dtype == float
-    assert numpy_sample["capacity_mwp"] == da.sel(gen_param="capacity_mwp").isel(time_utc=0).values
+    assert isinstance(numpy_sample["generation_time_utc"], np.ndarray)
+    assert numpy_sample["generation_time_utc"].dtype == float
+    assert numpy_sample["capacity"] == da.sel(gen_param="capacity_mwp").isel(time_utc=0).values
