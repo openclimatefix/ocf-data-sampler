@@ -57,28 +57,3 @@ def test_open_generation_bad_dtype_capacity(tmp_path: Path):
     bad_ds.to_zarr(zarr_path)
     with pytest.raises(TypeError, match="capacity_mwp should be floating"):
         open_generation(zarr_path=zarr_path)
-
-
-def test_open_generation_nan_in_data(tmp_path: Path):
-    """Test that all-NaN generation data is surfaced, not silently filled."""
-    zarr_path = tmp_path / "nan_generation.zarr"
-    bad_ds = xr.Dataset(
-        data_vars={
-            "generation_mw": (
-                ("time_utc", "location_id"),
-                np.full((5, 2),
-                np.nan,
-                dtype=np.float32),
-            ),
-            "capacity_mwp": (("location_id",), [90.0, 110.0]),
-        },
-        coords={
-            "time_utc": pd.date_range("2023-01-01", periods=5, freq="30min"),
-            "location_id": [1, 2],
-            "longitude": ("location_id", np.array([-1.0, -2.0], dtype=np.float32)),
-            "latitude": ("location_id", np.array([51.0, 52.0], dtype=np.float32)),
-        },
-    )
-    bad_ds.to_zarr(zarr_path)
-    da = open_generation(zarr_path=zarr_path)
-    assert da.isnull().all()

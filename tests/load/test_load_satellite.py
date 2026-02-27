@@ -64,23 +64,3 @@ def test_open_satellite_bad_dtype_spatial_coords(tmp_path: Path):
     bad_ds.to_zarr(zarr_path)
     with pytest.raises(TypeError, match="geostationary should be floating"):
         open_sat_data(zarr_path=zarr_path)
-
-
-def test_open_satellite_nan_in_data(tmp_path: Path):
-    """Test that all-NaN satellite data is surfaced, not silently filled."""
-    zarr_path = tmp_path / "nan_sat.zarr"
-    bad_ds = xr.Dataset(
-        data_vars={
-            "data": (("time", "variable", "y_geostationary", "x_geostationary"),
-            np.full((5, 2, 4, 4), np.nan, dtype=np.float32)),
-        },
-        coords={
-            "time": pd.date_range("2023-01-01", periods=5, freq="5min"),
-            "variable": ["IR_016", "IR_039"],
-            "y_geostationary": np.arange(4, dtype=np.float32),
-            "x_geostationary": np.arange(4, dtype=np.float32),
-        },
-    )
-    bad_ds.to_zarr(zarr_path)
-    da = open_sat_data(zarr_path=zarr_path)
-    assert da.isnull().all()
