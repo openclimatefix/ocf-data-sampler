@@ -3,6 +3,7 @@
 import numpy as np
 import xarray as xr
 
+from ocf_data_sampler.select import get_indices_in_sorted_unique
 from ocf_data_sampler.time_utils import date_range, datetime_ceil
 
 
@@ -22,25 +23,11 @@ def select_time_slice(
         interval_end: The end of the interval with respect to t0
         time_resolution: Distance between neighbouring timestamps
     """
-    start_dt = t0 + interval_start
-    end_dt = t0 + interval_end
-    start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
+    date_range = np.array([t0 + interval_start, t0 + interval_end])
+    ceil_date_range = datetime_ceil(date_range, time_resolution)
+    start_ind, end_ind = get_indices_in_sorted_unique(da.time_utc.values, ceil_date_range)
 
-    times = da.time_utc.values
-
-    start_ind = np.searchsorted(times, start_dt, side="left")
-    end_ind = np.searchsorted(times, end_dt, side="right")
-
-    if start_ind == len(times) or times[start_ind] != start_dt:
-        raise ValueError("Requested forecast steps not available (start not present)")
-
-    if end_ind == 0 or times[end_ind - 1] != end_dt:
-        raise ValueError("Requested forecast steps not available (end not present)")
-
-    if end_ind <= start_ind:
-        raise ValueError("Requested forecast steps not available (empty slice)")
-
-    return da.isel(time_utc=slice(start_ind, end_ind))
+    return da.isel(time_utc=slice(start_ind, end_ind+1))
 
 
 def select_time_slice_nwp(
@@ -102,11 +89,6 @@ def select_time_slice_nwp(
 
     # Find the required steps for all target-times
     required_steps = target_times - selected_init_time
-    selected_step_indices = np.searchsorted(all_steps, required_steps, side="left")
-
-    # Make sure this use of np.searchsorted has returned matches for each step rather than just the
-    # insert position.
-    if not np.array_equal(all_steps[selected_step_indices], required_steps):
-        raise ValueError("Requested forecast steps not available")
+    selected_step_indices = get_indices_in_sorted_unique(all_steps, required_steps)
 
     return da.isel(init_time_utc=selected_init_time_index, step=selected_step_indices)

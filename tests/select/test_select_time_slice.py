@@ -41,7 +41,7 @@ def test_select_time_slice_out_of_bounds(da_sat_like, t0_str):
     interval_end = np.timedelta64(60, "m")
     freq = np.timedelta64(5, "m")
 
-    with pytest.raises(ValueError, match=r"Requested forecast steps not available*"):
+    with pytest.raises(ValueError, match=r"Not all values in .* exist in array .*"):
         # Make the partially out of bounds selection
         _ = select_time_slice(
             da_sat_like,

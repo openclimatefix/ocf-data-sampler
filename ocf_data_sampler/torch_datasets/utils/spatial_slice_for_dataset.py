@@ -1,8 +1,8 @@
 """Functions for selecting data around a given location."""
 
-import numpy as np
 
 from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.select import get_indices_in_sorted_unique
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.select_spatial_slice import select_spatial_slice_pixels
 
@@ -50,9 +50,7 @@ def slice_datasets_by_space(
     if "generation" in datasets_dict:
 
         location_ids = datasets_dict["generation"].location_id.values
-        loc_index = np.searchsorted(location_ids, location.id)
-        if location_ids[loc_index]!=location.id:
-            raise ValueError(f"Location ID {location.id} not found")
+        loc_index = get_indices_in_sorted_unique(location_ids, location.id)
 
         sliced_datasets_dict["generation"] = datasets_dict["generation"].isel(location_id=loc_index)
 
