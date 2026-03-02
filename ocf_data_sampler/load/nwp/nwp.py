@@ -1,8 +1,9 @@
 """Module for opening NWP data."""
 
+from collections.abc import Callable
+
 import numpy as np
 import xarray as xr
-from collections.abc import Callable
 
 from ocf_data_sampler.load.nwp.providers.cloudcasting import open_cloudcasting
 from ocf_data_sampler.load.nwp.providers.ecmwf import open_ifs
@@ -10,7 +11,6 @@ from ocf_data_sampler.load.nwp.providers.gdm import open_gdm
 from ocf_data_sampler.load.nwp.providers.gfs import open_gfs
 from ocf_data_sampler.load.nwp.providers.icon import open_icon_eu
 from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
-
 
 _OPENERS: dict[str, Callable[..., xr.DataArray]] = {
     "ukv": open_ukv,
@@ -38,7 +38,7 @@ def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
     """
     if not np.issubdtype(data_array.dtype, np.number):
         raise TypeError(
-            f"NWP data for {provider} should be numeric, not {data_array.dtype}"
+            f"NWP data for {provider} should be numeric, not {data_array.dtype}",
         )
 
     common_expected_dtypes = {
