@@ -12,7 +12,7 @@ from ocf_data_sampler.load.nwp.providers.gfs import open_gfs
 from ocf_data_sampler.load.nwp.providers.icon import open_icon_eu
 from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
 
-_OPENERS: dict[str, Callable[..., xr.DataArray]] = {
+_OPEN_NWP_FUNCTIONS: dict[str, Callable[..., xr.DataArray]] = {
     "ukv": open_ukv,
     "ecmwf": open_ifs,
     "mo_global": open_ifs,
@@ -104,10 +104,11 @@ def open_nwp(
     """
     provider = provider.lower()
 
-    opener = _OPENERS.get(provider)
-    if opener is None:
-        supported = ", ".join(sorted(_OPENERS.keys()))
+    if provider not in _OPEN_NWP_FUNCTIONS:
+        supported = ", ".join(sorted(_OPEN_NWP_FUNCTIONS.keys()))
         raise ValueError(f"Unknown provider: {provider!r}. Supported: {supported}")
+
+    opener = _OPEN_NWP_FUNCTIONS[provider]
 
     kwargs = {"zarr_path": zarr_path}
     if provider == "gfs" and public:
