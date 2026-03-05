@@ -6,15 +6,58 @@ from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
-from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.torch_datasets.pvnet_dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
 )
-from ocf_data_sampler.torch_datasets.utils.torch_batch_utils import (
-    batch_to_tensor,
-    copy_batch_to_device,
-)
+
+
+def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
+    """Helper function to verify samples"""
+
+    if batch_dim is None:
+        batch_dim = ()
+
+    assert isinstance(sample, dict)
+
+    # Specific keys should always be present
+    required_keys = ["nwp_ukv", "satellite", "generation", "t0", "t0_embedding"]
+    for key in required_keys:
+        assert key in sample
+
+    solar_keys = ["solar_azimuth", "solar_elevation"]
+    if config.input_data.solar_position is not None:
+        # Test solar position keys are present when configured
+        for key in solar_keys:
+            assert key in sample, f"Solar position key {key} should be present in sample"
+
+        # Get expected time steps from config
+        expected_time_steps = (
+            config.input_data.solar_position.interval_end_minutes
+            - config.input_data.solar_position.interval_start_minutes
+        ) // config.input_data.solar_position.time_resolution_minutes + 1
+
+        # Test solar angle shapes based on config
+        assert sample["solar_azimuth"].shape == (*batch_dim, expected_time_steps)
+        assert sample["solar_elevation"].shape == (*batch_dim, expected_time_steps)
+    else:
+        # Assert that solar position keys are not present
+        for key in solar_keys:
+            assert key not in sample, f"Solar position key {key} should not be present"
+
+    # Check the shape of the data is correct
+    # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
+    assert sample["satellite"].shape == (*batch_dim, 7, 1, 2, 2)
+    # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
+    assert sample["nwp_ukv"].shape == (*batch_dim, 4, 1, 2, 2)
+    # 3 hours of 30 minute data (inclusive)
+    assert sample["generation"].shape == (*batch_dim, 7)
+    # Datetime encoding keys same shape as the generation
+    for datetime_key in ["date_sin", "date_cos", "time_sin", "time_cos"]:
+        assert sample[datetime_key].shape == (*batch_dim, 7)
+    # The config uses 3 periods each of which generates a sin and cos embedding
+    assert sample["t0_embedding"].shape == (*batch_dim, 6)
+
 
 
 def test_pvnet_dataset(pvnet_config_filename):
@@ -26,66 +69,8 @@ def test_pvnet_dataset(pvnet_config_filename):
     assert len(dataset) == 317 * 39
 
     sample = dataset[0]
-    assert isinstance(sample, dict)
 
-    # Specific keys should always be present
-    required_keys = ["nwp", "satellite_actual", "generation", "t0", "t0_embedding"]
-    for key in required_keys:
-        assert key in sample
-
-    solar_keys = ["solar_azimuth", "solar_elevation"]
-    if dataset.config.input_data.solar_position is not None:
-        # Test solar position keys are present when configured
-        for key in solar_keys:
-            assert key in sample, f"Solar position key {key} should be present in sample"
-
-        # Get expected time steps from config
-        expected_time_steps = (
-            dataset.config.input_data.solar_position.interval_end_minutes
-            - dataset.config.input_data.solar_position.interval_start_minutes
-        ) // dataset.config.input_data.solar_position.time_resolution_minutes + 1
-
-        # Test solar angle shapes based on config
-        assert sample["solar_azimuth"].shape == (expected_time_steps,)
-        assert sample["solar_elevation"].shape == (expected_time_steps,)
-    else:
-        # Assert that solar position keys are not present
-        for key in solar_keys:
-            assert key not in sample, f"Solar position key {key} should not be present"
-
-    for nwp_source in ["ukv"]:
-        assert nwp_source in sample["nwp"]
-
-    # Check the shape of the data is correct
-    # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["satellite_actual"].shape == (7, 1, 2, 2)
-    # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
-    # 3 hours of 30 minute data (inclusive)
-    assert sample["generation"].shape == (7,)
-    # Datetime encoding keys same shape as the generation
-    for datetime_key in ["date_sin", "date_cos", "time_sin", "time_cos"]:
-        assert sample[datetime_key].shape == (7,)
-    # The config uses 3 periods each of which generates a sin and cos embedding
-    assert sample["t0_embedding"].shape == (6,)
-
-def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
-    dataset = PVNetDataset(pvnet_config_filename, use_xarray=True)
-    sample = dataset[0]
-
-    dataset_nox = PVNetDataset(pvnet_config_filename, use_xarray=False)
-    sample_nox = dataset_nox[0]
-
-    def check_samples_equal(sample0, sample1):
-        for k in sample0:
-            if isinstance(sample0[k], dict):
-                check_samples_equal(sample0[k], sample1[k])
-            elif isinstance(sample0[k], np.ndarray):
-                assert (sample0[k] == sample1[k]).all()
-            else:
-                assert sample0[k] == sample1[k]
-
-    check_samples_equal(sample, sample_nox)
+    _pvnet_dataset_sample_check(sample, dataset.config)
 
 
 def test_pvnet_dataset_sites(pvnet_site_config_filename):
@@ -96,43 +81,25 @@ def test_pvnet_dataset_sites(pvnet_site_config_filename):
     assert len(dataset.valid_t0_and_location_ids) < 10 * 39
 
     sample = dataset[0]
-    assert isinstance(sample, dict)
+    _pvnet_dataset_sample_check(sample, dataset.config)
 
-    # Specific keys should always be present
-    required_keys = ["nwp", "satellite_actual", "generation", "t0"]
-    for key in required_keys:
-        assert key in sample
 
-    solar_keys = ["solar_azimuth", "solar_elevation"]
-    if dataset.config.input_data.solar_position is not None:
-        # Test solar position keys are present when configured
-        for key in solar_keys:
-            assert key in sample, f"Solar position key {key} should be present in sample"
+def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
+    dataset = PVNetDataset(pvnet_config_filename, use_xarray=True)
+    sample = dataset[0]
 
-        # Get expected time steps from config
-        expected_time_steps = (
-            dataset.config.input_data.solar_position.interval_end_minutes
-            - dataset.config.input_data.solar_position.interval_start_minutes
-        ) // dataset.config.input_data.solar_position.time_resolution_minutes + 1
+    dataset_nox = PVNetDataset(pvnet_config_filename, use_xarray=False)
+    sample_nox = dataset_nox[0]
 
-        # Test solar angle shapes based on config
-        assert sample["solar_azimuth"].shape == (expected_time_steps,)
-        assert sample["solar_elevation"].shape == (expected_time_steps,)
-    else:
-        # Assert that solar position keys are not present
-        for key in solar_keys:
-            assert key not in sample, f"Solar position key {key} should not be present"
+    def check_samples_equal(sample0, sample1):
+        assert set(sample0.keys())==set(sample1.keys())
+        for k in sample0:
+            if isinstance(sample0[k], np.ndarray):
+                assert (sample0[k] == sample1[k]).all()
+            else:
+                assert sample0[k] == sample1[k]
 
-    for nwp_source in ["ukv"]:
-        assert nwp_source in sample["nwp"]
-
-    # Check the shape of the data is correct
-    # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["satellite_actual"].shape == (7, 1, 2, 2)
-    # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
-    # 3 hours of 30 minute data (inclusive)
-    assert sample["generation"].shape == (7,)
+    check_samples_equal(sample, sample_nox)
 
 
 def test_pvnet_concurrent_dataset(pvnet_config_filename):
@@ -145,35 +112,7 @@ def test_pvnet_concurrent_dataset(pvnet_config_filename):
     assert len(dataset) == 39
 
     sample = dataset[0]
-    assert isinstance(sample, dict)
-
-    required_keys = ["nwp", "satellite_actual", "generation"]
-    for key in required_keys:
-        assert key in sample
-
-    solar_keys = ["solar_azimuth", "solar_elevation"]
-    if dataset.config.input_data.solar_position is not None:
-        for key in solar_keys:
-            assert key in sample, f"Solar position key {key} should be present in sample"
-
-        expected_time_steps = (
-            dataset.config.input_data.solar_position.interval_end_minutes
-            - dataset.config.input_data.solar_position.interval_start_minutes
-        ) // dataset.config.input_data.solar_position.time_resolution_minutes + 1
-
-        assert sample["solar_azimuth"].shape == (num_gsps, expected_time_steps)
-        assert sample["solar_elevation"].shape == (num_gsps, expected_time_steps)
-    else:
-        for key in solar_keys:
-            assert key not in sample, f"Solar position key {key} should not be present"
-
-    for nwp_source in ["ukv"]:
-        assert nwp_source in sample["nwp"]
-
-    # Shape assertion checking
-    assert sample["satellite_actual"].shape == (num_gsps, 7, 1, 2, 2)
-    assert sample["nwp"]["ukv"]["nwp"].shape == (num_gsps, 4, 1, 2, 2)
-    assert sample["generation"].shape == (num_gsps, 7)
+    _pvnet_dataset_sample_check(sample, dataset.config, (num_gsps,))
 
 
 def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
@@ -233,8 +172,8 @@ def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
     ), "Sample yielded by DataLoader with batch_size=None should be a dict"
 
     required_keys = [
-        "nwp",
-        "satellite_actual",
+        "nwp_ukv",
+        "satellite",
         "generation",
         "solar_azimuth",
         "solar_elevation",
@@ -244,18 +183,15 @@ def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
         assert key in raw_sample, f"Raw Sample: Expected key '{key}' not found"
 
     # Type assertions
-    assert isinstance(raw_sample["satellite_actual"], torch.Tensor)
+    assert isinstance(raw_sample["satellite"], torch.Tensor)
     assert isinstance(raw_sample["generation"], torch.Tensor)
     assert isinstance(raw_sample["solar_azimuth"], torch.Tensor)
     assert isinstance(raw_sample["solar_elevation"], torch.Tensor)
-    assert isinstance(raw_sample["nwp"], dict)
-    assert "ukv" in raw_sample["nwp"]
-    assert isinstance(raw_sample["nwp"]["ukv"]["nwp"], torch.Tensor)
-    assert isinstance(raw_sample["nwp"]["ukv"]["nwp_channel_names"], np.ndarray)
+    assert isinstance(raw_sample["nwp_ukv"], torch.Tensor)
 
     # Shape assertions
-    assert raw_sample["satellite_actual"].shape == (7, 1, 2, 2)
-    assert raw_sample["nwp"]["ukv"]["nwp"].shape == (4, 1, 2, 2)
+    assert raw_sample["satellite"].shape == (7, 1, 2, 2)
+    assert raw_sample["nwp_ukv"].shape == (4, 1, 2, 2)
     assert raw_sample["generation"].shape == (7,)
 
     # Solar position shapes - no batch dimension
@@ -285,51 +221,3 @@ def test_pvnet_dataset_pickle(tmp_path, pvnet_config_filename):
     dataset = PVNetDataset(pvnet_config_filename)
     pickle_bytes = pickle.dumps(dataset)
     _ = pickle.loads(pickle_bytes)  # noqa: S301
-
-
-def test_pvnet_dataset_batch_size_2(pvnet_config_filename):
-    """Tests making batches from PVNetDataset"""
-    dataset = PVNetDataset(pvnet_config_filename)
-    dataloader = DataLoader(
-        dataset,
-        batch_size=2,
-        collate_fn=stack_np_samples_into_batch,
-        shuffle=False,
-        num_workers=0,
-    )
-
-    batch = next(iter(dataloader))
-    batch = batch_to_tensor(batch)
-    batch = copy_batch_to_device(batch, torch.device("cpu"))
-
-    # Assertions for the raw batch
-    assert isinstance(batch, dict), "Sample yielded by DataLoader with batch_size=2 should be dict"
-
-    required_keys = [
-        "nwp",
-        "satellite_actual",
-        "generation",
-        "solar_azimuth",
-        "solar_elevation",
-        "location_id",
-        "t0",
-    ]
-    for key in required_keys:
-        assert key in batch, f"Raw Sample: Expected key '{key}' not found"
-
-    # Type assertions
-    assert isinstance(batch["satellite_actual"], torch.Tensor)
-    assert isinstance(batch["generation"], torch.Tensor)
-    assert isinstance(batch["solar_azimuth"], torch.Tensor)
-    assert isinstance(batch["solar_elevation"], torch.Tensor)
-    assert isinstance(batch["nwp"], dict)
-    assert "ukv" in batch["nwp"]
-    assert isinstance(batch["nwp"]["ukv"]["nwp"], torch.Tensor)
-    assert isinstance(batch["nwp"]["ukv"]["nwp_channel_names"], np.ndarray)
-    assert isinstance(batch["t0"], torch.Tensor)
-
-    # Shape assertions
-    assert batch["satellite_actual"].shape == (2, 7, 1, 2, 2)
-    assert batch["nwp"]["ukv"]["nwp"].shape == (2, 4, 1, 2, 2)
-    assert batch["generation"].shape == (2, 7)
-    assert batch["t0"].shape == (2,)

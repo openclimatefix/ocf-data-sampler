@@ -11,6 +11,7 @@ import xarray as xr
 from numpy.typing import NDArray
 from pydantic.warnings import UnsupportedFieldAttributeWarning
 from torch.utils.data import Dataset
+from torch.utils.data.dataloader import default_collate
 from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
@@ -22,8 +23,7 @@ from ocf_data_sampler.numpy_sample import (
     get_t0_embedding,
     make_sun_position_numpy_sample,
 )
-from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
-from ocf_data_sampler.numpy_sample.common_types import NumpyBatch, NumpySample
+from ocf_data_sampler.numpy_sample.common_types import NumpySample, TensorBatch
 from ocf_data_sampler.select import (
     Location,
     fill_time_periods,
@@ -35,7 +35,7 @@ from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,
     diff_nwp_data,
-    fill_nans_in_arrays,
+    fill_nans_in_dataset_dicts,
     find_valid_time_periods,
     slice_datasets_by_space,
     slice_datasets_by_time,
@@ -124,6 +124,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         config_filename: str,
         start_time: str | None = None,
         end_time: str | None = None,
+        include_extra_metadata: bool = False,
         use_xarray: bool = True,
     ) -> None:
         """A generic torch Dataset for creating PVNet samples.
@@ -136,6 +137,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             config_filename: Path to the configuration file
             start_time: Limit the init-times to be after this
             end_time: Limit the init-times to be before this
+            include_extra_metadata: Whether to include non-essential metadata for each sample in the
+                sample dict.
             use_xarray: Whether to use xarray.DataArray or LightDataArray as the underlying data
                 structure when sampling
         """
@@ -183,8 +186,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         self.locations = add_alterate_coordinate_projections(locations, datasets_dict)
 
-        # Assign config and input data to self
         self.config = config
+        self.include_extra_metadata = include_extra_metadata
 
         if use_xarray:
             self.datasets_dict = datasets_dict
@@ -228,8 +231,11 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             channel_stds = self.stds_dict["sat"]
             dataset_dict["sat"].data = (dataset_dict["sat"].data - channel_means) / channel_stds
 
+        # Fill NaNs
+        dataset_dict = fill_nans_in_dataset_dicts(dataset_dict, config=self.config)
+
         # Convert all xarray modalities to a single NumpySample
-        sample = convert_to_numpy_sample(dataset_dict, self.t0_idx)
+        sample = convert_to_numpy_sample(dataset_dict, self.t0_idx, self.include_extra_metadata)
 
         # Add location metadata not present on the DataArray
         if "generation" in dataset_dict:
@@ -267,8 +273,6 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             )
 
         sample["t0"] = get_posix_timestamp(t0)
-
-        sample = fill_nans_in_arrays(sample, config=self.config)
 
         return sample
 
@@ -352,9 +356,10 @@ class PVNetDataset(AbstractPVNetDataset):
         config_filename: str,
         start_time: str | None = None,
         end_time: str | None = None,
+        include_extra_metadata: bool = False,
         use_xarray: bool = True,
     ) -> None:
-        super().__init__(config_filename, start_time, end_time, use_xarray)
+        super().__init__(config_filename, start_time, end_time, include_extra_metadata, use_xarray)
 
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
@@ -445,7 +450,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
     def __len__(self) -> int:
         return len(self.valid_t0_times)
 
-    def _get_sample(self, t0: np.datetime64) -> NumpyBatch:
+    def _get_sample(self, t0: np.datetime64) -> TensorBatch:
         """Generate a concurrent PVNet sample for given init-time.
 
         Args:
@@ -469,13 +474,13 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
             samples.append(numpy_sample)
 
         # Stack samples
-        return stack_np_samples_into_batch(samples)
+        return default_collate(samples)
 
     @override
-    def __getitem__(self, idx: int) -> NumpyBatch:
+    def __getitem__(self, idx: int) -> TensorBatch:
         return self._get_sample(self.valid_t0_times[idx])
 
-    def get_sample(self, t0: np.datetime64) -> NumpyBatch:
+    def get_sample(self, t0: np.datetime64) -> TensorBatch:
         """Generate a sample for the given init-time.
 
         Useful for users to generate specific samples.
