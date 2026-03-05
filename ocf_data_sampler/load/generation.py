@@ -17,6 +17,8 @@ Coordinates:
 import numpy as np
 import xarray as xr
 
+from ocf_data_sampler.load.utils import assert_values_unique_increasing
+
 
 def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
     """Open and eagerly load the generation data and validates its data types.
@@ -43,9 +45,12 @@ def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
 
     da = ds.to_dataarray("gen_param").transpose("time_utc", "location_id", "gen_param")
 
+    assert_values_unique_increasing(ds.time_utc.values, "time_utc")
+    assert_values_unique_increasing(ds.location_id.values, "location_id")
+
     # Validate data types
     if not np.issubdtype(da.dtype, np.floating):
-        raise TypeError(f"generation should be floating, not {da.dtype}")
+        raise TypeError(f"generation and capacity values should be floating, not {da.dtype}")
 
     coord_dtypes = {
         "time_utc": np.datetime64,

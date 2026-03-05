@@ -1,6 +1,5 @@
 """A lightweight DataArray-like class."""
 
-from typing import Any
 
 import numpy as np
 import xarray as xr
@@ -143,42 +142,6 @@ class LightDataArray:
             coord_dims=new_coord_dims,
             attrs=self.attrs,
         )
-
-    def _to_index(self, dim: str, label: object) -> slice | int:
-        coord = self.coords[dim]
-        if isinstance(label, slice):
-            # start: find first index >= label.start
-            start = None
-            if label.start is not None:
-                start = np.searchsorted(coord, label.start, side="left")
-
-            # stop: find first index > label.stop to ensure slice includes endpoints
-            stop = None
-            if label.stop is not None:
-                stop = np.searchsorted(coord, label.stop, side="right")
-
-            return slice(start, stop)
-        else:
-            return np.searchsorted(coord, label, side="left")
-
-    def sel(
-        self,
-        indexers: None | dict[str, Any | slice | list] = None,
-        **indexers_kwargs: object,
-    ) -> "LightDataArray":
-        """Select data by coordinate labels, converting them to indices.
-
-        Args:
-            indexers: A dict with keys matching dimensions and values given by scalars, slices or
-                arrays of tick labels. For dimensions with multi-index, the indexer may also be a
-                dict-like object with keys matching index level names.
-            **indexers_kwargs: The keyword arguments form of indexers.
-        """
-        if indexers is not None:
-            indexers_kwargs.update(indexers)
-
-        isel_kwargs = {dim: self._to_index(dim, val) for dim, val in indexers_kwargs.items()}
-        return self.isel(**isel_kwargs)
 
     def read(self) -> None:
         """Trigger reading of the data if it's a lazy handle."""

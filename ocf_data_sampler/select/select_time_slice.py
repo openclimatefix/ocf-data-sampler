@@ -3,6 +3,7 @@
 import numpy as np
 import xarray as xr
 
+from ocf_data_sampler.select import get_indices_in_sorted_unique
 from ocf_data_sampler.time_utils import date_range, datetime_ceil
 
 
@@ -22,12 +23,11 @@ def select_time_slice(
         interval_end: The end of the interval with respect to t0
         time_resolution: Distance between neighbouring timestamps
     """
-    start_dt = t0 + interval_start
-    end_dt = t0 + interval_end
+    date_range = np.array([t0 + interval_start, t0 + interval_end])
+    ceil_date_range = datetime_ceil(date_range, time_resolution)
+    start_ind, end_ind = get_indices_in_sorted_unique(da.time_utc.values, ceil_date_range)
 
-    start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
-
-    return da.sel(time_utc=slice(start_dt, end_dt))
+    return da.isel(time_utc=slice(start_ind, end_ind+1))
 
 
 def select_time_slice_nwp(
@@ -70,39 +70,25 @@ def select_time_slice_nwp(
     start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
     target_times = date_range(start_dt, end_dt, freq=time_resolution)
 
+    # Unpack for convenience and so we don't need to unpack multiple times
+    all_init_times = da.init_time_utc.values
+    all_steps = da.step.values
+
     # Potentially apply NWP dropout
     if consider_dropout and (np.random.uniform() < dropout_frac):
         t0_available = t0 + np.random.choice(dropout_timedeltas)
     else:
         t0_available = t0
 
-    # Get the available and relevant init-times
-    t_min = target_times[0] - da.step.values[-1]
-    init_times = da.init_time_utc.values
-    available_init_times = init_times[(t_min<=init_times) & (init_times<=t0_available)]
+    # Can't use an init-time if the start_dt is before its first step
+    t0_available = min(t0_available, start_dt - all_steps[0])
 
-    # Find the most recent available init-times for all target-times
-    selected_init_times = np.array(
-        [available_init_times[available_init_times<=t][-1] for t in target_times],
-    )
+    # Find the most recent available init-time <= t0_available
+    selected_init_time_index = np.searchsorted(all_init_times, t0_available, side="right") - 1
+    selected_init_time = all_init_times[selected_init_time_index]
 
     # Find the required steps for all target-times
-    steps = target_times - selected_init_times
+    required_steps = target_times - selected_init_time
+    selected_step_indices = get_indices_in_sorted_unique(all_steps, required_steps)
 
-    # If we are only selecting from one init-time we can construct the slice so its faster
-    if len(np.unique(selected_init_times))==1:
-        da_sel = da.sel(init_time_utc=selected_init_times[0], step=slice(steps[0], steps[-1]))
-
-    # If we are selecting from multiple init times this more complex and slower
-    else:
-        # We want one timestep for each target_time_hourly (obviously!) If we simply do
-        # nwp.sel(init_time=init_times, step=steps) then we'll get the *product* of
-        # init_times and steps, which is not what we want! Instead, we use xarray's
-        # vectorised-indexing mode via using a DataArray indexer.  See the last example here:
-        # https://docs.xarray.dev/en/latest/user-guide/indexing.html#more-advanced-indexing
-        coords = {"step": steps}
-        init_time_indexer = xr.DataArray(selected_init_times, coords=coords)
-        step_indexer = xr.DataArray(steps, coords=coords)
-        da_sel = da.sel(init_time_utc=init_time_indexer, step=step_indexer)
-
-    return da_sel
+    return da.isel(init_time_utc=selected_init_time_index, step=selected_step_indices)
