@@ -1,5 +1,7 @@
 """Module for opening NWP data."""
 
+from collections.abc import Callable
+
 import numpy as np
 import xarray as xr
 
@@ -9,6 +11,16 @@ from ocf_data_sampler.load.nwp.providers.gdm import open_gdm
 from ocf_data_sampler.load.nwp.providers.gfs import open_gfs
 from ocf_data_sampler.load.nwp.providers.icon import open_icon_eu
 from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
+
+_OPEN_NWP_FUNCTIONS: dict[str, Callable[..., xr.DataArray]] = {
+    "ukv": open_ukv,
+    "ecmwf": open_ifs,
+    "mo_global": open_ifs,
+    "icon-eu": open_icon_eu,
+    "gencast": open_gdm,
+    "gfs": open_gfs,
+    "cloudcasting": open_cloudcasting,
+}
 
 
 def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
@@ -25,7 +37,9 @@ def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
         ValueError: If a required coordinate is missing.
     """
     if not np.issubdtype(data_array.dtype, np.number):
-        raise TypeError(f"NWP data for {provider} should be numeric, not {data_array.dtype}")
+        raise TypeError(
+            f"NWP data for {provider} should be numeric, not {data_array.dtype}",
+        )
 
     common_expected_dtypes = {
         "init_time_utc": np.datetime64,
@@ -90,28 +104,16 @@ def open_nwp(
     """
     provider = provider.lower()
 
-    kwargs = {
-        "zarr_path": zarr_path,
-    }
-    if provider == "ukv":
-        _open_nwp = open_ukv
-    elif provider in ["ecmwf", "mo_global"]:
-        _open_nwp = open_ifs
-    elif provider == "icon-eu":
-        _open_nwp = open_icon_eu
-    elif provider == "gencast":
-        _open_nwp = open_gdm
-    elif provider == "gfs":
-        _open_nwp = open_gfs
-        # GFS has a public/private flag
-        if public:
-            kwargs["public"] = True
-    elif provider == "cloudcasting":
-        _open_nwp = open_cloudcasting
-    else:
-        raise ValueError(f"Unknown provider: {provider}")
+    if provider not in _OPEN_NWP_FUNCTIONS:
+        supported = ", ".join(sorted(_OPEN_NWP_FUNCTIONS.keys()))
+        raise ValueError(f"Unknown provider: {provider!r}. Supported: {supported}")
 
-    data_array = _open_nwp(**kwargs)
+    opener = _OPEN_NWP_FUNCTIONS[provider]
+
+    kwargs = {"zarr_path": zarr_path}
+    if provider == "gfs" and public:
+        kwargs["public"] = True
+
+    data_array = opener(**kwargs)
     _validate_nwp_data(data_array, provider)
-
     return data_array
