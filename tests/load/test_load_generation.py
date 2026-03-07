@@ -39,3 +39,21 @@ def test_open_generation_bad_dtype(tmp_path: Path):
 
     with pytest.raises(TypeError, match="generation_mw should be floating"):
         open_generation(zarr_path=zarr_path)
+
+
+def test_open_generation_bad_dtype_capacity(tmp_path: Path):
+    """Test that open_generation raises a TypeError when capacity_mwp is integer."""
+    zarr_path = tmp_path / "bad_capacity.zarr"
+    bad_ds = xr.Dataset(
+        data_vars={
+            "generation_mw": (("time_utc", "location_id"), np.random.rand(5, 2).astype(np.float32)),
+            "capacity_mwp": (("location_id",), np.array([90, 110])),
+        },
+        coords={
+            "time_utc": pd.date_range("2023-01-01", periods=5, freq="30min"),
+            "location_id": [1, 2],
+        },
+    )
+    bad_ds.to_zarr(zarr_path)
+    with pytest.raises(TypeError, match="capacity_mwp should be floating"):
+        open_generation(zarr_path=zarr_path)
