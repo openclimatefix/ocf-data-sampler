@@ -27,9 +27,20 @@ def convert_to_numpy_sample(
 
     if "generation" in sample:
         da = sample["generation"]
+
+        # Get the position index of the generation and capacities
+        gen_idx = np.argmax(da.gen_param.values=="generation_mw")
+        cap_idx = np.argmax(da.gen_param.values=="capacity_mwp")
+
+        generation_values = da.isel(gen_param=gen_idx).values
+        capacity_value = da.isel(gen_param=cap_idx).values[0]
+
+        if capacity_value!=0:
+            generation_values = generation_values/capacity_value
+
         numpy_sample.update({
-            "generation": da.values,
-            "capacity_mwp": da.capacity_mwp.values[0],
+            "generation": generation_values,
+            "capacity_mwp": capacity_value,
             "time_utc": da["time_utc"].values.astype(float),
             "t0_idx": int(t0_idx),
             "longitude": float(da.longitude.values),

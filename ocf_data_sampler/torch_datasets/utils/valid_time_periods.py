@@ -9,7 +9,7 @@ from ocf_data_sampler.select.find_contiguous_time_periods import (
     find_contiguous_t0_periods_nwp,
     intersection_of_multiple_dataframes_of_periods,
 )
-from ocf_data_sampler.utils import minutes
+from ocf_data_sampler.time_utils import minutes
 
 
 def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.DataFrame:
@@ -28,15 +28,14 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         for nwp_key, nwp_config in config.input_data.nwp.items():
             da = datasets_dict["nwp"][nwp_key]
 
+            # Extract the max extents of the forecast steps
+            first_forecast_step = da["step"].values[0]
+            last_forecast_step = da["step"].values[-1]
+
             if nwp_config.dropout_timedeltas_minutes==[]:
                 max_dropout = minutes(0)
             else:
                 max_dropout = minutes(np.max(np.abs(nwp_config.dropout_timedeltas_minutes)))
-
-            if nwp_config.max_staleness_minutes is None:
-                max_staleness = None
-            else:
-                max_staleness = minutes(nwp_config.max_staleness_minutes)
 
             # The last step of the forecast is lost if we have to diff channels
             if len(nwp_config.accum_channels) > 0:
@@ -44,33 +43,20 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
             else:
                 end_buffer = minutes(0)
 
-            # This is the max staleness we can use considering the max step of the input data
-            max_possible_staleness = (
-                pd.Timedelta(da["step"].max().item())
-                - minutes(nwp_config.interval_end_minutes)
-                - end_buffer
-            )
-
             # Default to use max possible staleness unless specified in config
-            if max_staleness is None:
-                max_staleness = max_possible_staleness
+            if nwp_config.max_staleness_minutes is None:
+                max_staleness = None
             else:
-                # Make sure the max acceptable staleness isn't longer than the max possible
-                if max_staleness > max_possible_staleness:
-                    raise ValueError(
-                        f"max_staleness_minutes is too long for the input data, "
-                        f"{max_staleness=}, {max_possible_staleness=}",
-                    )
-
-            # Find the first forecast step
-            first_forecast_step = pd.Timedelta(da["step"].min().item())
+                max_staleness = minutes(nwp_config.max_staleness_minutes)
 
             time_periods = find_contiguous_t0_periods_nwp(
-                init_times=pd.DatetimeIndex(da["init_time_utc"]),
+                init_times=da["init_time_utc"].values,
                 interval_start=minutes(nwp_config.interval_start_minutes),
-                max_staleness=max_staleness,
-                max_dropout=max_dropout,
+                interval_end=minutes(nwp_config.interval_end_minutes)+end_buffer,
                 first_forecast_step=first_forecast_step,
+                last_forecast_step=last_forecast_step,
+                max_dropout=max_dropout,
+                max_staleness=max_staleness,
             )
 
             contiguous_time_periods[f"nwp_{nwp_key}"] = time_periods
@@ -79,7 +65,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         sat_config = config.input_data.satellite
 
         time_periods = find_contiguous_t0_periods(
-            pd.DatetimeIndex(datasets_dict["sat"]["time_utc"]),
+            datasets_dict["sat"]["time_utc"].values,
             time_resolution=minutes(sat_config.time_resolution_minutes),
             interval_start=minutes(sat_config.interval_start_minutes),
             interval_end=minutes(sat_config.interval_end_minutes),
@@ -91,7 +77,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         generation_config = config.input_data.generation
 
         time_periods = find_contiguous_t0_periods(
-            pd.DatetimeIndex(datasets_dict["generation"]["time_utc"]),
+            datasets_dict["generation"]["time_utc"].values,
             time_resolution=minutes(generation_config.time_resolution_minutes),
             interval_start=minutes(generation_config.interval_start_minutes),
             interval_end=minutes(generation_config.interval_end_minutes),
