@@ -80,10 +80,12 @@ def select_time_slice_nwp(
     init_times = da.init_time_utc.values
     available_init_times = init_times[(t_min<=init_times) & (init_times<=t0_available)]
 
-    # Find the most recent available init-times for all target-times
-    selected_init_times = np.array(
-        [available_init_times[available_init_times<=t][-1] for t in target_times],
-    )
+    # Find the most recent available init-times for all target-times.
+    # Uses binary search: O(n log m) vs the naive O(n*m) loop approach.
+    # Assumes available_init_times is non-empty and each target time has at least one
+    # available init-time that precedes it (same precondition as the original code).
+    indices = np.searchsorted(available_init_times, target_times, side="right") - 1
+    selected_init_times = available_init_times[indices]
 
     # Find the required steps for all target-times
     steps = target_times - selected_init_times

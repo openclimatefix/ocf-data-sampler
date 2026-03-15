@@ -240,40 +240,28 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
         start_dt and end_dt.
     """
     if a.empty or b.empty:
-        return pd.DataFrame(columns=["start_dt", "end_dt"])
+        return a.iloc[0:0].copy().reset_index(drop=True)
 
-    # Maybe switch these for efficiency in the next section. We will do the native python loop over
-    # the shorter dataframe
-    if len(a) > len(b):
-        a, b = b, a
+    # Cross-join every row of `a` with every row of `b`, then filter and clip vectorially.
+    # This is equivalent to the original itertuples() loop but avoids Python-level iteration.
+    a_cross = a.assign(_key=1)
+    b_cross = b.assign(_key=1)
+    cross = a_cross.merge(b_cross, on="_key", suffixes=("_a", "_b")).drop(columns="_key")
 
-    all_intersecting_periods = []
-    for a_period in a.itertuples():
-        # Five ways in which two periods may overlap:
-        # a: |----| or |---|   or  |---| or   |--|   or |-|
-        # b:  |--|       |---|   |---|      |------|    |-|
-        # In all five, `a` must always start before (or equal to) where `b` ends,
-        # and `a` must always end after (or equal to) where `b` starts.
+    # Keep only pairs that overlap (same five-case condition as before)
+    overlap = cross[
+        (cross["start_dt_a"] <= cross["end_dt_b"]) & (cross["end_dt_a"] >= cross["start_dt_b"])
+    ].copy()
 
-        # There are two ways in which two periods may *not* overlap:
-        # a: |---|        or        |---|
-        # b:       |---|      |---|
-        # `overlapping_periods` will not include periods which do *not* overlap.
+    if overlap.empty:
+        return a.iloc[0:0].copy().reset_index(drop=True)
 
-        overlapping_periods = b[(a_period.start_dt <= b.end_dt) & (a_period.end_dt >= b.start_dt)]
+    # Intersection is [max(start_a, start_b), min(end_a, end_b)]
+    result = pd.DataFrame(
+        {
+            "start_dt": np.maximum(overlap["start_dt_a"], overlap["start_dt_b"]),
+            "end_dt": np.minimum(overlap["end_dt_a"], overlap["end_dt_b"]),
+        },
+    )
 
-        # Now find the intersection of each period in `overlapping_periods` with
-        # the period from `a` that starts at `a_start_dt` and ends at `a_end_dt`.
-        # We do this by clipping each row of `overlapping_periods`
-        # to start no earlier than `a_start_dt`, and end no later than `a_end_dt`.
-
-        # First, make a copy, so we don't clip the underlying data in `b`.
-        intersection = overlapping_periods.copy()
-        intersection["start_dt"] = intersection.start_dt.clip(lower=a_period.start_dt)
-        intersection["end_dt"] = intersection.end_dt.clip(upper=a_period.end_dt)
-
-        all_intersecting_periods.append(intersection)
-
-
-    all_intersecting_periods = pd.concat(all_intersecting_periods)
-    return all_intersecting_periods.sort_values(by="start_dt").reset_index(drop=True)
+    return result.sort_values(by="start_dt").reset_index(drop=True)

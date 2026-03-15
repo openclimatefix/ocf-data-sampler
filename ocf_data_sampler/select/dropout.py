@@ -36,16 +36,16 @@ def apply_history_dropout(
 
         # Create list with equal chance for all dropout timedeltas
         n = len(dropout_timedeltas)
-        dropout_frac = [dropout_frac/n for _ in range(n)]
+        dropout_frac = [dropout_frac / n] * n
     else:
         if not 0<=sum(dropout_frac)<=1:
             raise ValueError("The sum of `dropout_frac` must be in range [0, 1]")
         if len(dropout_timedeltas)!=len(dropout_frac):
             raise ValueError("`dropout_timedeltas` and `dropout_frac` must have the same length")
 
-        dropout_frac = [*dropout_frac] # Make copy of the list so we can append to it
+        dropout_frac = list(dropout_frac) # Make copy of the list so we can append to it
 
-    dropout_timedeltas = [*dropout_timedeltas] # Make copy of the list so we can append to it
+    dropout_timedeltas = list(dropout_timedeltas) # Make copy of the list so we can append to it
 
     # Add chance of no dropout
     dropout_frac.append(1-sum(dropout_frac))

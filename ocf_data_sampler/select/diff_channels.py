@@ -15,7 +15,7 @@ def diff_channels(da: xr.DataArray, accum_channels: list[str]) -> xr.DataArray:
         raise ValueError("This function assumes the first two dimensions are step then channel")
 
     all_channels = da.channel.values
-    accum_channel_inds = [i for i, c in enumerate(all_channels) if c in accum_channels]
+    accum_channel_inds = np.where(np.isin(all_channels, accum_channels))[0]
 
     # Make a copy of the values to avoid changing the underlying numpy array
     vals = da.values.copy()
