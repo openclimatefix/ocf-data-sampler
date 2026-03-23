@@ -1,7 +1,8 @@
 """Satellite loader."""
+import json
+
 import numpy as np
 import xarray as xr
-import json
 
 from ocf_data_sampler.load.open_xarray_tensorstore import open_zarr, open_zarrs
 from ocf_data_sampler.load.utils import (

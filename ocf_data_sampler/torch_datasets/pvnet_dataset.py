@@ -214,7 +214,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             channel_mins = self.clip_min_dict["sat"]
             channel_maxs = self.clip_max_dict["sat"]
             dataset_dict["sat"].data = (
-                (dataset_dict["sat"].data.clip(channel_mins, channel_maxs) - channel_means) 
+                (dataset_dict["sat"].data.clip(channel_mins, channel_maxs) - channel_means)
                 / channel_stds
             )
 
