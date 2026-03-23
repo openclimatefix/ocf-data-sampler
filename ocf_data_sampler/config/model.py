@@ -160,23 +160,27 @@ class NormalisationValues(Base):
     """Normalisation parameters."""
     mean: float = Field(..., description="Mean value for normalization")
     std: float = Field(..., gt=0, description="Standard deviation (must be positive)")
-    clip_min: float = Field(
-        float('-inf'),
+    clip_min: float | None = Field(
+        None,
         description="Minimum value to clip to before normalisation. If None, no clipping is applied"
     )
-    clip_max: float = Field(
-        float('inf'),
+    clip_max: float | None = Field(
+        None,
         description="Maximum value to clip to before normalisation. If None, no clipping is applied"
     )
 
     @model_validator(mode="after")
     def validate_clip_range(self) -> "NormalisationValues":
-        """Validate that clip_min is less than clip_max."""
-        if self.clip_min >= self.clip_max:
+        if (
+            self.clip_min is not None 
+            and self.clip_max is not None 
+            and self.clip_min >= self.clip_max
+        ):
             raise ValueError(
                 f"clip_min ({self.clip_min}) must be less than clip_max ({self.clip_max})"
             )
         return self
+
 
 class NormalisationConstantsMixin(Base):
     """Normalisation constants for multiple channels."""

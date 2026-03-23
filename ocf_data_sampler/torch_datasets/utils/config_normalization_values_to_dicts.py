@@ -48,8 +48,8 @@ def config_normalization_values_to_dicts(
 
                 means_list.append(norm_conf.mean)
                 stds_list.append(norm_conf.std)
-                clip_min_list.append(norm_conf.clip_min)
-                clip_max_list.append(norm_conf.clip_max)
+                clip_min_list.append(norm_conf.clip_min or -np.inf)
+                clip_max_list.append(norm_conf.clip_max or np.inf)
 
             means_dict["nwp"][nwp_key] = np.array(means_list)[None, :, None, None]
             stds_dict["nwp"][nwp_key] = np.array(stds_list)[None, :, None, None]
@@ -68,8 +68,8 @@ def config_normalization_values_to_dicts(
             norm_conf = sat_config.normalisation_constants[channel]
             means_list.append(norm_conf.mean)
             stds_list.append(norm_conf.std)
-            clip_min_list.append(norm_conf.clip_min)
-            clip_max_list.append(norm_conf.clip_max)
+            clip_min_list.append(norm_conf.clip_min or -np.inf)
+            clip_max_list.append(norm_conf.clip_max or np.inf)
 
         # Convert to array and expand dimensions so we can normalise the 4D sat and NWP sources
         means_dict["sat"] = np.array(means_list)[None, :, None, None]
