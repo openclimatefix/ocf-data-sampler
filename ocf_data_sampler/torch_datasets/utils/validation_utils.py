@@ -3,8 +3,7 @@
 import logging
 from typing import Any
 
-from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.numpy_sample import GenerationSampleKey, NWPSampleKey, SatelliteSampleKey
+from ocf_data_sampler.config.model import Configuration, TimeWindowMixin
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +30,7 @@ def check_dimensions(
         )
 
 
-def calculate_expected_shapes(
-    config: Configuration,
-) -> dict[str, tuple[int, ...]]:
+def calculate_expected_shapes(config: Configuration) -> dict[str, tuple[int, ...]]:
     """Calculate expected shapes from configuration.
 
     Args:
@@ -46,24 +43,12 @@ def calculate_expected_shapes(
     input_data = config.input_data
 
     # Calculate generation shape
-    gsp_config = input_data.generation
-    expected_shapes[GenerationSampleKey.generation] = (
-        _calculate_time_steps(
-            gsp_config.interval_start_minutes,
-            gsp_config.interval_end_minutes,
-            gsp_config.time_resolution_minutes,
-        ),
-    )
+    expected_shapes["generation"] = (get_num_time_steps(input_data.generation),)
 
     # Calculate NWP shape for multiple providers
-    expected_shapes[NWPSampleKey.nwp] = {}
     for provider_key, provider_config in input_data.nwp.items():
-        expected_shapes[NWPSampleKey.nwp][provider_key] = (
-            _calculate_time_steps(
-                provider_config.interval_start_minutes,
-                provider_config.interval_end_minutes,
-                provider_config.time_resolution_minutes,
-            ),
+        expected_shapes[f"nwp_{provider_key}"] = (
+            get_num_time_steps(provider_config),
             len(provider_config.channels),
             provider_config.image_size_pixels_height,
             provider_config.image_size_pixels_width,
@@ -71,28 +56,15 @@ def calculate_expected_shapes(
 
     # Calculate satellite shape
     sat_config = input_data.satellite
-    expected_shapes[SatelliteSampleKey.satellite_actual] = (
-        _calculate_time_steps(
-            sat_config.interval_start_minutes,
-            sat_config.interval_end_minutes,
-            sat_config.time_resolution_minutes,
-        ),
+    expected_shapes["satellite"] = (
+        get_num_time_steps(sat_config),
         len(sat_config.channels),
         sat_config.image_size_pixels_height,
         sat_config.image_size_pixels_width,
     )
 
     # Calculate solar coordinates shapes
-    solar_config = input_data.solar_position
-    # For solar azimuth
-    expected_shapes["solar_azimuth"] = (
-        _calculate_time_steps(
-            solar_config.interval_start_minutes,
-            solar_config.interval_end_minutes,
-            solar_config.time_resolution_minutes,
-        ),
-    )
-    # For solar elevation
+    expected_shapes["solar_azimuth"] = (get_num_time_steps(input_data.solar_position),)
     expected_shapes["solar_elevation"] = expected_shapes["solar_azimuth"]
 
     return expected_shapes
@@ -132,16 +104,15 @@ def validation_warning(
     logger.warning(log_message)
 
 
-def _calculate_time_steps(start_minutes: int, end_minutes: int, resolution_minutes: int) -> int:
-    """Calculate number of time steps based on interval and resolution.
+def get_num_time_steps(source_config: TimeWindowMixin) -> int:
+    """Calculate number of time steps based on config interval and resolution.
 
     Args:
-        start_minutes: Start of interval in minutes
-        end_minutes: End of interval in minutes
-        resolution_minutes: Time resolution in minutes
+        source_config: Config for a single data source
 
     Returns:
         Number of time steps
     """
-    time_span = end_minutes - start_minutes
-    return (time_span // resolution_minutes) + 1
+    return (
+        source_config.interval_end_minutes - source_config.interval_start_minutes
+    ) // source_config.time_resolution_minutes + 1

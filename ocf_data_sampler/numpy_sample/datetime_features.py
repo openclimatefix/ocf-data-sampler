@@ -42,7 +42,7 @@ def encode_datetimes(datetimes: NDArray[np.datetime64]) -> NumpySample:
 def get_t0_embedding(
     t0: np.datetime64,
     embeddings: list[tuple[str, Literal["cyclic", "linear"]]],
-) -> dict[str, np.ndarray]:
+) -> NumpySample:
     """Creates dictionary of t0 time embeddings.
 
     Args:

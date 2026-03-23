@@ -6,4 +6,4 @@ def test_convert_satellite_to_numpy_sample(da_sat_like):
     numpy_sample = convert_to_numpy_sample({"sat": da_sat_like}, t0_idx=t0_idx)
 
     assert isinstance(numpy_sample, dict)
-    assert (numpy_sample["satellite_actual"] == da_sat_like.values).all()
+    assert (numpy_sample["satellite"] == da_sat_like.values).all()
