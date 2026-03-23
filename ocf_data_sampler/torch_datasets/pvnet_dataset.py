@@ -11,7 +11,7 @@ import xarray as xr
 from numpy.typing import NDArray
 from pydantic.warnings import UnsupportedFieldAttributeWarning
 from torch.utils.data import Dataset
-from torch.utils.data.dataloader import default_collate
+from torch.utils.data import default_collate
 from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration

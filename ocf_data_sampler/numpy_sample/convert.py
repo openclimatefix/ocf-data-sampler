@@ -39,8 +39,8 @@ def convert_to_numpy_sample(
         numpy_sample.update(
             {
                 "generation": generation_values,
-                "capacity": capacity_value,
-                "genration_t0_idx": int(t0_idx),
+                "capacity_mwp": capacity_value,
+                "generation_t0_idx": int(t0_idx),
                 "generation_time_utc": da.time_utc.values.astype(float),
             },
         )
