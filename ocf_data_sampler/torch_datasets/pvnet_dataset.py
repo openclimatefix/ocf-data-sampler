@@ -174,9 +174,13 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         )
 
         # Extract the normalisation values from the config for faster access
-        means_dict, stds_dict = config_normalization_values_to_dicts(config)
-        self.means_dict = means_dict
-        self.stds_dict = stds_dict
+        mean_dict, std_dict, clip_min_dict, clip_max_dict = (
+            config_normalization_values_to_dicts(config)
+        )
+        self.mean_dict = mean_dict
+        self.std_dict = std_dict
+        self.clip_min_dict = clip_min_dict
+        self.clip_max_dict = clip_max_dict
 
     def process_and_combine_datasets(
         self,
@@ -194,15 +198,25 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Normalise NWP
         if "nwp" in dataset_dict:
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
-                channel_means = self.means_dict["nwp"][nwp_key]
-                channel_stds = self.stds_dict["nwp"][nwp_key]
-                dataset_dict["nwp"][nwp_key] = (da_nwp - channel_means) / channel_stds
+                channel_means = self.mean_dict["nwp"][nwp_key]
+                channel_stds = self.std_dict["nwp"][nwp_key]
+                channel_mins = self.clip_min_dict["nwp"][nwp_key]
+                channel_maxs = self.clip_max_dict["nwp"][nwp_key]
+                dataset_dict["nwp"][nwp_key].data = (
+                    (da_nwp.data.clip(channel_mins, channel_maxs) - channel_means)
+                    / channel_stds
+                )
 
         # Normalise satellite
         if "sat" in dataset_dict:
-            channel_means = self.means_dict["sat"]
-            channel_stds = self.stds_dict["sat"]
-            dataset_dict["sat"] = (dataset_dict["sat"] - channel_means) / channel_stds
+            channel_means = self.mean_dict["sat"]
+            channel_stds = self.std_dict["sat"]
+            channel_mins = self.clip_min_dict["sat"]
+            channel_maxs = self.clip_max_dict["sat"]
+            dataset_dict["sat"].data = (
+                (dataset_dict["sat"].data.clip(channel_mins, channel_maxs) - channel_means) 
+                / channel_stds
+            )
 
         # Normalise generation by capacity
         if "generation" in dataset_dict:
