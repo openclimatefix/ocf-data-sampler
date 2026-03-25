@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from ocf_data_sampler.select.find_contiguous_time_periods import (
@@ -61,16 +62,22 @@ def test_find_contiguous_t0_periods_nwp():
         end_dt=["2023-01-01 21:00", "2023-01-03 06:00"],
     )
     exp_res2 = construct_time_periods_df(
-        start_dt=["2023-01-01 05:00", "2023-01-02 05:00"],
-        end_dt=["2023-01-01 21:00", "2023-01-03 06:00"],
+        start_dt=["2023-01-01 05:00", "2023-01-02 05:00", "2023-01-02 14:00"],
+        end_dt=["2023-01-01 21:00", "2023-01-02 12:00", "2023-01-03 06:00"],
     )
     exp_res3 = construct_time_periods_df(
-        start_dt=["2023-01-01 05:00", "2023-01-02 05:00", "2023-01-02 14:00"],
-        end_dt=["2023-01-01 18:00", "2023-01-02 09:00", "2023-01-03 03:00"],
+        start_dt=["2023-01-01 05:00", "2023-01-01 11:00", "2023-01-02 05:00", "2023-01-02 14:00"],
+        end_dt=["2023-01-01 09:00", "2023-01-01 18:00", "2023-01-02 09:00", "2023-01-03 03:00"],
     )
     exp_res4 = construct_time_periods_df(
-        start_dt=["2023-01-01 05:00", "2023-01-01 11:00", "2023-01-02 05:00", "2023-01-02 14:00"],
-        end_dt=["2023-01-01 06:00", "2023-01-01 15:00", "2023-01-02 06:00", "2023-01-03 00:00"],
+        start_dt=[
+            "2023-01-01 05:00", "2023-01-01 11:00", "2023-01-01 14:00", "2023-01-02 05:00",
+            "2023-01-02 14:00", "2023-01-02 17:00", "2023-01-02 20:00", "2023-01-02 23:00",
+        ],
+        end_dt=[
+            "2023-01-01 06:00", "2023-01-01 12:00", "2023-01-01 15:00", "2023-01-02 06:00",
+            "2023-01-02 15:00", "2023-01-02 18:00", "2023-01-02 21:00", "2023-01-03 00:00",
+        ],
     )
     exp_res5 = construct_time_periods_df(
         start_dt=["2023-01-01 06:00", "2023-01-01 12:00", "2023-01-02 06:00", "2023-01-02 15:00"],
@@ -80,13 +87,16 @@ def test_find_contiguous_t0_periods_nwp():
     expected_results = [exp_res1, exp_res2, exp_res3, exp_res4, exp_res5]
 
     # Create 3-hourly init times with a few time stamps missing
-    freq = pd.Timedelta(3, "h")
-    init_times = pd.date_range(
-        "2023-01-01 03:00",
-        "2023-01-02 21:00",
-        freq=freq,
-        unit="ns",
-    ).delete([1, 4, 5, 6, 7, 9, 10])
+    init_times = (
+        pd.date_range("2023-01-01 03:00", "2023-01-02 21:00", freq="3h", unit="ns")
+        .delete([1, 4, 5, 6, 7, 9, 10])
+        .values
+    )
+
+    first_forecast_step = np.timedelta64(0)
+    last_forecast_step = np.timedelta64(36, "h")
+
+    interval_end = np.timedelta64(3, "h")
 
     # Choose some history durations and max stalenesses
     history_durations_hr = [0, 2, 2, 2, 2]
@@ -94,13 +104,16 @@ def test_find_contiguous_t0_periods_nwp():
     max_dropouts_hr = [0, 0, 0, 0, 3]
 
     for i, expected in enumerate(expected_results):
-        interval_start = pd.Timedelta(-history_durations_hr[i], "h")
-        max_staleness = pd.Timedelta(max_stalenesses_hr[i], "h")
-        max_dropout = pd.Timedelta(max_dropouts_hr[i], "h")
+        interval_start = np.timedelta64(-history_durations_hr[i], "h")
+        max_staleness = np.timedelta64(max_stalenesses_hr[i], "h")
+        max_dropout = np.timedelta64(max_dropouts_hr[i], "h")
 
         time_periods = find_contiguous_t0_periods_nwp(
             init_times=init_times,
             interval_start=interval_start,
+            interval_end=interval_end,
+            first_forecast_step=first_forecast_step,
+            last_forecast_step=last_forecast_step,
             max_staleness=max_staleness,
             max_dropout=max_dropout,
         )

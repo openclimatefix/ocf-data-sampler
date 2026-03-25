@@ -1,15 +1,15 @@
 """Utility functions for working with xarray objects."""
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 
 
-def check_time_unique_increasing(datetimes: xr.DataArray) -> None:
-    """Check that the time dimension is unique and increasing."""
-    time = pd.DatetimeIndex(datetimes)
-    if not (time.is_unique and time.is_monotonic_increasing):
-        raise ValueError("Time dimension must be unique and monotonically increasing")
+def assert_values_unique_increasing(values: np.ndarray, label: str = "values") -> None:
+    """Assert the values are unique and monotonically increasing."""
+    if len(np.unique(values))!=len(values):
+        raise ValueError(f"{label} must be unique")
+    if not (values[:-1] < values[1:]).all():
+        raise ValueError(f"{label} must be increasing")
 
 
 def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -> xr.Dataset:
@@ -31,10 +31,8 @@ def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -
         ds[y_coord] = np.ascontiguousarray(ds[y_coord].values)
 
     # Check the coords are all increasing now
-    if not (ds[x_coord].diff(dim=x_coord) > 0).all():
-        raise ValueError(f"'{x_coord}' coordinate must be increasing")
-    if not (ds[y_coord].diff(dim=y_coord) > 0).all():
-        raise ValueError(f"'{y_coord}' coordinate must be increasing")
+    assert_values_unique_increasing(ds[x_coord].values, x_coord)
+    assert_values_unique_increasing(ds[y_coord].values, y_coord)
 
     return ds
 

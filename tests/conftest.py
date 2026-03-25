@@ -87,11 +87,10 @@ def sat_zarr_path(session_tmp_path):
         "WV_062",
         "WV_073",
     ]
-    data = dask.array.zeros(
+    data = dask.array.random.random(
         (len(variables), 288, 100, 100),
         chunks=(-1, 10, -1, -1),
-        dtype=np.float32,
-    )
+    ).astype(np.float32)
     data[:, 10, :, :] = np.nan
 
     ds = xr.DataArray(

@@ -1,17 +1,9 @@
 """Miscellaneous helper functions."""
 
 import numpy as np
-import pandas as pd
-from xarray_tensorstore import read
+from xarray_tensorstore import read as xtr_read
 
-
-def minutes(minutes: int | list[float]) -> pd.Timedelta | pd.TimedeltaIndex:
-    """Timedelta minutes.
-
-    Args:
-        minutes: the number of minutes, single value or list
-    """
-    return pd.to_timedelta(minutes, unit="m")
+from ocf_data_sampler.lightarray import LightDataArray
 
 
 def load(xarray_dict: dict) -> dict:
@@ -31,18 +23,21 @@ def load(xarray_dict: dict) -> dict:
     return xarray_dict
 
 
-def tensorstore_read(xarray_dict: dict) -> dict:
-    """Start reading a nested dictionary of xarray-tensorstore DataArrays."""
+def read_data_dict(xarray_dict: dict) -> dict:
+    """Start reading a nested dictionary of DataArrays."""
     # Kick off the tensorstore async reading
     for k, v in xarray_dict.items():
         if isinstance(v, dict):
-            xarray_dict[k] = tensorstore_read(v)
+            xarray_dict[k] = read_data_dict(v)
         else:
-            xarray_dict[k] = read(v)
+            if isinstance(v, LightDataArray):
+                xarray_dict[k].read()
+            else:
+                xarray_dict[k] = xtr_read(v)
     return xarray_dict
 
 
 def load_data_dict(xarray_dict: dict) -> dict:
-    """Eagerly read and load a nested dictionary of xarray-tensorstore DataArrays."""
-    return load(tensorstore_read(xarray_dict))
+    """Eagerly read and load a nested dictionary of DataArrays."""
+    return load(read_data_dict(xarray_dict))
 

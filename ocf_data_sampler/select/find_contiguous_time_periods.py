@@ -2,21 +2,22 @@
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
-from ocf_data_sampler.load.utils import check_time_unique_increasing
+from ocf_data_sampler.load.utils import assert_values_unique_increasing
 
-ZERO_TDELTA = pd.Timedelta(0)
+ZERO_TDELTA = np.timedelta64(0, "ns")
 
 
 def find_contiguous_time_periods(
-    datetimes: pd.DatetimeIndex,
+    datetimes: NDArray[np.datetime64],
     min_seq_length: int,
-    max_gap_duration: pd.Timedelta,
+    max_gap_duration: np.timedelta64,
 ) -> pd.DataFrame:
     """Return a pd.DataFrame where each row records the boundary of a contiguous time period.
 
     Args:
-      datetimes: pd.DatetimeIndex. Must be sorted.
+      datetimes: Available datetimes - must be sorted.
       min_seq_length: Sequences of min_seq_length or shorter will be discarded.
       max_gap_duration: If any pair of consecutive `datetimes` is more than `max_gap_duration`
         apart, then this pair of `datetimes` will be considered a "gap" between two contiguous
@@ -31,10 +32,11 @@ def find_contiguous_time_periods(
         raise ValueError("No datetimes to use")
     if min_seq_length <= 1:
         raise ValueError(f"{min_seq_length=} must be greater than 1")
-    check_time_unique_increasing(datetimes)
+
+    assert_values_unique_increasing(datetimes, "datetimes")
 
     # Find indices of gaps larger than max_gap:
-    gap_mask = pd.TimedeltaIndex(np.diff(datetimes)) > max_gap_duration
+    gap_mask = np.diff(datetimes) > max_gap_duration
     gap_indices = np.argwhere(gap_mask)[:, 0]
 
     # gap_indicies are the indices into dt_index for the timestep immediately before the gap.
@@ -46,7 +48,7 @@ def find_contiguous_time_periods(
     # Capture the last segment of dt_index.
     segment_boundaries = np.concatenate((segment_boundaries, [len(datetimes)]))
 
-    periods: list[list[pd.Timestamp]] = []
+    periods: list[list[np.datetime64]] = []
     start_i = 0
     for next_start_i in segment_boundaries:
         n_timesteps = next_start_i - start_i
@@ -65,8 +67,8 @@ def find_contiguous_time_periods(
 
 def trim_contiguous_time_periods(
     contiguous_time_periods: pd.DataFrame,
-    interval_start: pd.Timedelta,
-    interval_end: pd.Timedelta,
+    interval_start: np.timedelta64,
+    interval_end: np.timedelta64,
 ) -> pd.DataFrame:
     """Trims contiguous time periods to account for history requirements and forecast horizons.
 
@@ -90,15 +92,15 @@ def trim_contiguous_time_periods(
 
 
 def find_contiguous_t0_periods(
-    datetimes: pd.DatetimeIndex,
-    interval_start: pd.Timedelta,
-    interval_end: pd.Timedelta,
-    time_resolution: pd.Timedelta,
+    datetimes: NDArray[np.datetime64],
+    interval_start: np.timedelta64,
+    interval_end: np.timedelta64,
+    time_resolution: np.timedelta64,
 ) -> pd.DataFrame:
     """Return a pd.DataFrame where each row records the boundary of a contiguous time period.
 
     Args:
-        datetimes: pd.DatetimeIndex
+        datetimes: Available datetimes - must be sorted.
         interval_start: The start of the interval with respect to t0
         interval_end: The end of the interval with respect to t0
         time_resolution: The sample frequency of the timeseries
@@ -107,7 +109,7 @@ def find_contiguous_t0_periods(
         pd.DataFrame where each row represents a single time period.  The pd.DataFrame
             has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
-    check_time_unique_increasing(datetimes)
+    assert_values_unique_increasing(datetimes, "datetimes")
 
     total_duration = interval_end - interval_start
 
@@ -133,63 +135,78 @@ def find_contiguous_t0_periods(
 
 
 def find_contiguous_t0_periods_nwp(
-    init_times: pd.DatetimeIndex,
-    interval_start: pd.Timedelta,
-    max_staleness: pd.Timedelta,
-    max_dropout: pd.Timedelta = ZERO_TDELTA,
-    first_forecast_step: pd.Timedelta = ZERO_TDELTA,
+    init_times: NDArray[np.datetime64],
+    interval_start: np.timedelta64,
+    interval_end: np.timedelta64,
+    first_forecast_step: np.timedelta64,
+    last_forecast_step: np.timedelta64,
+    max_dropout: np.timedelta64 = ZERO_TDELTA,
+    max_staleness: np.timedelta64 | None = None,
 ) -> pd.DataFrame:
     """Get all time periods from the NWP init-times which are valid as t0 datetimes.
 
     Args:
-        init_times: The initialisation times of the available forecasts
-        interval_start: The start of the time interval with respect to t0
-        max_staleness: Up to how long after an init-time are we willing to use the forecast.
-            Each init-time will only be used up to this t0 time regardless of the forecast valid
-            time.
+        init_times: The initialisation times of the available forecasts.
+        interval_start: The start of the time interval with respect to t0.
+        interval_end: The end of the time interval with respect to t0.
+        first_forecast_step: The timedelta of the first step of the NWP forecast.
+        last_forecast_step: The timedelta of the last step of the NWP forecast.
         max_dropout: What is the maximum amount of dropout that will be used.
             This must be <= max_staleness.
-        first_forecast_step: The timedelta of the first step of the forecast.
-            By default we assume the first valid time of the forecast
-            is the same as its init-time.
+        max_staleness: How long after each init-time are we willing to use that init-time. If set to
+            None, no additional limit is applied.
 
     Returns:
         pd.DataFrame where each row represents a single time period. The pd.DataFrame
         has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
-    # Sanity checks.
+    assert_values_unique_increasing(init_times, "init_times")
+
     if len(init_times) == 0:
         raise ValueError("No init-times to use")
 
-    check_time_unique_increasing(init_times)
+    if max_dropout < ZERO_TDELTA:
+        raise ValueError("The max dropout must be positive")
 
-    if max_staleness < pd.Timedelta(0):
-        raise ValueError("The max staleness must be positive")
-    if not (pd.Timedelta(0) <= max_dropout <= max_staleness):
-        raise ValueError("The max dropout must be between 0 and the max staleness")
+    if max_staleness is not None:
 
-    history_drop_buffer = max(first_forecast_step - interval_start, max_dropout)
+        if max_staleness < ZERO_TDELTA:
+            raise ValueError("The max staleness must be positive")
+
+        # This is the max staleness we can use considering the max step of the input data
+        max_possible_staleness = last_forecast_step - interval_end
+
+        if max_staleness > max_possible_staleness:
+            raise ValueError(
+                f"max_staleness is too long for the input data, "
+                f"{max_staleness=}, {max_possible_staleness=}",
+            )
+
+    # We can't use an init-time until this timedelta afterwards to account for dropout
+    init_start_timedelta = max(first_forecast_step - interval_start, max_dropout)
+
+    # We can only use an init-time until up to this timedelta afterwards to account for the slice
+    # requested and the max_staleness
+    if max_staleness is None:
+        init_end_timedelta = last_forecast_step - interval_end
+    else:
+        init_end_timedelta = min(last_forecast_step - interval_end, max_staleness)
 
     # Store contiguous periods
-    contiguous_periods: list[list[pd.Timestamp]] = []
+    contiguous_periods: list[list[np.datetime64]] = []
 
-    # Begin the first period allowing for the time to the first_forecast_step, the length of the
-    # interval sampled from before t0, and the dropout
-    start_this_period = init_times[0] + history_drop_buffer
+    # This is the range of t0 times available whilst using the first init-time
+    start_this_period = init_times[0] + init_start_timedelta
+    end_this_period = init_times[0] + init_end_timedelta
 
-    # The first forecast is valid up to the max staleness
-    end_this_period = init_times[0] + max_staleness
-
-    for dt_init in init_times[1:]:
-        # If the previous init-time becomes stale before the next init-time becomes valid (whilst
-        # also considering dropout) then the contiguous period breaks
-        # Else if the previous init-time becomes stale before the fist step of the next forecast
-        # then this also causes a break in the contiguous period
-        if end_this_period < dt_init + max(max_dropout, first_forecast_step):
+    for init_time in init_times[1:]:
+        # If the previous init-time doesn't cover t0 times up to when this init-time covers them
+        # from, then we break the contiguous period
+        if end_this_period < init_time + init_start_timedelta:
             contiguous_periods.append([start_this_period, end_this_period])
             # The new period begins with the same conditions as the first period
-            start_this_period = dt_init + history_drop_buffer
-        end_this_period = dt_init + max_staleness
+            start_this_period = init_time + init_start_timedelta
+        end_this_period = init_time + init_end_timedelta
 
     contiguous_periods.append([start_this_period, end_this_period])
 
