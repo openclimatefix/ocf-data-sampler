@@ -30,6 +30,8 @@ input_data:
         t:
           mean: 283.64913206
           std: 4.38818501
+          clip_min: 270
+          clip_max: 310
 
   satellite:
     zarr_path: set_in_temp_file

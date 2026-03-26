@@ -39,6 +39,7 @@ def test_open_satellite_bad_dtype(tmp_path: Path):
             "y_geostationary": np.arange(4),
             "x_geostationary": np.arange(4),
         },
+        attrs={"area": "area_info"},
     )
     bad_ds.to_zarr(zarr_path)
 
@@ -60,6 +61,7 @@ def test_open_satellite_bad_dtype_spatial_coords(tmp_path: Path):
             "y_geostationary": np.arange(4),
             "x_geostationary": np.arange(4),
         },
+        attrs={"area": "area_info"},
     )
     bad_ds.to_zarr(zarr_path)
     with pytest.raises(TypeError, match="geostationary should be floating"):
