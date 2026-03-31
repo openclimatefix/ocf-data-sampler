@@ -59,7 +59,6 @@ def slice_datasets_by_space(
     return sliced_datasets_dict
 
 
-
 def reduce_spatial_extent_of_datasets(
     datasets_dict: dict,
     locations: list[Location],

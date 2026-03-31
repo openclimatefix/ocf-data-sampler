@@ -157,7 +157,6 @@ def select_spatial_slice_pixels_multiple(
     bottom_idx = int(idx_y_min - half_height)
     top_idx = int(idx_y_max + half_height)
 
-    # Padding checks
     slice_unavailable = (
         left_idx < 0
         or right_idx > data_width_pixels
