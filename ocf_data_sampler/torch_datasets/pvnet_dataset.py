@@ -33,6 +33,7 @@ from ocf_data_sampler.torch_datasets.utils import (
     diff_nwp_data,
     fill_nans_in_arrays,
     find_valid_time_periods,
+    reduce_spatial_extent_of_datasets,
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
@@ -432,6 +433,22 @@ class PVNetDataset(AbstractPVNetDataset):
 
 class PVNetConcurrentDataset(AbstractPVNetDataset):
     """A torch Dataset for creating concurrent PVNet location samples."""
+
+    @override
+    def __init__(
+        self,
+        config_filename: str,
+        start_time: str | None = None,
+        end_time: str | None = None,
+    ) -> None:
+
+        super().__init__(config_filename, start_time, end_time)
+
+        self.datasets_dict = reduce_spatial_extent_of_datasets(
+            self.datasets_dict,
+            self.locations,
+            self.config,
+        )
 
     @override
     def __len__(self) -> int:
