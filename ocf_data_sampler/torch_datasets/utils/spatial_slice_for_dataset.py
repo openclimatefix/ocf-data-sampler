@@ -1,12 +1,11 @@
 """Functions for selecting data around a given location."""
 
-import xarray as xr
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.select.geospatial import find_coord_system
 from ocf_data_sampler.select.location import Location
 from ocf_data_sampler.select.select_spatial_slice import (
-    select_spatial_slice_pixels, select_spatial_slice_pixels_multiple
+    select_spatial_slice_pixels,
+    select_spatial_slice_pixels_multiple,
 )
 
 

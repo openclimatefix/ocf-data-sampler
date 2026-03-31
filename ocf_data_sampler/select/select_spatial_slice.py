@@ -61,7 +61,7 @@ def select_spatial_slice_pixels(
         The selected DataArray slice.
 
     Raises:
-        ValueError: If the window dimensions are not even or the slice extends beyond the data 
+        ValueError: If the window dimensions are not even or the slice extends beyond the data
             boundaries.
     """
     if (width_pixels % 2) != 0:
@@ -170,9 +170,9 @@ def select_spatial_slice_pixels_multiple(
             "Multi-location window not available: "
             f"left_idx ({left_idx}), right_idx ({right_idx}), "
             f"bottom_idx ({bottom_idx}), top_idx ({top_idx}), "
-            f"data_width_pixels ({data_width_pixels}), data_height_pixels ({data_height_pixels})"
+            f"data_width_pixels ({data_width_pixels}), data_height_pixels ({data_height_pixels})",
         )
-    
+
     # Add buffer of 1 pixel if window is 2 pixels wide to ensure the central location is within the
     # returned slice
     x_buffer = 1 if width_pixels==2 else 0
@@ -180,7 +180,7 @@ def select_spatial_slice_pixels_multiple(
 
     return da.isel(
         {
-            x_dim: slice(left_idx, right_idx+x_buffer), 
-            y_dim: slice(bottom_idx, top_idx+y_buffer)
-        }
+            x_dim: slice(left_idx, right_idx+x_buffer),
+            y_dim: slice(bottom_idx, top_idx+y_buffer),
+        },
     )
