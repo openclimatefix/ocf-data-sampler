@@ -124,8 +124,8 @@ def select_spatial_slice_pixels_multiple(
         The selected DataArray slice.
 
     Raises:
-        ValueError: If the dimensions are not even or the slice is not allowed
-                    when padding is required.
+        ValueError: If the window dimensions are not even or the slice extends beyond the data
+            boundaries.
     """
     if (width_pixels % 2) != 0:
         raise ValueError("Width must be an even number")
