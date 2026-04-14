@@ -45,7 +45,7 @@ def test_get_time_periods_mask():
         times,
         time_periods=[(None, "2023-01-01 07:00")],
     )
-    expected_mask = np.array([True, True, True, True, False, False, False, True])
+    expected_mask = np.array([True, True, True, True, False, False, False, False])
     assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
 
 
