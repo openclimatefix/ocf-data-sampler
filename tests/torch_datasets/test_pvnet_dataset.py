@@ -1,6 +1,7 @@
 import pickle
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
@@ -10,6 +11,7 @@ from ocf_data_sampler.numpy_sample.collate import stack_np_samples_into_batch
 from ocf_data_sampler.torch_datasets.pvnet_dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
+    get_time_periods_mask,
 )
 from ocf_data_sampler.torch_datasets.utils.torch_batch_utils import (
     batch_to_tensor,
@@ -17,13 +19,51 @@ from ocf_data_sampler.torch_datasets.utils.torch_batch_utils import (
 )
 
 
-def test_pvnet_dataset(pvnet_config_filename):
-    dataset = PVNetDataset(pvnet_config_filename)
+def test_get_time_periods_mask():
+    times = pd.to_datetime([
+        "2023-01-01 05:00",
+        "2023-01-01 06:00",
+        "2023-01-01 06:30",
+        "2023-01-01 07:00",
+        "2023-01-01 11:00",
+        "2023-01-01 12:00",
+        "2023-01-01 12:30",
+        "2023-01-01 13:00",
+    ])
 
-    assert len(dataset.locations) == 317  # Quantity of regional GSPs
-    # NB. I have not checked the value (39 below) is in fact correct
-    assert len(dataset.valid_t0_times) == 39
-    assert len(dataset) == 317 * 39
+    mask = get_time_periods_mask(
+        times,
+        time_periods=[
+            ("2023-01-01 06:00", "2023-01-01 07:00"),
+            ("2023-01-01 12:00", "2023-01-01 13:00"),
+        ],
+    )
+    expected_mask = np.array([False, True, True, True, False, True, True, True])
+    assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
+
+    mask = get_time_periods_mask(
+        times,
+        time_periods=[(None, "2023-01-01 07:00")],
+    )
+    expected_mask = np.array([True, True, True, True, False, False, False, True])
+    assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
+
+
+def test_pvnet_dataset(pvnet_config_filename):
+    dataset = PVNetDataset(
+        pvnet_config_filename,
+        time_periods=[
+            ("2023-01-01 06:00", "2023-01-01 07:00"),
+            ("2023-01-01 12:00", "2023-01-01 13:00"),
+        ],
+    )
+
+    expected_t0s = 6  # 2 time periods each with 3 t0s (inclusive) at 30 minute intervals
+    num_locs = 317 # Quantity of regional GSPs
+    assert len(dataset.locations) == num_locs
+
+    assert len(dataset.valid_t0_times) == expected_t0s
+    assert len(dataset) == num_locs * expected_t0s
 
     sample = dataset[0]
     assert isinstance(sample, dict)
@@ -71,11 +111,20 @@ def test_pvnet_dataset(pvnet_config_filename):
 
 
 def test_pvnet_dataset_sites(pvnet_site_config_filename):
-    dataset = PVNetDataset(pvnet_site_config_filename)
+    dataset = PVNetDataset(
+        pvnet_site_config_filename,
+        time_periods=[
+            ("2023-01-01 06:00", "2023-01-01 07:00"),
+            ("2023-01-01 12:00", "2023-01-01 13:00"),
+        ],
+    )
 
-    assert len(dataset.locations) == 10
-    # max possible t0s is 10 * 39 if full, so should be less than that
-    assert len(dataset.valid_t0_and_location_ids) < 10 * 39
+    expected_t0s = 6  # 2 time periods each with 3 t0s (inclusive) at 30 minute intervals
+    num_locs = 10
+    assert len(dataset.locations) == num_locs
+    # Should be less than num_locs * expected_t0s as not all locations have data for all t0s
+    # in the time periods
+    assert len(dataset.valid_t0_and_location_ids) < num_locs * expected_t0s
 
     sample = dataset[0]
     assert isinstance(sample, dict)
