@@ -5,6 +5,7 @@ import os
 import pickle
 import warnings
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 from pydantic.warnings import UnsupportedFieldAttributeWarning
@@ -100,14 +101,38 @@ def get_locations(generation_data: xr.DataArray) -> list[Location]:
     return locations
 
 
+def get_time_periods_mask(
+    times: pd.DatetimeIndex,
+    time_periods: list[tuple[str | None, str | None]],
+) -> np.ndarray:
+    """Get a boolean mask showing which times fall within any of the specified time periods.
+
+    Args:
+        times: DatetimeIndex of times to filter
+        time_periods: List of tuples specifying the start and end times for each period
+    """
+    if len(time_periods)==0:
+        raise ValueError("At least one time period must be provided")
+
+    mask = np.full(len(times), False)
+
+    for start_time, end_time in time_periods:
+
+        start_time = times[0] if start_time is None else pd.Timestamp(start_time)
+        end_time = times[-1] if end_time is None else pd.Timestamp(end_time)
+
+        mask |= (times >= start_time) & (times <= end_time)
+
+    return mask
+
+
 class AbstractPVNetDataset(PickleCacheMixin, Dataset):
     """Abstract class for PVNet datasets."""
 
     def __init__(
         self,
         config_filename: str,
-        start_time: str | None = None,
-        end_time: str | None = None,
+        time_periods: list[tuple[str | None, str | None]] | None = None,
     ) -> None:
         """A generic torch Dataset for creating PVNet samples.
 
@@ -117,8 +142,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         Args:
             config_filename: Path to the configuration file
-            start_time: Limit the init-times to be after this
-            end_time: Limit the init-times to be before this
+            time_periods: List of tuples specifying the start and end times for each period
         """
         super().__init__()
 
@@ -133,11 +157,9 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
 
             # Filter t0 times to given range
-            if start_time is not None:
-                valid_t0_times = valid_t0_times[valid_t0_times >= pd.Timestamp(start_time)]
-
-            if end_time is not None:
-                valid_t0_times = valid_t0_times[valid_t0_times <= pd.Timestamp(end_time)]
+            if time_periods is not None:
+                mask = get_time_periods_mask(valid_t0_times, time_periods)
+                valid_t0_times = valid_t0_times[mask]
 
             self.valid_t0_times = valid_t0_times
         else:
@@ -148,15 +170,10 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             valid_t0_and_location_ids = self.find_valid_t0_and_location_ids(datasets_dict, config)
 
             # Filter t0 times to given range
-            if start_time is not None:
-                valid_t0_and_location_ids = valid_t0_and_location_ids[
-                    valid_t0_and_location_ids["t0"] >= pd.Timestamp(start_time)
-                ]
+            if time_periods is not None:
+                mask = get_time_periods_mask(valid_t0_and_location_ids["t0"], time_periods)
+                valid_t0_and_location_ids = valid_t0_and_location_ids[mask]
 
-            if end_time is not None:
-                valid_t0_and_location_ids = valid_t0_and_location_ids[
-                    valid_t0_and_location_ids["t0"] <= pd.Timestamp(end_time)
-                ]
             self.valid_t0_and_location_ids = valid_t0_and_location_ids
 
         # Construct list of locations to sample from
@@ -345,10 +362,9 @@ class PVNetDataset(AbstractPVNetDataset):
     def __init__(
         self,
         config_filename: str,
-        start_time: str | None = None,
-        end_time: str | None = None,
+        time_periods: list[tuple[None | str, None | str]] | None = None,
     ) -> None:
-        super().__init__(config_filename, start_time, end_time)
+        super().__init__(config_filename, time_periods)
 
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
@@ -438,11 +454,10 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
     def __init__(
         self,
         config_filename: str,
-        start_time: str | None = None,
-        end_time: str | None = None,
+        time_periods: list[tuple[str | None, str | None]] | None = None,
     ) -> None:
 
-        super().__init__(config_filename, start_time, end_time)
+        super().__init__(config_filename, time_periods)
 
         self.datasets_dict = reduce_spatial_extent_of_datasets(
             self.datasets_dict,
