@@ -5,12 +5,14 @@ from collections.abc import Callable
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.load.nwp.providers.cloudcasting import open_cloudcasting
-from ocf_data_sampler.load.nwp.providers.ecmwf import open_ifs
-from ocf_data_sampler.load.nwp.providers.gdm import open_gdm
-from ocf_data_sampler.load.nwp.providers.gfs import open_gfs
-from ocf_data_sampler.load.nwp.providers.icon import open_icon_eu
-from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
+from ocf_data_sampler.load.nwp.providers.loaders import (
+    open_cloudcasting,
+    open_gdm,
+    open_gfs,
+    open_icon_eu,
+    open_ifs,
+    open_ukv,
+)
 
 _OPEN_NWP_FUNCTIONS: dict[str, Callable[..., xr.DataArray]] = {
     "ukv": open_ukv,
