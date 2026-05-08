@@ -146,7 +146,10 @@ def open_zarrs(
     if context is None:
         context = ts.Context()
 
-    ds_list = [xr.open_zarr(p, mask_and_scale=mask_and_scale, decode_timedelta=True, consolidated=False) for p in paths]
+    ds_list = [xr.open_zarr(p,
+                            mask_and_scale=mask_and_scale,
+                            decode_timedelta=True,
+                            consolidated=False) for p in paths]
     try:
         ds = xr.concat(
             ds_list,
