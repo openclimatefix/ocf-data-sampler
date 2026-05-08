@@ -106,7 +106,7 @@ def open_zarr(
         context = ts.Context()
 
     # Avoid using dask by settung `chunks=None`
-    ds = xr.open_zarr(path, chunks=None, mask_and_scale=mask_and_scale)
+    ds = xr.open_zarr(path, chunks=None, mask_and_scale=mask_and_scale, consolidated=False)
 
     if mask_and_scale:
         _raise_if_mask_and_scale_used_for_data_vars(ds)
@@ -146,7 +146,7 @@ def open_zarrs(
     if context is None:
         context = ts.Context()
 
-    ds_list = [xr.open_zarr(p, mask_and_scale=mask_and_scale, decode_timedelta=True) for p in paths]
+    ds_list = [xr.open_zarr(p, mask_and_scale=mask_and_scale, decode_timedelta=True, consolidated=False) for p in paths]
     try:
         ds = xr.concat(
             ds_list,
