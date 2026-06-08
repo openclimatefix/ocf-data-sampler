@@ -18,6 +18,7 @@ NWP_PROVIDERS = [
     "icon_eu",
     "cloudcasting",
     "gencast",
+    "fgn",
 ]
 
 

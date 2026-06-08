@@ -18,6 +18,7 @@ _OPEN_NWP_FUNCTIONS: dict[str, Callable[..., xr.DataArray]] = {
     "mo_global": open_ifs,
     "icon-eu": open_icon_eu,
     "gencast": open_gdm,
+    "fgn": open_gdm,
     "gfs": open_gfs,
     "cloudcasting": open_cloudcasting,
 }
