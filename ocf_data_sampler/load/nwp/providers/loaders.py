@@ -1,7 +1,7 @@
 """NWP provider loaders.
 
-All providers follow the same shape:
-    open zarr -> normalise dim/coord names -> shared post-processing.
+All providers follow the same pipeline:
+    open zarr -> standardise dim/coord names -> shared post-processing.
 
 `_open_regular_grid_nwp` is the shared tail. Per-provider functions only
 handle the open + renaming step that differs between data sources.
@@ -28,7 +28,7 @@ def _open_regular_grid_nwp(
 ) -> xr.DataArray:
     """Shared post-processing for any regular-grid NWP dataset.
 
-    Expects dims/coords already normalised to: init_time_utc, step, channel,
+    Expects dims/coords already standardised to: init_time_utc, step, channel,
     plus the given x_coord/y_coord spatial dims.
     """
     check_time_unique_increasing(ds.init_time_utc)
@@ -40,17 +40,18 @@ def _open_regular_grid_nwp(
     return ds
 
 
-def open_ifs(zarr_path: str | list[str]) -> xr.DataArray:
-    """Opens ECMWF IFS / MetOffice Global NWP data."""
-    ds = open_zarr_paths(zarr_path, backend="tensorstore")
-    # LEGACY SUPPORT - older zarrs use "init_time"/"variable" dim names
-    ds = ds.rename({"init_time": "init_time_utc", "variable": "channel"})
-    return _open_regular_grid_nwp(ds, x_coord="longitude", y_coord="latitude")
+def open_standard_lat_long_grid(
+    zarr_path: str | list[str],
+    time_dim: str = "init_time",
+) -> xr.DataArray:
+    """Opens NWP data on a standard latitude/longitude grid.
 
-
-def open_gdm(zarr_path: str | list[str]) -> xr.DataArray:
-    """Opens GDM (e.g. GenCast) NWP data."""
-    ds = open_zarr_paths(zarr_path, backend="tensorstore", time_dim="init_time_utc")
+    Used by ECMWF IFS, MetOffice Global, GDM (e.g. GenCast), and FGN.
+    Pass time_dim="init_time_utc" for zarrs that already use the new dim name.
+    """
+    ds = open_zarr_paths(zarr_path, backend="tensorstore", time_dim=time_dim)
+    rename_map = {"init_time": "init_time_utc", "variable": "channel"}
+    ds = ds.rename({k: v for k, v in rename_map.items() if k in ds.coords})
     return _open_regular_grid_nwp(ds, x_coord="longitude", y_coord="latitude")
 
 
