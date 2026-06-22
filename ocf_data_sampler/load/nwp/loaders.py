@@ -11,7 +11,7 @@ import logging
 
 import xarray as xr
 
-from ocf_data_sampler.load.nwp.providers.utils import open_zarr_paths
+from ocf_data_sampler.load.nwp.utils import open_zarr_paths
 from ocf_data_sampler.load.utils import (
     check_time_unique_increasing,
     get_xr_data_array_from_xr_dataset,
@@ -46,7 +46,7 @@ def open_standard_lat_long_grid(
 ) -> xr.DataArray:
     """Opens NWP data on a standard latitude/longitude grid.
 
-    Used by ECMWF IFS, MetOffice Global, GDM (e.g. GenCast), and FGN.
+    Used by ECMWF IFS, MetOffice Global, GDM (e.g. GenCast & FGN).
     Pass time_dim="init_time_utc" for zarrs that already use the new dim name.
     """
     ds = open_zarr_paths(zarr_path, backend="tensorstore", time_dim=time_dim)

@@ -6,7 +6,7 @@ from functools import partial
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.load.nwp.providers.loaders import (
+from ocf_data_sampler.load.nwp.loaders import (
     open_cloudcasting,
     open_gfs,
     open_icon_eu,
