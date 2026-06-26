@@ -1,24 +1,26 @@
 """Module for opening NWP data."""
 
 from collections.abc import Callable
+from functools import partial
 
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.load.nwp.providers.cloudcasting import open_cloudcasting
-from ocf_data_sampler.load.nwp.providers.ecmwf import open_ifs
-from ocf_data_sampler.load.nwp.providers.gdm import open_gdm
-from ocf_data_sampler.load.nwp.providers.gfs import open_gfs
-from ocf_data_sampler.load.nwp.providers.icon import open_icon_eu
-from ocf_data_sampler.load.nwp.providers.ukv import open_ukv
+from ocf_data_sampler.load.nwp.loaders import (
+    open_cloudcasting,
+    open_gfs,
+    open_icon_eu,
+    open_standard_lat_long_grid,
+    open_ukv,
+)
 
 _OPEN_NWP_FUNCTIONS: dict[str, Callable[..., xr.DataArray]] = {
     "ukv": open_ukv,
-    "ecmwf": open_ifs,
-    "mo_global": open_ifs,
+    "ecmwf": open_standard_lat_long_grid,
+    "mo_global": open_standard_lat_long_grid,
     "icon-eu": open_icon_eu,
-    "gencast": open_gdm,
-    "fgn": open_gdm,
+    "gencast": partial(open_standard_lat_long_grid, time_dim="init_time_utc"),
+    "fgn": partial(open_standard_lat_long_grid, time_dim="init_time_utc"),
     "gfs": open_gfs,
     "cloudcasting": open_cloudcasting,
 }
