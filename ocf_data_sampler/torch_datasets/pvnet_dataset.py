@@ -36,6 +36,7 @@ from ocf_data_sampler.torch_datasets.utils import (
     diff_nwp_data,
     fill_nans_in_dataset_dicts,
     find_valid_time_periods,
+    reduce_spatial_extent_of_datasets,
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
@@ -115,14 +116,38 @@ def xarray_to_lightarray_dict(dataset_dict: dict) -> dict:
     return new_dataset_dict
 
 
+def get_time_periods_mask(
+    times: NDArray[np.datetime64],
+    time_periods: list[tuple[str | None, str | None]],
+) -> np.ndarray:
+    """Get a boolean mask showing which times fall within any of the specified time periods.
+
+    Args:
+        times: DatetimeIndex of times to filter
+        time_periods: List of tuples specifying the start and end times for each period
+    """
+    if len(time_periods)==0:
+        raise ValueError("At least one time period must be provided")
+
+    mask = np.full(len(times), False)
+
+    for start_time, end_time in time_periods:
+
+        start_time = times[0] if start_time is None else np.datetime64(start_time)
+        end_time = times[-1] if end_time is None else np.datetime64(end_time)
+
+        mask |= (times >= start_time) & (times <= end_time)
+
+    return mask
+
+
 class AbstractPVNetDataset(PickleCacheMixin, Dataset):
     """Abstract class for PVNet datasets."""
 
     def __init__(
         self,
         config_filename: str,
-        start_time: str | None = None,
-        end_time: str | None = None,
+        time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         use_xarray: bool = True,
     ) -> None:
@@ -134,12 +159,12 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         Args:
             config_filename: Path to the configuration file
-            start_time: Limit the init-times to be after this
-            end_time: Limit the init-times to be before this
+            time_periods: List of tuples specifying the start and end times for each period
             include_extra_metadata: Whether to include non-essential metadata for each sample in the
                 sample dict.
             use_xarray: Whether to use xarray.DataArray or LightDataArray as the underlying data
                 structure when sampling
+            
         """
         super().__init__()
 
@@ -154,11 +179,9 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
 
             # Filter t0 times to given range
-            if start_time is not None:
-                valid_t0_times = valid_t0_times[valid_t0_times >= np.datetime64(start_time)]
-
-            if end_time is not None:
-                valid_t0_times = valid_t0_times[valid_t0_times <= np.datetime64(end_time)]
+            if time_periods is not None:
+                mask = get_time_periods_mask(valid_t0_times, time_periods)
+                valid_t0_times = valid_t0_times[mask]
 
             self.valid_t0_times = valid_t0_times
         else:
@@ -169,15 +192,10 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             valid_t0_and_location_ids = self.find_valid_t0_and_location_ids(datasets_dict, config)
 
             # Filter t0 times to given range
-            if start_time is not None:
-                valid_t0_and_location_ids = valid_t0_and_location_ids[
-                    valid_t0_and_location_ids["t0"] >= np.datetime64(start_time)
-                ]
+            if time_periods is not None:
+                mask = get_time_periods_mask(valid_t0_and_location_ids["t0"], time_periods)
+                valid_t0_and_location_ids = valid_t0_and_location_ids[mask]
 
-            if end_time is not None:
-                valid_t0_and_location_ids = valid_t0_and_location_ids[
-                    valid_t0_and_location_ids["t0"] <= np.datetime64(end_time)
-                ]
             self.valid_t0_and_location_ids = valid_t0_and_location_ids
 
         # Construct list of locations to sample from
@@ -200,9 +218,13 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         )
 
         # Extract the normalisation values from the config for faster access
-        means_dict, stds_dict = config_normalization_values_to_dicts(config)
-        self.means_dict = means_dict
-        self.stds_dict = stds_dict
+        mean_dict, std_dict, clip_min_dict, clip_max_dict = (
+            config_normalization_values_to_dicts(config)
+        )
+        self.mean_dict = mean_dict
+        self.std_dict = std_dict
+        self.clip_min_dict = clip_min_dict
+        self.clip_max_dict = clip_max_dict
 
     def process_and_combine_datasets(
         self,
@@ -220,15 +242,25 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Normalise NWP
         if "nwp" in dataset_dict:
             for nwp_key, da_nwp in dataset_dict["nwp"].items():
-                channel_means = self.means_dict["nwp"][nwp_key]
-                channel_stds = self.stds_dict["nwp"][nwp_key]
-                dataset_dict["nwp"][nwp_key].data = (da_nwp.data - channel_means) / channel_stds
+                channel_means = self.mean_dict["nwp"][nwp_key]
+                channel_stds = self.std_dict["nwp"][nwp_key]
+                channel_mins = self.clip_min_dict["nwp"][nwp_key]
+                channel_maxs = self.clip_max_dict["nwp"][nwp_key]
+                dataset_dict["nwp"][nwp_key].data = (
+                    (da_nwp.data.clip(channel_mins, channel_maxs) - channel_means)
+                    / channel_stds
+                )
 
         # Normalise satellite
         if "sat" in dataset_dict:
-            channel_means = self.means_dict["sat"]
-            channel_stds = self.stds_dict["sat"]
-            dataset_dict["sat"].data = (dataset_dict["sat"].data - channel_means) / channel_stds
+            channel_means = self.mean_dict["sat"]
+            channel_stds = self.std_dict["sat"]
+            channel_mins = self.clip_min_dict["sat"]
+            channel_maxs = self.clip_max_dict["sat"]
+            dataset_dict["sat"].data = (
+                (dataset_dict["sat"].data.clip(channel_mins, channel_maxs) - channel_means)
+                / channel_stds
+            )
 
         # Fill NaNs
         dataset_dict = fill_nans_in_dataset_dicts(dataset_dict, config=self.config)
@@ -353,13 +385,11 @@ class PVNetDataset(AbstractPVNetDataset):
     def __init__(
         self,
         config_filename: str,
-        start_time: str | None = None,
-        end_time: str | None = None,
+        time_periods: list[tuple[None | str, None | str]] | None = None,
         include_extra_metadata: bool = False,
         use_xarray: bool = True,
     ) -> None:
-        super().__init__(config_filename, start_time, end_time, include_extra_metadata, use_xarray)
-
+        super().__init__(config_filename, time_periods, include_extra_metadata, use_xarray)
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
 
@@ -444,6 +474,21 @@ class PVNetDataset(AbstractPVNetDataset):
 
 class PVNetConcurrentDataset(AbstractPVNetDataset):
     """A torch Dataset for creating concurrent PVNet location samples."""
+
+    @override
+    def __init__(
+        self,
+        config_filename: str,
+        time_periods: list[tuple[str | None, str | None]] | None = None,
+    ) -> None:
+
+        super().__init__(config_filename, time_periods)
+
+        self.datasets_dict = reduce_spatial_extent_of_datasets(
+            self.datasets_dict,
+            self.locations,
+            self.config,
+        )
 
     @override
     def __len__(self) -> int:

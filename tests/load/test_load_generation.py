@@ -33,6 +33,8 @@ def test_open_generation_bad_dtype(tmp_path: Path):
         coords={
             "time_utc": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30min")),
             "location_id": [1, 2],
+            "longitude": (("location_id",), [0.0, 1.0]),
+            "latitude": (("location_id",), [0.0, 1.0]),
         },
     )
     bad_ds.to_zarr(zarr_path)

@@ -125,3 +125,41 @@ def test_load_ecmwf_bad_dtype_step(tmp_path):
     bad_array.to_zarr(zarr_path)
     with pytest.raises(TypeError, match="'step' for ecmwf should be timedelta64"):
         open_nwp(zarr_path=zarr_path, provider="ecmwf")
+
+
+def test_load_ukv_bad_dtype_step(tmp_path):
+    """Test validation fails for UKV with bad step dtype."""
+    zarr_path = tmp_path / "bad_ukv_step.zarr"
+    bad_array = DataArray(
+        np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
+        dims=("init_time_utc", "step", "channel", "x_osgb", "y_osgb"),
+        coords={
+            "init_time_utc": [np.datetime64("2023-01-01")],
+            "step": [1.0],
+            "channel": ["t"],
+            "x_osgb": np.array([0], dtype=np.float32),
+            "y_osgb": np.array([50], dtype=np.float32),
+        },
+    )
+    bad_array.to_zarr(zarr_path)
+    with pytest.raises(TypeError, match="'step' for ukv should be timedelta64"):
+        open_nwp(zarr_path=zarr_path, provider="ukv")
+
+
+def test_load_ecmwf_bad_dtype_longitude(tmp_path):
+    """Test validation fails for ECMWF with bad longitude dtype."""
+    zarr_path = tmp_path / "bad_ecmwf_longitude.zarr"
+    bad_array = DataArray(
+        np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
+        dims=("init_time", "step", "variable", "longitude", "latitude"),
+        coords={
+            "init_time": [np.datetime64("2023-01-01")],
+            "step": [np.timedelta64(1, "h")],
+            "variable": ["t"],
+            "longitude": [0],
+            "latitude": np.array([50.0], dtype=np.float32),
+        },
+    )
+    bad_array.to_zarr(zarr_path)
+    with pytest.raises(TypeError, match="'longitude' for ecmwf should be floating"):
+        open_nwp(zarr_path=zarr_path, provider="ecmwf")

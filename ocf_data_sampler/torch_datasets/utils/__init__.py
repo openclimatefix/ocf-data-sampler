@@ -1,7 +1,7 @@
 from .config_normalization_values_to_dicts import config_normalization_values_to_dicts
 from .fill_nans import fill_nans_in_dataset_dicts
 from .valid_time_periods import find_valid_time_periods
-from .spatial_slice_for_dataset import slice_datasets_by_space
+from .spatial_slice_for_dataset import slice_datasets_by_space, reduce_spatial_extent_of_datasets
 from .time_slice_for_dataset import slice_datasets_by_time
 from .add_alterate_coordinate_projections import add_alterate_coordinate_projections
 from .diff_nwp_data import diff_nwp_data

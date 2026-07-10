@@ -4,7 +4,10 @@
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select import get_indices_in_sorted_unique
 from ocf_data_sampler.select.location import Location
-from ocf_data_sampler.select.select_spatial_slice import select_spatial_slice_pixels
+from ocf_data_sampler.select.select_spatial_slice import (
+    select_spatial_slice_pixels,
+    select_spatial_slice_pixels_multiple,
+)
 
 
 def slice_datasets_by_space(
@@ -53,5 +56,47 @@ def slice_datasets_by_space(
         loc_index = get_indices_in_sorted_unique(location_ids, location.id)
 
         sliced_datasets_dict["generation"] = datasets_dict["generation"].isel(location_id=loc_index)
+
+    return sliced_datasets_dict
+
+
+def reduce_spatial_extent_of_datasets(
+    datasets_dict: dict,
+    locations: list[Location],
+    config: Configuration,
+) -> dict:
+    """Reduce the spatial extent of the datasets to only cover the locations.
+
+    Args:
+        datasets_dict: Dictionary of the input data sources
+        locations: List of locations to reduce to
+        config: Configuration object
+    """
+    sliced_datasets_dict = {}
+
+    if "nwp" in datasets_dict:
+        sliced_datasets_dict["nwp"] = {}
+
+        for nwp_key, nwp_config in config.input_data.nwp.items():
+            sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels_multiple(
+                datasets_dict["nwp"][nwp_key],
+                locations,
+                height_pixels=nwp_config.image_size_pixels_height,
+                width_pixels=nwp_config.image_size_pixels_width,
+            )
+
+
+    if "sat" in datasets_dict:
+        sat_config = config.input_data.satellite
+
+        sliced_datasets_dict["sat"] = select_spatial_slice_pixels_multiple(
+            datasets_dict["sat"],
+            locations,
+            height_pixels=sat_config.image_size_pixels_height,
+            width_pixels=sat_config.image_size_pixels_width,
+        )
+
+    if "generation" in datasets_dict:
+        sliced_datasets_dict["generation"] = datasets_dict["generation"]
 
     return sliced_datasets_dict
