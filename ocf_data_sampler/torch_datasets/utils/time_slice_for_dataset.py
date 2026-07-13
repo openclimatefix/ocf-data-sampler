@@ -4,8 +4,8 @@ import numpy as np
 
 from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.select.dropout import apply_history_dropout
-from ocf_data_sampler.select.select_time_slice import select_time_slice, select_time_slice_nwp
-from ocf_data_sampler.time_utils import minutes
+from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
+from ocf_data_sampler.common.time_utils import minutes
 
 
 def slice_datasets_by_time(

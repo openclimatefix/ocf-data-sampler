@@ -3,7 +3,7 @@
 import numpy as np
 from xarray_tensorstore import read as xtr_read
 
-from ocf_data_sampler.lightarray import LightDataArray
+from ocf_data_sampler.common.lightarray import LightDataArray
 
 
 def load(xarray_dict: dict) -> dict:

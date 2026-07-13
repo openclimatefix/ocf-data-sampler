@@ -1,6 +1,6 @@
 import xarray as xr
 
-from ocf_data_sampler.load.open_xarray_tensorstore import open_zarr, open_zarrs
+from ocf_data_sampler.common.tensorstore import open_zarr, open_zarrs
 
 
 def test_open_zarr(nwp_like_zarr2_paths, nwp_like_zarr3_paths):

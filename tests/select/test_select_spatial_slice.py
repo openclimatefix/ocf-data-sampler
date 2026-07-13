@@ -3,7 +3,7 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.select.location import Location
-from ocf_data_sampler.select.select_spatial_slice import (
+from ocf_data_sampler.select.spatial_slice import (
     _get_pixel_index_location,
     select_spatial_slice_pixels,
 )

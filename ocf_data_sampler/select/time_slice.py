@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 
 from ocf_data_sampler.select import get_indices_in_sorted_unique
-from ocf_data_sampler.time_utils import date_range, datetime_ceil
+from ocf_data_sampler.common.time_utils import date_range, datetime_ceil
 
 
 def select_time_slice(

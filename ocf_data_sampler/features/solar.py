@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ocf_data_sampler.numpy_sample.common_types import NumpySample
-from ocf_data_sampler.time_utils import get_day_fraction, get_day_of_year, get_year
+from ocf_data_sampler.common.time_utils import get_day_fraction, get_day_of_year, get_year
 
 
 def calculate_azimuth_and_elevation(

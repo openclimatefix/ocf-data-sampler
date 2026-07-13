@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ocf_data_sampler.time_utils import (
+from ocf_data_sampler.common.time_utils import (
     date_range,
     datetime_ceil,
     datetime_floor,

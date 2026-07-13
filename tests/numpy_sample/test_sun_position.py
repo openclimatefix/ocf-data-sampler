@@ -3,7 +3,7 @@ import pandas as pd
 import pvlib
 import pytest
 
-from ocf_data_sampler.numpy_sample.sun_position import (
+from ocf_data_sampler.features.solar import (
     calculate_azimuth_and_elevation,
     make_sun_position_numpy_sample,
 )

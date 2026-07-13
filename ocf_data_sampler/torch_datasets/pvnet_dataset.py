@@ -14,8 +14,8 @@ from torch.utils.data import Dataset, default_collate
 from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
-from ocf_data_sampler.lightarray import LightDataArray
-from ocf_data_sampler.load.load_dataset import get_dataset_dict
+from ocf_data_sampler.common.lightarray import LightDataArray
+from ocf_data_sampler.torch_datasets.utils.load_dataset import get_dataset_dict
 from ocf_data_sampler.numpy_sample import (
     convert_to_numpy_sample,
     encode_datetimes,
@@ -29,7 +29,7 @@ from ocf_data_sampler.select import (
     find_contiguous_t0_periods,
     intersection_of_multiple_dataframes_of_periods,
 )
-from ocf_data_sampler.time_utils import date_range, get_posix_timestamp, minutes
+from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
 from ocf_data_sampler.torch_datasets.utils import (
     add_alterate_coordinate_projections,
     config_normalization_values_to_dicts,

@@ -9,7 +9,7 @@ from ocf_data_sampler.select.find_contiguous_time_periods import (
     find_contiguous_t0_periods_nwp,
     intersection_of_multiple_dataframes_of_periods,
 )
-from ocf_data_sampler.time_utils import minutes
+from ocf_data_sampler.common.time_utils import minutes
 
 
 def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.DataFrame:

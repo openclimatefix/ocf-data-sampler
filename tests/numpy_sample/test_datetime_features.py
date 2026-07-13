@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from ocf_data_sampler.numpy_sample.datetime_features import (
+from ocf_data_sampler.features.time_encodings import (
     encode_datetimes,
     get_t0_embedding,
 )
