@@ -38,7 +38,7 @@ from ocf_data_sampler.datasets.pvnet.slicing import (
     reduce_spatial_extent_of_datasets,
     slice_datasets_by_time,
 )
-from ocf_data_sampler.utils import load_data_dict
+from ocf_data_sampler.datasets.pvnet.materialise import load_data_dict
 
 from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
 
