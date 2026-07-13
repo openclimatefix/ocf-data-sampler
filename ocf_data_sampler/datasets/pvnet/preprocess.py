@@ -1,8 +1,10 @@
-"""Utility function for converting normalisation constants in the config to arrays."""
-
-import numpy as np
+"""Take the in-place diff of some channels of the NWP data."""
 
 from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.features.diff_channels import diff_channels
+import numpy as np
+import xarray as xr
+
 
 
 def config_normalization_values_to_dicts(
@@ -78,3 +80,53 @@ def config_normalization_values_to_dicts(
         clip_max_dict["sat"] = np.array(clip_max_list)[None, :, None, None]
 
     return means_dict, stds_dict, clip_min_dict, clip_max_dict
+
+
+def diff_nwp_data(dataset_dict: dict, config: Configuration) -> dict:
+    """Take the in-place diff of some channels of the NWP data.
+
+    Args:
+        dataset_dict: Dictionary of xarray datasets
+        config: Configuration object
+    """
+    if "nwp" in dataset_dict:
+        for nwp_key, da_nwp in dataset_dict["nwp"].items():
+            accum_channels = config.input_data.nwp[nwp_key].accum_channels
+            if len(accum_channels)>0:
+                # diff_channels() is an in-place operation and modifies the input
+                dataset_dict["nwp"][nwp_key] = diff_channels(da_nwp, accum_channels)
+    return dataset_dict
+
+
+def fill_nans_in_dataset_dicts(datasets_dict: dict, config: Configuration) -> dict:
+    """Fills all NaN values in the dataarrays in-place.
+
+    Args:
+        datasets_dict: Dictionary of the input data sources
+        config: Configuration object.
+    """
+    conf_in = config.input_data
+    if "generation" in datasets_dict:
+        datasets_dict["generation"] = fill_nans(
+            datasets_dict["generation"], 
+            conf_in.generation.dropout_value,
+        )
+
+    if "sat" in datasets_dict:
+        datasets_dict["sat"] = fill_nans(datasets_dict["sat"], conf_in.satellite.dropout_value)
+
+    if "nwp" in datasets_dict:
+        for nwp_key, nwp_config in config.input_data.nwp.items():
+            datasets_dict["nwp"][nwp_key] = fill_nans(
+                datasets_dict["nwp"][nwp_key], 
+                nwp_config.dropout_value,
+            )
+
+    return datasets_dict
+
+
+def fill_nans(da: xr.DataArray, fill_value: float) -> xr.DataArray:
+    """Fill NaNs in a DataArray in-place."""
+    if np.isnan(da.data).any():
+        da.data = np.nan_to_num(da.data, copy=False, nan=fill_value)
+    return da

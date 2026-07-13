@@ -1,8 +1,6 @@
 """Torch dataset for PVNet."""
 
 import logging
-import os
-import pickle
 import warnings
 
 import numpy as np
@@ -22,16 +20,16 @@ from ocf_data_sampler.numpy_sample import (
     get_t0_embedding,
     make_sun_position_numpy_sample,
 )
-from ocf_data_sampler.numpy_sample.common_types import NumpySample, TensorBatch
+
 from ocf_data_sampler.select import (
-    Location,
     fill_time_periods,
     find_contiguous_t0_periods,
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
-from ocf_data_sampler.torch_datasets.utils import (
-    add_alterate_coordinate_projections,
+from ocf_data_sampler.datasets.cache import PickleCacheMixin
+from ocf_data_sampler.datasets.pvnet.sample import NumpySample, TensorBatch
+from ocf_data_sampler.datasets.pvnet import (
     config_normalization_values_to_dicts,
     diff_nwp_data,
     fill_nans_in_dataset_dicts,
@@ -42,6 +40,8 @@ from ocf_data_sampler.torch_datasets.utils import (
 )
 from ocf_data_sampler.utils import load_data_dict
 
+from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
+
 # Ignore pydantic warning which doesn't cause an issue
 warnings.filterwarnings("ignore", category=UnsupportedFieldAttributeWarning)
 
@@ -49,35 +49,6 @@ xr.set_options(keep_attrs=True)
 
 logger = logging.getLogger(__name__)
 
-
-class PickleCacheMixin:
-    """A mixin for classes that need to cache their state using pickle."""
-
-    def __init__(self, *args: list, **kwargs: dict) -> None:
-        """Initialize the pickle path and call the parent constructor."""
-        self._pickle_path = None
-        super().__init__(*args, **kwargs)  # cooperative multiple inheritance
-
-    def presave_pickle(self, pickle_path: str) -> None:
-        """Save the full object state to a pickle file and store the pickle path."""
-        self._pickle_path = pickle_path
-        with open(pickle_path, "wb") as f:
-            pickle.dump(self.__dict__, f)
-
-    def __getstate__(self) -> dict:
-        """If presaved, only pickle reference. Otherwise pickle everything."""
-        if self._pickle_path:
-            return {"_pickle_path": self._pickle_path}
-        else:
-            return self.__dict__
-
-    def __setstate__(self, state: dict) -> None:
-        """Restore object from pickle, reloading from presaved file if possible."""
-        self.__dict__.update(state)
-        if self._pickle_path and os.path.exists(self._pickle_path):
-            with open(self._pickle_path, "rb") as f:
-                saved_state = pickle.load(f)  # noqa: S301
-                self.__dict__.update(saved_state)
 
 
 def get_locations(generation_data: xr.DataArray) -> list[Location]:
@@ -139,6 +110,59 @@ def get_time_periods_mask(
         mask |= (times >= start_time) & (times <= end_time)
 
     return mask
+
+
+def add_alternate_coordinate_projections(
+    locations: list[Location],
+    datasets_dict: dict,
+) -> list[Location]:
+    """Add (in-place) coordinate projections for all dataset to a set of locations.
+
+    Args:
+        locations: A list of locations
+        datasets_dict: The dataset dict to add projections for
+
+    Returns:
+        List of locations with all coordinate projections added
+    """
+    xs, ys = np.array([loc.in_coord_system("lon_lat") for loc in locations]).T
+
+    datasets_list = []
+    if "nwp" in datasets_dict:
+        datasets_list.extend(datasets_dict["nwp"].values())
+    if "sat" in datasets_dict:
+        datasets_list.append(datasets_dict["sat"])
+
+    computed_coord_systems = {"lon_lat"}
+
+    # Find all the coord systems required by all datasets
+    for da in datasets_list:
+
+        # Find the coordinate system required by this dataset
+        coord_system, *_ = find_coord_system(da)
+
+        # Skip if the projections in this coord system have already been computed
+        if coord_system not in computed_coord_systems:
+
+            # If using geostationary coords we need to extract the area definition string
+            area_string = da.attrs["area"] if coord_system=="geostationary" else None
+
+            new_xs, new_ys = convert_coordinates(
+                x=xs,
+                y=ys,
+                from_coords="lon_lat",
+                target_coords=coord_system,
+                area_string=area_string,
+            )
+
+            # Add the projection to the locations objects
+            for x, y, loc in zip(new_xs, new_ys, locations, strict=True):
+                loc.add_coord_system(x, y, coord_system)
+
+            computed_coord_systems.add(coord_system)
+
+    return locations
+
 
 
 class AbstractPVNetDataset(PickleCacheMixin, Dataset):

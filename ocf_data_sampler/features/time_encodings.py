@@ -5,7 +5,6 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
-from ocf_data_sampler.numpy_sample.common_types import NumpySample
 from ocf_data_sampler.common.time_utils import (
     get_day_fraction,
     get_day_of_year,
@@ -16,7 +15,7 @@ from ocf_data_sampler.common.time_utils import (
 )
 
 
-def encode_datetimes(datetimes: NDArray[np.datetime64]) -> NumpySample:
+def encode_datetimes(datetimes: NDArray[np.datetime64]) -> dict[str, NDArray[np.float32]]:
     """Creates dictionary of sin and cos datetime embeddings.
 
     Args:
@@ -39,18 +38,21 @@ def encode_datetimes(datetimes: NDArray[np.datetime64]) -> NumpySample:
     }
 
 
-def get_t0_embedding(
+def encode_t0(
     t0: np.datetime64,
     embeddings: list[tuple[str, Literal["cyclic", "linear"]]],
-) -> NumpySample:
-    """Creates dictionary of t0 time embeddings.
+) -> NDArray[np.float32]:
+    """Creates array of t0 time embeddings.
 
     Args:
         t0: The time to create sin-cos embeddings for
         embeddings: The periods to encode (e.g., "1h", "Nh", "1y", "Ny") and their representation
             (either "cyclic" or "linear"). When cyclic, the period is sin-cos embedded, else it is
             0-1 scaled as fraction through the period. Note that using "cyclic" adds 2 elements to
-            the output vector to embed a period whilst "linear" adds only 1 element.
+            the output array to embed a period whilst "linear" adds only 1 element.
+
+    Returns:
+        Array of t0 time embeddings.
     """
     features = []
 
@@ -75,4 +77,4 @@ def get_t0_embedding(
         elif embedding_type=="linear":
             features.append(frac)
 
-    return {"t0_embedding": np.array(features, dtype=np.float32)}
+    return np.array(features, dtype=np.float32)

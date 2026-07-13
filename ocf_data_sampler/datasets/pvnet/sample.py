@@ -1,9 +1,21 @@
-"""Convert a dictionary of xarray objects to a NumpySample."""
+"""This module defines type aliases for numpy and torch data structures used in the project."""
+
+
+from typing import TypeAlias
+
+from numpy.typing import NDArray
 
 import numpy as np
 import xarray as xr
+import torch
 
-from ocf_data_sampler.numpy_sample.common_types import NumpySample
+
+from ocf_data_sampler.features.solar import calculate_azimuth_and_elevation
+from ocf_data_sampler.features.time_encodings import encode_datetimes, encode_t0
+
+NumpySample: TypeAlias = dict[str, np.ndarray]
+NumpyBatch: TypeAlias = dict[str, np.ndarray]
+TensorBatch: TypeAlias = dict[str, torch.Tensor]
 
 
 def convert_to_numpy_sample(
@@ -86,3 +98,48 @@ def convert_to_numpy_sample(
                 })
 
     return numpy_sample
+
+
+def make_sun_position_numpy_sample(
+    datetimes: NDArray[np.datetime64],
+    lon: float,
+    lat: float,
+) -> NumpySample:
+    """Creates NumpySample with standardized solar coordinates.
+
+    Args:
+        datetimes: Datetimes for which to calculate the solar coordinates.
+        lon: Longitude in decimal degrees. Positive east of prime meridian, negative to west.
+        lat: Latitude in decimal degrees. Positive north of equator, negative to south.
+    """
+    azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon, lat)
+
+    # Normalise
+    # Azimuth is in range [0, 360] degrees
+    azimuth = azimuth / 360
+
+    # Elevation is in range [-90, 90] degrees
+    elevation = elevation / 180 + 0.5
+
+    return {
+        "solar_azimuth": azimuth,
+        "solar_elevation": elevation,
+    }
+
+
+def make_t0_encoding_numpy_sample(
+    t0: np.datetime64,
+    embeddings: list[tuple[str, str]],
+) -> NumpySample:
+    """Creates NumpySample with t0 time embeddings.
+
+    Args:
+        t0: The time to create sin-cos embeddings for
+        embeddings: The periods to encode (e.g., "1h", "Nh", "1y", "Ny") and their representation
+            (either "cyclic" or "linear"). When cyclic, the period is sin-cos embedded, else it is
+            0-1 scaled as fraction through the period. Note that using "cyclic" adds 2 elements to
+            the output array to embed a period whilst "linear" adds only 1 element.
+    Returns:
+        NumpySample with t0 time embeddings.
+    """
+    return {"t0_embedding": encode_t0(t0, embeddings)}

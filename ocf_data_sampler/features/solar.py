@@ -3,7 +3,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from ocf_data_sampler.numpy_sample.common_types import NumpySample
+from ocf_data_sampler.datasets.pvnet.sample import NumpySample
 from ocf_data_sampler.common.time_utils import get_day_fraction, get_day_of_year, get_year
 
 
@@ -92,31 +92,3 @@ def calculate_azimuth_and_elevation(
         np.sin(LatR) * np.sin(DecR)))
 
     return SunAz, SunEl
-
-
-def make_sun_position_numpy_sample(
-    datetimes: NDArray[np.datetime64],
-    lon: float,
-    lat: float,
-) -> NumpySample:
-    """Creates NumpySample with standardized solar coordinates.
-
-    Args:
-        datetimes: Datetimes for which to calculate the solar coordinates.
-        lon: Longitude in decimal degrees. Positive east of prime meridian, negative to west.
-        lat: Latitude in decimal degrees. Positive north of equator, negative to south.
-    """
-    azimuth, elevation = calculate_azimuth_and_elevation(datetimes, lon, lat)
-
-    # Normalise
-    # Azimuth is in range [0, 360] degrees
-    azimuth = azimuth / 360
-
-    # Elevation is in range [-90, 90] degrees
-    elevation = elevation / 180 + 0.5
-
-    return {
-        "solar_azimuth": azimuth,
-        "solar_elevation": elevation,
-    }
-

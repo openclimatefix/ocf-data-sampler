@@ -1,4 +1,4 @@
-from ocf_data_sampler.select.location import Location
+from ocf_data_samplefrom ocf_data_sampler.spatial import Location
 
 
 def test_make_valid_location_object():
