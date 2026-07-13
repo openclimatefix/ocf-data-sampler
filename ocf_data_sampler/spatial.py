@@ -182,7 +182,7 @@ def convert_coordinates(
     if from_coords==target_coords:
         return x, y
 
-    if "geostationary" in (from_coords, target_coords) and area_string is not None:
+    if "geostationary" in (from_coords, target_coords) and area_string is None:
         raise ValueError("If using geostationary coords the `area_string` must be provided")
 
     match (from_coords, target_coords):

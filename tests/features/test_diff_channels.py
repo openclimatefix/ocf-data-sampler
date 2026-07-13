@@ -1,4 +1,4 @@
-from ocf_data_sampler.select.diff_channels import diff_channels
+from ocf_data_sampler.features.diff_channels import diff_channels
 
 
 def test_diff_channels(ds_nwp_ukv_time_sliced):

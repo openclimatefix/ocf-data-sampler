@@ -3,8 +3,7 @@
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.select.geospatial import find_coord_system
-from ocf_data_samplefrom ocf_data_sampler.spatial import Location
+from ocf_data_sampler.spatial import find_coord_system, Location
 
 
 def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int, int]:

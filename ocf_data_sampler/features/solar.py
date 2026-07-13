@@ -3,7 +3,6 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from ocf_data_sampler.datasets.pvnet.sample import NumpySample
 from ocf_data_sampler.common.time_utils import get_day_fraction, get_day_of_year, get_year
 
 

@@ -10,7 +10,7 @@ from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configura
 
 # Constants
 TEST_DIR = Path(__file__).parent
-CONFIG_DIR = TEST_DIR / "test_data" / "configs"
+CONFIG_DIR = TEST_DIR / "fixtures" / "configs"
 NWP_FREQ = pd.Timedelta("3h")
 RANDOM_SEED = 42
 
@@ -102,7 +102,7 @@ def sat_zarr_path(session_tmp_path):
             "x_geostationary": np.linspace(15002, -1824245, 100),
         },
         attrs={"area": UK_SAT_AREA},
-    ).to_dataset(name="data")
+    ).to_dataset(name="data", promote_attrs=True)
 
     yield save_zarr(ds, session_tmp_path, "test_sat.zarr")
 
@@ -111,7 +111,7 @@ def sat_zarr_path(session_tmp_path):
 @pytest.fixture(scope="session")
 def ds_nwp_ukv(session_rng):
     coords = {
-        "init_time": pd.date_range("2023-01-01 00:00", freq="180min", periods=24 * 7),
+        "init_time_utc": pd.date_range("2023-01-01 00:00", freq="180min", periods=24 * 7),
         "variable": ["si10", "dswrf", "t", "prate"],
         "step": pd.timedelta_range("0h", "10h", freq="1h"),
         "x": np.linspace(-239_000, 857_000, 50),
@@ -124,7 +124,7 @@ def ds_nwp_ukv(session_rng):
 
 @pytest.fixture(scope="session")
 def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
-    chunks = {"init_time": 1, "step": -1, "variable": -1, "x": 50, "y": 50}
+    chunks = {"init_time_utc": 1, "step": -1, "variable": -1, "x": 50, "y": 50}
     yield save_zarr(ds_nwp_ukv, session_tmp_path, "ukv_nwp.zarr", chunks)
 
 
@@ -146,7 +146,7 @@ def ds_nwp_ukv_time_sliced(session_rng):
 @pytest.fixture(scope="session")
 def ds_nwp_ecmwf(session_rng):
     coords = {
-        "init_time": pd.date_range("2023-01-01 00:00", freq="6h", periods=24 * 7),
+        "init_time_utc": pd.date_range("2023-01-01 00:00", freq="6h", periods=24 * 7),
         "variable": ["t2m", "dswrf", "mcc"],
         "step": pd.timedelta_range("0h", "14h", freq="1h"),
         "longitude": np.arange(-12.0, 3.0),
@@ -159,8 +159,8 @@ def ds_nwp_ecmwf(session_rng):
 
 @pytest.fixture(scope="session")
 def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
-    chunks = {"init_time": 1, "step": -1, "variable": -1, "longitude": 50, "latitude": 50}
-    yield save_zarr(ds_nwp_ecmwf, session_tmp_path, "ukv_ecmwf.zarr", chunks)
+    chunks = {"init_time_utc": 1, "step": -1, "variable": -1, "longitude": 50, "latitude": 50}
+    yield save_zarr(ds_nwp_ecmwf, session_tmp_path, "ecmwf_nwp.zarr", chunks)
 
 
 @pytest.fixture(scope="session")
@@ -211,7 +211,7 @@ def icon_eu_zarr_path(session_tmp_path, session_rng):
 @pytest.fixture(scope="session")
 def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     coords = {
-        "init_time": pd.date_range("2023-01-01 00:00", freq="1h", periods=2),
+        "init_time_utc": pd.date_range("2023-01-01 00:00", freq="1h", periods=2),
         "variable": ["IR_097", "VIS008", "WV_073"],
         "step": pd.timedelta_range("15min", "180min", freq="15min"),
         "x_geostationary": np.linspace(15002, -1824245, 100),
@@ -222,7 +222,7 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
 
     ds = create_xr_dataset(coords, data, "sat_pred", attrs={"area": UK_SAT_AREA})
     chunks = {
-        "init_time": 1,
+        "init_time_utc": 1,
         "step": -1,
         "variable": -1,
         "x_geostationary": 50,

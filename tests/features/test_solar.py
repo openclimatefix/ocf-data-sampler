@@ -5,7 +5,6 @@ import pytest
 
 from ocf_data_sampler.features.solar import (
     calculate_azimuth_and_elevation,
-    make_sun_position_numpy_sample,
 )
 
 
@@ -80,13 +79,3 @@ def test_calculate_azimuth_and_elevation_random():
     assert np.all((elevations >= -90) & (elevations <= 90))
     assert azimuths.min() < 30 and azimuths.max() > 330
     assert elevations.min() < -70 and elevations.max() > 70
-
-
-def test_make_sun_position_numpy_sample():
-    datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min").values
-    sample = make_sun_position_numpy_sample(datetimes, lon=0, lat=51.5)
-
-    # Assertion accounting for solar coord normalisation
-    assert {"solar_elevation", "solar_azimuth"} <= set(sample)
-    assert np.all((sample["solar_elevation"] >= 0) & (sample["solar_elevation"] <= 1))
-    assert np.all((sample["solar_azimuth"] >= 0) & (sample["solar_azimuth"] <= 1))

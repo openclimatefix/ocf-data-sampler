@@ -1,7 +1,7 @@
 import numpy as np
 
-from ocf_data_sampler.torch_datasets.pvnet_dataset import PVNetDataset
-from ocf_data_sampler.torch_datasets.utils.time_slice_for_dataset import slice_datasets_by_time
+from ocf_data_sampler.datasets.pvnet.dataset import PVNetDataset
+from ocf_data_sampler.datasets.pvnet.slicing import slice_datasets_by_time
 
 
 def test_time_slice_for_dataset_site_dropout(pvnet_config_filename):

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.select.find_contiguous_time_periods import (
+from ocf_data_sampler.select.time_periods import (
     find_contiguous_t0_periods,
     find_contiguous_t0_periods_nwp,
     intersection_of_multiple_dataframes_of_periods,

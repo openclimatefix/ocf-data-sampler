@@ -5,11 +5,10 @@ from collections.abc import Callable
 import numpy as np
 import xarray as xr
 
-
-from ocf_data_sampler.load.nwp.utils import open_zarr_paths
 from ocf_data_sampler.load.utils import (
     get_xr_data_array_from_xr_dataset,
     make_spatial_coords_increasing,
+    open_zarr_paths,
 )
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 
@@ -179,10 +178,9 @@ def open_icon_eu(zarr_path: str | list[str]) -> xr.DataArray:
 
 def open_ukv(zarr_path: str | list[str]) -> xr.DataArray:
     """Opens UKV NWP data (OSGB grid)."""
-    ds = open_zarr_paths(zarr_path, backend="tensorstore")
+    ds = open_zarr_paths(zarr_path, backend="tensorstore", time_dim="init_time_utc")
     # Only rename keys actually present - new UKV data already uses the target names
     rename_map = {
-        "init_time": "init_time_utc",
         "variable": "channel",
         "x": "x_osgb",
         "y": "y_osgb",
@@ -199,6 +197,6 @@ def open_cloudcasting(zarr_path: str | list[str]) -> xr.DataArray:
         [2] https://github.com/ClimeTrend/cloudcasting
         [3] https://github.com/openclimatefix/sat_pred
     """
-    ds = open_zarr_paths(zarr_path, backend="tensorstore")
-    ds = ds.rename({"init_time": "init_time_utc", "variable": "channel"})
+    ds = open_zarr_paths(zarr_path, time_dim="init_time_utc", backend="tensorstore")
+    ds = ds.rename({"variable": "channel"})
     return _canonicalize_regular_grid_layout(ds, x_coord="x_geostationary", y_coord="y_geostationary")

@@ -52,7 +52,7 @@ def get_xr_data_array_from_xr_dataset(ds: xr.Dataset) -> xr.DataArray:
 
 def open_zarr_paths(
     zarr_path: str | list[str],
-    time_dim: str = "init_time",
+    time_dim: str,
     backend: Literal["dask", "tensorstore"],
     public: bool = False,
 ) -> xr.Dataset:

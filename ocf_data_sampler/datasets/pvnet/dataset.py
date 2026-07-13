@@ -13,13 +13,13 @@ from typing_extensions import override
 
 from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.common.lightarray import LightDataArray
-from ocf_data_sampler.torch_datasets.utils.load_dataset import get_dataset_dict
-from ocf_data_sampler.numpy_sample import (
+from ocf_data_sampler.datasets.pvnet.loading import get_dataset_dict
+from ocf_data_sampler.datasets.pvnet.sample import (
     convert_to_numpy_sample,
-    encode_datetimes,
-    get_t0_embedding,
     make_sun_position_numpy_sample,
+    make_t0_encoding_numpy_sample,
 )
+from ocf_data_sampler.features.time_encodings import encode_datetimes
 
 from ocf_data_sampler.select import (
     fill_time_periods,
@@ -29,13 +29,13 @@ from ocf_data_sampler.select import (
 from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
 from ocf_data_sampler.datasets.cache import PickleCacheMixin
 from ocf_data_sampler.datasets.pvnet.sample import NumpySample, TensorBatch
-from ocf_data_sampler.datasets.pvnet import (
-    config_normalization_values_to_dicts,
-    diff_nwp_data,
-    fill_nans_in_dataset_dicts,
-    find_valid_time_periods,
-    reduce_spatial_extent_of_datasets,
+from ocf_data_sampler.datasets.pvnet.preprocess import (
+    config_normalization_values_to_dicts, diff_nwp_data, fill_nans_in_dataset_dicts
+)
+from ocf_data_sampler.datasets.pvnet.valid_t0s import find_valid_time_periods
+from ocf_data_sampler.datasets.pvnet.slicing import (
     slice_datasets_by_space,
+    reduce_spatial_extent_of_datasets,
     slice_datasets_by_time,
 )
 from ocf_data_sampler.utils import load_data_dict
@@ -225,7 +225,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Construct list of locations to sample from
         locations = get_locations(generation_data=datasets_dict["generation"])
 
-        self.locations = add_alterate_coordinate_projections(locations, datasets_dict)
+        self.locations = add_alternate_coordinate_projections(locations, datasets_dict)
 
         self.config = config
         self.include_extra_metadata = include_extra_metadata
@@ -307,7 +307,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         # Add t0 embedding if configured
         if self.config.input_data.t0_embedding is not None:
-            sample.update(get_t0_embedding(t0, self.config.input_data.t0_embedding.embeddings))
+            sample.update(make_t0_encoding_numpy_sample(t0, self.config.input_data.t0_embedding.embeddings))
 
         # Add solar position if configured
         if self.config.input_data.solar_position is not None:

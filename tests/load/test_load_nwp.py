@@ -75,9 +75,9 @@ def test_load_ecmwf_bad_dtype_latitude(tmp_path):
     zarr_path = tmp_path / "bad_ecmwf_latitude.zarr"
     bad_array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time", "step", "variable", "longitude", "latitude"),
+        dims=("init_time_utc", "step", "variable", "longitude", "latitude"),
         coords={
-            "init_time": [np.datetime64("2023-01-01")],
+            "init_time_utc": [np.datetime64("2023-01-01")],
             "step": [np.timedelta64(1, "h")],
             "variable": ["t"],
             "longitude": np.array([0], dtype=np.float32),
@@ -94,9 +94,9 @@ def test_load_ecmwf_bad_dtype_init_time(tmp_path):
     zarr_path = tmp_path / "bad_ecmwf_init_time.zarr"
     bad_array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time", "step", "variable", "longitude", "latitude"),
+        dims=("init_time_utc", "step", "variable", "longitude", "latitude"),
         coords={
-            "init_time": [1.23],
+            "init_time_utc": [1.23],
             "step": [np.timedelta64(1, "h")],
             "variable": ["t"],
             "longitude": np.array([0], dtype=np.float32),
@@ -113,9 +113,9 @@ def test_load_ecmwf_bad_dtype_step(tmp_path):
     zarr_path = tmp_path / "bad_ecmwf_step.zarr"
     bad_array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time", "step", "variable", "longitude", "latitude"),
+        dims=("init_time_utc", "step", "variable", "longitude", "latitude"),
         coords={
-            "init_time": [np.datetime64("2023-01-01")],
+            "init_time_utc": [np.datetime64("2023-01-01")],
             "step": [1.0],
             "variable": ["t"],
             "longitude": np.array([0], dtype=np.float32),
@@ -151,9 +151,9 @@ def test_load_ecmwf_bad_dtype_longitude(tmp_path):
     zarr_path = tmp_path / "bad_ecmwf_longitude.zarr"
     bad_array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time", "step", "variable", "longitude", "latitude"),
+        dims=("init_time_utc", "step", "variable", "longitude", "latitude"),
         coords={
-            "init_time": [np.datetime64("2023-01-01")],
+            "init_time_utc": [np.datetime64("2023-01-01")],
             "step": [np.timedelta64(1, "h")],
             "variable": ["t"],
             "longitude": [0],

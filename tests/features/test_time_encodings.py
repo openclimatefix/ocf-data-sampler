@@ -3,7 +3,7 @@ import pandas as pd
 
 from ocf_data_sampler.features.time_encodings import (
     encode_datetimes,
-    get_t0_embedding,
+    encode_t0,
 )
 
 
@@ -21,12 +21,12 @@ def test_encode_datetimes():
         assert np.all(np.abs(features[key]) <= 1)
 
 
-def test_get_t0_embedding():
+def test_encode_t0():
 
     def check(t0s, embeddings, xs, period_floats):
         # Test the results are expected for each t0 time
         for x, t0 in zip(xs, t0s, strict=False):
-            results = get_t0_embedding(t0, embeddings)["t0_embedding"]
+            results = encode_t0(t0, embeddings)
 
             expected_results = []
             for p, (_, emb_type) in zip(period_floats, embeddings, strict=False):

@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
-from ocf_data_sampler.torch_datasets.pvnet_dataset import (
+from ocf_data_sampler.datasets.pvnet.dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
     get_time_periods_mask,

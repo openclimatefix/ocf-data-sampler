@@ -3,7 +3,7 @@
 import numpy as np
 
 from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.select import get_indices_in_sorted_unique
+from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
 from ocf_data_sampler.spatial import Location
 from ocf_data_sampler.select.spatial_slice import (
     select_spatial_slice_pixels,
