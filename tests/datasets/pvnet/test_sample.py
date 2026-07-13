@@ -1,10 +1,11 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-from ocf_data_sampler.load.generation import open_generation
 from ocf_data_sampler.datasets.pvnet.sample import (
-    make_sun_position_numpy_sample, convert_to_numpy_sample
+    convert_to_numpy_sample,
+    make_sun_position_numpy_sample,
 )
+from ocf_data_sampler.load.generation import open_generation
 
 
 def test_make_sun_position_numpy_sample():

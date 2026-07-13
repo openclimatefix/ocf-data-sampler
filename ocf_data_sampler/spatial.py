@@ -13,6 +13,8 @@ import pyproj
 import xarray as xr
 from pyresample.area_config import load_area_from_string
 
+ALLOWED_COORD_SYSTEMS = {"osgb", "lon_lat", "geostationary"}
+
 # Coordinate Reference System (CRS) identifiers
 
 # OSGB36: UK Ordnance Survey National Grid (easting/northing in meters) - https://epsg.io/27700
@@ -210,8 +212,6 @@ def convert_coordinates(
 class Location:
     """A spatial location."""
 
-    allowed_coord_systems = {"osgb", "lon_lat", "geostationary"}
-
     def __init__(self, x: float, y: float, coord_system: str, id: int | str | None = None) -> None:
         """A spatial location.
 
@@ -227,7 +227,7 @@ class Location:
 
     @staticmethod
     def _check_valid_coord_system(coord_system: str) -> None:
-        if coord_system not in Location.allowed_coord_systems:
+        if coord_system not in ALLOWED_COORD_SYSTEMS:
             raise ValueError(f"Coordinate {coord_system} is not supported")
 
     def in_coord_system(self, coord_system: str) -> tuple[float, float]:

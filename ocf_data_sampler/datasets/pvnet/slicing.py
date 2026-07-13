@@ -2,18 +2,17 @@
 
 import numpy as np
 
-from ocf_data_sampler.config import Configuration
 from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
-from ocf_data_sampler.spatial import Location
+from ocf_data_sampler.common.time_utils import minutes
+from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.select.dropout import apply_history_dropout
 from ocf_data_sampler.select.spatial_slice import (
     select_spatial_slice_pixels,
     select_spatial_slice_pixels_multiple,
 )
-
-
-from ocf_data_sampler.select.dropout import apply_history_dropout
 from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
-from ocf_data_sampler.common.time_utils import minutes
+from ocf_data_sampler.spatial import Location
+
 
 def slice_datasets_by_space(
     datasets_dict: dict,

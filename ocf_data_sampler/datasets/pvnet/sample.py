@@ -1,17 +1,14 @@
-"""This module defines type aliases for numpy and torch data structures used in the project."""
-
+"""Functions to convert xarray datasets to numpy samples."""
 
 from typing import TypeAlias
 
+import numpy as np
+import torch
+import xarray as xr
 from numpy.typing import NDArray
 
-import numpy as np
-import xarray as xr
-import torch
-
-
 from ocf_data_sampler.features.solar import calculate_azimuth_and_elevation
-from ocf_data_sampler.features.time_encodings import encode_datetimes, encode_t0
+from ocf_data_sampler.features.time_encodings import encode_t0
 
 NumpySample: TypeAlias = dict[str, np.ndarray]
 NumpyBatch: TypeAlias = dict[str, np.ndarray]
@@ -139,6 +136,7 @@ def make_t0_encoding_numpy_sample(
             (either "cyclic" or "linear"). When cyclic, the period is sin-cos embedded, else it is
             0-1 scaled as fraction through the period. Note that using "cyclic" adds 2 elements to
             the output array to embed a period whilst "linear" adds only 1 element.
+
     Returns:
         NumpySample with t0 time embeddings.
     """

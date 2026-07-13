@@ -11,35 +11,36 @@ from pydantic.warnings import UnsupportedFieldAttributeWarning
 from torch.utils.data import Dataset, default_collate
 from typing_extensions import override
 
-from ocf_data_sampler.config import Configuration, load_yaml_configuration
 from ocf_data_sampler.common.lightarray import LightDataArray
+from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
+from ocf_data_sampler.config import Configuration, load_yaml_configuration
+from ocf_data_sampler.datasets.cache import PickleCacheMixin
 from ocf_data_sampler.datasets.pvnet.loading import get_dataset_dict
+from ocf_data_sampler.datasets.pvnet.materialise import load_data_dict
+from ocf_data_sampler.datasets.pvnet.preprocess import (
+    config_normalization_values_to_dicts,
+    diff_nwp_data,
+    fill_nans_in_dataset_dicts,
+)
 from ocf_data_sampler.datasets.pvnet.sample import (
+    NumpySample,
+    TensorBatch,
     convert_to_numpy_sample,
     make_sun_position_numpy_sample,
     make_t0_encoding_numpy_sample,
 )
+from ocf_data_sampler.datasets.pvnet.slicing import (
+    reduce_spatial_extent_of_datasets,
+    slice_datasets_by_space,
+    slice_datasets_by_time,
+)
+from ocf_data_sampler.datasets.pvnet.valid_t0s import find_valid_time_periods
 from ocf_data_sampler.features.time_encodings import encode_datetimes
-
 from ocf_data_sampler.select import (
     fill_time_periods,
     find_contiguous_t0_periods,
     intersection_of_multiple_dataframes_of_periods,
 )
-from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
-from ocf_data_sampler.datasets.cache import PickleCacheMixin
-from ocf_data_sampler.datasets.pvnet.sample import NumpySample, TensorBatch
-from ocf_data_sampler.datasets.pvnet.preprocess import (
-    config_normalization_values_to_dicts, diff_nwp_data, fill_nans_in_dataset_dicts
-)
-from ocf_data_sampler.datasets.pvnet.valid_t0s import find_valid_time_periods
-from ocf_data_sampler.datasets.pvnet.slicing import (
-    slice_datasets_by_space,
-    reduce_spatial_extent_of_datasets,
-    slice_datasets_by_time,
-)
-from ocf_data_sampler.datasets.pvnet.materialise import load_data_dict
-
 from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
 
 # Ignore pydantic warning which doesn't cause an issue
@@ -188,7 +189,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                 sample dict.
             use_xarray: Whether to use xarray.DataArray or LightDataArray as the underlying data
                 structure when sampling
-            
+
         """
         super().__init__()
 
@@ -307,7 +308,9 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         # Add t0 embedding if configured
         if self.config.input_data.t0_embedding is not None:
-            sample.update(make_t0_encoding_numpy_sample(t0, self.config.input_data.t0_embedding.embeddings))
+            sample.update(
+                make_t0_encoding_numpy_sample(t0, self.config.input_data.t0_embedding.embeddings),
+            )
 
         # Add solar position if configured
         if self.config.input_data.solar_position is not None:

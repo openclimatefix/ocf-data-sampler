@@ -1,6 +1,6 @@
-import xarray as xr
 import pandas as pd
 import pytest
+import xarray as xr
 
 from ocf_data_sampler.common.tensorstore import open_zarr, open_zarrs
 

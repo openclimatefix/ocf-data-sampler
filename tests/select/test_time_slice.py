@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
 from ocf_data_sampler.common.time_utils import date_range, datetime_ceil
+from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
 
 
 @pytest.mark.parametrize("t0_str", ["12:30", "12:40", "12:00"])

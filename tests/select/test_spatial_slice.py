@@ -2,11 +2,11 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from ocf_data_sampler.spatial import Location
 from ocf_data_sampler.select.spatial_slice import (
     _get_pixel_index_location,
     select_spatial_slice_pixels,
 )
+from ocf_data_sampler.spatial import Location
 
 
 def test_get_idx_of_pixel_closest_to_poi(da):

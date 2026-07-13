@@ -1,10 +1,10 @@
 """Take the in-place diff of some channels of the NWP data."""
 
-from ocf_data_sampler.config import Configuration
-from ocf_data_sampler.features.diff_channels import diff_channels
 import numpy as np
 import xarray as xr
 
+from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.features.diff_channels import diff_channels
 
 
 def config_normalization_values_to_dicts(
@@ -108,7 +108,7 @@ def fill_nans_in_dataset_dicts(datasets_dict: dict, config: Configuration) -> di
     conf_in = config.input_data
     if "generation" in datasets_dict:
         datasets_dict["generation"] = fill_nans(
-            datasets_dict["generation"], 
+            datasets_dict["generation"],
             conf_in.generation.dropout_value,
         )
 
@@ -118,7 +118,7 @@ def fill_nans_in_dataset_dicts(datasets_dict: dict, config: Configuration) -> di
     if "nwp" in datasets_dict:
         for nwp_key, nwp_config in config.input_data.nwp.items():
             datasets_dict["nwp"][nwp_key] = fill_nans(
-                datasets_dict["nwp"][nwp_key], 
+                datasets_dict["nwp"][nwp_key],
                 nwp_config.dropout_value,
             )
 

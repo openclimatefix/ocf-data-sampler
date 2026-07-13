@@ -1,16 +1,20 @@
 """Module for opening NWP data."""
 
-from collections.abc import Callable
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 import xarray as xr
 
+from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 from ocf_data_sampler.load.utils import (
     get_xr_data_array_from_xr_dataset,
     make_spatial_coords_increasing,
     open_zarr_paths,
 )
-from ocf_data_sampler.common.indexing import assert_values_unique_increasing
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _validate_nwp_data(data_array: xr.DataArray, provider: str) -> None:
@@ -199,4 +203,6 @@ def open_cloudcasting(zarr_path: str | list[str]) -> xr.DataArray:
     """
     ds = open_zarr_paths(zarr_path, time_dim="init_time_utc", backend="tensorstore")
     ds = ds.rename({"variable": "channel"})
-    return _canonicalize_regular_grid_layout(ds, x_coord="x_geostationary", y_coord="y_geostationary")
+    return _canonicalize_regular_grid_layout(
+        ds, x_coord="x_geostationary", y_coord="y_geostationary",
+    )

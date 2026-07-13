@@ -2,8 +2,8 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from ocf_data_sampler.select.dropout import apply_history_dropout
 from ocf_data_sampler.common.time_utils import minutes
+from ocf_data_sampler.select.dropout import apply_history_dropout
 
 
 def test_apply_history_dropout_multiple_timedeltas(da_sample):
