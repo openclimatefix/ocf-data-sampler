@@ -3,14 +3,14 @@
 This module uses and adapts internal functions from the Google xarray-tensorstore project [1],
 licensed under the Apache License, Version 2.0. See [2] for details.
 
-Modifications copyright 2025 Open climate Fix. Licensed under the MIT License.
+Modifications copyright 2025 Open Climate Fix. Licensed under the MIT License.
 
 Modifications from the original include:
 - Adding support for opening multiple zarr files as a single xarray object
 - Support for zarr 3 -> https://github.com/google/xarray-tensorstore/pull/22
 
 References:
-    [1] https://github.com/google-research/tensorstore/blob/main/tensorstore/xarray.py
+    [1] https://github.com/google/xarray-tensorstore
     [2] https://www.apache.org/licenses/LICENSE-2.0
 """
 

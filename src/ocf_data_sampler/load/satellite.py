@@ -5,8 +5,8 @@ import numpy as np
 import xarray as xr
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
-from ocf_data_sampler.common.tensorstore import open_zarr, open_zarrs
-from ocf_data_sampler.load.utils import (
+from ocf_data_sampler.common.xr_tensorstore import open_zarr, open_zarrs
+from ocf_data_sampler.load.conventions import (
     get_xr_data_array_from_xr_dataset,
     make_spatial_coords_increasing,
 )

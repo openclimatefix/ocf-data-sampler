@@ -17,7 +17,7 @@ Coordinates:
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.load.utils import assert_values_unique_increasing
+from ocf_data_sampler.load.conventions import assert_values_unique_increasing
 
 
 def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
