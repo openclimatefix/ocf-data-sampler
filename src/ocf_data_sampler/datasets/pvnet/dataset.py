@@ -13,7 +13,8 @@ from typing_extensions import override
 
 from ocf_data_sampler.common.lightarray import LightDataArray
 from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
-from ocf_data_sampler.config import Configuration, load_yaml_configuration
+from ocf_data_sampler.config.model import Configuration
+from ocf_data_sampler.config.load import load_yaml_configuration
 from ocf_data_sampler.datasets.cache import PickleCacheMixin
 from ocf_data_sampler.datasets.pvnet.loading import get_dataset_dict
 from ocf_data_sampler.datasets.pvnet.materialise import load_data_dict

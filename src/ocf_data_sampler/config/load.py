@@ -3,7 +3,7 @@
 import fsspec
 from pyaml_env import parse_config
 
-from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.config.model import Configuration
 
 
 def load_yaml_configuration(filename: str) -> Configuration:

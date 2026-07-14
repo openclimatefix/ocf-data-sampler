@@ -3,7 +3,7 @@
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.config.model import Configuration
 from ocf_data_sampler.features.diff_channels import diff_channels
 
 

@@ -10,7 +10,7 @@ import os
 import fsspec
 import yaml
 
-from ocf_data_sampler.config import Configuration
+from ocf_data_sampler.config.model import Configuration
 
 
 def save_yaml_configuration(configuration: Configuration, filename: str) -> None:
