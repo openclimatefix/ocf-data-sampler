@@ -1,7 +1,7 @@
 import dask.array
 import numpy as np
 import xarray as xr
-from ocf_data_sampler.common.tensorstore import open_zarr
+from ocf_data_sampler.common.xr_tensorstore import open_zarr
 
 from ocf_data_sampler.datasets.pvnet.materialise import load, load_data_dict
 
