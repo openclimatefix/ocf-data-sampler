@@ -2,7 +2,6 @@
 
 import pandas as pd
 import xarray as xr
-
 from ocf_data_sampler.select.geospatial import osgb_to_lon_lat
 
 
