@@ -135,7 +135,7 @@ def datetime_ceil(
     epoch_datetime = np.datetime64("1970-01-01", "ns")
     periods_since_epoch = np.ceil((datetimes - epoch_datetime) / freq)
     result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
-    return cast(np.datetime64 | NDArray[np.datetime64], result)
+    return cast("np.datetime64 | NDArray[np.datetime64]", result)
 
 
 def datetime_floor(
@@ -152,7 +152,7 @@ def datetime_floor(
     epoch_datetime = np.datetime64("1970-01-01", "ns")
     periods_since_epoch = np.floor((datetimes - epoch_datetime) / freq)
     result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
-    return cast(np.datetime64 | NDArray[np.datetime64], result)
+    return cast("np.datetime64 | NDArray[np.datetime64]", result)
 
 
 def get_posix_timestamp(
