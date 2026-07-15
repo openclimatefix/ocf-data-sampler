@@ -40,7 +40,7 @@ class LightDataArray:
         self.coords = coords
         self.coord_dims = coord_dims
         self.attrs = attrs or {}
-        self.future: None | TensorStoreFuture = None
+        self.future: TensorStoreFuture[Any] | None = None
 
     @property
     def data(self) -> np.ndarray | TensorStore:

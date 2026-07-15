@@ -71,15 +71,18 @@ def _tensorstore_open_zarrs(
         context: TensorStore context.
     """
     # Open all the variables from all the datasets - returned as futures
-    arrays_list: list[dict[str, ts.Future]] = []
+    array_futures_list: list[dict[str, ts.Future[ts.TensorStore]]] = []
     for path in paths:
-        arrays_list.append(_get_data_variable_array_futures(path, context, data_vars))
+        array_futures_list.append(_get_data_variable_array_futures(path, context, data_vars))
 
     # Wait for the async open operations
-    arrays_list = [{k: v.result() for k, v in arrays.items()} for arrays in arrays_list]
+    arrays_list: list[dict[str, ts.TensorStore]] = [
+        {k: future.result() for k, future in array_futures.items()}
+        for array_futures in array_futures_list
+    ]
 
     # Concatenate each of the variables along the required axis
-    arrays = {}
+    arrays: dict[str, ts.TensorStore] = {}
     for k, axis in zip(data_vars, concat_axes, strict=True):
         variable_arrays = [d[k] for d in arrays_list]
         arrays[k] = ts.concat(variable_arrays, axis=axis)
