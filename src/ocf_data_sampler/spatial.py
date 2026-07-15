@@ -1,10 +1,8 @@
-"""Geospatial coordinate transformation functions.
+"""Geospatial coordinate transformations and location utilities.
 
-Provides utilities for working with different coordinate systems
-
-Supports conversions between:
+Supports coordinate systems:
 - OSGB36 (Ordnance Survey Great Britain, easting/northing in meters)
-- WGS84 (World Geodetic System, latitude/longitude in degrees)
+- WGS84 (World Geodetic System, longitude/latitude in degrees)
 - Geostationary satellite coordinate systems
 """
 
@@ -19,7 +17,7 @@ ALLOWED_COORD_SYSTEMS = {"osgb", "lon_lat", "geostationary"}
 
 # OSGB36: UK Ordnance Survey National Grid (easting/northing in meters) - https://epsg.io/27700
 OSGB36 = 27700
-# WGS84: World Geodetic System 1984 (latitude/longitude in degrees) - https://epsg.io/4326
+# WGS84: World Geodetic System 1984 (longitude/latitude in degrees) - https://epsg.io/4326
 WGS84 = 4326
 
 # Pre-inititiate coordinate Transformer objects
@@ -34,10 +32,11 @@ def osgb_to_lon_lat(
     """Convert OSGB coordinates to lon-lat.
 
     Args:
-        x: osgb east-west
-        y: osgb south-north
+        x: osgb easting
+        y: osgb northing
 
-    Return: longitude, latitude
+    Returns:
+        longitude, latitude
     """
     return _osgb_to_lon_lat.transform(xx=x, yy=y)
 
@@ -49,10 +48,11 @@ def lon_lat_to_osgb(
     """Convert lon-lat coordinates to OSGB.
 
     Args:
-        x: longitude east-west
-        y: latitude south-north
+        x: longitude
+        y: latitude
 
-    Return: x_osgb, y_osgb
+    Returns:
+        x_osgb, y_osgb
     """
     return _lon_lat_to_osgb.transform(xx=x, yy=y)
 
@@ -64,12 +64,13 @@ def _get_geostationary_coord_transform(
     """Loads geostationary area and transforms to geostationary coords.
 
     Args:
-        x: osgb east-west, or latitude
-        y: osgb south-north, or longitude
-        crs_from: the cordiates system of x, y
+        x: osgb easting, or longitude
+        y: osgb northing, or latitude
+        crs_from: the coordinates system of x, y
         area_string: String containing yaml geostationary area definition to convert to.
 
-    Returns: Coordinate Transformer
+    Returns:
+        Coordinate Transformer
     """
     if crs_from not in [OSGB36, WGS84]:
         raise ValueError(f"Unrecognized coordinate system: {crs_from}")
@@ -95,7 +96,8 @@ def lon_lat_to_geostationary_area_coords(
         latitude: latitude
         area_string: String containing yaml geostationary area definition to convert to.
 
-    Returns: x_geostationary, y_geostationary
+    Returns:
+        x_geostationary, y_geostationary
     """
     coord_transformer = _get_geostationary_coord_transform(WGS84, area_string)
     return coord_transformer.transform(xx=longitude, yy=latitude)
@@ -113,7 +115,8 @@ def osgb_to_geostationary_area_coords(
         y: osgb south-north
         area_string: String containing yaml geostationary area definition to convert to.
 
-    Returns: x_geostationary, y_geostationary
+    Returns:
+        x_geostationary, y_geostationary
     """
     coord_transformer = _get_geostationary_coord_transform(OSGB36, area_string)
     return coord_transformer.transform(xx=x, yy=y)
@@ -126,10 +129,8 @@ def find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
         da: Dataset with spatial coords
 
     Returns:
-        Three strings with:
-            1. The kind of the coordinate system
-            2. Name of the x-coordinate
-            3. Name of the y-coordinate
+        A tuple containing the coordinate system name, x-coordinate name,
+        and y-coordinate name.
     """
     # We only look at the dimensional coords. It is possible that other coordinate systems are
     # included as non-dimensional coords
@@ -216,8 +217,8 @@ class Location:
         """A spatial location.
 
         Args:
-            x: The east-west / left-right location
-            y: The south-north / down-up location
+            x: The easting / left-right location
+            y: The northing / down-up location
             coord_system: The coordinate system
             id: The location ID
         """
@@ -251,8 +252,8 @@ class Location:
         """Add the equivalent location in a different coordinate system.
 
         Args:
-            x: The east-west / left-right coordinate
-            y: The south-north / down-up coordinate
+            x: The easting / left-right coordinate
+            y: The northing / down-up coordinate
             coord_system: The coordinate system name
         """
         self._check_valid_coord_system(coord_system)

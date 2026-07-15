@@ -1,4 +1,4 @@
-"""Take the in-place diff of some channels of the NWP data."""
+"""Functions for normalising, differencing, and filling missing values in PVNet input data."""
 
 import numpy as np
 import xarray as xr

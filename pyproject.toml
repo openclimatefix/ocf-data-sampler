@@ -25,7 +25,6 @@ dependencies = [
     "numpy",
     "pandas",
     "xarray",
-    "zarr",
     "numcodecs",
     "dask",
     "pydantic>=2.11.8",
