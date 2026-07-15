@@ -84,9 +84,9 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
     assert (valid_times == expected_target_times).all()
 
     # Check the init-time is the first init time before the first target time
-    init_times = da_nwp_like.init_time_utc.values
+    init_times = da_nwp_like["init_time_utc"].values
     expected_init_time = init_times[init_times<=expected_target_times[0]][-1]
-    assert (expected_init_time == da_slice.init_time_utc.values)
+    assert (expected_init_time == da_slice["init_time_utc"].values)
 
 
 @pytest.mark.parametrize("dropout_hours", [1, 2, 3, 5])
@@ -111,12 +111,12 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
 
     # Check the target-times are as expected
     expected_target_times = date_range(t0 + interval_start, t0 + interval_end, freq=freq)
-    valid_times = da_slice.init_time_utc + da_slice.step
+    valid_times = da_slice["init_time_utc"] + da_slice["step"]
     assert (valid_times == expected_target_times).all()
 
     # Check the init-time is the first init time before the first target time whilst considering the
     # delay
     t0_delayed = min(t0 + dropout_timedelta, expected_target_times[0])
-    init_times = da_nwp_like.init_time_utc.values
+    init_times = da_nwp_like["init_time_utc"].values
     expected_init_time = init_times[init_times<=t0_delayed][-1]
-    assert (expected_init_time == da_slice.init_time_utc.values)
+    assert (expected_init_time == da_slice["init_time_utc"].values)

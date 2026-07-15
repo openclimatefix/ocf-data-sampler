@@ -1,12 +1,12 @@
 """Select spatial slices."""
 
 import numpy as np
-import xarray as xr
 
 from ocf_data_sampler.spatial import Location, find_coord_system
+from ocf_data_sampler.common.types import TArray
 
 
-def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int, int]:
+def _get_pixel_index_location(da: TArray, location: Location) -> tuple[int, int]:
     """Find pixel index location closest to given Location.
 
     Args:
@@ -43,11 +43,11 @@ def _get_pixel_index_location(da: xr.DataArray, location: Location) -> tuple[int
 
 
 def select_spatial_slice_pixels(
-    da: xr.DataArray,
+    da: TArray,
     location: Location,
     width_pixels: int,
     height_pixels: int,
-) -> xr.DataArray:
+) -> TArray:
     """Select spatial slice based off pixels from location point of interest.
 
     Args:
@@ -106,11 +106,11 @@ def select_spatial_slice_pixels(
 
 
 def select_spatial_slice_pixels_multiple(
-    da: xr.DataArray,
+    da: TArray,
     locations: list[Location],
     width_pixels: int,
     height_pixels: int,
-) -> xr.DataArray:
+) -> TArray:
     """Select spatial slice which covers all given locations.
 
     Args:

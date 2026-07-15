@@ -1,19 +1,19 @@
 """Select a time slice from a Dataset or DataArray."""
 
 import numpy as np
-import xarray as xr
 
 from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
 from ocf_data_sampler.common.time_utils import date_range, datetime_ceil
+from ocf_data_sampler.common.types import TArray
 
 
 def select_time_slice(
-    da: xr.DataArray,
+    da: TArray,
     t0: np.datetime64,
     interval_start: np.timedelta64,
     interval_end: np.timedelta64,
     time_resolution: np.timedelta64,
-) -> xr.DataArray:
+) -> TArray:
     """Select a time slice from a DataArray.
 
     Args:
@@ -25,20 +25,20 @@ def select_time_slice(
     """
     date_range = np.array([t0 + interval_start, t0 + interval_end])
     ceil_date_range = datetime_ceil(date_range, time_resolution)
-    start_ind, end_ind = get_indices_in_sorted_unique(da.time_utc.values, ceil_date_range)
+    start_ind, end_ind = get_indices_in_sorted_unique(da["time_utc"].values, ceil_date_range)
 
     return da.isel(time_utc=slice(start_ind, end_ind+1))
 
 
 def select_time_slice_nwp(
-    da: xr.DataArray,
+    da: TArray,
     t0: np.datetime64,
     interval_start: np.timedelta64,
     interval_end: np.timedelta64,
     time_resolution: np.timedelta64,
     dropout_timedeltas: list[np.timedelta64] | None = None,
     dropout_frac: float | None = 0,
-) -> xr.DataArray:
+) -> TArray:
     """Select a time slice from an NWP DataArray.
 
     Args:
@@ -71,8 +71,8 @@ def select_time_slice_nwp(
     target_times = date_range(start_dt, end_dt, freq=time_resolution)
 
     # Unpack for convenience and so we don't need to unpack multiple times
-    all_init_times = da.init_time_utc.values
-    all_steps = da.step.values
+    all_init_times = da["init_time_utc"].values
+    all_steps = da["step"].values
 
     # Potentially apply NWP dropout
     if consider_dropout and (np.random.uniform() < dropout_frac):

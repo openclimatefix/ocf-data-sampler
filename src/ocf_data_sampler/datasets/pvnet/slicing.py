@@ -12,13 +12,14 @@ from ocf_data_sampler.select.spatial_slice import (
 )
 from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
 from ocf_data_sampler.spatial import Location
+from ocf_data_sampler.datasets.pvnet.types import SourceDict
 
 
 def slice_datasets_by_space(
-    datasets_dict: dict,
+    datasets_dict: SourceDict,
     location: Location,
     config: Configuration,
-) -> dict:
+) -> SourceDict:
     """Slice the dictionary of input data sources around a given location.
 
     Args:
@@ -56,7 +57,7 @@ def slice_datasets_by_space(
 
     if "generation" in datasets_dict:
 
-        location_ids = datasets_dict["generation"].location_id.values
+        location_ids = datasets_dict["generation"]["location_id"].values
         loc_index = get_indices_in_sorted_unique(location_ids, location.id)
 
         sliced_datasets_dict["generation"] = datasets_dict["generation"].isel(location_id=loc_index)
@@ -65,10 +66,10 @@ def slice_datasets_by_space(
 
 
 def reduce_spatial_extent_of_datasets(
-    datasets_dict: dict,
+    datasets_dict: SourceDict,
     locations: list[Location],
     config: Configuration,
-) -> dict:
+) -> SourceDict:
     """Reduce the spatial extent of the datasets to only cover the locations.
 
     Args:
@@ -107,10 +108,10 @@ def reduce_spatial_extent_of_datasets(
 
 
 def slice_datasets_by_time(
-    datasets_dict: dict,
+    datasets_dict: SourceDict,
     t0: np.datetime64,
     config: Configuration,
-) -> dict:
+) -> SourceDict:
     """Slice the dictionary of input data sources around a given t0 time.
 
     Args:

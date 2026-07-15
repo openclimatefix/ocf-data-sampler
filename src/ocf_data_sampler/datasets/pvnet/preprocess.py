@@ -1,10 +1,11 @@
 """Functions for normalising, differencing, and filling missing values in PVNet input data."""
 
 import numpy as np
-import xarray as xr
 
 from ocf_data_sampler.config.model import Configuration
 from ocf_data_sampler.features.diff_channels import diff_channels
+from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.datasets.pvnet.types import SourceDict
 
 
 def config_normalization_values_to_dicts(
@@ -82,7 +83,7 @@ def config_normalization_values_to_dicts(
     return means_dict, stds_dict, clip_min_dict, clip_max_dict
 
 
-def diff_nwp_data(dataset_dict: dict, config: Configuration) -> dict:
+def diff_nwp_data(dataset_dict: SourceDict, config: Configuration) -> SourceDict:
     """Take the in-place diff of some channels of the NWP data.
 
     Args:
@@ -98,7 +99,7 @@ def diff_nwp_data(dataset_dict: dict, config: Configuration) -> dict:
     return dataset_dict
 
 
-def fill_nans_in_dataset_dicts(datasets_dict: dict, config: Configuration) -> dict:
+def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: Configuration) -> SourceDict:
     """Fills all NaN values in the dataarrays in-place.
 
     Args:
@@ -125,8 +126,8 @@ def fill_nans_in_dataset_dicts(datasets_dict: dict, config: Configuration) -> di
     return datasets_dict
 
 
-def fill_nans(da: xr.DataArray, fill_value: float) -> xr.DataArray:
+def fill_nans(da: TArray, fill_value: float) -> TArray:
     """Fill NaNs in a DataArray in-place."""
     if np.isnan(da.data).any():
-        da.data = np.nan_to_num(da.data, copy=False, nan=fill_value)
+        da.data = np.nan_to_num(da.data, copy=True, nan=fill_value)
     return da

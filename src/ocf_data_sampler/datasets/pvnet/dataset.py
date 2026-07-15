@@ -24,8 +24,6 @@ from ocf_data_sampler.datasets.pvnet.preprocess import (
     fill_nans_in_dataset_dicts,
 )
 from ocf_data_sampler.datasets.pvnet.sample import (
-    NumpySample,
-    TensorBatch,
     convert_to_numpy_sample,
     make_sun_position_numpy_sample,
     make_t0_encoding_numpy_sample,
@@ -43,6 +41,8 @@ from ocf_data_sampler.select import (
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
+from ocf_data_sampler.datasets.pvnet.types import SourceDict, TensorBatch, NumpySample
+
 
 # Ignore pydantic warning which doesn't cause an issue
 warnings.filterwarnings("ignore", category=UnsupportedFieldAttributeWarning)
@@ -60,14 +60,14 @@ def get_locations(generation_data: xr.DataArray) -> list[Location]:
         generation_data: xarray dataarray of generation data with location info
     """
     locations = []
-    location_ids = generation_data.location_id.values
+    location_ids = generation_data["location_id"].values
 
     for location_id in location_ids:
         gen_data = generation_data.sel(location_id=location_id)
         locations.append(
             Location(
-                x=gen_data.longitude.values,
-                y=gen_data.latitude.values,
+                x=gen_data["longitude"].values,
+                y=gen_data["latitude"].values,
                 coord_system="lon_lat",
                 id=int(location_id),
             ),
@@ -76,7 +76,9 @@ def get_locations(generation_data: xr.DataArray) -> list[Location]:
     return locations
 
 
-def xarray_to_lightarray_dict(dataset_dict: dict) -> dict:
+def xarray_to_lightarray_dict(
+    dataset_dict: SourceDict[xr.DataArray],
+) -> SourceDict[LightDataArray]:
     """Create a dictionary LightDataArrays from a dictionary of xarray datasets."""
     new_dataset_dict = {}
     for k, v in dataset_dict.items():
@@ -116,7 +118,7 @@ def get_time_periods_mask(
 
 def add_alternate_coordinate_projections(
     locations: list[Location],
-    datasets_dict: dict,
+    datasets_dict: SourceDict,
 ) -> list[Location]:
     """Add (in-place) coordinate projections for all dataset to a set of locations.
 
@@ -254,7 +256,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
     def process_and_combine_datasets(
         self,
-        dataset_dict: dict,
+        dataset_dict: SourceDict,
         t0: np.datetime64,
         location: Location,
     ) -> NumpySample:
@@ -326,8 +328,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             sample.update(
                 make_sun_position_numpy_sample(
                     datetimes,
-                    dataset_dict["generation"].longitude.values,
-                    dataset_dict["generation"].latitude.values,
+                    dataset_dict["generation"]["longitude"].values,
+                    dataset_dict["generation"]["latitude"].values,
                 ),
             )
 
@@ -336,7 +338,10 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         return sample
 
     @staticmethod
-    def find_valid_t0_times(datasets_dict: dict, config: Configuration) -> NDArray[np.datetime64]:
+    def find_valid_t0_times(
+        datasets_dict: SourceDict,
+        config: Configuration
+    ) -> NDArray[np.datetime64]:
         """Find the t0 times where all of the requested input data is available.
 
         Args:
@@ -354,7 +359,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
     @staticmethod
     def find_valid_t0_and_location_ids(
-        datasets_dict: dict,
+        datasets_dict: SourceDict,
         config: Configuration,
     ) -> pd.DataFrame:
         """Find the t0 times where all of the requested input data is available for each location.
@@ -383,7 +388,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
             # Obtain valid time periods for this location
             time_periods = find_contiguous_t0_periods(
-                generation.time_utc.values,
+                generation["time_utc"].values,
                 time_resolution=minutes(generation_config.time_resolution_minutes),
                 interval_start=minutes(generation_config.interval_start_minutes),
                 interval_end=minutes(generation_config.interval_end_minutes),

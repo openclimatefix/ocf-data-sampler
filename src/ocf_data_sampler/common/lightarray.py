@@ -11,7 +11,7 @@ from xarray_tensorstore import _TensorStoreAdapter
 class LightDataArray:
     """A lightweight DataArray-like class."""
 
-    __slots__ = ["attrs", "coord_dims", "coords", "data", "dims", "future"]
+    __slots__ = ["attrs", "coord_dims", "coords", "_data", "dims", "future"]
 
     def __init__(
         self,
@@ -22,12 +22,29 @@ class LightDataArray:
         attrs: None | dict = None,
     ) -> None:
         """A lightweight DataArray-like class."""
-        self.data = data
+        self._data = data
         self.dims = dims
         self.coords = coords
         self.coord_dims = coord_dims
         self.attrs = attrs or {}
         self.future: None | TensorStoreFuture = None
+
+    @property
+    def data(self) -> np.ndarray | TensorStore:
+        """Return the backing array."""
+        return self._data
+
+    @data.setter
+    def data(self, value: np.ndarray | TensorStore) -> None:
+        """Replace the backing array without changing dimensions."""
+        if value.shape != self.shape:
+            raise ValueError(
+                "Replacement data must match the existing shape. "
+                f"Replacement has shape {value.shape}; existing data has shape {self.shape}.",
+            )
+
+        self._data = value
+        self.future = None
 
     @classmethod
     def from_xarray(cls, da: xr.DataArray) -> "LightDataArray":
@@ -151,27 +168,20 @@ class LightDataArray:
     def load(self) -> "LightDataArray":
         """Load data in-place and return self."""
         self.data = self.values
-        self.future = None
         return self
 
     @property
     def values(self) -> np.ndarray:
-        """Get the underlying data as numpy array, loading it if necessary."""
-        if isinstance(self.data, TensorStore):
-            # If TensorStore handle reading
-            if self.future is None:
-                return np.asarray(self.data.read().result())
-            else:
-                return np.asarray(self.future.result())
-        else:
-            return np.asarray(self.data)
+        """Return the data as a NumPy array, loading it if necessary."""
+        data = self._data
 
+        if not isinstance(data, TensorStore):
+            return np.asarray(data)
 
-    def __getattr__(self, name: str) -> "LightDataArray":
-        """Allow access to coordinates via attribute syntax, e.g., da.time."""
-        if name in self.coords:
-            return self[name]
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        if self.future is None:
+            return np.asarray(data.read().result())
+
+        return np.asarray(self.future.result())
 
     def __getitem__(self, key: str) -> "LightDataArray":
         """Allow access to coordinates via indexing syntax, e.g., da['time']."""
@@ -187,7 +197,7 @@ class LightDataArray:
     def __getstate__(self) -> dict:
         """Prepare state for pickling, excluding un-picklable attributes."""
         return {
-            "data": self.data,
+            "_data": self._data,
             "dims": self.dims,
             "coords": self.coords,
             "attrs": self.attrs,
@@ -196,8 +206,11 @@ class LightDataArray:
 
     def __setstate__(self, state: dict) -> None:
         """Restore state after unpickling."""
-        for k, v in state.items():
-            setattr(self, k, v)
+        self._data = state["_data"]
+        self.dims = state["dims"]
+        self.coords = state["coords"]
+        self.attrs = state["attrs"]
+        self.coord_dims = state["coord_dims"]
         # Restore the un-picklable attribute to a default state
         self.future = None
 
