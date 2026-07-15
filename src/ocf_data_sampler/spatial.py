@@ -6,10 +6,14 @@ Supports coordinate systems:
 - Geostationary satellite coordinate systems
 """
 
+from typing import Any, TypeVar
+
 import numpy as np
 import pyproj
-import xarray as xr
+from numpy.typing import NDArray
 from pyresample.area_config import load_area_from_string
+
+from ocf_data_sampler.common.types import DataArrayLike
 
 ALLOWED_COORD_SYSTEMS = {"osgb", "lon_lat", "geostationary"}
 
@@ -20,15 +24,18 @@ OSGB36 = 27700
 # WGS84: World Geodetic System 1984 (longitude/latitude in degrees) - https://epsg.io/4326
 WGS84 = 4326
 
+
+TCoordinateValue = TypeVar("TCoordinateValue", float, NDArray[np.number[Any]])
+
 # Pre-inititiate coordinate Transformer objects
 _osgb_to_lon_lat = pyproj.Transformer.from_crs(crs_from=OSGB36, crs_to=WGS84, always_xy=True)
 _lon_lat_to_osgb = pyproj.Transformer.from_crs(crs_from=WGS84, crs_to=OSGB36, always_xy=True)
 
 
 def osgb_to_lon_lat(
-    x: float | np.ndarray,
-    y: float | np.ndarray,
-) -> tuple[float | np.ndarray, float | np.ndarray]:
+    x: TCoordinateValue,
+    y: TCoordinateValue,
+) -> tuple[TCoordinateValue, TCoordinateValue]:
     """Convert OSGB coordinates to lon-lat.
 
     Args:
@@ -42,9 +49,9 @@ def osgb_to_lon_lat(
 
 
 def lon_lat_to_osgb(
-    x: float | np.ndarray,
-    y: float | np.ndarray,
-) -> tuple[float | np.ndarray, float | np.ndarray]:
+    x: TCoordinateValue,
+    y: TCoordinateValue,
+) -> tuple[TCoordinateValue, TCoordinateValue]:
     """Convert lon-lat coordinates to OSGB.
 
     Args:
@@ -85,10 +92,10 @@ def _get_geostationary_coord_transform(
 
 
 def lon_lat_to_geostationary_area_coords(
-    longitude: float | np.ndarray,
-    latitude: float | np.ndarray,
+    longitude: TCoordinateValue,
+    latitude: TCoordinateValue,
     area_string: str,
-) -> tuple[float | np.ndarray, float | np.ndarray]:
+) -> tuple[TCoordinateValue, TCoordinateValue]:
     """Convert from lon-lat to geostationary coords.
 
     Args:
@@ -104,10 +111,10 @@ def lon_lat_to_geostationary_area_coords(
 
 
 def osgb_to_geostationary_area_coords(
-    x: float | np.ndarray,
-    y: float | np.ndarray,
+    x: TCoordinateValue,
+    y: TCoordinateValue,
     area_string: str,
-) -> tuple[float | np.ndarray, float | np.ndarray]:
+) -> tuple[TCoordinateValue, TCoordinateValue]:
     """Convert from OSGB to geostationary coords.
 
     Args:
@@ -122,8 +129,8 @@ def osgb_to_geostationary_area_coords(
     return coord_transformer.transform(xx=x, yy=y)
 
 
-def find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
-    """Searches the Xarray object to determine the spatial coordinate system.
+def find_coord_system(da: DataArrayLike) -> tuple[str, str, str]:
+    """Searches the DataArray-like object to determine the spatial coordinate system.
 
     Args:
         da: Dataset with spatial coords
@@ -136,10 +143,10 @@ def find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
     # included as non-dimensional coords
     dimensional_coords = set(da.dims)
 
-    coord_systems = {
-        "lon_lat": ["longitude", "latitude"],
-        "geostationary": ["x_geostationary", "y_geostationary"],
-        "osgb": ["x_osgb", "y_osgb"],
+    coord_systems: dict[str, tuple[str, str]] = {
+        "lon_lat": ("longitude", "latitude"),
+        "geostationary": ("x_geostationary", "y_geostationary"),
+        "osgb": ("x_osgb", "y_osgb"),
     }
 
     coords_systems_found = []
@@ -163,12 +170,12 @@ def find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
 
 
 def convert_coordinates(
-    x: float | np.ndarray,
-    y: float | np.ndarray,
+    x: TCoordinateValue,
+    y: TCoordinateValue,
     from_coords: str,
     target_coords: str,
     area_string: str | None = None,
-) -> tuple[float | np.ndarray, float | np.ndarray]:
+) -> tuple[TCoordinateValue, TCoordinateValue]:
     """Convert x and y coordinates from one coordinate system to another.
 
     Args:
@@ -185,15 +192,22 @@ def convert_coordinates(
     if from_coords==target_coords:
         return x, y
 
-    if "geostationary" in (from_coords, target_coords) and area_string is None:
-        raise ValueError("If using geostationary coords the `area_string` must be provided")
-
     match (from_coords, target_coords):
 
         case ("osgb", "geostationary"):
+            if area_string is None:
+                raise ValueError(
+                    "The `area_string` must be provided when converting to geostationary "
+                    "coordinates",
+                )
             x, y = osgb_to_geostationary_area_coords(x, y, area_string)
 
         case ("lon_lat", "geostationary"):
+            if area_string is None:
+                raise ValueError(
+                    "The `area_string` must be provided when converting to geostationary "
+                    "coordinates",
+                )
             x, y = lon_lat_to_geostationary_area_coords(x, y, area_string)
 
         case ("osgb", "lon_lat"):

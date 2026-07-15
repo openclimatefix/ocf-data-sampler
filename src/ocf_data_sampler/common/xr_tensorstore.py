@@ -17,6 +17,7 @@ References:
 import logging
 import os.path
 import re
+from typing import Any, cast
 
 import tensorstore as ts
 import xarray as xr
@@ -29,11 +30,12 @@ from xarray_tensorstore import (
 
 logger = logging.getLogger(__name__)
 
-def _zarr_spec_from_path(path: str, zarr_format: int) -> ...:
+
+def _zarr_spec_from_path(path: str, zarr_format: int) -> dict[str, Any]:
     if re.match(r"\w+\://", path):  # path is a URI
-      kv_store = path
+        kv_store: str | dict[str, str] = path
     else:
-      kv_store = {"driver": _DEFAULT_STORAGE_DRIVER, "path": path}
+        kv_store = {"driver": _DEFAULT_STORAGE_DRIVER, "path": path}
     return {"driver": f"zarr{zarr_format}", "kvstore": kv_store}
 
 
@@ -41,7 +43,7 @@ def _get_data_variable_array_futures(
     path: str,
     context: ts.Context | None,
     variables: list[str],
-) -> dict[ts.Future]:
+) -> dict[str, ts.Future[ts.TensorStore]]:
     """Open all data variables in a zarr group and return futures.
 
     Args:
@@ -113,15 +115,15 @@ def open_zarr(
 
     # Open all data variables using tensorstore - returned as futures
     data_vars = list(ds.data_vars)
-    arrays = _get_data_variable_array_futures(path, context, data_vars)
+    array_futures = _get_data_variable_array_futures(path, context, data_vars)
 
     # Wait for the async open operations
-    arrays = {k: v.result() for k, v in arrays.items()}
+    arrays = {k: future.result() for k, future in array_futures.items()}
 
     # Adapt the tensorstore arrays and plug them into the xarray object
     new_data = {k: _TensorStoreAdapter(v) for k, v in arrays.items()}
 
-    return ds.copy(data=new_data)
+    return cast("xr.Dataset", ds.copy(data=new_data))
 
 
 def open_zarrs(
@@ -186,4 +188,4 @@ def open_zarrs(
     # Plug the arrays into the xarray object
     new_data = {k: _TensorStoreAdapter(v) for k, v in arrays.items()}
 
-    return ds.copy(data=new_data)
+    return cast("xr.Dataset", ds.copy(data=new_data))

@@ -1,5 +1,6 @@
 """A lightweight DataArray-like class."""
 
+from typing import Any, TypedDict
 
 import numpy as np
 import xarray as xr
@@ -7,11 +8,23 @@ from tensorstore import Future as TensorStoreFuture
 from tensorstore import TensorStore
 from xarray_tensorstore import _TensorStoreAdapter
 
+from ocf_data_sampler.common.types import Indexer
+
+
+class LightDataArrayState(TypedDict):
+    """Serialized state of a LightDataArray."""
+
+    _data: np.ndarray | TensorStore
+    dims: tuple[str, ...]
+    coords: dict[str, np.ndarray]
+    attrs: dict[Any, Any]
+    coord_dims: dict[str, tuple[str, ...]]
+
 
 class LightDataArray:
     """A lightweight DataArray-like class."""
 
-    __slots__ = ["attrs", "coord_dims", "coords", "_data", "dims", "future"]
+    __slots__ = ["_data", "attrs", "coord_dims", "coords", "dims", "future"]
 
     def __init__(
         self,
@@ -19,7 +32,7 @@ class LightDataArray:
         dims: tuple[str, ...],
         coords: dict[str, np.ndarray],
         coord_dims: dict[str, tuple[str, ...]],
-        attrs: None | dict = None,
+        attrs: dict[Any, Any] | None = None,
     ) -> None:
         """A lightweight DataArray-like class."""
         self._data = data
@@ -63,17 +76,20 @@ class LightDataArray:
 
         for k, v in da.coords.items():
             if v.ndim <= 1:
-                coord_values[k] = v.values
-                coord_dims[k] = v.dims
+                coord_name = str(k)
+                coord_values[coord_name] = v.values
+                coord_dims[coord_name] = tuple(str(dim) for dim in v.dims)
             else:
                 raise ValueError(
                     "Coordinates with more than 1 dimension not supported. "
                     f"Found coord '{k}' with shape {v.shape}.",
                 )
 
+        dims = tuple(str(d) for d in da.dims)
+
         return cls(
             data=data,
-            dims=da.dims,
+            dims=dims,
             coords=coord_values,
             coord_dims=coord_dims,
             attrs=da.attrs,
@@ -84,7 +100,7 @@ class LightDataArray:
 
         Note this loads the data eagerly.
         """
-        coords_dict = {}
+        coords_dict: dict[str, Any] = {}
         for c, v in self.coords.items():
             cdims = self.coord_dims.get(c, ())
 
@@ -104,8 +120,8 @@ class LightDataArray:
 
     def isel(
         self,
-        indexers: None | dict[str, int | slice | list] = None,
-        **indexers_kwargs: object,
+        indexers: dict[str, Indexer] | None = None,
+        **indexers_kwargs: Indexer,
     ) -> "LightDataArray":
         """Select data by integer index along specified dimensions.
 
@@ -117,9 +133,9 @@ class LightDataArray:
         if indexers is not None:
             indexers_kwargs.update(indexers)
 
-        axis_indexers = [slice(None)] * len(self.dims)
+        axis_indexers: list[Indexer] = [slice(None)] * len(self.dims)
         new_coords = self.coords.copy()
-        dims_to_remove = []
+        dims_to_remove: list[str] = []
 
         for dim, indexer in indexers_kwargs.items():
             if dim not in self.dims:
@@ -194,7 +210,7 @@ class LightDataArray:
             )
         raise KeyError(f"Coordinate '{key}' not found.")
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> LightDataArrayState:
         """Prepare state for pickling, excluding un-picklable attributes."""
         return {
             "_data": self._data,
@@ -204,7 +220,7 @@ class LightDataArray:
             "coord_dims": self.coord_dims,
         }
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: LightDataArrayState) -> None:
         """Restore state after unpickling."""
         self._data = state["_data"]
         self.dims = state["dims"]

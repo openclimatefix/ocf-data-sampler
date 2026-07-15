@@ -44,6 +44,7 @@ dev = [
     # LSP Support
     "python-lsp-server",
     "python-lsp-ruff",
+    "mypy>=2.3.0",
 ]
 
 [project.urls]
@@ -56,7 +57,7 @@ license-files = []
 where = ["src"]
 
 [tool.setuptools.package-data]
-"*" = ["*.csv"]
+ocf_data_sampler = ["py.typed"]
 
 [tool.setuptools-git-versioning]
 enabled = true
@@ -67,24 +68,30 @@ enabled = true
 # MyPy configuration
 # * See https://mypy.readthedocs.io/en/stable/index.html
 [tool.mypy]
+files = ["src"]
 python_version = "3.12"
 strict = true
 warn_unreachable = true
-warn_return_any = true
-disallow_untyped_defs = true
-plugins = [
-    "numpy.typing.mypy_plugin",
-]
 
 [[tool.mypy.overrides]]
-# Ignore missing imports for libraries that don't have them.
-# If they are ever made, remove from here!
-module = [
-    "fsspec",
-    "s3fs",
-    "zarr",
-]
+module = ["tensorstore.*", "xarray_tensorstore.*", "pyresample.*"]
 ignore_missing_imports = true
+
+# Ratchet: modules not yet conformant. Delete entries as they're fixed.
+[[tool.mypy.overrides]]
+module = [
+    "ocf_data_sampler.datasets.*",
+    "ocf_data_sampler.load.*",
+    "ocf_data_sampler.config.*",
+    "ocf_data_sampler.select.*",
+    "ocf_data_sampler.features.*",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "ocf_data_sampler.spatial"
+disallow_untyped_calls = false   # pyresample's load_area_from_string is untyped
+
 
 # Ruff configuration
 # * See https://beta.ruff.rs/docs/
@@ -111,14 +118,14 @@ select = [
     "ARG", # flake8 unused arguments
     "DTZ", # flake8 datetimes
     "Q",   # flake8 quotes
-    "TCH", # flake8 typecheck
+    "TC", # flake8 typecheck
     "D",   # pydocstyle
     "RUF", # ruff-specific rules
 ]
 fixable = ["ALL"]
 ignore = [
     "D203", "D213", "D215", "D400", "D401", "D404", "D406",
-    "D407", "D408", "D409", "D413",
+    "D407", "D408", "D409", "D413", "COM812",
 ]
 
 [tool.ruff.lint.per-file-ignores]

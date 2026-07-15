@@ -5,9 +5,8 @@ import logging
 import xarray as xr
 
 from ocf_data_sampler.config import InputData
-from ocf_data_sampler.load import open_generation, open_nwp, open_sat_data
 from ocf_data_sampler.datasets.pvnet.types import SourceDict
-
+from ocf_data_sampler.load import open_generation, open_nwp, open_sat_data
 
 logger = logging.getLogger(__name__)
 

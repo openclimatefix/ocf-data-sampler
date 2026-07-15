@@ -5,17 +5,17 @@ import pandas as pd
 
 from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.config.model import Configuration
+from ocf_data_sampler.datasets.pvnet.types import SourceDict
 from ocf_data_sampler.select.time_periods import (
     find_contiguous_t0_periods,
     find_contiguous_t0_periods_nwp,
     intersection_of_multiple_dataframes_of_periods,
 )
-from ocf_data_sampler.datasets.pvnet.types import SourceDict
 
 
 def find_valid_time_periods(
     datasets_dict: SourceDict,
-    config: Configuration
+    config: Configuration,
 ) -> pd.DataFrame:
     """Find the t0 times where all of the requested input data is available.
 

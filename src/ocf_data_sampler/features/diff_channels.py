@@ -1,8 +1,9 @@
 """Takes the diff along the step axis for a given set of channels."""
 
 import numpy as np
-import xarray as xr
+
 from ocf_data_sampler.common.types import TArray
+
 
 def diff_channels(da: TArray, accum_channels: list[str]) -> TArray:
     """Perform in-place diff of the given channels of the DataArray in the steps dimension.

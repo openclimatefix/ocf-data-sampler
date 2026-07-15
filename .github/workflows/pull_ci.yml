@@ -12,7 +12,7 @@ jobs:
     if: ${{ github.event.pull_request.head.repo.fork }}
     with:
       enable_linting: true
-      enable_typechecking: false
+      enable_typechecking: true
       containerfile: 'None'
       tests_folder: 'tests'
       tests_matrix: true

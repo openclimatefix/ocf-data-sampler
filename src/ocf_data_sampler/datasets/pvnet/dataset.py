@@ -33,6 +33,7 @@ from ocf_data_sampler.datasets.pvnet.slicing import (
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
+from ocf_data_sampler.datasets.pvnet.types import NumpySample, SourceDict, TensorBatch
 from ocf_data_sampler.datasets.pvnet.valid_t0s import find_valid_time_periods
 from ocf_data_sampler.features.time_encodings import encode_datetimes
 from ocf_data_sampler.select import (
@@ -41,8 +42,6 @@ from ocf_data_sampler.select import (
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
-from ocf_data_sampler.datasets.pvnet.types import SourceDict, TensorBatch, NumpySample
-
 
 # Ignore pydantic warning which doesn't cause an issue
 warnings.filterwarnings("ignore", category=UnsupportedFieldAttributeWarning)
@@ -340,7 +339,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
     @staticmethod
     def find_valid_t0_times(
         datasets_dict: SourceDict,
-        config: Configuration
+        config: Configuration,
     ) -> NDArray[np.datetime64]:
         """Find the t0 times where all of the requested input data is available.
 

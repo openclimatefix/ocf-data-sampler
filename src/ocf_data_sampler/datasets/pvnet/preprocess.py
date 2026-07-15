@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from ocf_data_sampler.config.model import Configuration
-from ocf_data_sampler.features.diff_channels import diff_channels
 from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.config.model import Configuration
 from ocf_data_sampler.datasets.pvnet.types import SourceDict
+from ocf_data_sampler.features.diff_channels import diff_channels
 
 
 def config_normalization_values_to_dicts(

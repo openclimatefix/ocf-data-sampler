@@ -7,7 +7,6 @@ from numpy.typing import NDArray
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 from ocf_data_sampler.common.time_utils import date_range, datetime_ceil
 
-
 ZERO_TDELTA = np.timedelta64(0, "ns")
 
 

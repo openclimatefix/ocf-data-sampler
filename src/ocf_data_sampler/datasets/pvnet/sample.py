@@ -3,9 +3,9 @@
 import numpy as np
 from numpy.typing import NDArray
 
+from ocf_data_sampler.datasets.pvnet.types import NumpySample, SourceDict
 from ocf_data_sampler.features.solar import calculate_azimuth_and_elevation
 from ocf_data_sampler.features.time_encodings import encode_t0
-from ocf_data_sampler.datasets.pvnet.types import NumpySample, SourceDict
 
 
 def convert_to_numpy_sample(
