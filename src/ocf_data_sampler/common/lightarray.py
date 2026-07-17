@@ -1,6 +1,6 @@
 """A lightweight DataArray-like class."""
 
-from typing import Any, TypedDict
+from typing import Any, TypedDict, overload
 
 import numpy as np
 import tensorstore as ts
@@ -134,9 +134,23 @@ def _normalise_index_origin(data: np.ndarray | ts.TensorStore) -> np.ndarray | t
     return np.asarray(data)
 
 
+@overload
+def _apply_axis_indexers(
+    data: np.ndarray,
+    axis_indexers: tuple[Indexer, ...],
+) -> np.ndarray: ...
+
+
+@overload
+def _apply_axis_indexers(
+    data: ts.TensorStore,
+    axis_indexers: tuple[Indexer, ...],
+) -> ts.TensorStore: ...
+
+
 def _apply_axis_indexers(
     data: np.ndarray | ts.TensorStore,
-    axis_indexers: tuple[Indexer, ...]
+    axis_indexers: tuple[Indexer, ...],
 ) -> np.ndarray | ts.TensorStore:
 
     if len(axis_indexers) != data.ndim:
