@@ -43,6 +43,12 @@ def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
         backend_kwargs=backend_kwargs,
     )
 
+    if set(ds.data_vars) != {"generation_mw", "capacity_mwp"}:
+        raise ValueError(
+            f"Generation data should have variables 'generation_mw' and 'capacity_mwp', "
+            f"but found {set(ds.data_vars)} instead."
+        )
+
     da = ds.to_dataarray("gen_param").transpose("time_utc", "location_id", "gen_param")
 
     assert_values_unique_increasing(ds["time_utc"].values, "time_utc")
