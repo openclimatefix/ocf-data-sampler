@@ -297,6 +297,10 @@ class LightDataArray:
             indexers: A dict with keys matching dimensions and values given by integers, slice
                 objects or arrays. `indexer` can be an integer, slice or array-like.
             **indexers_kwargs: The keyword arguments form of indexers.
+
+        Returns:
+            A new LightDataArray. Attributes are copied, while coordinate arrays may be views of
+            the original coordinate arrays rather than independent copies.
         """
         if indexers is not None:
             indexers_kwargs.update(indexers)
