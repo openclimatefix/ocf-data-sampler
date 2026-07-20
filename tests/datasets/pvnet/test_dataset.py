@@ -2,6 +2,7 @@ import pickle
 
 import numpy as np
 import pandas as pd
+import pytest
 import torch
 from torch.utils.data import DataLoader
 
@@ -270,3 +271,53 @@ def test_pvnet_dataset_pickle(tmp_path, pvnet_config_filename):
     dataset = PVNetDataset(pvnet_config_filename)
     pickle_bytes = pickle.dumps(dataset)
     _ = pickle.loads(pickle_bytes)  # noqa: S301
+
+
+def test_pvnet_dataset_get_sample(pvnet_config_filename):
+    dataset = PVNetDataset(
+        pvnet_config_filename,
+        time_periods=[
+            ("2023-01-01 06:00", "2023-01-01 07:00"),
+            ("2023-01-01 12:00", "2023-01-01 13:00"),
+        ],
+    )
+    # Test helper function get_sample to retrieve sample by t0 and location_id
+    assert dataset.complete_generation
+    t0 = dataset.valid_t0_times[0]
+    location_id = next(iter(dataset.location_lookup))
+    sample = dataset.get_sample(t0=t0, location_id=location_id)
+    assert isinstance(sample, dict)
+
+    # Check error raised if loc_id does not exist
+    with pytest.raises(ValueError):
+        sample = dataset.get_sample(t0=t0, location_id=400)
+
+    # Check error raised if t0 does not exist
+    with pytest.raises(ValueError):
+        t0 = pd.Timestamp("2024-01-01 06:00")
+        sample = dataset.get_sample(t0=t0, location_id=location_id)
+
+
+def test_pvnet_dataset_sites_get_sample(pvnet_site_config_filename):
+    dataset = PVNetDataset(
+        pvnet_site_config_filename,
+        time_periods=[
+            ("2023-01-01 06:00", "2023-01-01 07:00"),
+            ("2023-01-01 12:00", "2023-01-01 13:00"),
+        ],
+    )
+    # Test helper function get_sample to retrieve sample by t0 and location_id
+    assert not dataset.complete_generation
+    t0 = dataset.valid_t0_and_location_ids["t0"].values[0]
+    location_id = dataset.valid_t0_and_location_ids["location_id"].values[0]
+    sample = dataset.get_sample(t0=t0, location_id=location_id)
+    assert isinstance(sample, dict)
+
+    # Check error raised if loc_id does not exist
+    with pytest.raises(ValueError):
+        sample = dataset.get_sample(t0=t0, location_id=400)
+
+    # Check error raised if t0 does not exist
+    with pytest.raises(ValueError):
+        t0 = np.datetime64("2024-01-01 06:00")
+        sample = dataset.get_sample(t0=t0, location_id=location_id)
