@@ -29,13 +29,13 @@ def test_open_satellite_bad_dtype(tmp_path: Path):
     bad_ds = xr.Dataset(
         data_vars={
             "data": (
-                ("time", "variable", "y_geostationary", "x_geostationary"),
+                ("time_utc", "channel", "y_geostationary", "x_geostationary"),
                 np.random.rand(10, 2, 4, 4),
             ),
         },
         coords={
-            "time": pd.date_range("2023-01-01", periods=10, freq="5min"),
-            "variable": [1, 2],
+            "time_utc": pd.date_range("2023-01-01", periods=10, freq="5min"),
+            "channel": [1, 2],
             "y_geostationary": np.arange(4),
             "x_geostationary": np.arange(4),
         },
@@ -43,26 +43,8 @@ def test_open_satellite_bad_dtype(tmp_path: Path):
     )
     bad_ds.to_zarr(zarr_path)
 
-    with pytest.raises(TypeError, match="channel should be str_"):
-        open_sat_data(zarr_path=zarr_path)
-
-
-def test_open_satellite_bad_dtype_spatial_coords(tmp_path: Path):
-    """Test that open_sat_data raises when spatial coords are not floating-point."""
-    zarr_path = tmp_path / "bad_sat_spatial.zarr"
-    bad_ds = xr.Dataset(
-        data_vars={
-            "data": (("time", "variable", "y_geostationary", "x_geostationary"),
-            np.random.rand(5, 2, 4, 4)),
-        },
-        coords={
-            "time": pd.date_range("2023-01-01", periods=5, freq="5min"),
-            "variable": ["IR_016", "IR_039"],
-            "y_geostationary": np.arange(4),
-            "x_geostationary": np.arange(4),
-        },
-        attrs={"area": "area_info"},
-    )
-    bad_ds.to_zarr(zarr_path)
-    with pytest.raises(TypeError, match="geostationary should be floating"):
+    with pytest.raises(
+        TypeError,
+        match="Coordinate 'channel' in satellite data should be str_",
+    ):
         open_sat_data(zarr_path=zarr_path)

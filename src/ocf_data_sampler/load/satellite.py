@@ -1,67 +1,44 @@
 """Satellite loader."""
-import json
 
 import numpy as np
 import xarray as xr
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
-from ocf_data_sampler.common.xr_tensorstore import open_zarr, open_zarrs
+from ocf_data_sampler.common.xr_tensorstore import ZarrSource, open_zarr_paths
 from ocf_data_sampler.load.conventions import (
-    get_xr_data_array_from_xr_dataset,
+    extract_single_data_array,
     make_spatial_coords_increasing,
+    validate_coords,
 )
 
 
-def open_sat_data(zarr_path: str | list[str]) -> xr.DataArray:
+def open_sat_data(zarr_path: ZarrSource) -> xr.DataArray:
     """Lazily opens the zarr store and validates data types.
 
     Args:
-      zarr_path: Cloud URL or local path pattern, or list of these. If GCS URL,
-                 it must start with 'gs://'
+        zarr_path: Path(s) to the zarr file(s)
     """
-    # Open the data
-    if isinstance(zarr_path, list | tuple):
-        ds = open_zarrs(zarr_path, concat_dim="time", data_source="satellite")
-    else:
-        ds = open_zarr(zarr_path)
-
-    rename_dict = {
-        "variable": "channel",
-        "time": "time_utc",
-    }
-
-    for old_name, new_name in list(rename_dict.items()):
-        if old_name not in ds:
-            if new_name in ds:
-                del rename_dict[old_name]
-            else:
-                raise KeyError(f"Expected either '{old_name}' or '{new_name}' to be in dataset")
-    ds = ds.rename(rename_dict)
-
-    ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
-    assert_values_unique_increasing(ds["time_utc"].values, "time_utc")
-    ds = ds.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
-
-    da = get_xr_data_array_from_xr_dataset(ds)
-
-    # Copy the area attribute if missing
-    if "area" not in da.attrs:
-        da.attrs["area"] = json.dumps(ds.attrs["area"])
-
-    # Validate data types directly loading function
-    if not np.issubdtype(da.dtype, np.number):
-        raise TypeError(f"Satellite data should be numeric, not {da.dtype}")
+    ds = open_zarr_paths(zarr_path, concat_dim="time_utc")
 
     coord_dtypes = {
         "time_utc": np.datetime64,
         "channel": np.str_,
-        "x_geostationary": np.floating,
-        "y_geostationary": np.floating,
+        "x_geostationary": np.number,
+        "y_geostationary": np.number,
     }
+    validate_coords(
+        ds,
+        coord_dtypes,
+        source="satellite data",
+    )
 
-    for coord, expected_dtype in coord_dtypes.items():
-        if not np.issubdtype(da.coords[coord].dtype, expected_dtype):
-            dtype = da.coords[coord].dtype
-            raise TypeError(f"{coord} should be {expected_dtype.__name__}, not {dtype}")
+    ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
+    assert_values_unique_increasing(ds["time_utc"].values, "time_utc")
+
+    da = extract_single_data_array(ds)
+    da = da.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
+
+    if not np.issubdtype(da.dtype, np.floating):
+        raise TypeError(f"Satellite data should be floating, not {da.dtype}")
 
     return da

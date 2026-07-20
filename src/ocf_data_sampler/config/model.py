@@ -10,16 +10,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from typing_extensions import override
 
-NWP_PROVIDERS = [
-    "ukv",
-    "ecmwf",
-    "mo_global",
-    "gfs",
-    "icon_eu",
-    "cloudcasting",
-    "gencast",
-    "fgn",
-]
+from ocf_data_sampler.common.xr_tensorstore import ZarrSource
+from ocf_data_sampler.load.nwp import PROVIDER_REGISTRY
 
 
 class Base(BaseModel):
@@ -194,7 +186,7 @@ class NormalisationConstantsMixin(Base):
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
     """Satellite configuration model."""
 
-    zarr_path: str | tuple[str] | list[str] = Field(
+    zarr_path: ZarrSource = Field(
         ...,
         description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
@@ -221,7 +213,7 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
 class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
     """NWP configuration model."""
 
-    zarr_path: str | tuple[str] | list[str] = Field(
+    zarr_path: ZarrSource = Field(
         ...,
         description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
@@ -242,7 +234,6 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         " used to construct an example. If set to None, then the max staleness is set according to"
         " the maximum forecast horizon of the NWP and the requested forecast length.",
     )
-    public: bool = Field(False, description="Whether the NWP data is public or private")
 
     @model_validator(mode="after")
     def validate_accum_channels_subset(self) -> "NWP":
@@ -258,9 +249,11 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
     @field_validator("provider")
     def validate_provider(cls, v: str) -> str:
         """Validator for 'provider'."""
-        if v.lower() not in NWP_PROVIDERS:
-            raise OSError(f"NWP provider {v} is not in {NWP_PROVIDERS}")
-        return v
+        provider = v.lower()
+        if provider not in PROVIDER_REGISTRY:
+            supported = ", ".join(sorted(PROVIDER_REGISTRY))
+            raise ValueError(f"Unknown NWP provider {v!r}. Supported: {supported}")
+        return provider
 
 
     @model_validator(mode="after")
@@ -326,8 +319,6 @@ class Generation(TimeWindowMixin, DropoutMixin):
         description="Absolute or relative zarr filepath. Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
     )
-
-    public: bool = Field(False, description="Whether the NWP data is public or private")
 
 
 class SolarPosition(TimeWindowMixin):

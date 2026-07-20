@@ -141,3 +141,9 @@ line-ending = "auto"
 docstring-code-format = true
 docstring-code-line-length = 100
 
+
+# --- TESTING CONFIGURATION --- #
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
