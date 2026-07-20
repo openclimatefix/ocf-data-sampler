@@ -17,7 +17,7 @@ References:
 import logging
 import os.path
 import re
-from typing import Any, cast
+from typing import Any
 
 import tensorstore as ts
 import xarray as xr
@@ -111,7 +111,9 @@ def open_zarr(
         context = ts.Context()
 
     # Avoid using dask by settung `chunks=None`
-    ds = xr.open_zarr(path, chunks=None, mask_and_scale=mask_and_scale, consolidated=False)
+    ds: xr.Dataset = xr.open_zarr(
+        path, chunks=None, mask_and_scale=mask_and_scale, consolidated=False
+    )
 
     if mask_and_scale:
         _raise_if_mask_and_scale_used_for_data_vars(ds)
@@ -126,7 +128,7 @@ def open_zarr(
     # Adapt the tensorstore arrays and plug them into the xarray object
     new_data = {k: _TensorStoreAdapter(v) for k, v in arrays.items()}
 
-    return cast("xr.Dataset", ds.copy(data=new_data))
+    return ds.copy(data=new_data)
 
 
 def open_zarrs(
@@ -151,10 +153,11 @@ def open_zarrs(
     if context is None:
         context = ts.Context()
 
-    ds_list = [xr.open_zarr(p,
-                            mask_and_scale=mask_and_scale,
-                            decode_timedelta=True,
-                            consolidated=False) for p in paths]
+    ds_list: list[xr.Dataset] = [
+        xr.open_zarr(p, mask_and_scale=mask_and_scale, decode_timedelta=True, consolidated=False)
+        for p in paths
+    ]
+    ds: xr.Dataset
     try:
         ds = xr.concat(
             ds_list,
@@ -165,10 +168,11 @@ def open_zarrs(
             join="exact",
         )
     except ValueError:
-        logger.warning(f"Coordinate mismatch found in {data_source} input data. "
-                       f"The coordinates will be overwritten! "
-                       f"This might be fine for satellite data. "
-                       f"Proceed with caution.")
+        logger.warning(
+            f"Coordinate mismatch found in {data_source} input data. Opening with "
+            "`join='override'` to ignore coordinate mismatches. THIS MAY CAUSE UNEXPECTED "
+            "BEHAVIOUR!",
+        )
         ds = xr.concat(
             ds_list,
             dim=concat_dim,
@@ -191,4 +195,4 @@ def open_zarrs(
     # Plug the arrays into the xarray object
     new_data = {k: _TensorStoreAdapter(v) for k, v in arrays.items()}
 
-    return cast("xr.Dataset", ds.copy(data=new_data))
+    return ds.copy(data=new_data)
