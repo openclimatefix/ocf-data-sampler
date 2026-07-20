@@ -1,10 +1,8 @@
 """Module for datetime utilities."""
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
-
-_EPOCH_DATETIME = np.datetime64("1970-01-01", "ns")
 
 
 def minutes(minutes: int | list[int]) -> np.timedelta64 | NDArray[np.timedelta64]:
@@ -74,15 +72,14 @@ def get_day_fraction(
         datetimes: the datetimes to get day fraction for
     """
     day_start = datetimes.astype("datetime64[D]")
-    day_fraction = np.divide(datetimes - day_start, np.timedelta64(1, "D"))
-    if isinstance(datetimes, np.ndarray):
-        return np.asarray(day_fraction, dtype=np.float64)
-    return np.float64(day_fraction)
+    elapsed = cast("Any", datetimes - day_start)
+    day_fraction = (elapsed / np.timedelta64(1, "D")).astype(np.float64)
+    return cast("np.float64 | NDArray[np.float64]", day_fraction)
 
 
 def get_is_leap_year(
     datetimes: np.datetime64 | NDArray[np.datetime64],
-) -> np.bool_ | NDArray[np.bool_]:
+) ->  np.bool_ | NDArray[np.bool_]:
     """Get whether the datetime is in a leap year.
 
     Args:
@@ -90,9 +87,7 @@ def get_is_leap_year(
     """
     years = get_year(datetimes)
     result = (years % 4 == 0) & ((years % 100 != 0) | (years % 400 == 0))
-    if isinstance(datetimes, np.ndarray):
-        return np.asarray(result, dtype=np.bool_)
-    return np.bool_(result)
+    return cast("np.bool_ | NDArray[np.bool_]", result)
 
 
 def date_range(
@@ -137,11 +132,10 @@ def datetime_ceil(
         freq: the frequency to ceil to
     """
     _floor_ceil_check_freq(freq)
-    periods_since_epoch = np.ceil(np.divide(datetimes - _EPOCH_DATETIME, freq))
-    result = (periods_since_epoch * freq) + _EPOCH_DATETIME
-    if isinstance(datetimes, np.ndarray):
-        return np.asarray(result, dtype=datetimes.dtype)
-    return cast("np.datetime64", np.datetime64(result).astype(datetimes.dtype))
+    epoch_datetime = np.datetime64("1970-01-01", "ns")
+    periods_since_epoch = np.ceil((datetimes - epoch_datetime) / freq)
+    result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
+    return cast("np.datetime64 | NDArray[np.datetime64]", result)
 
 
 def datetime_floor(
@@ -155,11 +149,10 @@ def datetime_floor(
         freq: the frequency to floor to
     """
     _floor_ceil_check_freq(freq)
-    periods_since_epoch = np.floor(np.divide(datetimes - _EPOCH_DATETIME, freq))
-    result = (periods_since_epoch * freq) + _EPOCH_DATETIME
-    if isinstance(datetimes, np.ndarray):
-        return np.asarray(result, dtype=datetimes.dtype)
-    return cast("np.datetime64", np.datetime64(result).astype(datetimes.dtype))
+    epoch_datetime = np.datetime64("1970-01-01", "ns")
+    periods_since_epoch = np.floor((datetimes - epoch_datetime) / freq)
+    result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
+    return cast("np.datetime64 | NDArray[np.datetime64]", result)
 
 
 def get_posix_timestamp(

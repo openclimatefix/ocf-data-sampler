@@ -17,7 +17,7 @@ References:
 import logging
 import os.path
 import re
-from typing import Any
+from typing import Any, cast
 
 import tensorstore as ts
 import xarray as xr
@@ -29,15 +29,6 @@ from xarray_tensorstore import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _get_data_var_names(ds: xr.Dataset) -> list[str]:
-    data_vars: list[str] = []
-    for name in ds.data_vars:
-        if not isinstance(name, str):
-            raise TypeError(f"Zarr data variable names must be strings, got {name!r}")
-        data_vars.append(name)
-    return data_vars
 
 
 def _zarr_spec_from_path(path: str, zarr_format: int) -> dict[str, Any]:
@@ -120,15 +111,13 @@ def open_zarr(
         context = ts.Context()
 
     # Avoid using dask by settung `chunks=None`
-    ds: xr.Dataset = xr.open_zarr(
-        path, chunks=None, mask_and_scale=mask_and_scale, consolidated=False
-    )
+    ds = xr.open_zarr(path, chunks=None, mask_and_scale=mask_and_scale, consolidated=False)
 
     if mask_and_scale:
         _raise_if_mask_and_scale_used_for_data_vars(ds)
 
     # Open all data variables using tensorstore - returned as futures
-    data_vars = _get_data_var_names(ds)
+    data_vars = list(ds.data_vars)
     array_futures = _get_data_variable_array_futures(path, context, data_vars)
 
     # Wait for the async open operations
@@ -137,7 +126,7 @@ def open_zarr(
     # Adapt the tensorstore arrays and plug them into the xarray object
     new_data = {k: _TensorStoreAdapter(v) for k, v in arrays.items()}
 
-    return ds.copy(data=new_data)
+    return cast("xr.Dataset", ds.copy(data=new_data))
 
 
 def open_zarrs(
@@ -162,11 +151,10 @@ def open_zarrs(
     if context is None:
         context = ts.Context()
 
-    ds_list: list[xr.Dataset] = [
+    ds_list = [
         xr.open_zarr(p, mask_and_scale=mask_and_scale, decode_timedelta=True, consolidated=False)
         for p in paths
     ]
-    ds: xr.Dataset
     try:
         ds = xr.concat(
             ds_list,
@@ -195,7 +183,7 @@ def open_zarrs(
         _raise_if_mask_and_scale_used_for_data_vars(ds)
 
     # Find the axis along which each data array must be concatenated
-    data_vars = _get_data_var_names(ds)
+    data_vars = list(ds.data_vars)
     concat_axes = [ds[v].dims.index(concat_dim) for v in data_vars]
 
     # Open and concat all zarrs so each variables is a single TensorStore array
@@ -204,4 +192,4 @@ def open_zarrs(
     # Plug the arrays into the xarray object
     new_data = {k: _TensorStoreAdapter(v) for k, v in arrays.items()}
 
-    return ds.copy(data=new_data)
+    return cast("xr.Dataset", ds.copy(data=new_data))
