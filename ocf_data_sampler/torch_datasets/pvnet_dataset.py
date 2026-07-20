@@ -438,9 +438,7 @@ class PVNetDataset(AbstractPVNetDataset):
                 raise ValueError(f"Input location '{location_id}' not known")
         else:
             t0_idxs = self.valid_t0_and_location_ids["t0"]==t0
-            if not (
-                location_id in self.valid_t0_and_location_ids[t0_idxs]["location_id"].values
-            ):
+            if location_id not in self.valid_t0_and_location_ids[t0_idxs]["location_id"].values:
                 raise ValueError(
                     f"Input t0 time '{t0!s}' and location id '{location_id}' "
                     f"pair not in valid t0 and location pairs",

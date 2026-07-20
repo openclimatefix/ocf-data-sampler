@@ -2,8 +2,8 @@ import pickle
 
 import numpy as np
 import pandas as pd
-import torch
 import pytest
+import torch
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
