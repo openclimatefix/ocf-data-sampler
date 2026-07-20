@@ -45,8 +45,8 @@ def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
 
     da = ds.to_dataarray("gen_param").transpose("time_utc", "location_id", "gen_param")
 
-    assert_values_unique_increasing(ds.time_utc.values, "time_utc")
-    assert_values_unique_increasing(ds.location_id.values, "location_id")
+    assert_values_unique_increasing(ds["time_utc"].values, "time_utc")
+    assert_values_unique_increasing(ds["location_id"].values, "location_id")
 
     # Validate data types
     if not np.issubdtype(da.dtype, np.floating):

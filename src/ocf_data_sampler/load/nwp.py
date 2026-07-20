@@ -211,7 +211,7 @@ def _canonicalize_regular_grid_layout(
     Expects dims/coords already standardised to: init_time_utc, step, channel,
     plus the given x_coord/y_coord spatial dims.
     """
-    assert_values_unique_increasing(ds.init_time_utc.values, "init_time_utc")
+    assert_values_unique_increasing(ds["init_time_utc"].values, "init_time_utc")
     ds = make_spatial_coords_increasing(ds, x_coord=x_coord, y_coord=y_coord)
     ds = ds.transpose("init_time_utc", "step", "channel", x_coord, y_coord)
 

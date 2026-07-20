@@ -5,14 +5,13 @@ import logging
 import xarray as xr
 
 from ocf_data_sampler.config import InputData
+from ocf_data_sampler.datasets.pvnet.types import SourceDict
 from ocf_data_sampler.load import open_generation, open_nwp, open_sat_data
 
 logger = logging.getLogger(__name__)
 
 
-def get_dataset_dict(
-    input_config: InputData,
-) -> dict[str, dict[xr.DataArray] | xr.DataArray]:
+def get_dataset_dict(input_config: InputData) -> SourceDict[xr.DataArray]:
     """Construct dictionary of all of the input data sources.
 
     Args:
@@ -28,8 +27,8 @@ def get_dataset_dict(
         )
 
         # Remove location_id 0 if more than one location present
-        if len(da_generation.location_id) > 1 and 0 in da_generation.location_id.values:
-            da_generation = da_generation.sel(location_id=slice(1, None))
+        if len(da_generation["location_id"]) > 1 and 0 in da_generation["location_id"].values:
+            da_generation = da_generation.drop_sel(location_id=0)
             logger.info(
                 "Id 0 has been filtered out, this is only used for summation models.",
             )

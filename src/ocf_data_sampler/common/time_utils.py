@@ -1,4 +1,6 @@
 """Module for datetime utilities."""
+from typing import Any, cast
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -54,7 +56,11 @@ def get_day_of_year(
     """
     day_arr = datetimes.astype("datetime64[D]")
     year_start_arr = day_arr.astype("datetime64[Y]").astype("datetime64[D]")
-    return (day_arr - year_start_arr).astype(np.int32) + 1
+
+    day_number = day_arr.astype(np.int64)
+    year_start_number = year_start_arr.astype(np.int64)
+
+    return (day_number - year_start_number).astype(np.int32) + np.int32(1)
 
 
 def get_day_fraction(
@@ -66,7 +72,9 @@ def get_day_fraction(
         datetimes: the datetimes to get day fraction for
     """
     day_start = datetimes.astype("datetime64[D]")
-    return ((datetimes - day_start) / np.timedelta64(1, "D")).astype(np.float64)
+    elapsed = cast("Any", datetimes - day_start)
+    day_fraction = (elapsed / np.timedelta64(1, "D")).astype(np.float64)
+    return cast("np.float64 | NDArray[np.float64]", day_fraction)
 
 
 def get_is_leap_year(
@@ -78,7 +86,8 @@ def get_is_leap_year(
         datetimes: the datetimes to get leap year for
     """
     years = get_year(datetimes)
-    return (years % 4 == 0) & ((years % 100 != 0) | (years % 400 == 0))
+    result = (years % 4 == 0) & ((years % 100 != 0) | (years % 400 == 0))
+    return cast("np.bool_ | NDArray[np.bool_]", result)
 
 
 def date_range(
@@ -125,7 +134,8 @@ def datetime_ceil(
     _floor_ceil_check_freq(freq)
     epoch_datetime = np.datetime64("1970-01-01", "ns")
     periods_since_epoch = np.ceil((datetimes - epoch_datetime) / freq)
-    return ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
+    result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
+    return cast("np.datetime64 | NDArray[np.datetime64]", result)
 
 
 def datetime_floor(
@@ -141,7 +151,8 @@ def datetime_floor(
     _floor_ceil_check_freq(freq)
     epoch_datetime = np.datetime64("1970-01-01", "ns")
     periods_since_epoch = np.floor((datetimes - epoch_datetime) / freq)
-    return ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
+    result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
+    return cast("np.datetime64 | NDArray[np.datetime64]", result)
 
 
 def get_posix_timestamp(

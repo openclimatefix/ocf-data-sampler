@@ -5,6 +5,7 @@ import pandas as pd
 
 from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.config.model import Configuration
+from ocf_data_sampler.datasets.pvnet.types import SourceDict
 from ocf_data_sampler.select.time_periods import (
     find_contiguous_t0_periods,
     find_contiguous_t0_periods_nwp,
@@ -12,7 +13,10 @@ from ocf_data_sampler.select.time_periods import (
 )
 
 
-def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.DataFrame:
+def find_valid_time_periods(
+    datasets_dict: SourceDict,
+    config: Configuration,
+) -> pd.DataFrame:
     """Find the t0 times where all of the requested input data is available.
 
     Args:
@@ -23,7 +27,7 @@ def find_valid_time_periods(datasets_dict: dict, config: Configuration) -> pd.Da
         raise ValueError(f"Invalid keys in datasets_dict: {datasets_dict.keys()}")
 
     # Used to store contiguous time periods from each data source
-    contiguous_time_periods: dict[str : pd.DataFrame] = {}
+    contiguous_time_periods: dict[str, pd.DataFrame] = {}
     if "nwp" in datasets_dict:
         for nwp_key, nwp_config in config.input_data.nwp.items():
             da = datasets_dict["nwp"][nwp_key]

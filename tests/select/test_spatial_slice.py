@@ -24,8 +24,8 @@ def test_select_spatial_slice_pixels(da):
     )
 
     assert isinstance(da_sliced, xr.DataArray)
-    assert (da_sliced.x_osgb.values == np.arange(-95, -85)).all()
-    assert (da_sliced.y_osgb.values == np.arange(-85, -75)).all()
+    assert (da_sliced["x_osgb"].values == np.arange(-95, -85)).all()
+    assert (da_sliced["y_osgb"].values == np.arange(-85, -75)).all()
     assert not da_sliced.isnull().any()
 
     # Select window where the edge of the window lies right on the edge of the data
@@ -37,8 +37,8 @@ def test_select_spatial_slice_pixels(da):
     )
 
     assert isinstance(da_sliced, xr.DataArray)
-    assert (da_sliced.x_osgb.values == np.arange(-100, -80)).all()
-    assert (da_sliced.y_osgb.values == np.arange(-90, -70)).all()
+    assert (da_sliced["x_osgb"].values == np.arange(-100, -80)).all()
+    assert (da_sliced["y_osgb"].values == np.arange(-90, -70)).all()
     assert not da_sliced.isnull().any()
 
 

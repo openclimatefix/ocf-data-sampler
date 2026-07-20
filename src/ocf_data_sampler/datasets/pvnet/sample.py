@@ -1,22 +1,15 @@
 """Functions to convert xarray datasets to numpy samples."""
 
-from typing import TypeAlias
-
 import numpy as np
-import torch
-import xarray as xr
 from numpy.typing import NDArray
 
+from ocf_data_sampler.datasets.pvnet.types import NumpySample, SourceDict
 from ocf_data_sampler.features.solar import calculate_azimuth_and_elevation
 from ocf_data_sampler.features.time_encodings import encode_t0
 
-NumpySample: TypeAlias = dict[str, np.ndarray]
-NumpyBatch: TypeAlias = dict[str, np.ndarray]
-TensorBatch: TypeAlias = dict[str, torch.Tensor]
-
 
 def convert_to_numpy_sample(
-    datasets_dict: dict[str, xr.DataArray | dict[str, xr.DataArray]],
+    datasets_dict: SourceDict,
     t0_idx: int,
     include_extra_metadata: bool = False,
 ) -> NumpySample:
@@ -40,8 +33,8 @@ def convert_to_numpy_sample(
         da = datasets_dict["generation"]
 
         # Get the position index of the generation and capacities
-        gen_idx = np.argmax(da.gen_param.values=="generation_mw")
-        cap_idx = np.argmax(da.gen_param.values=="capacity_mwp")
+        gen_idx = np.argmax(da["gen_param"].values == "generation_mw")
+        cap_idx = np.argmax(da["gen_param"].values == "capacity_mwp")
 
         generation_values = da.isel(gen_param=gen_idx).values
         capacity_value = da.isel(gen_param=cap_idx).values[0]
@@ -54,15 +47,15 @@ def convert_to_numpy_sample(
                 "generation": generation_values,
                 "capacity_mwp": capacity_value,
                 "generation_t0_idx": int(t0_idx),
-                "generation_time_utc": da.time_utc.values.astype(float),
+                "generation_time_utc": da["time_utc"].values.astype(float),
             },
         )
 
         if include_extra_metadata:
             numpy_sample.update(
                 {
-                    "location_longitude": float(da.longitude.values),
-                    "location_latitude": float(da.latitude.values),
+                    "location_longitude": float(da["longitude"].values),
+                    "location_latitude": float(da["latitude"].values),
                 },
             )
 
@@ -73,9 +66,9 @@ def convert_to_numpy_sample(
         if include_extra_metadata:
             numpy_sample.update(
                 {
-                    "satellite_time_utc": da.time_utc.values.astype(float),
-                    "satellite_x_geostationary": da.x_geostationary.values,
-                    "satellite_y_geostationary": da.y_geostationary.values,
+                    "satellite_time_utc": da["time_utc"].values.astype(float),
+                    "satellite_x_geostationary": da["x_geostationary"].values,
+                    "satellite_y_geostationary": da["y_geostationary"].values,
                 },
             )
 
@@ -85,11 +78,11 @@ def convert_to_numpy_sample(
             numpy_sample.update({nwp_key: da.values})
 
             if include_extra_metadata:
-                step_hours = (da.step.values / np.timedelta64(1, "h")).astype(float)
-                target_times = (da.init_time_utc.values + da.step.values).astype(float)
+                step_hours = (da["step"].values / np.timedelta64(1, "h")).astype(float)
+                target_times = (da["init_time_utc"].values + da["step"].values).astype(float)
 
                 numpy_sample.update({
-                    f"{nwp_key}_init_time_utc": da.init_time_utc.values.astype(float),
+                    f"{nwp_key}_init_time_utc": da["init_time_utc"].values.astype(float),
                     f"{nwp_key}_step_hours": step_hours,
                     f"{nwp_key}_target_time_utc": target_times,
                 })

@@ -1,5 +1,6 @@
 """A lightweight DataArray-like class."""
 
+from typing import Any, TypedDict
 
 import numpy as np
 import xarray as xr
@@ -7,11 +8,23 @@ from tensorstore import Future as TensorStoreFuture
 from tensorstore import TensorStore
 from xarray_tensorstore import _TensorStoreAdapter
 
+from ocf_data_sampler.common.types import Indexer
+
+
+class LightDataArrayState(TypedDict):
+    """Serialized state of a LightDataArray."""
+
+    _data: np.ndarray | TensorStore
+    dims: tuple[str, ...]
+    coords: dict[str, np.ndarray]
+    attrs: dict[Any, Any]
+    coord_dims: dict[str, tuple[str, ...]]
+
 
 class LightDataArray:
     """A lightweight DataArray-like class."""
 
-    __slots__ = ["attrs", "coord_dims", "coords", "data", "dims", "future"]
+    __slots__ = ["_data", "attrs", "coord_dims", "coords", "dims", "future"]
 
     def __init__(
         self,
@@ -19,15 +32,32 @@ class LightDataArray:
         dims: tuple[str, ...],
         coords: dict[str, np.ndarray],
         coord_dims: dict[str, tuple[str, ...]],
-        attrs: None | dict = None,
+        attrs: dict[Any, Any] | None = None,
     ) -> None:
         """A lightweight DataArray-like class."""
-        self.data = data
+        self._data = data
         self.dims = dims
         self.coords = coords
         self.coord_dims = coord_dims
         self.attrs = attrs or {}
-        self.future: None | TensorStoreFuture = None
+        self.future: TensorStoreFuture[Any] | None = None
+
+    @property
+    def data(self) -> np.ndarray | TensorStore:
+        """Return the backing array."""
+        return self._data
+
+    @data.setter
+    def data(self, value: np.ndarray | TensorStore) -> None:
+        """Replace the backing array without changing dimensions."""
+        if value.shape != self.shape:
+            raise ValueError(
+                "Replacement data must match the existing shape. "
+                f"Replacement has shape {value.shape}; existing data has shape {self.shape}.",
+            )
+
+        self._data = value
+        self.future = None
 
     @classmethod
     def from_xarray(cls, da: xr.DataArray) -> "LightDataArray":
@@ -46,17 +76,20 @@ class LightDataArray:
 
         for k, v in da.coords.items():
             if v.ndim <= 1:
-                coord_values[k] = v.values
-                coord_dims[k] = v.dims
+                coord_name = str(k)
+                coord_values[coord_name] = v.values
+                coord_dims[coord_name] = tuple(str(dim) for dim in v.dims)
             else:
                 raise ValueError(
                     "Coordinates with more than 1 dimension not supported. "
                     f"Found coord '{k}' with shape {v.shape}.",
                 )
 
+        dims = tuple(str(d) for d in da.dims)
+
         return cls(
             data=data,
-            dims=da.dims,
+            dims=dims,
             coords=coord_values,
             coord_dims=coord_dims,
             attrs=da.attrs,
@@ -67,7 +100,7 @@ class LightDataArray:
 
         Note this loads the data eagerly.
         """
-        coords_dict = {}
+        coords_dict: dict[str, Any] = {}
         for c, v in self.coords.items():
             cdims = self.coord_dims.get(c, ())
 
@@ -87,8 +120,8 @@ class LightDataArray:
 
     def isel(
         self,
-        indexers: None | dict[str, int | slice | list] = None,
-        **indexers_kwargs: object,
+        indexers: dict[str, Indexer] | None = None,
+        **indexers_kwargs: Indexer,
     ) -> "LightDataArray":
         """Select data by integer index along specified dimensions.
 
@@ -100,9 +133,9 @@ class LightDataArray:
         if indexers is not None:
             indexers_kwargs.update(indexers)
 
-        axis_indexers = [slice(None)] * len(self.dims)
+        axis_indexers: list[Indexer] = [slice(None)] * len(self.dims)
         new_coords = self.coords.copy()
-        dims_to_remove = []
+        dims_to_remove: list[str] = []
 
         for dim, indexer in indexers_kwargs.items():
             if dim not in self.dims:
@@ -151,27 +184,20 @@ class LightDataArray:
     def load(self) -> "LightDataArray":
         """Load data in-place and return self."""
         self.data = self.values
-        self.future = None
         return self
 
     @property
     def values(self) -> np.ndarray:
-        """Get the underlying data as numpy array, loading it if necessary."""
-        if isinstance(self.data, TensorStore):
-            # If TensorStore handle reading
-            if self.future is None:
-                return np.asarray(self.data.read().result())
-            else:
-                return np.asarray(self.future.result())
-        else:
-            return np.asarray(self.data)
+        """Return the data as a NumPy array, loading it if necessary."""
+        data = self._data
 
+        if not isinstance(data, TensorStore):
+            return np.asarray(data)
 
-    def __getattr__(self, name: str) -> "LightDataArray":
-        """Allow access to coordinates via attribute syntax, e.g., da.time."""
-        if name in self.coords:
-            return self[name]
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        if self.future is None:
+            return np.asarray(data.read().result())
+
+        return np.asarray(self.future.result())
 
     def __getitem__(self, key: str) -> "LightDataArray":
         """Allow access to coordinates via indexing syntax, e.g., da['time']."""
@@ -184,20 +210,23 @@ class LightDataArray:
             )
         raise KeyError(f"Coordinate '{key}' not found.")
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> LightDataArrayState:
         """Prepare state for pickling, excluding un-picklable attributes."""
         return {
-            "data": self.data,
+            "_data": self._data,
             "dims": self.dims,
             "coords": self.coords,
             "attrs": self.attrs,
             "coord_dims": self.coord_dims,
         }
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: LightDataArrayState) -> None:
         """Restore state after unpickling."""
-        for k, v in state.items():
-            setattr(self, k, v)
+        self._data = state["_data"]
+        self.dims = state["dims"]
+        self.coords = state["coords"]
+        self.attrs = state["attrs"]
+        self.coord_dims = state["coord_dims"]
         # Restore the un-picklable attribute to a default state
         self.future = None
 

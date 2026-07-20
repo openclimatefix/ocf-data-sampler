@@ -14,7 +14,7 @@ def apply_history_dropout(
     dropout_frac: float | list[float],
     da: xr.DataArray,
 ) -> xr.DataArray:
-    """Apply randomly sampled dropout to the historical part of some sequence data.
+    """Apply in-place random dropout to the historical part of some sequence data.
 
     Dropped out data is replaced with NaNs
 
@@ -55,4 +55,10 @@ def apply_history_dropout(
     if timedelta_choice is None:
         return da
     else:
-        return da.where((da.time_utc <= timedelta_choice + t0) | (da.time_utc> t0))
+        times = da["time_utc"].values
+        keep = (times <= t0 + timedelta_choice) | (times > t0)
+        axis = da.dims.index("time_utc")
+        mask = np.expand_dims(keep, tuple(i for i in range(da.data.ndim) if i != axis))
+        da.data = np.where(mask, da.data, np.nan)
+        return da
+
