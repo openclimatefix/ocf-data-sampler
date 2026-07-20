@@ -110,12 +110,12 @@ def test_pvnet_dataset(pvnet_config_filename):
     assert sample["t0_embedding"].shape == (6,)
 
     # Test helper function get_sample to retrieve sample by t0 and location_id
-    assert dataset.complete_generation == True
+    assert dataset.complete_generation
     t0 = dataset.valid_t0_times[0]
-    location_id = list(dataset.location_lookup)[0] 
+    location_id = next(iter(dataset.location_lookup))
     sample = dataset.get_sample(t0=t0, location_id=location_id)
     assert isinstance(sample, dict)
-    
+
 
 def test_pvnet_dataset_sites(pvnet_site_config_filename):
     dataset = PVNetDataset(
@@ -173,7 +173,7 @@ def test_pvnet_dataset_sites(pvnet_site_config_filename):
     assert sample["generation"].shape == (7,)
 
     # Test helper function get_sample to retrieve sample by t0 and location_id
-    assert dataset.complete_generation == False
+    assert not dataset.complete_generation
     t0 = dataset.valid_t0_and_location_ids["t0"].iloc[0]
     location_id = dataset.valid_t0_and_location_ids["location_id"].iloc[0]
     sample = dataset.get_sample(t0=t0, location_id=location_id)
