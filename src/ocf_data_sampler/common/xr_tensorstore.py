@@ -31,6 +31,15 @@ from xarray_tensorstore import (
 logger = logging.getLogger(__name__)
 
 
+def _get_data_var_names(ds: xr.Dataset) -> list[str]:
+    data_vars: list[str] = []
+    for name in ds.data_vars:
+        if not isinstance(name, str):
+            raise TypeError(f"Zarr data variable names must be strings, got {name!r}")
+        data_vars.append(name)
+    return data_vars
+
+
 def _zarr_spec_from_path(path: str, zarr_format: int) -> dict[str, Any]:
     if re.match(r"\w+\://", path):  # path is a URI
         kv_store: str | dict[str, str] = path
@@ -119,7 +128,7 @@ def open_zarr(
         _raise_if_mask_and_scale_used_for_data_vars(ds)
 
     # Open all data variables using tensorstore - returned as futures
-    data_vars = list(ds.data_vars)
+    data_vars = _get_data_var_names(ds)
     array_futures = _get_data_variable_array_futures(path, context, data_vars)
 
     # Wait for the async open operations
@@ -186,7 +195,7 @@ def open_zarrs(
         _raise_if_mask_and_scale_used_for_data_vars(ds)
 
     # Find the axis along which each data array must be concatenated
-    data_vars = list(ds.data_vars)
+    data_vars = _get_data_var_names(ds)
     concat_axes = [ds[v].dims.index(concat_dim) for v in data_vars]
 
     # Open and concat all zarrs so each variables is a single TensorStore array

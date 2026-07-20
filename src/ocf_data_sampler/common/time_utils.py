@@ -1,9 +1,11 @@
 """Module for datetime utilities."""
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
 
 _EPOCH_DATETIME = np.datetime64("1970-01-01", "ns")
+
 
 def minutes(minutes: int | list[int]) -> np.timedelta64 | NDArray[np.timedelta64]:
     """Timedelta minutes.
@@ -139,7 +141,7 @@ def datetime_ceil(
     result = (periods_since_epoch * freq) + _EPOCH_DATETIME
     if isinstance(datetimes, np.ndarray):
         return np.asarray(result, dtype=datetimes.dtype)
-    return np.datetime64(result).astype(datetimes.dtype)
+    return cast("np.datetime64", np.datetime64(result).astype(datetimes.dtype))
 
 
 def datetime_floor(
@@ -157,7 +159,7 @@ def datetime_floor(
     result = (periods_since_epoch * freq) + _EPOCH_DATETIME
     if isinstance(datetimes, np.ndarray):
         return np.asarray(result, dtype=datetimes.dtype)
-    return np.datetime64(result).astype(datetimes.dtype)
+    return cast("np.datetime64", np.datetime64(result).astype(datetimes.dtype))
 
 
 def get_posix_timestamp(
