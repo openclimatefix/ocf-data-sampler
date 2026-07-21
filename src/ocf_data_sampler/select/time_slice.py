@@ -51,13 +51,11 @@ def select_time_slice_nwp(
         dropout_timedeltas: List of possible timedeltas before t0 where data availability may start
         dropout_frac: Probability to apply dropout
     """
-
     if dropout_timedeltas is None:
         dropout_timedeltas = np.array([], dtype="timedelta64[ns]")
 
-    if len(dropout_timedeltas)>0:
-        if not np.all(dropout_timedeltas < np.timedelta64(0)):
-            raise ValueError("dropout timedeltas must be negative")
+    if len(dropout_timedeltas)>0 and np.any(dropout_timedeltas >= np.timedelta64(0)):
+        raise ValueError("dropout timedeltas must be negative")
 
     if not (0 <= dropout_frac <= 1):
         raise ValueError("`dropout_frac` must be between 0 and 1")
@@ -85,7 +83,7 @@ def select_time_slice_nwp(
     # Find the most recent available init-time <= t0_available
     selected_init_time_index = np.searchsorted(all_init_times, t0_available, side="right") - 1
 
-    # If the selected init-time index is -1, this means that t0_available is before the first 
+    # If the selected init-time index is -1, this means that t0_available is before the first
     # available init-time in the data
     if selected_init_time_index == -1:
         raise ValueError(
