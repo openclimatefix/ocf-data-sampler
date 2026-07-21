@@ -28,7 +28,5 @@ def get_indices_in_sorted_unique(
 
 def assert_values_unique_increasing(values: np.ndarray, label: str = "values") -> None:
     """Assert the values are unique and monotonically increasing."""
-    if len(np.unique(values))!=len(values):
-        raise ValueError(f"{label} must be unique")
     if not (values[:-1] < values[1:]).all():
-        raise ValueError(f"{label} must be increasing")
+        raise ValueError(f"{label} must be strictly increasing")

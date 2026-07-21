@@ -11,8 +11,8 @@ def test_fill_nans_in_dataset_dicts(config_filename):
     configuration = load_yaml_configuration(config_filename)
 
     # Set custom satellite and nwp values, generation is left as default 0.0
-    configuration.input_data.satellite.dropout_value = -1.0
-    configuration.input_data.nwp["ukv"].dropout_value = -2.0
+    configuration.input_data.satellite.dropout_fill_value = -1.0
+    configuration.input_data.nwp["ukv"].dropout_fill_value = -2.0
 
     gen = np.array([1.0, np.nan, 3.0, np.nan])
     sat = np.array([1.0, np.nan, 3.0, np.nan])

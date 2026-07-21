@@ -101,7 +101,7 @@ def date_range(
         end: the end date
         freq: the frequency to step by
     """
-    # Make end inclusive by entending by the smallest possible amount (1 nanosecond)
+    # Make end inclusive by extending by the smallest possible amount (1 nanosecond)
     return np.arange(start, end + np.timedelta64(1, "ns"), freq)
 
 
@@ -114,7 +114,7 @@ def _floor_ceil_check_freq(freq: np.timedelta64) -> None:
     # For example what would it mean to ceil/floor to 45 minutes?
     if (np.timedelta64(1, "h") / freq) % 1 != 0 and (freq/np.timedelta64(1, "h") ) % 1 != 0:
         raise ValueError(f"Frequency {freq} must be factor of 1 hour or multiple of hour.")
-    # Also don't support frequecies that aren't factors of 1 day.
+    # Also don't support frequencies that aren't factors of 1 day.
     # For example what would it mean to ceil/floor to 7 hours?
     if (np.timedelta64(1, "D") / freq) % 1 != 0:
         raise ValueError(f"Frequency {freq} must be factor of 1 day.")

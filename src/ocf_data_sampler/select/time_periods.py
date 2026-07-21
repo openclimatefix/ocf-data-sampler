@@ -292,7 +292,6 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
 
         all_intersecting_periods.append(intersection)
 
-
     all_intersecting_periods = pd.concat(all_intersecting_periods)
     return all_intersecting_periods.sort_values(by="start_dt").reset_index(drop=True)
 
@@ -311,6 +310,6 @@ def fill_time_periods(time_periods: pd.DataFrame, freq: np.timedelta64) -> NDArr
     end_dts = time_periods["end_dt"].values
     date_ranges = [
         date_range(start_dt, end_dt, freq=freq)
-        for start_dt, end_dt in zip(start_dts, end_dts, strict=False)
+        for start_dt, end_dt in zip(start_dts, end_dts, strict=True)
     ]
     return np.concatenate(date_ranges)
