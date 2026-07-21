@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from ocf_data_sampler.common.xr_tensorstore import _open_single_zarr, _open_and_concat_zarrs
+from ocf_data_sampler.common.xr_tensorstore import _open_and_concat_zarrs, _open_single_zarr
 
 
 @pytest.fixture(scope="module")

@@ -16,7 +16,7 @@ from ocf_data_sampler.load.conventions import (
 
 SpatialCoords = tuple[str, str]
 
-# This is our central registry of NWP providers and their spatial coordinate names, which allows us
+# This is our central registry of NWP providers and their spatial coordinate names, which allows us
 # to handle different providers in a consistent way.
 PROVIDER_REGISTRY: dict[str, SpatialCoords] = {
     "ukv": ("x_osgb", "y_osgb"),
