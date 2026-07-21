@@ -138,13 +138,13 @@ class SpatialWindowMixin(Base):
 
     image_size_pixels_height: int = Field(
         ...,
-        ge=0,
+        gt=0,
         description="The number of pixels of the height of the region of interest",
     )
 
     image_size_pixels_width: int = Field(
         ...,
-        ge=0,
+        gt=0,
         description="The number of pixels of the width of the region of interest",
     )
 

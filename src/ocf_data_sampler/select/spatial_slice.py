@@ -18,7 +18,9 @@ def _get_central_index(
     Args:
         values: The array of values to search.
         val: The value to find the closest index for.
-        method: Method to use for finding the index ("nearest" or "left").
+        method: Method to use for finding the index ("nearest" or "left"). If set to "nearest", the
+            index of the closest value will be returned. If set to "left", the index of the closest
+            value that is less than or equal to `val` will be returned.
 
     Returns:
         The index of the closest value.
@@ -32,17 +34,14 @@ def _get_central_index(
             f"{val} is not in the interval {values[0]}: {values[-1]}",
         )
 
-    def get_nearest_index(vals: np.ndarray, val: float) -> int:
-        """Get the index of the nearest value in vals to val."""
-        idx = np.searchsorted(vals, val, side="left") - 1
-        if idx < len(vals) - 1 and (abs(vals[idx+1] - val) < abs(vals[idx] - val)):
-            idx += 1
-        return idx
-
     if method == "left":
+        # Get the index of the closest value that is less than or equal to val
         index = np.searchsorted(values, val, side="right") - 1
     elif method == "nearest":
-        index = get_nearest_index(values, val)
+        # Get the index of the closest value to val
+        index = np.searchsorted(values, val, side="left") - 1
+        if index < len(values) - 1 and (abs(values[index+1] - val) < abs(values[index] - val)):
+            index += 1
     else:
         raise ValueError(f"Unknown method: {method}")
 
@@ -91,6 +90,7 @@ def _validate_window_slice(
         issue_details = "\n - ".join(issues)
         raise ValueError(f"Slice is unavailable:\n - {issue_details}")
 
+
 def select_spatial_slice_pixels(
     da: TArray,
     location: Location,
@@ -115,8 +115,8 @@ def select_spatial_slice_pixels(
     x_values = da[x_dim].values
     y_values = da[y_dim].values
 
-    # If odd window size, get index of nearest pixel, else get index of left pixel to ensure the
-    # location is within the returned slice
+    # If odd window size, get index of nearest pixel, else get index of closest pixel to the left
+    # to ensure the location is centred within the returned slice
     x_method = "nearest" if (width_pixels % 2) == 1 else "left"
     y_method = "nearest" if (height_pixels % 2) == 1 else "left"
     x_index = _get_central_index(x_values, x, method=x_method)
