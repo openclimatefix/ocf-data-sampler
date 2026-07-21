@@ -72,8 +72,7 @@ def get_day_fraction(
         datetimes: the datetimes to get day fraction for
     """
     day_start = datetimes.astype("datetime64[D]")
-    elapsed = cast("Any", datetimes - day_start)
-    day_fraction = (elapsed / np.timedelta64(1, "D")).astype(np.float64)
+    day_fraction = ((datetimes - day_start) / np.timedelta64(1, "D")).astype(np.float64)
     return cast("np.float64 | NDArray[np.float64]", day_fraction)
 
 
