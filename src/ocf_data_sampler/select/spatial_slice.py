@@ -1,45 +1,94 @@
 """Select spatial slices."""
 
+from typing import Literal
+
 import numpy as np
 
-from ocf_data_sampler.common.types import DataArrayLike, TArray
+from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.spatial import Location, find_coord_system
 
 
-def _get_pixel_index_location(da: DataArrayLike, location: Location) -> tuple[int, int]:
-    """Find pixel index location closest to given Location.
+def _get_central_index(
+    values: np.ndarray,
+    val: float,
+    method: Literal["nearest", "left"],
+) -> int:
+    """Find pixel index location closest to given value.
 
     Args:
-        da: The DataArray-like object.
-        location: The Location object representing the point of interest.
+        values: The array of values to search.
+        val: The value to find the closest index for.
+        method: Method to use for finding the index ("nearest" or "left"). If set to "nearest", the
+            index of the closest value will be returned. If set to "left", the index of the closest
+            value that is less than or equal to `val` will be returned.
 
     Returns:
-        The pixel indices.
+        The index of the closest value.
 
     Raises:
-        ValueError: If the location is outside the bounds of the DataArray.
+        ValueError: If the value is outside the bounds of the array.
     """
-    target_coords, x_dim, y_dim = find_coord_system(da)
-
-    x, y = location.in_coord_system(target_coords)
-
-    x_vals = da[x_dim].values
-    y_vals = da[y_dim].values
-
     # Check that requested point lies within the data
-    if not (x_vals[0] < x < x_vals[-1]):
+    if not (values[0] < val < values[-1]):
         raise ValueError(
-            f"{x} is not in the interval {x_vals[0]}: {x_vals[-1]}",
-        )
-    if not (y_vals[0] < y < y_vals[-1]):
-        raise ValueError(
-            f"{y} is not in the interval {y_vals[0]}: {y_vals[-1]}",
+            f"{val} is not in the interval {values[0]}: {values[-1]}",
         )
 
-    closest_x = np.argmin(np.abs(x_vals - x))
-    closest_y = np.argmin(np.abs(y_vals - y))
+    if method == "left":
+        # Get the index of the closest value that is less than or equal to val
+        index = np.searchsorted(values, val, side="right") - 1
+    elif method == "nearest":
+        # Get the index of the closest value to val
+        index = np.searchsorted(values, val, side="left") - 1
+        if index < len(values) - 1 and (abs(values[index+1] - val) < abs(values[index] - val)):
+            index += 1
+    else:
+        raise ValueError(f"Unknown method: {method}")
 
-    return closest_x, closest_y
+    return index
+
+
+def _get_window_bounds(
+    central_index: int,
+    window_size: int,
+) -> tuple[int, int]:
+    """Get the lower and upper bounds of a window around a central index."""
+    low_pad = (window_size+1)//2 - 1
+    high_pad = window_size//2 + 1
+
+    low_idx = int(central_index - low_pad)
+    high_idx = int(central_index + high_pad)
+
+    return low_idx, high_idx
+
+
+def _validate_window_slice(
+    window_slice: tuple[int, int, int, int],
+    total_size: tuple[int, int],
+) -> None:
+    """Validate that the window slice is within the bounds of the data."""
+    left_idx, right_idx, bottom_idx, top_idx = window_slice
+    total_width, total_height = total_size
+
+    slice_unavailable = (
+        left_idx < 0
+        or right_idx > total_width
+        or bottom_idx < 0
+        or top_idx > total_height
+    )
+
+    if slice_unavailable:
+        issues = []
+        if left_idx < 0:
+            issues.append(f"left index ({left_idx}) < 0")
+        if right_idx > total_width:
+            issues.append(f"right index ({right_idx}) > total_width ({total_width})")
+        if bottom_idx < 0:
+            issues.append(f"bottom index ({bottom_idx}) < 0")
+        if top_idx > total_height:
+            issues.append(f"top index ({top_idx}) > total_height ({total_height})")
+        issue_details = "\n - ".join(issues)
+        raise ValueError(f"Slice is unavailable:\n - {issue_details}")
 
 
 def select_spatial_slice_pixels(
@@ -57,50 +106,32 @@ def select_spatial_slice_pixels(
         width_pixels: Width of the slice in pixels
 
     Returns:
-        The selected DataArray slice.
-
-    Raises:
-        ValueError: If the window dimensions are not even or the slice extends beyond the data
-            boundaries.
+        The selected DataArray-like slice.
     """
-    if (width_pixels % 2) != 0:
-        raise ValueError("Width must be an even number")
-    if (height_pixels % 2) != 0:
-        raise ValueError("Height must be an even number")
+    target_coords, x_dim, y_dim = find_coord_system(da)
 
-    _, x_dim, y_dim = find_coord_system(da)
-    center_idx_x, center_idx_y = _get_pixel_index_location(da, location)
+    x, y = location.in_coord_system(target_coords)
 
-    half_width = width_pixels // 2
-    half_height = height_pixels // 2
+    x_values = da[x_dim].values
+    y_values = da[y_dim].values
 
-    left_idx = int(center_idx_x - half_width)
-    right_idx = int(center_idx_x + half_width)
-    bottom_idx = int(center_idx_y - half_height)
-    top_idx = int(center_idx_y + half_height)
+    # If odd window size, get index of nearest pixel, else get index of closest pixel to the left
+    # to ensure the location is centred within the returned slice
+    x_method = "nearest" if (width_pixels % 2) == 1 else "left"
+    y_method = "nearest" if (height_pixels % 2) == 1 else "left"
+    x_index = _get_central_index(x_values, x, method=x_method)
+    y_index = _get_central_index(y_values, y, method=y_method)
 
-    data_width_pixels = len(da[x_dim])
-    data_height_pixels = len(da[y_dim])
+    left_idx, right_idx = _get_window_bounds(x_index, width_pixels)
+    bottom_idx, top_idx = _get_window_bounds(y_index, height_pixels)
 
-    slice_unavailable = (
-        left_idx < 0
-        or right_idx > data_width_pixels
-        or bottom_idx < 0
-        or top_idx > data_height_pixels
+    data_width_pixels = len(x_values)
+    data_height_pixels = len(y_values)
+
+    _validate_window_slice(
+        window_slice=(left_idx, right_idx, bottom_idx, top_idx),
+        total_size=(data_width_pixels, data_height_pixels),
     )
-
-    if slice_unavailable:
-        issues = []
-        if left_idx < 0:
-            issues.append(f"left_idx ({left_idx}) < 0")
-        if right_idx > data_width_pixels:
-            issues.append(f"right_idx ({right_idx}) > data_width_pixels ({data_width_pixels})")
-        if bottom_idx < 0:
-            issues.append(f"bottom_idx ({bottom_idx}) < 0")
-        if top_idx > data_height_pixels:
-            issues.append(f"top_idx ({top_idx}) > data_height_pixels ({data_height_pixels})")
-        issue_details = "\n - ".join(issues)
-        raise ValueError(f"Window for location {location} not available: \n - {issue_details}")
 
     return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
 
@@ -120,21 +151,18 @@ def select_spatial_slice_pixels_multiple(
         width_pixels: Width of the slice in pixels
 
     Returns:
-        The selected DataArray slice.
-
-    Raises:
-        ValueError: If the window dimensions are not even or the slice extends beyond the data
-            boundaries.
+        The selected DataArray-like slice.
     """
-    if (width_pixels % 2) != 0:
-        raise ValueError("Width must be an even number")
-    if (height_pixels % 2) != 0:
-        raise ValueError("Height must be an even number")
+    target_coords, x_dim, y_dim = find_coord_system(da)
 
-    _, x_dim, y_dim = find_coord_system(da)
+    x_values = da[x_dim].values
+    y_values = da[y_dim].values
 
-    data_width_pixels = len(da[x_dim])
-    data_height_pixels = len(da[y_dim])
+    x_method = "nearest" if (width_pixels % 2) == 1 else "left"
+    y_method = "nearest" if (height_pixels % 2) == 1 else "left"
+
+    data_width_pixels = len(x_values)
+    data_height_pixels = len(y_values)
 
     idx_x_min: int = data_width_pixels
     idx_x_max: int = 0
@@ -142,43 +170,22 @@ def select_spatial_slice_pixels_multiple(
     idx_y_max: int = 0
 
     for location in locations:
-        center_idx_x, center_idx_y = _get_pixel_index_location(da, location)
-        idx_x_min = min(idx_x_min, center_idx_x)
-        idx_x_max = max(idx_x_max, center_idx_x)
-        idx_y_min = min(idx_y_min, center_idx_y)
-        idx_y_max = max(idx_y_max, center_idx_y)
+        x, y = location.in_coord_system(target_coords)
+        x_index = _get_central_index(x_values, x, method=x_method)
+        y_index = _get_central_index(y_values, y, method=y_method)
+        idx_x_min = min(idx_x_min, x_index)
+        idx_x_max = max(idx_x_max, x_index)
+        idx_y_min = min(idx_y_min, y_index)
+        idx_y_max = max(idx_y_max, y_index)
 
-    half_width = width_pixels // 2
-    half_height = height_pixels // 2
+    left_idx, _ = _get_window_bounds(idx_x_min, width_pixels)
+    _, right_idx = _get_window_bounds(idx_x_max, width_pixels)
+    bottom_idx, _ = _get_window_bounds(idx_y_min, height_pixels)
+    _, top_idx = _get_window_bounds(idx_y_max, height_pixels)
 
-    left_idx = int(idx_x_min - half_width)
-    right_idx = int(idx_x_max + half_width)
-    bottom_idx = int(idx_y_min - half_height)
-    top_idx = int(idx_y_max + half_height)
-
-    slice_unavailable = (
-        left_idx < 0
-        or right_idx > data_width_pixels
-        or bottom_idx < 0
-        or top_idx > data_height_pixels
+    _validate_window_slice(
+        window_slice=(left_idx, right_idx, bottom_idx, top_idx),
+        total_size=(data_width_pixels, data_height_pixels),
     )
 
-    if slice_unavailable:
-        raise ValueError(
-            "Multi-location window not available: "
-            f"left_idx ({left_idx}), right_idx ({right_idx}), "
-            f"bottom_idx ({bottom_idx}), top_idx ({top_idx}), "
-            f"data_width_pixels ({data_width_pixels}), data_height_pixels ({data_height_pixels})",
-        )
-
-    # Add buffer of 1 pixel if window is 2 pixels wide to ensure the central location is within the
-    # returned slice
-    x_buffer = 1 if width_pixels==2 else 0
-    y_buffer = 1 if height_pixels==2 else 0
-
-    return da.isel(
-        {
-            x_dim: slice(left_idx, right_idx+x_buffer),
-            y_dim: slice(bottom_idx, top_idx+y_buffer),
-        },
-    )
+    return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})

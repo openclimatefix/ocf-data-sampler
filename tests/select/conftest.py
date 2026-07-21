@@ -35,17 +35,3 @@ def da_sample():
         np.random.normal(size=(len(datetimes),)),
         coords={"time_utc": (["time_utc"], datetimes)},
     )
-
-
-@pytest.fixture(scope="module")
-def da():
-    """Create dummy 2D spatial data"""
-    x = np.arange(-100, 100)
-    y = np.arange(-100, 100)
-    return xr.DataArray(
-        np.random.normal(size=(len(x), len(y))),
-        coords={
-            "x_osgb": (["x_osgb"], x),
-            "y_osgb": (["y_osgb"], y),
-        },
-    )

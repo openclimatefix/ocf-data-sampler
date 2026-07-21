@@ -54,7 +54,7 @@ def select_time_slice_nwp(
     if dropout_timedeltas is None:
         dropout_timedeltas = np.array([], dtype="timedelta64[ns]")
 
-    if len(dropout_timedeltas)>0 and np.any(dropout_timedeltas >= np.timedelta64(0)):
+    if len(dropout_timedeltas) > 0 and np.any(dropout_timedeltas >= np.timedelta64(0)):
         raise ValueError("dropout timedeltas must be negative")
 
     if not (0 <= dropout_frac <= 1):
