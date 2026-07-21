@@ -96,8 +96,8 @@ def sat_zarr_path(session_tmp_path):
     ds = xr.DataArray(
         data,
         coords={
-            "variable": variables,
-            "time": pd.date_range("2023-01-01 00:00", "2023-01-01 23:55", freq="5min"),
+            "channel": variables,
+            "time_utc": pd.date_range("2023-01-01 00:00", "2023-01-01 23:55", freq="5min"),
             "y_geostationary": np.linspace(4191563, 5304712, 100),
             "x_geostationary": np.linspace(15002, -1824245, 100),
         },
@@ -114,8 +114,8 @@ def ds_nwp_ukv(session_rng):
         "init_time_utc": pd.date_range("2023-01-01 00:00", freq="180min", periods=24 * 7),
         "variable": ["si10", "dswrf", "t", "prate"],
         "step": pd.timedelta_range("0h", "10h", freq="1h"),
-        "x": np.linspace(-239_000, 857_000, 50),
-        "y": np.linspace(-183_000, 1225_000, 100),
+        "x_osgb": np.linspace(-239_000, 857_000, 50),
+        "y_osgb": np.linspace(-183_000, 1225_000, 100),
     }
     shape = tuple(len(v) for v in coords.values())
     data = session_rng.uniform(0, 200, shape).astype(np.float32)
@@ -124,7 +124,13 @@ def ds_nwp_ukv(session_rng):
 
 @pytest.fixture(scope="session")
 def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
-    chunks = {"init_time_utc": 1, "step": -1, "variable": -1, "x": 50, "y": 50}
+    chunks = {
+        "init_time_utc": 1,
+        "step": -1,
+        "variable": -1,
+        "x_osgb": 50,
+        "y_osgb": 50,
+    }
     yield save_zarr(ds_nwp_ukv, session_tmp_path, "ukv_nwp.zarr", chunks)
 
 
@@ -161,51 +167,6 @@ def ds_nwp_ecmwf(session_rng):
 def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
     chunks = {"init_time_utc": 1, "step": -1, "variable": -1, "longitude": 50, "latitude": 50}
     yield save_zarr(ds_nwp_ecmwf, session_tmp_path, "ecmwf_nwp.zarr", chunks)
-
-
-@pytest.fixture(scope="session")
-def icon_eu_zarr_path(session_tmp_path, session_rng):
-    step = pd.timedelta_range("0h", "5D", freq="1h")
-    channels = np.array(["t_1000hPa", "u_10m", "v_10m"], dtype=str)
-    lat = np.linspace(29.5, 35.69, 100)
-    lon = np.linspace(-23.5, -17.31, 100)
-
-    attrs = {
-        "Conventions": "CF-1.7",
-        "GRIB_centre": "edzw",
-        "GRIB_centreDescription": "Offenbach",
-        "GRIB_edition": 2,
-        "institution": "Offenbach",
-    }
-
-    paths = []
-    for hour in ["00", "06"]:
-        data = session_rng.random((len(step), len(channels), len(lat), len(lon))).astype(np.float32)
-        time_utc = pd.Timestamp(f"2021-11-01T{hour}:00:00")
-
-        da = xr.DataArray(
-            data,
-            coords={
-                "step": step,
-                "channel": channels,
-                "longitude": lon,
-                "latitude": lat,
-                "init_time_utc": time_utc,
-            },
-            dims=("step", "channel", "longitude", "latitude"),
-            attrs=attrs,
-        )
-        da.coords["valid_time"] = da.init_time_utc + da.step
-
-        paths.append(
-            save_zarr(
-                da.to_dataset(name="icon_eu_data"),
-                session_tmp_path,
-                f"20211101_{hour}.zarr",
-            ),
-        )
-
-    return paths
 
 
 @pytest.fixture(scope="session")

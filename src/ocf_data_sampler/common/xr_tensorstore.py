@@ -15,9 +15,10 @@ References:
 """
 
 import logging
-import os.path
+import os
 import re
-from typing import Any, cast
+from glob import glob, has_magic
+from typing import Any, TypeAlias, cast
 
 import tensorstore as ts
 import xarray as xr
@@ -29,6 +30,9 @@ from xarray_tensorstore import (
 )
 
 logger = logging.getLogger(__name__)
+
+ZarrPath: TypeAlias = str | os.PathLike[str]
+ZarrSource: TypeAlias = ZarrPath | list[ZarrPath] | tuple[ZarrPath, ...]
 
 
 def _zarr_spec_from_path(path: str, zarr_format: int) -> dict[str, Any]:
@@ -90,7 +94,34 @@ def _tensorstore_open_zarrs(
     return arrays
 
 
-def open_zarr(
+def open_zarr_paths(zarr_path: ZarrSource, concat_dim: str | None = None) -> xr.Dataset:
+    """Open one or more Zarr stores using TensorStore.
+
+    Args:
+        zarr_path: A path, local glob pattern, or sequence of paths.
+        concat_dim: Dimension along which multiple stores are concatenated.
+    """
+    if isinstance(zarr_path, str | os.PathLike):
+        path = os.fspath(zarr_path)
+        if not has_magic(path):
+            return _open_single_zarr(path)
+        paths = sorted(glob(path))
+    else:
+        paths = [os.fspath(path) for path in zarr_path]
+
+    if not paths:
+        raise ValueError(f"No Zarr stores found for {zarr_path!r}")
+
+    if len(paths) == 1:
+        return _open_single_zarr(paths[0])
+
+    if concat_dim is None:
+        raise ValueError("`concat_dim` must be specified when opening multiple Zarr stores")
+
+    return _open_and_concat_zarrs(paths, concat_dim)
+
+
+def _open_single_zarr(
     path: str,
     context: ts.Context | None = None,
     mask_and_scale: bool = True,
@@ -129,12 +160,11 @@ def open_zarr(
     return cast("xr.Dataset", ds.copy(data=new_data))
 
 
-def open_zarrs(
+def _open_and_concat_zarrs(
     paths: list[str],
     concat_dim: str,
     context: ts.Context | None = None,
     mask_and_scale: bool = True,
-    data_source: str = "unknown",
 ) -> xr.Dataset:
     """Open multiple zarrs with TensorStore.
 
@@ -143,7 +173,6 @@ def open_zarrs(
         concat_dim: Dimension along which to concatenate the data variables.
         context: TensorStore context.
         mask_and_scale: Whether to mask and scale the data.
-        data_source: Which data source is being opened. Used for warning context.
 
     Returns:
         Concatenated Dataset with all data variables opened via TensorStore.
@@ -166,9 +195,8 @@ def open_zarrs(
         )
     except ValueError:
         logger.warning(
-            f"Coordinate mismatch found in {data_source} input data. Opening with "
-            "`join='override'` to ignore coordinate mismatches. THIS MAY CAUSE UNEXPECTED "
-            "BEHAVIOUR!",
+            f"Coordinate mismatch found when opening paths {paths}. Opening with `join='override'` "
+            "to ignore coordinate mismatches. THIS MAY CAUSE UNEXPECTED BEHAVIOUR.",
         )
         ds = xr.concat(
             ds_list,

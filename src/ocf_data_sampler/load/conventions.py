@@ -1,12 +1,47 @@
 """Helpers that conform freshly opened data to package conventions."""
 
+from collections.abc import Mapping
+
 import numpy as np
 import xarray as xr
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 
 
-def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -> xr.Dataset:
+def validate_coords(
+    data: xr.Dataset | xr.DataArray,
+    expected_dtypes: Mapping[str, type[np.generic]],
+    source: str,
+) -> None:
+    """Validate required coordinate presence, dimensionality, and dtypes.
+
+    Args:
+        data: Xarray object containing the coordinates.
+        expected_dtypes: Mapping from coordinate names to expected NumPy dtype classes.
+        source: Description of the data source used in validation errors.
+    """
+    for coord, expected_dtype in expected_dtypes.items():
+        if coord not in data.coords:
+            raise ValueError(f"Expected coordinate {coord!r} missing from {source}")
+
+        if (ndim := data[coord].ndim) != 1:
+            raise ValueError(
+                f"Coordinate {coord!r} in {source} should be 1D, not {ndim}D",
+            )
+
+        actual_dtype = data[coord].dtype
+        if not np.issubdtype(actual_dtype, expected_dtype):
+            raise TypeError(
+                f"Coordinate {coord!r} in {source} should be "
+                f"{expected_dtype.__name__}, not {actual_dtype.name}",
+            )
+
+
+def make_spatial_coords_increasing(
+    ds: xr.Dataset | xr.DataArray,
+    x_coord: str,
+    y_coord: str,
+) -> xr.Dataset | xr.DataArray:
     """Make sure the spatial coordinates are in increasing order.
 
     Args:
@@ -31,15 +66,21 @@ def make_spatial_coords_increasing(ds: xr.Dataset, x_coord: str, y_coord: str) -
     return ds
 
 
-def get_xr_data_array_from_xr_dataset(ds: xr.Dataset) -> xr.DataArray:
+def extract_single_data_array(ds: xr.Dataset, promote_attrs: bool = True) -> xr.DataArray:
     """Return underlying xr.DataArray from passed xr.Dataset.
 
     Checks only one variable is present and returns it as an xr.DataArray.
 
     Args:
         ds: xr.Dataset to extract xr.DataArray from
+        promote_attrs: Whether to promote dataset attributes to the data array
     """
     datavars = list(ds.data_vars)
     if len(datavars) != 1:
-        raise ValueError("Cannot open as xr.DataArray: dataset contains multiple variables")
-    return ds[datavars[0]]
+        raise ValueError(
+            f"Cannot extract a single DataArray: dataset contains variables {datavars}",
+        )
+    da = ds[datavars[0]]
+    if promote_attrs:
+        da.attrs.update(ds.attrs)
+    return da

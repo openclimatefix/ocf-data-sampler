@@ -66,8 +66,18 @@ def test_incorrect_nwp_provider(config_filename):
     """
     configuration, provider = _load_config_and_provider(config_filename)
     configuration.input_data.nwp[provider].provider = "unexpected_provider"
-    with pytest.raises(Exception, match="NWP provider"):
+    with pytest.raises(ValidationError, match="Unknown NWP provider"):
         _validate_configuration(configuration)
+
+
+def test_nwp_provider_is_canonicalized(config_filename):
+    """NWP provider names are stored using their canonical lowercase spelling."""
+    configuration, provider = _load_config_and_provider(config_filename)
+    configuration.input_data.nwp[provider].provider = "UKV"
+
+    validated = _validate_configuration(configuration)
+
+    assert validated.input_data.nwp[provider].provider == "ukv"
 
 
 def test_incorrect_dropout(config_filename):

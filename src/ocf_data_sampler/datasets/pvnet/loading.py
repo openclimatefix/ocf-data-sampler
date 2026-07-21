@@ -21,10 +21,7 @@ def get_dataset_dict(input_config: InputData) -> SourceDict[xr.DataArray]:
 
     # Load generation data unless the path is None
     if input_config.generation and input_config.generation.zarr_path:
-        da_generation = open_generation(
-            zarr_path=input_config.generation.zarr_path,
-            public=input_config.generation.public,
-        )
+        da_generation = open_generation(zarr_path=input_config.generation.zarr_path)
 
         # Remove location_id 0 if more than one location present
         if len(da_generation["location_id"]) > 1 and 0 in da_generation["location_id"].values:
@@ -39,11 +36,7 @@ def get_dataset_dict(input_config: InputData) -> SourceDict[xr.DataArray]:
     if input_config.nwp:
         datasets_dict["nwp"] = {}
         for nwp_source, nwp_config in input_config.nwp.items():
-            da_nwp = open_nwp(
-                zarr_path=nwp_config.zarr_path,
-                provider=nwp_config.provider,
-                public=nwp_config.public,
-            )
+            da_nwp = open_nwp(zarr_path=nwp_config.zarr_path, provider=nwp_config.provider)
 
             da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
 

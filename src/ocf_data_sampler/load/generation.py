@@ -4,50 +4,57 @@ Generation data schema: a Zarr file with the following data variables and dimens
 
 Dimensions: (time_utc, location_id)
 Data Variables:
-    generation_mw (time_utc, location_id): float32 representing the generation in MW
-    capacity_mwp (time_utc, location_id): float32 representing the capacity in MW peak
+    generation_mw (time_utc, location_id): The generation in MW
+    capacity_mwp (time_utc, location_id): The capacity in MW peak
 Coordinates:
-    time_utc (time_utc): datetime64[ns] representing the time in utc
-    location_id (location_id): int representing the location IDs
-    longitute (location_id): float representing the longitudes of the locations
-    latitude (location_id): float representing the latitudes of the locations
+    time_utc (time_utc): The datetimes associated with each generation and capacity value
+    location_id (location_id): The integer IDs of the locations
+    longitude (location_id): The longitudes of the locations
+    latitude (location_id): The latitudes of the locations
 
 """
 
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.load.conventions import assert_values_unique_increasing
+from ocf_data_sampler.common.indexing import assert_values_unique_increasing
+from ocf_data_sampler.load.conventions import validate_coords
 
 
-def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
+def open_generation(zarr_path: str) -> xr.DataArray:
     """Open and eagerly load the generation data and validates its data types.
 
     Args:
         zarr_path: Path to the generation zarr data
-        public: Whether the data is public or private.
 
     Returns:
         xr.DataArray: The opened generation data
     """
-    backend_kwargs = {}
-    # Open the generation data
-    if public:
-        backend_kwargs = {"storage_options": {"anon": True}}
-        # Currently only compatible with S3 bucket.
-
-    ds = xr.open_dataset(
-        zarr_path,
-        engine="zarr",
-        chunks=None,
-        backend_kwargs=backend_kwargs,
-    )
+    # Open generation without xarray-tensorstore since it has multiple data-variables
+    # TODO: establish if xarray tensorstore could be used here
+    ds = xr.open_dataset(zarr_path, engine="zarr", chunks=None)
 
     if set(ds.data_vars) != {"generation_mw", "capacity_mwp"}:
         raise ValueError(
             f"Generation data should have variables 'generation_mw' and 'capacity_mwp', "
             f"but found {set(ds.data_vars)} instead."
         )
+
+    coord_dtypes = {
+        "time_utc": np.datetime64,
+        "location_id": np.integer,
+        "longitude": np.number,
+        "latitude": np.number,
+    }
+    validate_coords(
+        ds,
+        coord_dtypes,
+        source="generation data",
+    )
+
+    # Load the data eagerly into memory - this makes the dataset faster to sample from, but
+    # at the cost of a little extra memory usage
+    ds = ds.load()
 
     da = ds.to_dataarray("gen_param").transpose("time_utc", "location_id", "gen_param")
 
@@ -58,18 +65,4 @@ def open_generation(zarr_path: str, public: bool = False) -> xr.DataArray:
     if not np.issubdtype(da.dtype, np.floating):
         raise TypeError(f"generation and capacity values should be floating, not {da.dtype}")
 
-    coord_dtypes = {
-        "time_utc": np.datetime64,
-        "location_id": np.integer,
-        "longitude": np.floating,
-        "latitude": np.floating,
-    }
-
-    for coord, expected_dtype in coord_dtypes.items():
-        if not np.issubdtype(da.coords[coord].dtype, expected_dtype):
-            dtype = da.coords[coord].dtype
-            raise TypeError(f"{coord} should be {expected_dtype.__name__}, not {dtype}")
-
-    # Below we load the data eagerly into memory - this makes the dataset faster to sample from, but
-    # at the cost of a little extra memory usage
-    return da.load()
+    return da
