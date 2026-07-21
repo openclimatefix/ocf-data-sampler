@@ -15,7 +15,14 @@ import numpy as np
 from numpy.typing import NDArray
 
 # Types accepted as a single-dimension indexer in `.isel()` method below.
-Indexer: TypeAlias = int | slice | Sequence[int] | NDArray[np.integer]
+Indexer: TypeAlias = (
+    int
+    | slice
+    | Sequence[int]
+    | Sequence[bool]
+    | NDArray[np.integer]
+    | NDArray[np.bool_]
+)
 
 
 class DataArrayLike(Protocol):

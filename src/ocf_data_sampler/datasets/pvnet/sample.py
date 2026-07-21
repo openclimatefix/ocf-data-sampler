@@ -33,8 +33,8 @@ def convert_to_numpy_sample(
         da = datasets_dict["generation"]
 
         # Get the position index of the generation and capacities
-        gen_idx = np.argmax(da["gen_param"].values == "generation_mw")
-        cap_idx = np.argmax(da["gen_param"].values == "capacity_mwp")
+        gen_idx = list(da["gen_param"].values).index("generation_mw")
+        cap_idx = list(da["gen_param"].values).index("capacity_mwp")
 
         generation_values = da.isel(gen_param=gen_idx).values
         capacity_value = da.isel(gen_param=cap_idx).values[0]
