@@ -40,7 +40,7 @@ def _get_central_index(
         return idx
 
     if method == "left":
-        index = np.searchsorted(values, val, side="left") - 1
+        index = np.searchsorted(values, val, side="right") - 1
     elif method == "nearest":
         index = get_nearest_index(values, val)
     else:

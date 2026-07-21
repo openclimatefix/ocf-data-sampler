@@ -31,7 +31,7 @@ def da():
         (4, 4, "nearest"),
         (4.1, 4, "left"),
         (3.9, 3, "left"),
-        (4, 4, "nearest"),
+        (4, 4, "left"),
     ],
 )
 def test_get_central_index(x_query, expected_xval, method):
