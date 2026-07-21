@@ -87,10 +87,10 @@ class DropoutMixin(Base):
         "floats (probability that dropout of the corresponding timedelta is applied)",
     )
 
-    dropout_value: float = Field(
+    dropout_fill_value: float = Field(
         default=0.0,
-        description="The value to use for dropped out values. "
-        "Idea is to use -1, but to be backwards comptaible we've put the default as 0")
+        description="The value used to fill in dropped out data or any missing values."
+    )
 
     @field_validator("dropout_timedeltas_minutes")
     def dropout_timedeltas_minutes_negative(cls, v: list[int]) -> list[int]:
@@ -204,7 +204,7 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
         missing_norm_values = set(self.channels) - set(normalisation_channels)
         if len(missing_norm_values)>0:
             raise ValueError(
-                "Normalsation constants must be provided for all channels. Missing values for "
+                "Normalisation constants must be provided for all channels. Missing values for "
                 f"channels: {missing_norm_values}",
             )
         return self
@@ -266,14 +266,14 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         missing_norm_values = set(non_accum_channels) - set(normalisation_channels)
         if len(missing_norm_values)>0:
             raise ValueError(
-                "Normalsation constants must be provided for all channels. Missing values for "
+                "Normalisation constants must be provided for all channels. Missing values for "
                 f"channels: {missing_norm_values}",
             )
 
         missing_norm_values = set(accum_channel_names) - set(normalisation_channels)
         if len(missing_norm_values)>0:
             raise ValueError(
-                "Normalsation constants must be provided for all channels. Accumulated "
+                "Normalisation constants must be provided for all channels. Accumulated "
                 "channels which will be diffed require normalisation constant names which "
                 "start with the prefix 'diff_'. The following channels were missing: "
                 f"{missing_norm_values}.",

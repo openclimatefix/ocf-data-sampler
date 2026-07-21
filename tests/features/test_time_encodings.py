@@ -25,11 +25,11 @@ def test_encode_t0():
 
     def check(t0s, embeddings, xs, period_floats):
         # Test the results are expected for each t0 time
-        for x, t0 in zip(xs, t0s, strict=False):
+        for x, t0 in zip(xs, t0s, strict=True):
             results = encode_t0(t0, embeddings)
 
             expected_results = []
-            for p, (_, emb_type) in zip(period_floats, embeddings, strict=False):
+            for p, (_, emb_type) in zip(period_floats, embeddings, strict=True):
                 if emb_type=="cyclic":
                     expected_results.extend([np.sin(2*np.pi*(x / p)), np.cos(2*np.pi*(x / p))])
                 elif emb_type=="linear":

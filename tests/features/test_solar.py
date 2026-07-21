@@ -33,7 +33,7 @@ def test_calculate_azimuth_and_elevation_against_pvlib():
     random_latitudes = np.random.uniform(low=-90, high=90, size=20)
 
     # For each location, test the solar coords for all sampled datetimes
-    for lon, lat in zip(random_longitudes, random_latitudes, strict=False):
+    for lon, lat in zip(random_longitudes, random_latitudes, strict=True):
 
         # Calculate the solar coords for the same positions and times with pvlib and our method
         azimuth, elevation= calculate_azimuth_and_elevation(

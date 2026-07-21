@@ -1,13 +1,11 @@
 """Torch dataset for PVNet."""
 
 import logging
-import warnings
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from numpy.typing import NDArray
-from pydantic.warnings import UnsupportedFieldAttributeWarning
 from torch.utils.data import Dataset, default_collate
 from typing_extensions import override
 
@@ -42,11 +40,6 @@ from ocf_data_sampler.select import (
     intersection_of_multiple_dataframes_of_periods,
 )
 from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
-
-# Ignore pydantic warning which doesn't cause an issue
-warnings.filterwarnings("ignore", category=UnsupportedFieldAttributeWarning)
-
-xr.set_options(keep_attrs=True)
 
 logger = logging.getLogger(__name__)
 

@@ -21,7 +21,7 @@ def _save_nwp_zarr(session_tmp_path, datasets, zarr_format):
     """Save NWP datasets to zarr with specified format"""
     paths = [f"{session_tmp_path}/nwp_like_data_{n}.zarr{zarr_format}"
              for n in range(len(datasets))]
-    for ds, path in zip(datasets, paths, strict=False):
+    for ds, path in zip(datasets, paths, strict=True):
         ds.to_zarr(path, zarr_format=zarr_format)
     return paths
 

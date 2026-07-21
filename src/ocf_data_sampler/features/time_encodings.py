@@ -70,11 +70,19 @@ def encode_t0(
                 / period_years
             )
 
+        else:
+            raise ValueError(f"Invalid period_str: {period_str}. Must end with 'h' or 'y'.")
+
         if embedding_type=="cyclic":
             radians = 2 * np.pi * frac
             features.extend([np.sin(radians), np.cos(radians)])
 
         elif embedding_type=="linear":
             features.append(frac)
+
+        else:
+            raise ValueError(
+                f"Invalid embedding_type: {embedding_type}. Must be 'cyclic' or 'linear'."
+            )
 
     return np.array(features, dtype=np.float32)

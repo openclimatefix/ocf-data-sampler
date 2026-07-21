@@ -110,17 +110,17 @@ def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: Configuration)
     if "generation" in datasets_dict:
         datasets_dict["generation"] = fill_nans(
             datasets_dict["generation"],
-            conf_in.generation.dropout_value,
+            conf_in.generation.dropout_fill_value,
         )
 
     if "sat" in datasets_dict:
-        datasets_dict["sat"] = fill_nans(datasets_dict["sat"], conf_in.satellite.dropout_value)
+        datasets_dict["sat"] = fill_nans(datasets_dict["sat"], conf_in.satellite.dropout_fill_value)
 
     if "nwp" in datasets_dict:
         for nwp_key, nwp_config in config.input_data.nwp.items():
             datasets_dict["nwp"][nwp_key] = fill_nans(
                 datasets_dict["nwp"][nwp_key],
-                nwp_config.dropout_value,
+                nwp_config.dropout_fill_value,
             )
 
     return datasets_dict
