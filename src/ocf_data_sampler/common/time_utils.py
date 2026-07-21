@@ -1,5 +1,5 @@
 """Module for datetime utilities."""
-from typing import Any, cast
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
