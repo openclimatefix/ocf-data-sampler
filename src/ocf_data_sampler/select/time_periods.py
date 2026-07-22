@@ -274,4 +274,4 @@ def fill_time_periods(time_periods: pd.DataFrame, freq: np.timedelta64) -> NDArr
         date_range(start_dt, end_dt, freq=freq)
         for start_dt, end_dt in zip(start_dts, end_dts, strict=True)
     ]
-    return np.unique(np.concatenate(date_ranges))
+    return np.concatenate(date_ranges)
