@@ -6,6 +6,7 @@ from ocf_data_sampler.select.spatial_slice import (
     _get_central_index,
     _get_window_bounds,
     select_spatial_slice_pixels,
+    select_spatial_slice_pixels_multiple,
 )
 from ocf_data_sampler.spatial import Location
 
@@ -113,19 +114,39 @@ def test_select_spatial_slice_pixels_out_of_bounds(da):
     with pytest.raises(ValueError) as excinfo:
         select_spatial_slice_pixels(
             da,
-            location=Location(x=-90.1, y=-80.1, coord_system="osgb"),
+            location=Location(x=-90.1, y=-80.1, coord_system="osgb", id=123),
             width_pixels=30,
             height_pixels=30,
         )
     msg = str(excinfo.value)
-    assert "Slice is unavailable:" in msg
+    assert "Slice is unavailable for location=" in msg
+    assert "Location(id=123, coord_systems=['osgb'], coordinates={'osgb': (-90.1, -80.1)})" in msg
 
     with pytest.raises(ValueError) as excinfo:
         select_spatial_slice_pixels(
             da,
-            location=Location(x=90.1, y=90.1, coord_system="osgb"),
+            location=Location(x=90.1, y=90.1, coord_system="osgb", id=456),
             width_pixels=40,
             height_pixels=40,
         )
     msg = str(excinfo.value)
-    assert "Slice is unavailable:" in msg
+    assert "Slice is unavailable for location=" in msg
+    assert "Location(id=456, coord_systems=['osgb'], coordinates={'osgb': (90.1, 90.1)})" in msg
+
+
+def test_select_spatial_slice_pixels_multiple_out_of_bounds(da):
+    """Test error includes all location context for multi-location spatial slice requests."""
+    with pytest.raises(ValueError) as excinfo:
+        select_spatial_slice_pixels_multiple(
+            da,
+            locations=[
+                Location(x=-90.1, y=-80.1, coord_system="osgb", id=1),
+                Location(x=-89.9, y=-79.9, coord_system="osgb", id=2),
+            ],
+            width_pixels=30,
+            height_pixels=30,
+        )
+    msg = str(excinfo.value)
+    assert "Slice is unavailable for locations=" in msg
+    assert "Location(id=1, coord_systems=['osgb'], coordinates={'osgb': (-90.1, -80.1)})" in msg
+    assert "Location(id=2, coord_systems=['osgb'], coordinates={'osgb': (-89.9, -79.9)})" in msg

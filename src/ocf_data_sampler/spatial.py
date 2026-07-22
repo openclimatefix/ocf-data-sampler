@@ -245,6 +245,16 @@ class Location:
         self._projections: dict[str, tuple[float, float]] = {coord_system: (x, y)}
         self.id = id
 
+    def __repr__(self) -> str:
+        """Return a readable representation for diagnostics and error messages."""
+        coordinates = dict(sorted(self._projections.items()))
+        coord_systems = list(coordinates.keys())
+        return (
+            f"Location(id={self.id!r}, "
+            f"coord_systems={coord_systems}, "
+            f"coordinates={coordinates})"
+        )
+
     @staticmethod
     def _check_valid_coord_system(coord_system: str) -> None:
         if coord_system not in ALLOWED_COORD_SYSTEMS:

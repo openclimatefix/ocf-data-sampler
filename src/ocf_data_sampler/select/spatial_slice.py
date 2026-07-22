@@ -65,6 +65,7 @@ def _get_window_bounds(
 def _validate_window_slice(
     window_slice: tuple[int, int, int, int],
     total_size: tuple[int, int],
+    locations: Location | list[Location] | None = None,
 ) -> None:
     """Validate that the window slice is within the bounds of the data."""
     left_idx, right_idx, bottom_idx, top_idx = window_slice
@@ -88,7 +89,16 @@ def _validate_window_slice(
         if top_idx > total_height:
             issues.append(f"top index ({top_idx}) > total_height ({total_height})")
         issue_details = "\n - ".join(issues)
-        raise ValueError(f"Slice is unavailable:\n - {issue_details}")
+
+        if locations is None:
+            raise ValueError(f"Slice is unavailable:\n - {issue_details}")
+
+        if isinstance(locations, list):
+            location_context = f"locations={locations!r}"
+        else:
+            location_context = f"location={locations!r}"
+
+        raise ValueError(f"Slice is unavailable for {location_context}:\n - {issue_details}")
 
 
 def select_spatial_slice_pixels(
@@ -131,6 +141,7 @@ def select_spatial_slice_pixels(
     _validate_window_slice(
         window_slice=(left_idx, right_idx, bottom_idx, top_idx),
         total_size=(data_width_pixels, data_height_pixels),
+        locations=location,
     )
 
     return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
@@ -186,6 +197,7 @@ def select_spatial_slice_pixels_multiple(
     _validate_window_slice(
         window_slice=(left_idx, right_idx, bottom_idx, top_idx),
         total_size=(data_width_pixels, data_height_pixels),
+        locations=locations,
     )
 
     return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
