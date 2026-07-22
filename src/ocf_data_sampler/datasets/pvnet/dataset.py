@@ -519,10 +519,16 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
     def __init__(
         self,
         config_filename: str,
-        time_periods: list[tuple[str | None, str | None]] | None = None,
+        time_periods: list[tuple[None | str, None | str]] | None = None,
+        include_extra_metadata: bool = False,
+        use_xarray: bool = True,
     ) -> None:
+        super().__init__(config_filename, time_periods, include_extra_metadata, use_xarray)
 
-        super().__init__(config_filename, time_periods)
+        if not self.complete_generation:
+            raise NotImplementedError(
+                "Concurrent PVNet dataset cannot be created when generation data is incomplete.",
+            )
 
         self.datasets_dict = reduce_spatial_extent_of_datasets(
             self.datasets_dict,
