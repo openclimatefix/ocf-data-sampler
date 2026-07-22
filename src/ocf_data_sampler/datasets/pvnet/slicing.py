@@ -6,7 +6,6 @@ from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
 from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.config.model import Configuration
 from ocf_data_sampler.datasets.pvnet.types import SourceDict
-from ocf_data_sampler.select.dropout import apply_history_dropout
 from ocf_data_sampler.select.spatial_slice import (
     select_spatial_slice_pixels,
     select_spatial_slice_pixels_multiple,
@@ -26,6 +25,9 @@ def slice_datasets_by_space(
         datasets_dict: Dictionary of the input data sources
         location: The location to sample around
         config: Configuration object.
+
+    Returns:
+        A dictionary of the sliced input data sources.
     """
     if not set(datasets_dict.keys()).issubset({"nwp", "sat", "generation"}):
         raise ValueError(
@@ -76,6 +78,9 @@ def reduce_spatial_extent_of_datasets(
         datasets_dict: Dictionary of the input data sources
         locations: List of locations to reduce to
         config: Configuration object
+
+    Returns:
+        A dictionary of the reduced input data sources.
     """
     sliced_datasets_dict = {}
 
@@ -118,6 +123,9 @@ def slice_datasets_by_time(
         datasets_dict: Dictionary of the input data sources
         t0: The init-time
         config: Configuration object.
+
+    Returns:
+        A dictionary of the sliced input data sources.
     """
     sliced_datasets_dict = {}
 
@@ -157,33 +165,15 @@ def slice_datasets_by_time(
             interval_end=minutes(sat_config.interval_end_minutes),
         )
 
-        # Apply the randomly sampled dropout
-        sliced_datasets_dict["sat"] = apply_history_dropout(
-            t0,
-            dropout_timedeltas=minutes(sat_config.dropout_timedeltas_minutes),
-            dropout_frac=sat_config.dropout_fraction,
-            da=sliced_datasets_dict["sat"],
-        )
-
     if "generation" in datasets_dict:
         generation_config = config.input_data.generation
 
-        da_generation = select_time_slice(
+        sliced_datasets_dict["generation"] = select_time_slice(
             datasets_dict["generation"],
             t0,
             time_resolution=minutes(generation_config.time_resolution_minutes),
             interval_start=minutes(generation_config.interval_start_minutes),
             interval_end=minutes(generation_config.interval_end_minutes),
         )
-
-        # Dropout on the past generation, but not the future generation
-        da_generation = apply_history_dropout(
-            t0,
-            dropout_timedeltas=minutes(generation_config.dropout_timedeltas_minutes),
-            dropout_frac=generation_config.dropout_fraction,
-            da=da_generation,
-        )
-
-        sliced_datasets_dict["generation"] = da_generation
 
     return sliced_datasets_dict

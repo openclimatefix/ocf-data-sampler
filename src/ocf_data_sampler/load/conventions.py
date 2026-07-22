@@ -8,6 +8,14 @@ import xarray as xr
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 
 
+def _is_expected_dtype(actual_dtype: np.dtype, expected_dtype: type[np.generic]) -> bool:
+    """Return whether the coordinate dtype matches the expected dtype contract."""
+    if np.issubdtype(actual_dtype, expected_dtype):
+        return True
+
+    return expected_dtype is np.str_ and actual_dtype.kind in {"U", "T"}
+
+
 def validate_coords(
     data: xr.Dataset | xr.DataArray,
     expected_dtypes: Mapping[str, type[np.generic]],
@@ -30,7 +38,7 @@ def validate_coords(
             )
 
         actual_dtype = data[coord].dtype
-        if not np.issubdtype(actual_dtype, expected_dtype):
+        if not _is_expected_dtype(actual_dtype, expected_dtype):
             raise TypeError(
                 f"Coordinate {coord!r} in {source} should be "
                 f"{expected_dtype.__name__}, not {actual_dtype.name}",

@@ -47,4 +47,4 @@ def test_open_satellite_bad_dtype(tmp_path: Path):
         TypeError,
         match="Coordinate 'channel' in satellite data should be str_",
     ):
-        open_sat_data(zarr_path=zarr_path)
+        open_sat_data(zarr_path=str(zarr_path))

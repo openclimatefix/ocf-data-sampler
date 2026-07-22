@@ -6,10 +6,12 @@ Supports coordinate systems:
 - Geostationary satellite coordinate systems
 """
 
+from collections.abc import Mapping
 from typing import Any, TypeVar
 
 import numpy as np
 import pyproj
+import yaml
 from numpy.typing import NDArray
 from pyresample.area_config import load_area_from_string
 
@@ -66,15 +68,15 @@ def lon_lat_to_osgb(
 
 def _get_geostationary_coord_transform(
     crs_from: int,
-    area_string: str,
+    area_spec: str | Mapping[str, Any],
 ) -> pyproj.transformer.Transformer:
-    """Loads geostationary area and transforms to geostationary coords.
+    """Build a transformer from a geostationary area spec.
 
     Args:
         x: osgb easting, or longitude
         y: osgb northing, or latitude
         crs_from: the coordinates system of x, y
-        area_string: String containing yaml geostationary area definition to convert to.
+        area_spec: YAML string or mapping containing the geostationary area definition.
 
     Returns:
         Coordinate Transformer
@@ -82,7 +84,10 @@ def _get_geostationary_coord_transform(
     if crs_from not in [OSGB36, WGS84]:
         raise ValueError(f"Unrecognized coordinate system: {crs_from}")
 
-    geostationary_crs = load_area_from_string(area_string).crs
+    if isinstance(area_spec, Mapping):
+        area_spec = yaml.safe_dump(area_spec, sort_keys=False)
+
+    geostationary_crs = load_area_from_string(area_spec).crs
 
     return pyproj.Transformer.from_crs(
         crs_from=crs_from,
@@ -94,38 +99,38 @@ def _get_geostationary_coord_transform(
 def lon_lat_to_geostationary_area_coords(
     longitude: TCoordinateValue,
     latitude: TCoordinateValue,
-    area_string: str,
+    area_spec: str | Mapping[str, Any],
 ) -> tuple[TCoordinateValue, TCoordinateValue]:
     """Convert from lon-lat to geostationary coords.
 
     Args:
         longitude: longitude
         latitude: latitude
-        area_string: String containing yaml geostationary area definition to convert to.
+        area_spec: YAML string or mapping containing the geostationary area definition.
 
     Returns:
         x_geostationary, y_geostationary
     """
-    coord_transformer = _get_geostationary_coord_transform(WGS84, area_string)
+    coord_transformer = _get_geostationary_coord_transform(WGS84, area_spec)
     return coord_transformer.transform(xx=longitude, yy=latitude)
 
 
 def osgb_to_geostationary_area_coords(
     x: TCoordinateValue,
     y: TCoordinateValue,
-    area_string: str,
+    area_spec: str | Mapping[str, Any],
 ) -> tuple[TCoordinateValue, TCoordinateValue]:
     """Convert from OSGB to geostationary coords.
 
     Args:
         x: osgb east-west
         y: osgb south-north
-        area_string: String containing yaml geostationary area definition to convert to.
+        area_spec: YAML string or mapping containing the geostationary area definition.
 
     Returns:
         x_geostationary, y_geostationary
     """
-    coord_transformer = _get_geostationary_coord_transform(OSGB36, area_string)
+    coord_transformer = _get_geostationary_coord_transform(OSGB36, area_spec)
     return coord_transformer.transform(xx=x, yy=y)
 
 
@@ -174,7 +179,7 @@ def convert_coordinates(
     y: TCoordinateValue,
     from_coords: str,
     target_coords: str,
-    area_string: str | None = None,
+    area_spec: str | Mapping[str, Any] | None = None,
 ) -> tuple[TCoordinateValue, TCoordinateValue]:
     """Convert x and y coordinates from one coordinate system to another.
 
@@ -183,8 +188,8 @@ def convert_coordinates(
         y: The y-coordinate to convert.
         from_coords: The coordinate system to convert from.
         target_coords: The coordinate system to convert to
-        area_string: Optional string containing yaml geostationary area definition. Only used if
-            from_coords or target_coords is "geostationary"
+        area_spec: Optional YAML string or mapping containing the geostationary area
+            definition. Only used if from_coords or target_coords is "geostationary".
 
     Returns:
         The converted (x, y) coordinates.
@@ -195,20 +200,20 @@ def convert_coordinates(
     match (from_coords, target_coords):
 
         case ("osgb", "geostationary"):
-            if area_string is None:
+            if area_spec is None:
                 raise ValueError(
-                    "The `area_string` must be provided when converting to geostationary "
+                    "The `area_spec` must be provided when converting to geostationary "
                     "coordinates",
                 )
-            x, y = osgb_to_geostationary_area_coords(x, y, area_string)
+            x, y = osgb_to_geostationary_area_coords(x, y, area_spec)
 
         case ("lon_lat", "geostationary"):
-            if area_string is None:
+            if area_spec is None:
                 raise ValueError(
-                    "The `area_string` must be provided when converting to geostationary "
+                    "The `area_spec` must be provided when converting to geostationary "
                     "coordinates",
                 )
-            x, y = lon_lat_to_geostationary_area_coords(x, y, area_string)
+            x, y = lon_lat_to_geostationary_area_coords(x, y, area_spec)
 
         case ("osgb", "lon_lat"):
             x, y = osgb_to_lon_lat(x, y)
