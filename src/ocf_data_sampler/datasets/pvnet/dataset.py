@@ -458,7 +458,7 @@ class PVNetDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> NumpySample:
-        idx = self._normalise_index(idx)
+        idx = self._sanitise_index(idx)
 
         # Get the coordinates of the sample
         if self.complete_generation:
@@ -564,7 +564,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> TensorBatch:
-        idx = self._normalise_index(idx)
+        idx = self._sanitise_index(idx)
         return self._get_sample(self.valid_t0_times[idx])
 
     def get_sample(self, t0: np.datetime64) -> TensorBatch:
