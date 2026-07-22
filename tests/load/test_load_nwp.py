@@ -48,7 +48,7 @@ def test_load_ukv_new_coords(tmp_path):
     new_coords_array.to_zarr(zarr_path)
 
     # This should succeed without KeyError
-    da = open_nwp(zarr_path=zarr_path, provider="ukv")
+    da = open_nwp(zarr_path=str(zarr_path), provider="ukv")
 
     assert isinstance(da, DataArray)
     assert "x_osgb" in da.coords
@@ -72,7 +72,7 @@ def test_load_ukv_rejects_x_y_coords(tmp_path):
     array.to_zarr(zarr_path)
 
     with pytest.raises(ValueError, match="Expected coordinate 'x_osgb' missing"):
-        open_nwp(zarr_path=zarr_path, provider="ukv")
+        open_nwp(zarr_path=str(zarr_path), provider="ukv")
 
 
 def test_load_ecmwf_integer_latitude(tmp_path):
@@ -90,7 +90,7 @@ def test_load_ecmwf_integer_latitude(tmp_path):
         },
     )
     array.to_zarr(zarr_path)
-    da = open_nwp(zarr_path=zarr_path, provider="ecmwf")
+    da = open_nwp(zarr_path=str(zarr_path), provider="ecmwf")
 
     assert np.issubdtype(da.latitude.dtype, np.integer)
 
@@ -111,7 +111,7 @@ def test_load_ecmwf_bad_dtype_init_time(tmp_path):
     )
     bad_array.to_zarr(zarr_path)
     with pytest.raises((TypeError, AttributeError), match=r"init_time_utc|datetime64"):
-        open_nwp(zarr_path=zarr_path, provider="ecmwf")
+        open_nwp(zarr_path=str(zarr_path), provider="ecmwf")
 
 
 def test_load_ecmwf_bad_dtype_step(tmp_path):
@@ -133,7 +133,7 @@ def test_load_ecmwf_bad_dtype_step(tmp_path):
         TypeError,
         match="Coordinate 'step' in NWP provider 'ecmwf' should be timedelta64",
     ):
-        open_nwp(zarr_path=zarr_path, provider="ecmwf")
+        open_nwp(zarr_path=str(zarr_path), provider="ecmwf")
 
 
 def test_load_ukv_bad_dtype_step(tmp_path):
@@ -155,7 +155,7 @@ def test_load_ukv_bad_dtype_step(tmp_path):
         TypeError,
         match="Coordinate 'step' in NWP provider 'ukv' should be timedelta64",
     ):
-        open_nwp(zarr_path=zarr_path, provider="ukv")
+        open_nwp(zarr_path=str(zarr_path), provider="ukv")
 
 
 def test_load_ecmwf_bad_dtype_longitude(tmp_path):
@@ -177,4 +177,4 @@ def test_load_ecmwf_bad_dtype_longitude(tmp_path):
         TypeError,
         match="Coordinate 'longitude' in NWP provider 'ecmwf' should be number",
     ):
-        open_nwp(zarr_path=zarr_path, provider="ecmwf")
+        open_nwp(zarr_path=str(zarr_path), provider="ecmwf")

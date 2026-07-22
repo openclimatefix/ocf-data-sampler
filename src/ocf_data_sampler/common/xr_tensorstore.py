@@ -31,8 +31,7 @@ from xarray_tensorstore import (
 
 logger = logging.getLogger(__name__)
 
-ZarrPath: TypeAlias = str | os.PathLike[str]
-ZarrSource: TypeAlias = ZarrPath | list[ZarrPath] | tuple[ZarrPath, ...]
+ZarrSource: TypeAlias = str | list[str] | tuple[str, ...]
 
 
 def _zarr_spec_from_path(path: str, zarr_format: int) -> dict[str, Any]:
@@ -101,13 +100,13 @@ def open_zarr_paths(zarr_path: ZarrSource, concat_dim: str | None = None) -> xr.
         zarr_path: A path, local glob pattern, or sequence of paths.
         concat_dim: Dimension along which multiple stores are concatenated.
     """
-    if isinstance(zarr_path, str | os.PathLike):
-        path = os.fspath(zarr_path)
+    if isinstance(zarr_path, str):
+        path = zarr_path
         if not has_magic(path):
             return _open_single_zarr(path)
         paths = sorted(glob(path))
     else:
-        paths = [os.fspath(path) for path in zarr_path]
+        paths = list(zarr_path)
 
     if not paths:
         raise ValueError(f"No Zarr stores found for {zarr_path!r}")

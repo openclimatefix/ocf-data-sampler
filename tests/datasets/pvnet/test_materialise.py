@@ -30,7 +30,7 @@ def test_load_data_dict(tmp_path):
     da_dask.to_dataset(name="dummy_array").to_zarr(tmp_path)
 
     # Re-open with tensorstore
-    da_ts = _open_single_zarr(tmp_path).dummy_array
+    da_ts = _open_single_zarr(str(tmp_path)).dummy_array
 
     # Create a nested dictionary with tensorstore arrays
     lazy_data_dict = {
