@@ -233,9 +233,8 @@ def test_intersect_time_periods_with_2_inputs():
     # b:   |
     a = construct_time_periods_df(start_dt=["2025-01-01 00:00"], end_dt=["2025-01-01 00:00"])
     b = construct_time_periods_df(start_dt=["2025-01-01 06:00"], end_dt=["2025-01-01 06:00"])
-    expected_result = construct_time_periods_df([], [])
-    assert intersect_time_periods([a, b]).equals(expected_result)
-    assert intersect_time_periods([b, a]).equals(expected_result)
+    exp_res = construct_time_periods_df([], [])  # no intersection
+    assert_expected_result_with_reverse(a, b, expected_result=exp_res)
 
 
 def test_intersect_time_periods_with_many_inputs():
