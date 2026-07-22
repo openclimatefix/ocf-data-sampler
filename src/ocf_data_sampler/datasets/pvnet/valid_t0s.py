@@ -9,7 +9,7 @@ from ocf_data_sampler.datasets.pvnet.types import SourceDict
 from ocf_data_sampler.select.time_periods import (
     find_contiguous_t0_periods,
     find_contiguous_t0_periods_nwp,
-    intersection_of_multiple_dataframes_of_periods,
+    intersect_time_periods,
 )
 
 
@@ -22,12 +22,11 @@ def find_valid_time_periods(
     Args:
         datasets_dict: A dictionary of input datasets
         config: Configuration file
-    """
-    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "generation"}):
-        raise ValueError(f"Invalid keys in datasets_dict: {datasets_dict.keys()}")
 
-    # Used to store contiguous time periods from each data source
-    contiguous_time_periods: dict[str, pd.DataFrame] = {}
+    Returns:
+        A DataFrame containing the valid t0 time periods.
+    """
+    contiguous_time_periods: list[pd.DataFrame] = []
     if "nwp" in datasets_dict:
         for nwp_key, nwp_config in config.input_data.nwp.items():
             da = datasets_dict["nwp"][nwp_key]
@@ -63,7 +62,10 @@ def find_valid_time_periods(
                 max_staleness=max_staleness,
             )
 
-            contiguous_time_periods[f"nwp_{nwp_key}"] = time_periods
+            if len(time_periods) == 0:
+                raise ValueError(f"No valid t0 periods found for {nwp_key} NWP data")
+
+            contiguous_time_periods.append(time_periods)
 
     if "sat" in datasets_dict:
         sat_config = config.input_data.satellite
@@ -75,7 +77,10 @@ def find_valid_time_periods(
             interval_end=minutes(sat_config.interval_end_minutes),
         )
 
-        contiguous_time_periods["sat"] = time_periods
+        contiguous_time_periods.append(time_periods)
+
+        if len(time_periods) == 0:
+            raise ValueError("No valid t0 periods found for satellite data")
 
     if "generation" in datasets_dict:
         generation_config = config.input_data.generation
@@ -87,18 +92,14 @@ def find_valid_time_periods(
             interval_end=minutes(generation_config.interval_end_minutes),
         )
 
-        contiguous_time_periods["generation"] = time_periods
+        if len(time_periods) == 0:
+            raise ValueError("No valid t0 periods found for generation data")
 
-    # just get the values (not the keys)
-    contiguous_time_periods_values = list(contiguous_time_periods.values())
+        contiguous_time_periods.append(time_periods)
 
     # Find joint overlapping contiguous time periods
-    if len(contiguous_time_periods_values) > 1:
-        valid_time_periods = intersection_of_multiple_dataframes_of_periods(
-            contiguous_time_periods_values,
-        )
-    else:
-        valid_time_periods = contiguous_time_periods_values[0]
+    valid_time_periods = intersect_time_periods(contiguous_time_periods)
+
 
     # check there are some valid time periods
     if len(valid_time_periods) == 0:

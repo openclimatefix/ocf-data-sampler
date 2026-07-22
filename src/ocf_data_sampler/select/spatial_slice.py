@@ -15,6 +15,8 @@ def _get_central_index(
 ) -> int:
     """Find pixel index location closest to given value.
 
+    This function assumes `values` are strictly increasing
+
     Args:
         values: The array of values to search.
         val: The value to find the closest index for.
