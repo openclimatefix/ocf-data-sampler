@@ -173,7 +173,7 @@ def find_contiguous_t0_periods_nwp(
 
         if max_staleness < ZERO_TDELTA:
             raise ValueError("The max staleness must be non-negative (zero or positive)")
-        
+
         if max_dropout > max_staleness:
             raise ValueError(
                 f"max_dropout ({max_dropout}) must be <= max_staleness ({max_staleness})"

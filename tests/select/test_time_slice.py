@@ -151,13 +151,13 @@ def test_select_time_slice_nwp_with_weighted_dropout_list(da_nwp_like):
 
 def test_select_time_slice_nwp_rejects_invalid_weighted_dropout_inputs(da_nwp_like):
     """List dropout probabilities must satisfy sum and length constraints."""
-    kwargs = dict(
-        da=da_nwp_like,
-        t0=np.datetime64("2024-01-02 12:00"),
-        time_resolution=np.timedelta64(1, "h"),
-        interval_start=np.timedelta64(-2, "h"),
-        interval_end=np.timedelta64(3, "h"),
-    )
+    kwargs = {
+        "da": da_nwp_like,
+        "t0": np.datetime64("2024-01-02 12:00"),
+        "time_resolution": np.timedelta64(1, "h"),
+        "interval_start": np.timedelta64(-2, "h"),
+        "interval_end": np.timedelta64(3, "h"),
+    }
 
     with pytest.raises(ValueError, match="sum of `dropout_frac`"):
         select_time_slice_nwp(

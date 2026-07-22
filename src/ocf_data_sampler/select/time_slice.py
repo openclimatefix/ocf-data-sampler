@@ -63,7 +63,6 @@ def select_time_slice_nwp(
             probabilities. For list inputs, values must be in [0, 1], sum to <= 1,
             and match `dropout_timedeltas` length.
     """
-
     start_dt = t0 + interval_start
     end_dt = t0 + interval_end
     start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
@@ -104,7 +103,6 @@ def _get_nwp_dropout_available_time(
     dropout_frac: float | list[float],
 ) -> np.datetime64:
     """Choose the available-time timestamp after applying configured dropout."""
-
     if dropout_timedeltas is None or len(dropout_timedeltas) == 0 or dropout_frac == 0:
         return t0
 
@@ -114,17 +112,17 @@ def _get_nwp_dropout_available_time(
     if isinstance(dropout_frac, float | int):
         dropout_sum = dropout_frac
         dropout_probs = [dropout_frac / len(dropout_timedeltas)] * len(dropout_timedeltas)
-        
+
     else:
         dropout_sum = sum(dropout_frac)
         dropout_probs = [*dropout_frac]
 
     if dropout_sum == 0:
         return t0
-    
+
     if not 0 <= dropout_sum <= 1:
         raise ValueError(f"The sum of `dropout_frac` ({dropout_frac}) must be in range [0, 1]")
-    if not all([0 <= p <= 1 for p in dropout_probs]):
+    if not all(0 <= p <= 1 for p in dropout_probs):
         raise ValueError(f"All `dropout_frac` ({dropout_frac}) values must be in range [0, 1]")
     if len(dropout_timedeltas) != len(dropout_probs):
         raise ValueError(
