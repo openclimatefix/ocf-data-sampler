@@ -82,7 +82,7 @@ def test_find_contiguous_t0_periods():
     )
 
     assert periods.equals(expected_results)
-    
+
 
 
 def test_find_contiguous_t0_periods_keeps_exact_length_period():
