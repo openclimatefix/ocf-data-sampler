@@ -1,6 +1,7 @@
-"""Functions for randomly dropping out sequential data"""
+"""Functions for randomly dropping out sequential data."""
 
 import numpy as np
+
 from ocf_data_sampler.common.types import TArray
 
 

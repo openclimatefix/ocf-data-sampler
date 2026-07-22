@@ -2,7 +2,10 @@ import numpy as np
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration
-from ocf_data_sampler.datasets.pvnet.preprocess import apply_dropout_to_datasets, fill_nans_in_dataset_dicts
+from ocf_data_sampler.datasets.pvnet.preprocess import (
+    apply_dropout_to_datasets,
+    fill_nans_in_dataset_dicts,
+)
 
 
 def test_fill_nans_in_dataset_dicts(config_filename):

@@ -116,7 +116,6 @@ def apply_dropout_to_datasets(
     Returns:
         None. The input datasets_dict is modified in place.
     """
-
     if "sat" in datasets_dict:
         sat_config = config.input_data.satellite
 

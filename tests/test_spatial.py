@@ -10,7 +10,7 @@ def test_make_valid_location_object():
 
 def test_lon_lat_to_geostationary_area_coords_accepts_area_mapping():
     """Test lon_lat_to_geostationary_area_coords function accepts a mapping or string.
-    
+
     i.e. we can have the "area" attribute in the satellite data as either a string or a dict
     """
     area_mapping = yaml.safe_load(UK_SAT_AREA)
