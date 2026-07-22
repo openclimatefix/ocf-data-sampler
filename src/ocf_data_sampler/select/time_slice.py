@@ -28,6 +28,12 @@ def select_time_slice(
     ceil_interval_bounds = datetime_ceil(interval_bounds, time_resolution)
     start_ind, end_ind = get_indices_in_sorted_unique(da["time_utc"].values, ceil_interval_bounds)
 
+    if (end_ind - start_ind) != (interval_end - interval_start) // time_resolution:
+        raise ValueError(
+            f"Requested interval ({interval_start} to {interval_end}) does not match "
+            f"the number of time steps in the sliced data ({end_ind - start_ind})"
+        )
+
     return da.isel(time_utc=slice(start_ind, end_ind+1))
 
 

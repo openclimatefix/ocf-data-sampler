@@ -2,10 +2,12 @@
 
 import numpy as np
 
+from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import Configuration
 from ocf_data_sampler.datasets.pvnet.types import SourceDict
 from ocf_data_sampler.features.diff_channels import diff_channels
+from ocf_data_sampler.select.dropout import apply_history_dropout
 
 
 def config_normalization_values_to_dicts(
@@ -97,6 +99,46 @@ def diff_nwp_data(dataset_dict: SourceDict, config: Configuration) -> SourceDict
                 # diff_channels() is an in-place operation and modifies the input
                 dataset_dict["nwp"][nwp_key] = diff_channels(da_nwp, accum_channels)
     return dataset_dict
+
+
+def apply_dropout_to_datasets(
+    datasets_dict: SourceDict,
+    t0: np.datetime64,
+    config: Configuration,
+) -> None:
+    """Apply dropout in-placeto the dictionary of input data sources around a given t0 time.
+
+    Args:
+        datasets_dict: Dictionary of the input data sources
+        t0: The init-time
+        config: Configuration object.
+
+    Returns:
+        None. The input datasets_dict is modified in place.
+    """
+
+    if "sat" in datasets_dict:
+        sat_config = config.input_data.satellite
+
+        apply_history_dropout(
+            datasets_dict["sat"],
+            t0,
+            dropout_timedeltas=minutes(sat_config.dropout_timedeltas_minutes),
+            dropout_frac=sat_config.dropout_fraction,
+        )
+
+    if "generation" in datasets_dict:
+        generation_config = config.input_data.generation
+
+        # Dropout on the past generation, but not the future generation
+        apply_history_dropout(
+            datasets_dict["generation"],
+            t0,
+            dropout_timedeltas=minutes(generation_config.dropout_timedeltas_minutes),
+            dropout_frac=generation_config.dropout_fraction,
+        )
+
+    return
 
 
 def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: Configuration) -> SourceDict:

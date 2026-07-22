@@ -17,6 +17,7 @@ from ocf_data_sampler.datasets.cache import PickleCacheMixin
 from ocf_data_sampler.datasets.pvnet.loading import get_dataset_dict
 from ocf_data_sampler.datasets.pvnet.materialise import load_data_dict
 from ocf_data_sampler.datasets.pvnet.preprocess import (
+    apply_dropout_to_datasets,
     config_normalization_values_to_dicts,
     diff_nwp_data,
     fill_nans_in_dataset_dicts,
@@ -140,15 +141,15 @@ def add_alternate_coordinate_projections(
         # Skip if the projections in this coord system have already been computed
         if coord_system not in computed_coord_systems:
 
-            # If using geostationary coords we need to extract the area definition string
-            area_string = da.attrs["area"] if coord_system=="geostationary" else None
+            # If using geostationary coords we need to extract the area spec
+            area_spec = da.attrs["area"] if coord_system=="geostationary" else None
 
             new_xs, new_ys = convert_coordinates(
                 x=xs,
                 y=ys,
                 from_coords="lon_lat",
                 target_coords=coord_system,
-                area_string=area_string,
+                area_spec=area_spec,
             )
 
             # Add the projection to the locations objects
@@ -435,6 +436,8 @@ class PVNetDataset(AbstractPVNetDataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
+        # Apply dropout to the data sources in-place
+        apply_dropout_to_datasets(sample_dict, t0, self.config)
         sample_dict = diff_nwp_data(sample_dict, self.config)
         return self.process_and_combine_datasets(sample_dict, t0, location)
 
@@ -526,6 +529,8 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
         # Slice by time then load to avoid loading the data multiple times from disk
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
+        # Apply dropout to the data sources in-place
+        apply_dropout_to_datasets(sample_dict, t0, self.config)
         sample_dict = diff_nwp_data(sample_dict, self.config)
 
         samples = []

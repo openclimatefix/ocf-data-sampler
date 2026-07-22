@@ -1,32 +1,36 @@
-"""Functions for simulating dropout in time series data.
-
-This is used for the following types of data: Generation or Satellite
-This is not used for NWP
-"""
+"""Functions for randomly dropping out sequential data"""
 
 import numpy as np
-import xarray as xr
+from ocf_data_sampler.common.types import TArray
 
 
 def apply_history_dropout(
+    da: TArray,
     t0: np.datetime64,
     dropout_timedeltas: list[np.timedelta64],
     dropout_frac: float | list[float],
-    da: xr.DataArray,
-) -> xr.DataArray:
+) -> TArray:
     """Apply in-place random dropout to the historical part of some sequence data.
 
-    Dropped out data is replaced with NaNs
+    Dropped out data is replaced with NaNs.
+
+    This helper requires a NumPy-backed DataArray-like object. It mutates the backing array in
+    place, so it should be called after any lazy data has been materialised.
 
     Args:
+        da: DataArray-like with 'time_utc' coordinate
         t0: The forecast init-time.
         dropout_timedeltas: List of timedeltas relative to t0 to pick from
         dropout_frac: The probabilit(ies) that each dropout timedelta will be applied. This should
             be between 0 and 1 inclusive.
-        da: Xarray DataArray with 'time_utc' coordinate
     """
     if len(dropout_timedeltas)==0:
         return da
+
+    if not isinstance(da.data, np.ndarray):
+        raise ValueError(
+            f"Dropout can only be applied to DataArrays with numpy data. Got: {type(da.data)}"
+        )
 
     if isinstance(dropout_frac, float | int):
 

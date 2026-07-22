@@ -14,10 +14,10 @@ def test_apply_history_dropout_multiple_timedeltas(da_sample):
     t0 = da_sample["time_utc"].values[-1]
 
     da_sample_dropout = apply_history_dropout(
+        da_sample,
         t0,
         dropout_timedeltas=minutes([-30, -45]),
         dropout_frac=1,
-        da=da_sample,
     )
 
     latest_expected_cut_off = t0 + minutes(-30)
@@ -38,18 +38,18 @@ def test_apply_history_dropout_none(da_sample):
     t0 = da_sample["time_utc"].values[-1]
 
     da_sample_dropout = apply_history_dropout(
+        da_sample,
         t0,
         dropout_timedeltas=[minutes(-30)],
         dropout_frac=0,
-        da=da_sample,
     )
     xr.testing.assert_equal(da_sample_dropout, da_sample)
 
     da_sample_dropout = apply_history_dropout(
+        da_sample,
         t0,
         dropout_timedeltas=[],
         dropout_frac=0,
-        da=da_sample,
     )
     xr.testing.assert_equal(da_sample_dropout, da_sample)
 
@@ -62,10 +62,10 @@ def test_apply_history_dropout_list(da_sample):
     t0 = da_sample["time_utc"].values[-1]
 
     da_sample_dropout = apply_history_dropout(
+        da_sample,
         t0,
         dropout_timedeltas=minutes([-30, -45]),
         dropout_frac=[0.5, 0.5],
-        da=da_sample,
     )
 
     latest_expected_cut_off = t0 + minutes(-30)
@@ -88,10 +88,10 @@ def test_apply_history_dropout(da_sample, t0_str):
     dropout_time = t0_time + minutes(-30)
 
     da_dropout = apply_history_dropout(
+        da_sample,
         t0_time,
         dropout_timedeltas=[minutes(-30)],
         dropout_frac=1.0,
-        da=da_sample,
     )
 
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
