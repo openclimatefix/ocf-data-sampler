@@ -94,7 +94,7 @@ def test_find_contiguous_t0_periods_nwp():
         .values
     )
 
-    first_forecast_step = np.timedelta64(0)
+    first_forecast_step = np.timedelta64(0, "h")
     last_forecast_step = np.timedelta64(36, "h")
 
     interval_end = np.timedelta64(3, "h")

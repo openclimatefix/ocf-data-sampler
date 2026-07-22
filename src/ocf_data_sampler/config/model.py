@@ -124,6 +124,13 @@ class DropoutMixin(Base):
     @model_validator(mode="after")
     def dropout_instructions_consistent(self) -> "DropoutMixin":
         """Validator for dropout instructions."""
+        if isinstance(self.dropout_fraction, list):
+            if len(self.dropout_fraction) != len(self.dropout_timedeltas_minutes):
+                raise ValueError(
+                    "When `dropout_fraction` is a list, it must have the same length as "
+                    "`dropout_timedeltas_minutes`"
+                )
+
         if self.dropout_fraction == 0:
             if self.dropout_timedeltas_minutes != []:
                 raise ValueError("To use dropout timedeltas dropout fraction should be > 0")
@@ -254,7 +261,6 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
             supported = ", ".join(sorted(PROVIDER_REGISTRY))
             raise ValueError(f"Unknown NWP provider {v!r}. Supported: {supported}")
         return provider
-
 
     @model_validator(mode="after")
     def check_all_channel_have_normalisation_constants(self) -> "NWP":
