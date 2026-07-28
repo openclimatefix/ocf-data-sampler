@@ -38,7 +38,7 @@ from ocf_data_sampler.features.time_encodings import encode_datetimes
 from ocf_data_sampler.select import (
     fill_time_periods,
     find_contiguous_t0_periods,
-    intersection_of_multiple_dataframes_of_periods,
+    intersect_time_periods,
 )
 from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
 
@@ -401,7 +401,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                 interval_start=minutes(generation_config.interval_start_minutes),
                 interval_end=minutes(generation_config.interval_end_minutes),
             )
-            valid_time_periods_per_location = intersection_of_multiple_dataframes_of_periods(
+            valid_time_periods_per_location = intersect_time_periods(
                 [valid_time_periods, time_periods],
             )
 
@@ -426,7 +426,7 @@ class PVNetDataset(AbstractPVNetDataset):
     def __init__(
         self,
         config_filename: str,
-        time_periods: list[tuple[None | str, None | str]] | None = None,
+        time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         use_xarray: bool = True,
     ) -> None:
@@ -520,9 +520,15 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
         self,
         config_filename: str,
         time_periods: list[tuple[str | None, str | None]] | None = None,
+        include_extra_metadata: bool = False,
+        use_xarray: bool = True,
     ) -> None:
+        super().__init__(config_filename, time_periods, include_extra_metadata, use_xarray)
 
-        super().__init__(config_filename, time_periods)
+        if not self.complete_generation:
+            raise NotImplementedError(
+                "Concurrent PVNet dataset cannot be created when generation data is incomplete.",
+            )
 
         self.datasets_dict = reduce_spatial_extent_of_datasets(
             self.datasets_dict,

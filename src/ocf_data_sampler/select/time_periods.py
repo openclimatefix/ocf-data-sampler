@@ -12,84 +12,40 @@ ZERO_TDELTA = np.timedelta64(0, "ns")
 
 def find_contiguous_time_periods(
     datetimes: NDArray[np.datetime64],
-    min_seq_length: int,
-    max_gap_duration: np.timedelta64,
-) -> pd.DataFrame:
-    """Return a pd.DataFrame where each row records the boundary of a contiguous time period.
+    time_resolution: np.timedelta64,
+) -> tuple[NDArray[np.datetime64], NDArray[np.datetime64]]:
+    """Return the start and end of all contiguous time periods.
 
     Args:
-      datetimes: Available datetimes - must be sorted.
-      min_seq_length: Sequences of min_seq_length or shorter will be discarded.
-      max_gap_duration: If any pair of consecutive `datetimes` is more than `max_gap_duration`
-        apart, then this pair of `datetimes` will be considered a "gap" between two contiguous
-        sequences.
+        datetimes: Available datetimes - must be sorted.
+        time_resolution: The sample frequency of the timeseries.
 
     Returns:
-      pd.DataFrame where each row represents a single time period. The pd.DataFrame
-      has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
+        A tuple of two NDArray[np.datetime64], where the first array contains the start of each
+        contiguous time period and the second array contains the end of each contiguous time period.
     """
-    # Sanity checks.
     if len(datetimes) == 0:
-        raise ValueError("No datetimes to use")
-    if min_seq_length <= 1:
-        raise ValueError(f"{min_seq_length=} must be greater than 1")
+        raise ValueError("`datetimes` is empty")
 
     assert_values_unique_increasing(datetimes, "datetimes")
 
-    # Find indices of gaps larger than max_gap:
-    gap_mask = np.diff(datetimes) > max_gap_duration
+    # Find indices where there are gaps in the datetimes
+    gap_mask = np.diff(datetimes) > time_resolution
     gap_indices = np.argwhere(gap_mask)[:, 0]
 
-    # gap_indicies are the indices into dt_index for the timestep immediately before the gap.
+    # gap_indicies are the indices into `datetimes` for the timestep immediately before the gap.
     # e.g. if the datetimes at 12:00, 12:05, 18:00, 18:05 then gap_indicies will be [1].
-    # So we add 1 to gap_indices to get segment_boundaries, an index into dt_index
+    # So we add 1 to gap_indices to get segment_boundaries, an index into `datetimes`
     # which identifies the _start_ of each segment.
     segment_boundaries = gap_indices + 1
 
-    # Capture the last segment of dt_index.
-    segment_boundaries = np.concatenate((segment_boundaries, [len(datetimes)]))
+    # Capture the first and last segment of `datetimes`
+    segment_boundaries = np.concatenate(([0], segment_boundaries, [len(datetimes)]))
 
-    periods: list[list[np.datetime64]] = []
-    start_i = 0
-    for next_start_i in segment_boundaries:
-        n_timesteps = next_start_i - start_i
-        if n_timesteps > min_seq_length:
-            end_i = next_start_i - 1
-            periods.append([datetimes[start_i], datetimes[end_i]])
-        start_i = next_start_i
+    period_starts = datetimes[segment_boundaries[:-1]]
+    period_ends = datetimes[segment_boundaries[1:] - 1]
 
-    if len(periods) == 0:
-        raise ValueError(
-            f"Did not find any periods from {datetimes}. {min_seq_length=} {max_gap_duration=}",
-        )
-
-    return pd.DataFrame(periods, columns=["start_dt", "end_dt"])
-
-
-def trim_contiguous_time_periods(
-    contiguous_time_periods: pd.DataFrame,
-    interval_start: np.timedelta64,
-    interval_end: np.timedelta64,
-) -> pd.DataFrame:
-    """Trims contiguous time periods to account for history requirements and forecast horizons.
-
-    Args:
-        contiguous_time_periods: pd.DataFrame where each row represents a single time period.
-            The pd.DataFrame must have `start_dt` and `end_dt` columns.
-        interval_start: The start of the interval with respect to t0
-        interval_end: The end of the interval with respect to t0
-
-    Returns:
-      The contiguous_time_periods pd.DataFrame with the `start_dt` and `end_dt` columns updated.
-    """
-    # Make a copy so the data is not edited in place.
-    trimmed_time_periods = contiguous_time_periods.copy()
-    trimmed_time_periods["start_dt"] -= interval_start
-    trimmed_time_periods["end_dt"] -= interval_end
-
-    valid_mask = trimmed_time_periods["start_dt"] <= trimmed_time_periods["end_dt"]
-
-    return trimmed_time_periods.loc[valid_mask]
+    return period_starts, period_ends
 
 
 def find_contiguous_t0_periods(
@@ -110,29 +66,25 @@ def find_contiguous_t0_periods(
         pd.DataFrame where each row represents a single time period.  The pd.DataFrame
             has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
-    assert_values_unique_increasing(datetimes, "datetimes")
-
-    total_duration = interval_end - interval_start
-
-    contiguous_time_periods = find_contiguous_time_periods(
+    period_starts, period_ends = find_contiguous_time_periods(
         datetimes=datetimes,
-        min_seq_length=int(total_duration / time_resolution) + 1,
-        max_gap_duration=time_resolution,
+        time_resolution=time_resolution,
     )
 
-    contiguous_t0_periods = trim_contiguous_time_periods(
-        contiguous_time_periods=contiguous_time_periods,
-        interval_start=interval_start,
-        interval_end=interval_end,
-    )
+    # Keep only periods long enough to contain at least one full sample
+    mask = (period_ends - period_starts) >= interval_end - interval_start
 
-    if len(contiguous_t0_periods) == 0:
+    # Shift the boundaries to give the range of valid t0 values in each period
+    t0_period_starts = period_starts[mask] - interval_start
+    t0_period_ends = period_ends[mask] - interval_end
+
+    if len(t0_period_starts) == 0:
         raise ValueError(
             f"No contiguous time periods found for {datetimes}. "
             f"{interval_start=} {interval_end=} {time_resolution=}",
         )
 
-    return contiguous_t0_periods
+    return pd.DataFrame({"start_dt": t0_period_starts, "end_dt": t0_period_ends})
 
 
 def find_contiguous_t0_periods_nwp(
@@ -219,35 +171,37 @@ def find_contiguous_t0_periods_nwp(
     return pd.DataFrame(contiguous_periods, columns=["start_dt", "end_dt"])
 
 
-def intersection_of_multiple_dataframes_of_periods(
-    time_periods: list[pd.DataFrame],
-) -> pd.DataFrame:
+def intersect_time_periods(time_periods: list[pd.DataFrame]) -> pd.DataFrame:
     """Find the intersection of list of time periods.
 
     Consecutively updates intersection of time periods.
-    See the docstring of intersection_of_2_dataframes_of_periods() for further details.
+    See the docstring of _intersect_2_time_periods() for further details.
     """
     if len(time_periods) == 0:
         raise ValueError("No time periods to intersect")
+
+    for i, periods in enumerate(time_periods):
+        if periods.empty:
+            raise ValueError(f"Time period frame {i} contains no periods")
+
     intersection = time_periods[0]
-    for time_period in time_periods[1:]:
-        intersection = intersection_of_2_dataframes_of_periods(intersection, time_period)
+    for periods in time_periods[1:]:
+        intersection = _intersect_2_time_periods(intersection, periods)
+        if intersection.empty:
+            return intersection
     return intersection
 
 
-def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
+def _intersect_2_time_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
     """Find the intersection of two pd.DataFrames of time periods.
 
     Each row of each pd.DataFrame represents a single time period.  Each pd.DataFrame has
     two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
 
-    A typical use-case is that each pd.DataFrame represents all the time periods where
-    a `DataSource` has contiguous, valid data.
-
     Graphical representation of two pd.DataFrames of time periods and their intersection,
     as follows:
 
-                 ----------------------> TIME ->---------------------
+                  ---------------------> TIME ->---------------------
                a: |-----|   |----|     |----------|     |-----------|
                b:    |--------|                       |----|    |---|
     intersection:    |--|   |-|                         |--|    |---|
@@ -259,46 +213,49 @@ def intersection_of_2_dataframes_of_periods(a: pd.DataFrame, b: pd.DataFrame) ->
         two columns: start_dt and end_dt.
 
     Returns:
-        Sorted list of intersecting time periods represented as a pd.DataFrame with two columns:
-        start_dt and end_dt.
+        The intersecting time periods, sorted by start time, as a pd.DataFrame with two
+        columns: start_dt and end_dt. Empty if no periods overlap.
     """
-    if a.empty or b.empty:
-        return pd.DataFrame(columns=["start_dt", "end_dt"])
+    if a.empty:
+        raise ValueError("Input `a` contains no periods")
+    if b.empty:
+        raise ValueError("Input `b` contains no periods")
 
     # Maybe switch these for efficiency in the next section. We will do the native python loop over
     # the shorter dataframe
     if len(a) > len(b):
         a, b = b, a
 
-    all_intersecting_periods = []
-    for a_period in a.itertuples():
-        # Five ways in which two periods may overlap:
-        # a: |----| or |---|   or  |---| or   |--|   or |-|
-        # b:  |--|       |---|   |---|      |------|    |-|
-        # In all five, `a` must always start before (or equal to) where `b` ends,
-        # and `a` must always end after (or equal to) where `b` starts.
+    a_starts = a["start_dt"].values
+    a_ends = a["end_dt"].values
 
-        # There are two ways in which two periods may *not* overlap:
-        # a: |---|        or        |---|
-        # b:       |---|      |---|
-        # `overlapping_periods` will not include periods which do *not* overlap.
+    b_starts = b["start_dt"].values
+    b_ends = b["end_dt"].values
 
-        overlapping_periods = b[(a_period.start_dt <= b.end_dt) & (a_period.end_dt >= b.start_dt)]
+    all_starts: list[NDArray[np.datetime64]] = []
+    all_ends: list[NDArray[np.datetime64]] = []
 
-        # Now find the intersection of each period in `overlapping_periods` with
-        # the period from `a` that starts at `a_start_dt` and ends at `a_end_dt`.
-        # We do this by clipping each row of `overlapping_periods`
-        # to start no earlier than `a_start_dt`, and end no later than `a_end_dt`.
+    for i in range(len(a)):
 
-        # First, make a copy, so we don't clip the underlying data in `b`.
-        intersection = overlapping_periods.copy()
-        intersection["start_dt"] = intersection.start_dt.clip(lower=a_period.start_dt)
-        intersection["end_dt"] = intersection.end_dt.clip(upper=a_period.end_dt)
+        # The overlapping periods can't start before either period starts, and can't end after
+        # either period ends. So we take the max of the start times and the min of the end times.
+        starts = np.maximum(a_starts[i], b_starts)
+        ends = np.minimum(a_ends[i], b_ends)
 
-        all_intersecting_periods.append(intersection)
+        # Any periods that don't overlap will have a start time that is after the end time.
+        # We filter those out.
+        overlap_mask = starts <= ends
+        starts = starts[overlap_mask]
+        ends = ends[overlap_mask]
 
-    all_intersecting_periods = pd.concat(all_intersecting_periods)
-    return all_intersecting_periods.sort_values(by="start_dt").reset_index(drop=True)
+        all_starts.append(starts)
+        all_ends.append(ends)
+
+    intersecting_periods = pd.DataFrame({
+        "start_dt": np.concatenate(all_starts),
+        "end_dt": np.concatenate(all_ends),
+    })
+    return intersecting_periods.sort_values(by="start_dt").reset_index(drop=True)
 
 
 def fill_time_periods(time_periods: pd.DataFrame, freq: np.timedelta64) -> NDArray[np.datetime64]:

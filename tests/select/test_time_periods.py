@@ -5,8 +5,7 @@ from ocf_data_sampler.select.time_periods import (
     fill_time_periods,
     find_contiguous_t0_periods,
     find_contiguous_t0_periods_nwp,
-    intersection_of_2_dataframes_of_periods,
-    intersection_of_multiple_dataframes_of_periods,
+    intersect_time_periods,
 )
 
 
@@ -29,7 +28,8 @@ def construct_time_periods_df(start_dt: list[str], end_dt: list[str]) -> pd.Data
 
 
 def test_find_contiguous_t0_periods():
-    # Create 5-minutely data timestamps
+
+    # Typical case with some missing time stamps in the middle of the range
     freq = pd.Timedelta(5, "min")
     interval_start = pd.Timedelta(-60, "min")
     interval_end = pd.Timedelta(15, "min")
@@ -51,6 +51,62 @@ def test_find_contiguous_t0_periods():
     expected_results = construct_time_periods_df(
         start_dt=["2023-01-01 13:35", "2023-01-01 15:35"],
         end_dt=["2023-01-01 14:10", "2023-01-01 16:45"],
+    )
+
+    assert periods.equals(expected_results)
+
+    # This is a stand in for where we just need a single satellite image from 5 minutes ago
+    interval_start = pd.Timedelta(-5, "min")
+    interval_end = pd.Timedelta(-5, "min")
+
+    datetimes = np.array(
+        [
+            "2023-01-01 12:00",
+            "2023-01-01 12:05",
+            "2023-01-01 12:10",
+            "2023-01-01 12:20",
+        ],
+        dtype="datetime64[ns]",
+    )
+
+    periods = find_contiguous_t0_periods(
+        datetimes=datetimes,
+        interval_start=interval_start,
+        interval_end=interval_end,
+        time_resolution=freq,
+    )
+
+    expected_results = construct_time_periods_df(
+        start_dt=["2023-01-01 12:05", "2023-01-01 12:25"],
+        end_dt=["2023-01-01 12:15", "2023-01-01 12:25"],
+    )
+
+    assert periods.equals(expected_results)
+
+
+
+def test_find_contiguous_t0_periods_keeps_exact_length_period():
+    freq = pd.Timedelta(5, "min")
+    interval_start = pd.Timedelta(0, "min")
+    interval_end = pd.Timedelta(20, "min")
+
+    datetimes = pd.date_range(
+        "2023-01-01 00:00",
+        "2023-01-01 00:20",
+        freq=freq,
+        unit="ns",
+    )
+
+    periods = find_contiguous_t0_periods(
+        datetimes=datetimes,
+        interval_start=interval_start,
+        interval_end=interval_end,
+        time_resolution=freq,
+    )
+
+    expected_results = construct_time_periods_df(
+        start_dt=["2023-01-01 00:00"],
+        end_dt=["2023-01-01 00:00"],
     )
 
     assert periods.equals(expected_results)
@@ -123,11 +179,11 @@ def test_find_contiguous_t0_periods_nwp():
         assert time_periods.equals(expected)
 
 
-def test_intersection_of_2_dataframes_of_periods():
+def test_intersect_time_periods_with_2_inputs():
     def assert_expected_result_with_reverse(a, b, expected_result):
         """Assert the calculated intersection is as expected with and without a and b switched"""
-        assert intersection_of_2_dataframes_of_periods(a, b).equals(expected_result)
-        assert intersection_of_2_dataframes_of_periods(b, a).equals(expected_result)
+        assert intersect_time_periods([a, b]).equals(expected_result)
+        assert intersect_time_periods([b, a]).equals(expected_result)
 
     # a: |----|
     # b:  |--|
@@ -181,7 +237,7 @@ def test_intersection_of_2_dataframes_of_periods():
     assert_expected_result_with_reverse(a, b, expected_result=exp_res)
 
 
-def test_intersection_of_multiple_dataframes_of_periods():
+def test_intersect_time_periods_with_many_inputs():
     periods_1 = construct_time_periods_df(
         start_dt=["2023-01-01 05:00", "2023-01-01 14:10"],
         end_dt=["2023-01-01 13:35", "2023-01-01 18:00"],
@@ -202,11 +258,10 @@ def test_intersection_of_multiple_dataframes_of_periods():
         end_dt=["2023-01-01 12:30", "2023-01-01 13:35", "2023-01-01 18:00"],
     )
 
-    result = intersection_of_multiple_dataframes_of_periods([periods_1, periods_2, periods_3])
+    result = intersect_time_periods([periods_1, periods_2, periods_3])
 
     # Check if results are as expected
     assert result.equals(expected_result)
-
 
 
 def test_fill_time_periods():
