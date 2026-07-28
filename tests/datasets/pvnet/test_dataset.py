@@ -165,6 +165,21 @@ def test_pvnet_concurrent_dataset(pvnet_config_filename):
     _pvnet_dataset_sample_check(sample, dataset.config, (num_gsps,))
 
 
+def test_pvnet_dataset_getitem_bounds(pvnet_config_filename):
+    dataset = PVNetDataset(pvnet_config_filename)
+
+    sample_from_last = dataset[len(dataset) - 1]
+    sample_from_negative = dataset[-1]
+    assert sample_from_negative["t0"] == sample_from_last["t0"]
+    assert sample_from_negative["location_id"] == sample_from_last["location_id"]
+
+    with pytest.raises(IndexError):
+        _ = dataset[len(dataset)]
+
+    with pytest.raises(IndexError):
+        _ = dataset[-len(dataset) - 1]
+
+
 def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
     """Test that solar position calculations are properly decoupled from data sources."""
     config = load_yaml_configuration(pvnet_config_filename)

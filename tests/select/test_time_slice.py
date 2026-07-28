@@ -120,3 +120,55 @@ def test_select_time_slice_nwp_with_dropout(da_nwp_like, dropout_hours):
     init_times = da_nwp_like["init_time_utc"].values
     expected_init_time = init_times[init_times<=t0_delayed][-1]
     assert (expected_init_time == da_slice["init_time_utc"].values)
+
+
+def test_select_time_slice_nwp_with_weighted_dropout_list(da_nwp_like):
+    """List dropout probabilities should select the corresponding timedelta weights."""
+    t0 = np.datetime64("2024-01-02 12:00")
+    interval_start = np.timedelta64(-2, "h")
+    interval_end = np.timedelta64(3, "h")
+    freq = np.timedelta64(1, "h")
+
+    da_slice = select_time_slice_nwp(
+        da_nwp_like,
+        t0,
+        time_resolution=freq,
+        interval_start=interval_start,
+        interval_end=interval_end,
+        dropout_timedeltas=[np.timedelta64(-1, "h"), np.timedelta64(-2, "h")],
+        dropout_frac=[1.0, 0.0],
+    )
+
+    expected_target_times = date_range(t0 + interval_start, t0 + interval_end, freq=freq)
+    valid_times = da_slice["init_time_utc"] + da_slice["step"]
+    assert (valid_times == expected_target_times).all()
+
+    t0_delayed = min(t0 + np.timedelta64(-1, "h"), expected_target_times[0])
+    init_times = da_nwp_like["init_time_utc"].values
+    expected_init_time = init_times[init_times <= t0_delayed][-1]
+    assert (expected_init_time == da_slice["init_time_utc"].values)
+
+
+def test_select_time_slice_nwp_rejects_invalid_weighted_dropout_inputs(da_nwp_like):
+    """List dropout probabilities must satisfy sum and length constraints."""
+    kwargs = {
+        "da": da_nwp_like,
+        "t0": np.datetime64("2024-01-02 12:00"),
+        "time_resolution": np.timedelta64(1, "h"),
+        "interval_start": np.timedelta64(-2, "h"),
+        "interval_end": np.timedelta64(3, "h"),
+    }
+
+    with pytest.raises(ValueError, match="sum of `dropout_frac`"):
+        select_time_slice_nwp(
+            **kwargs,
+            dropout_timedeltas=[np.timedelta64(-1, "h"), np.timedelta64(-2, "h")],
+            dropout_frac=[0.8, 0.4],
+        )
+
+    with pytest.raises(ValueError, match="must have the same length"):
+        select_time_slice_nwp(
+            **kwargs,
+            dropout_timedeltas=[np.timedelta64(-1, "h"), np.timedelta64(-2, "h")],
+            dropout_frac=[0.5],
+        )

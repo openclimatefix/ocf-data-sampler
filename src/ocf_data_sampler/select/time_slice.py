@@ -47,8 +47,8 @@ def select_time_slice_nwp(
     interval_start: np.timedelta64,
     interval_end: np.timedelta64,
     time_resolution: np.timedelta64,
-    dropout_timedeltas: NDArray[np.timedelta64] | None = None,
-    dropout_frac: float = 0,
+    dropout_timedeltas: NDArray[np.timedelta64] | None,
+    dropout_frac: float | list[float],
 ) -> TArray:
     """Select a time slice from an NWP DataArray.
 
@@ -59,19 +59,10 @@ def select_time_slice_nwp(
         interval_end: The end of the interval with respect to t0
         time_resolution: Distance between neighbouring timestamps
         dropout_timedeltas: List of possible timedeltas before t0 where data availability may start
-        dropout_frac: Probability to apply dropout
+        dropout_frac: Either a float dropout probability or a list of per-timedelta
+            probabilities. For list inputs, values must be in [0, 1], sum to <= 1,
+            and match `dropout_timedeltas` length.
     """
-    if dropout_timedeltas is None:
-        dropout_timedeltas = np.array([], dtype="timedelta64[ns]")
-
-    if len(dropout_timedeltas) > 0 and np.any(dropout_timedeltas >= np.timedelta64(0)):
-        raise ValueError("dropout timedeltas must be negative")
-
-    if not (0 <= dropout_frac <= 1):
-        raise ValueError("`dropout_frac` must be between 0 and 1")
-
-    consider_dropout = len(dropout_timedeltas) > 0 and dropout_frac > 0
-
     start_dt = t0 + interval_start
     end_dt = t0 + interval_end
     start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
@@ -81,11 +72,7 @@ def select_time_slice_nwp(
     all_init_times = da["init_time_utc"].values
     all_steps = da["step"].values
 
-    # Potentially apply NWP dropout
-    if consider_dropout and (np.random.uniform() < dropout_frac):
-        t0_available = t0 + np.random.choice(dropout_timedeltas)
-    else:
-        t0_available = t0
+    t0_available = _get_nwp_dropout_available_time(t0, dropout_timedeltas, dropout_frac)
 
     # Can't use an init-time if the start_dt is before its first step
     t0_available = min(t0_available, start_dt - all_steps[0])
@@ -108,3 +95,48 @@ def select_time_slice_nwp(
     selected_step_indices = get_indices_in_sorted_unique(all_steps, required_steps)
 
     return da.isel(init_time_utc=selected_init_time_index, step=selected_step_indices)
+
+
+def _get_nwp_dropout_available_time(
+    t0: np.datetime64,
+    dropout_timedeltas: NDArray[np.timedelta64] | None,
+    dropout_frac: float | list[float],
+) -> np.datetime64:
+    """Choose the available-time timestamp after applying configured dropout."""
+    if dropout_timedeltas is None or len(dropout_timedeltas) == 0 or dropout_frac == 0:
+        return t0
+
+    if np.any(dropout_timedeltas > np.timedelta64(0, "ns")):
+        raise ValueError("`dropout_timedeltas` must be negative or zero")
+
+    if isinstance(dropout_frac, float | int):
+        dropout_sum = dropout_frac
+        dropout_probs = [dropout_frac / len(dropout_timedeltas)] * len(dropout_timedeltas)
+
+    else:
+        dropout_sum = sum(dropout_frac)
+        dropout_probs = [*dropout_frac]
+
+    if dropout_sum == 0:
+        return t0
+
+    if not 0 <= dropout_sum <= 1:
+        raise ValueError(f"The sum of `dropout_frac` ({dropout_frac}) must be in range [0, 1]")
+    if not all(0 <= p <= 1 for p in dropout_probs):
+        raise ValueError(f"All `dropout_frac` ({dropout_frac}) values must be in range [0, 1]")
+    if len(dropout_timedeltas) != len(dropout_probs):
+        raise ValueError(
+            "`dropout_timedeltas` and `dropout_frac` must have the same length or `dropout_frac` "
+            "must be a float"
+        )
+
+    dropout_choices: list[np.timedelta64 | None] = [*dropout_timedeltas]
+
+    # Add a None option to represent no dropout, with probability 1 - sum(dropout_frac)
+    dropout_choices.append(None)
+    dropout_probs.append(1 - dropout_sum)
+
+    selected_dropout = np.random.choice(dropout_choices, p=dropout_probs)
+    if selected_dropout is None:
+        return t0
+    return t0 + selected_dropout

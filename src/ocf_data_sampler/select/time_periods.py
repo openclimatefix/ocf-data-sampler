@@ -167,12 +167,17 @@ def find_contiguous_t0_periods_nwp(
         raise ValueError("No init-times to use")
 
     if max_dropout < ZERO_TDELTA:
-        raise ValueError("The max dropout must be positive")
+        raise ValueError("The max dropout must be non-negative (zero or positive)")
 
     if max_staleness is not None:
 
         if max_staleness < ZERO_TDELTA:
-            raise ValueError("The max staleness must be positive")
+            raise ValueError("The max staleness must be non-negative (zero or positive)")
+
+        if max_dropout > max_staleness:
+            raise ValueError(
+                f"max_dropout ({max_dropout}) must be <= max_staleness ({max_staleness})"
+            )
 
         # This is the max staleness we can use considering the max step of the input data
         max_possible_staleness = last_forecast_step - interval_end

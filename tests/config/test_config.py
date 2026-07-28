@@ -123,6 +123,20 @@ def test_incorrect_dropout_fraction(config_filename):
         _validate_configuration(configuration)
 
 
+def test_dropout_fraction_list_length_matches_timedeltas(config_filename):
+    """List dropout fractions must align with dropout timedeltas one-to-one."""
+    configuration, provider = _load_config_and_provider(config_filename)
+
+    configuration.input_data.nwp[provider].dropout_timedeltas_minutes = [-60, -120]
+    configuration.input_data.nwp[provider].dropout_fraction = [0.5]
+
+    with pytest.raises(
+        ValidationError,
+        match="must have the same length as `dropout_timedeltas_minutes`",
+    ):
+        _validate_configuration(configuration)
+
+
 def test_inconsistent_dropout_use(config_filename):
     """
     Check dropout fraction outside of range causes error

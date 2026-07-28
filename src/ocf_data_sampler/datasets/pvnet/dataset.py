@@ -247,6 +247,21 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         self.clip_min_dict = clip_min_dict
         self.clip_max_dict = clip_max_dict
 
+    def _sanitise_index(self, idx: int) -> int:
+        """Sanitise dataset indexing and raise IndexError for out-of-range indices."""
+        if isinstance(idx, bool) or not isinstance(idx, (int, np.integer)):
+            raise TypeError(f"Dataset indices must be integers, got {type(idx)!r}")
+
+        index = int(idx)
+        n_samples = len(self)
+        if index < 0:
+            index += n_samples
+
+        if index < 0 or index >= n_samples:
+            raise IndexError(f"Index {idx} out of range for dataset of length {n_samples}")
+
+        return index
+
     def process_and_combine_datasets(
         self,
         dataset_dict: SourceDict,
@@ -443,10 +458,9 @@ class PVNetDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> NumpySample:
-        # Get the coordinates of the sample
-        if idx >= len(self):
-            raise ValueError(f"Index {idx} out of range for dataset of length {len(self)}")
+        idx = self._sanitise_index(idx)
 
+        # Get the coordinates of the sample
         if self.complete_generation:
             # t_index will be between 0 and len(self.valid_t0_times)-1
             t_index = idx % len(self.valid_t0_times)
@@ -550,6 +564,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> TensorBatch:
+        idx = self._sanitise_index(idx)
         return self._get_sample(self.valid_t0_times[idx])
 
     def get_sample(self, t0: np.datetime64) -> TensorBatch:
