@@ -426,7 +426,7 @@ class PVNetDataset(AbstractPVNetDataset):
     def __init__(
         self,
         config_filename: str,
-        time_periods: list[tuple[None | str, None | str]] | None = None,
+        time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         use_xarray: bool = True,
     ) -> None:
@@ -519,7 +519,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
     def __init__(
         self,
         config_filename: str,
-        time_periods: list[tuple[None | str, None | str]] | None = None,
+        time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         use_xarray: bool = True,
     ) -> None:
