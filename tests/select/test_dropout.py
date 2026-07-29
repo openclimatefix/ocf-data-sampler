@@ -3,17 +3,17 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.common.time_utils import minutes
-from ocf_data_sampler.select.dropout import apply_history_dropout
+from ocf_data_sampler.select.dropout import apply_dropout
 
 
-def test_apply_history_dropout_multiple_timedeltas(da_sample):
+def test_apply_dropout_multiple_timedeltas(da_sample):
 
     # Dropout edits the input in-place, so make a copy to avoid affecting other tests
     da_sample = da_sample.copy(deep=True)
 
     t0 = da_sample["time_utc"].values[-1]
 
-    da_sample_dropout = apply_history_dropout(
+    da_sample_dropout = apply_dropout(
         da_sample,
         t0,
         dropout_timedeltas=minutes([-30, -45]),
@@ -30,14 +30,14 @@ def test_apply_history_dropout_multiple_timedeltas(da_sample):
     )
 
 
-def test_apply_history_dropout_none(da_sample):
+def test_apply_dropout_none(da_sample):
 
     # Dropout edits the input in-place, so make a copy to avoid affecting other tests
     da_sample = da_sample.copy(deep=True)
 
     t0 = da_sample["time_utc"].values[-1]
 
-    da_sample_dropout = apply_history_dropout(
+    da_sample_dropout = apply_dropout(
         da_sample,
         t0,
         dropout_timedeltas=[minutes(-30)],
@@ -45,7 +45,7 @@ def test_apply_history_dropout_none(da_sample):
     )
     xr.testing.assert_equal(da_sample_dropout, da_sample)
 
-    da_sample_dropout = apply_history_dropout(
+    da_sample_dropout = apply_dropout(
         da_sample,
         t0,
         dropout_timedeltas=[],
@@ -54,14 +54,14 @@ def test_apply_history_dropout_none(da_sample):
     xr.testing.assert_equal(da_sample_dropout, da_sample)
 
 
-def test_apply_history_dropout_list(da_sample):
+def test_apply_dropout_list(da_sample):
 
     # Dropout edits the input in-place, so make a copy to avoid affecting other tests
     da_sample = da_sample.copy(deep=True)
 
     t0 = da_sample["time_utc"].values[-1]
 
-    da_sample_dropout = apply_history_dropout(
+    da_sample_dropout = apply_dropout(
         da_sample,
         t0,
         dropout_timedeltas=minutes([-30, -45]),
@@ -79,7 +79,7 @@ def test_apply_history_dropout_list(da_sample):
 
 
 @pytest.mark.parametrize("t0_str", ["12:30", "13:00", "13:30"])
-def test_apply_history_dropout(da_sample, t0_str):
+def test_apply_dropout(da_sample, t0_str):
 
     # Dropout edits the input in-place, so make a copy to avoid affecting other tests
     da_sample = da_sample.copy(deep=True)
@@ -87,12 +87,13 @@ def test_apply_history_dropout(da_sample, t0_str):
     t0_time = pd.Timestamp(f"2024-01-01 {t0_str}")
     dropout_time = t0_time + minutes(-30)
 
-    da_dropout = apply_history_dropout(
+    da_dropout = apply_dropout(
         da_sample,
         t0_time,
         dropout_timedeltas=[minutes(-30)],
         dropout_frac=1.0,
     )
 
+    # Everything after the dropout cut-off is masked, including any data beyond t0.
     assert da_dropout.sel(time_utc=slice(None, dropout_time)).notnull().all()
-    assert da_dropout.sel(time_utc=slice(dropout_time + minutes(5), t0_time)).isnull().all()
+    assert da_dropout.sel(time_utc=slice(dropout_time + minutes(5), None)).isnull().all()

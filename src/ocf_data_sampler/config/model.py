@@ -1,8 +1,4 @@
-"""Configuration model for the dataset.
-
-Absolute or relative zarr filepath(s).
-Prefix with a protocol like s3:// to read from alternative filesystems.
-"""
+"""Configuration model for the PVNet dataset."""
 
 from collections.abc import Iterator
 from typing import Literal
@@ -18,16 +14,6 @@ class Base(BaseModel):
     """Pydantic Base model where no extras can be added."""
 
     model_config = ConfigDict(extra="forbid")
-
-
-class General(Base):
-    """General pydantic model."""
-
-    name: str = Field("example", description="The name of this configuration file")
-    description: str = Field(
-        "example configuration",
-        description="Description of this configuration file",
-    )
 
 
 class TimeWindowMixin(Base):
@@ -72,7 +58,16 @@ class TimeWindowMixin(Base):
         return self
 
 
-class DropoutMixin(Base):
+class FillValueMixin(Base):
+    """Mixin class, to add a value used for filling missing data."""
+
+    dropout_fill_value: float = Field(
+        default=0.0,
+        description="The value used to fill in dropped out data or any missing values."
+    )
+
+
+class DropoutMixin(FillValueMixin):
     """Mixin class, to add dropout minutes."""
 
     dropout_timedeltas_minutes: list[int] = Field(
@@ -85,11 +80,6 @@ class DropoutMixin(Base):
         default=0.0,
         description="Either a float(Chance of dropout being applied to each sample) or a list of "
         "floats (probability that dropout of the corresponding timedelta is applied)",
-    )
-
-    dropout_fill_value: float = Field(
-        default=0.0,
-        description="The value used to fill in dropped out data or any missing values."
     )
 
     @field_validator("dropout_timedeltas_minutes")
@@ -235,7 +225,7 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
 
     provider: str = Field(..., description="The provider of the NWP data")
 
-    accum_channels: list[str] = Field([], description="the nwp channels which need to be diffed")
+    accum_channels: list[str] = Field([], description="The NWP channels which need to be diffed")
 
     max_staleness_minutes: int | None = Field(
         None,
@@ -319,8 +309,58 @@ class MultiNWP(RootModel):
         return self.root.items()
 
 
-class Generation(TimeWindowMixin, DropoutMixin):
-    """Generation configuration model."""
+class GenerationWindow(Base):
+    """Mixin class, to add interval start and end minutes for a generation window.
+
+    Unlike `TimeWindowMixin`, the temporal resolution is not included here - it belongs to the
+    shared generation data source (`Generation.time_resolution_minutes`), not to an individual
+    window over it.
+    """
+
+    interval_start_minutes: int = Field(
+        ...,
+        description="Data interval starts at `t0 + interval_start_minutes`",
+    )
+
+    interval_end_minutes: int = Field(
+        ...,
+        description="Data interval ends at `t0 + interval_end_minutes`",
+    )
+
+    @model_validator(mode="after")
+    def validate_interval_order(self) -> "GenerationWindow":
+        """Validator for time interval fields."""
+        start = self.interval_start_minutes
+        end = self.interval_end_minutes
+        if start > end:
+            raise ValueError(
+                f"interval_start_minutes ({start}) must be <= interval_end_minutes ({end})",
+            )
+        return self
+
+
+class GenerationInputWindow(GenerationWindow, DropoutMixin):
+    """Generation input window configuration model, used for `Generation.input`.
+
+    Extends `GenerationWindow` with dropout configuration, since only the input window (not the
+    prediction target) should ever be randomly masked out.
+    """
+
+
+class GenerationTargetWindow(GenerationWindow, FillValueMixin):
+    """Generation target window configuration model, used for `Generation.target`."""
+
+
+class Generation(Base):
+    """Generation configuration model.
+
+    Bundles the shared generation data source (`zarr_path`, `time_resolution_minutes`) with its
+    `input` and `target` windows - two independently configurable time windows over the same
+    underlying data. `time_resolution_minutes` describes generation's own native data cadence
+    (used for gap detection and windowed slicing of generation's own data) - it is independent
+    of `SamplingGrid.t0_resolution_minutes`, which is the cadence t0 candidates are enumerated
+    at and may legitimately differ (e.g. generation stored every 5 minutes, sampled every 30).
+    """
 
     zarr_path: str = Field(
         ...,
@@ -328,9 +368,67 @@ class Generation(TimeWindowMixin, DropoutMixin):
         "to read from alternative filesystems.",
     )
 
+    time_resolution_minutes: int = Field(
+        ...,
+        gt=0,
+        description="The temporal resolution of the generation data in minutes",
+    )
+
+    input: GenerationInputWindow | None = None
+    target: GenerationTargetWindow | None = None
+
+    @model_validator(mode="after")
+    def validate_windows(self) -> "Generation":
+        """Validate the input/target windows are set and divisible by the shared resolution."""
+        if self.input is None and self.target is None:
+            raise ValueError(
+                "At least one of `generation.input` or `generation.target` must be configured",
+            )
+
+        for name, window in (("input", self.input), ("target", self.target)):
+            if window is None:
+                continue
+            for bound_name, bound in (
+                ("interval_start_minutes", window.interval_start_minutes),
+                ("interval_end_minutes", window.interval_end_minutes),
+            ):
+                if bound % self.time_resolution_minutes != 0:
+                    raise ValueError(
+                        f"generation.{name}.{bound_name} ({bound}) must be divisible by "
+                        f"generation.time_resolution_minutes ({self.time_resolution_minutes})",
+                    )
+        return self
+
+
+class SamplingGrid(Base):
+    """Configuration for the (location, time) grid that t0 times are sampled from.
+
+    `locations_zarr_path` points to the locations metadata (location IDs and their
+    coordinates) - see `ocf_data_sampler.load.locations.open_locations`.
+    `t0_resolution_minutes` is the cadence t0 candidates are enumerated at, needed to compute
+    valid t0 times regardless of which other input sources are configured - it is not any one
+    source's own native data resolution (see `Generation.time_resolution_minutes` for that).
+    """
+
+    locations_zarr_path: str = Field(
+        ...,
+        description="Absolute or relative zarr filepath to the locations metadata. Prefix with "
+        "a protocol like s3:// to read from alternative filesystems.",
+    )
+
+    t0_resolution_minutes: int = Field(
+        ...,
+        gt=0,
+        description="The resolution of the t0 sampling grid, in minutes.",
+    )
+
 
 class SolarPosition(TimeWindowMixin):
     """Solar position configuration model."""
+
+
+class DatetimeEncoding(TimeWindowMixin):
+    """Datetime encoding configuration model."""
 
 
 _embedding_type = list[tuple[str, Literal["cyclic", "linear"]]]
@@ -374,18 +472,13 @@ class T0Embedding(Base):
         return embeddings
 
 
-class InputData(Base):
-    """Input data model."""
+class PVNetDataConfig(Base):
+    """Configuration model for the PVNet dataset."""
 
+    sampling_grid: SamplingGrid
     satellite: Satellite | None = None
     nwp: MultiNWP | None = None
     generation: Generation | None = None
     solar_position: SolarPosition | None = None
+    datetime_encoding: DatetimeEncoding | None = None
     t0_embedding: T0Embedding | None = None
-
-
-class Configuration(Base):
-    """Configuration model for the dataset."""
-
-    general: General = General()
-    input_data: InputData = InputData()

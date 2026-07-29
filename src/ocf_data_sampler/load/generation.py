@@ -9,9 +9,6 @@ Data Variables:
 Coordinates:
     time_utc (time_utc): The datetimes associated with each generation and capacity value
     location_id (location_id): The integer IDs of the locations
-    longitude (location_id): The longitudes of the locations
-    latitude (location_id): The latitudes of the locations
-
 """
 
 import numpy as np
@@ -43,8 +40,6 @@ def open_generation(zarr_path: str) -> xr.DataArray:
     coord_dtypes = {
         "time_utc": np.datetime64,
         "location_id": np.integer,
-        "longitude": np.number,
-        "latitude": np.number,
     }
     validate_coords(
         ds,

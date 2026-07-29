@@ -5,6 +5,7 @@ from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.datasets.pvnet.preprocess import (
     apply_dropout_to_datasets,
     fill_nans_in_dataset_dicts,
+    normalise_dataset_dicts,
 )
 
 
@@ -14,34 +15,74 @@ def test_fill_nans_in_dataset_dicts(config_filename):
     configuration = load_yaml_configuration(config_filename)
 
     # Set custom satellite and nwp values, generation is left as default 0.0
-    configuration.input_data.satellite.dropout_fill_value = -1.0
-    configuration.input_data.nwp["ukv"].dropout_fill_value = -2.0
+    configuration.satellite.dropout_fill_value = -1.0
+    configuration.nwp["ukv"].dropout_fill_value = -2.0
 
     gen = np.array([1.0, np.nan, 3.0, np.nan])
     sat = np.array([1.0, np.nan, 3.0, np.nan])
     ukv = np.array([np.nan, 3.0, np.nan])
 
     datasets_dict = {
-        "generation": xr.DataArray(gen),
+        "generation_input": xr.DataArray(gen),
+        "generation_target": xr.DataArray(gen.copy()),
         "sat": xr.DataArray(sat),
         "nwp": {"ukv": xr.DataArray(ukv)},
     }
 
     datasets_dict = fill_nans_in_dataset_dicts(datasets_dict, config=configuration)
 
-    assert np.array_equal(datasets_dict["generation"].values, np.array([1.0, 0.0, 3.0, 0.0]))
+    expected_gen = np.array([1.0, 0.0, 3.0, 0.0])
+    assert np.array_equal(datasets_dict["generation_input"].values, expected_gen)
+    assert np.array_equal(datasets_dict["generation_target"].values, expected_gen)
     assert np.array_equal(datasets_dict["sat"].values, np.array([1.0, -1.0, 3.0, -1.0]))
     assert np.array_equal(datasets_dict["nwp"]["ukv"].values, np.array([-2.0, 3.0, -2.0]))
+
+
+def test_normalise_dataset_dicts_generation():
+    """Generation is normalised to a capacity factor (generation_mw / capacity_mwp)."""
+    generation_mw = np.array([[50.0, 0.0], [100.0, 20.0]])
+    capacity_mwp = np.array([[100.0, 0.0], [100.0, 40.0]])
+    generation = xr.DataArray(
+        np.stack([generation_mw, capacity_mwp], axis=-1),
+        coords={
+            "time_utc": ["2023-01-01T00:00", "2023-01-01T00:30"],
+            "location_id": [1, 2],
+            "gen_param": ["generation_mw", "capacity_mwp"],
+        },
+        dims=("time_utc", "location_id", "gen_param"),
+    )
+
+    datasets_dict = {
+        "generation_input": generation,
+        "generation_target": generation.copy(deep=True),
+    }
+
+    datasets_dict = normalise_dataset_dicts(datasets_dict, {}, {}, {}, {})
+
+    for key in ("generation_input", "generation_target"):
+        result = datasets_dict[key]
+
+        # generation_mw is rescaled element-wise by capacity_mwp
+        normalised = result.sel(gen_param="generation_mw").values
+        assert normalised[0, 0] == 0.5
+        assert normalised[1, 0] == 1.0
+        assert normalised[1, 1] == 0.5
+
+        # Zero capacity normalises to NaN rather than raw MW or a division error
+        assert np.isnan(normalised[0, 1])
+
+        # capacity_mwp itself is left unchanged
+        assert np.array_equal(result.sel(gen_param="capacity_mwp").values, capacity_mwp)
 
 
 def test_apply_dropout_to_datasets(pvnet_config_filename):
     config = load_yaml_configuration(pvnet_config_filename)
 
-    # Set dropout
-    config.input_data.generation.dropout_timedeltas_minutes = [-30]
-    config.input_data.generation.dropout_fraction = 1.0
-    config.input_data.satellite.dropout_timedeltas_minutes = []
-    config.input_data.satellite.dropout_fraction = 0
+    # Set dropout on the input window only - generation.target has no dropout config
+    config.generation.input.dropout_timedeltas_minutes = [-30]
+    config.generation.input.dropout_fraction = 1.0
+    config.satellite.dropout_timedeltas_minutes = []
+    config.satellite.dropout_fraction = 0
 
     t0 = np.datetime64("2023-01-01 12:00")
     times = np.array(
@@ -53,10 +94,16 @@ def test_apply_dropout_to_datasets(pvnet_config_filename):
         ],
         dtype="datetime64[m]",
     )
+    generation_mw = np.arange(4 * 2, dtype=float).reshape(4, 2)
+    capacity_mwp = np.ones((4, 2))
     generation = xr.DataArray(
-        np.arange(4 * 2, dtype=float).reshape(4, 2),
-        coords={"time_utc": times, "location_id": [1, 2]},
-        dims=("time_utc", "location_id"),
+        np.stack([generation_mw, capacity_mwp], axis=-1),
+        coords={
+            "time_utc": times,
+            "location_id": [1, 2],
+            "gen_param": ["generation_mw", "capacity_mwp"],
+        },
+        dims=("time_utc", "location_id", "gen_param"),
     )
     sat = xr.DataArray(
         np.arange(4, dtype=float),
@@ -64,16 +111,21 @@ def test_apply_dropout_to_datasets(pvnet_config_filename):
         dims=("time_utc",),
     )
 
-    datasets_dict = {"generation": generation, "sat": sat}
+    datasets_dict = {"generation_input": generation, "sat": sat}
 
     apply_dropout_to_datasets(datasets_dict, t0, config)
 
-    ds_gen = datasets_dict["generation"]
+    ds_gen = datasets_dict["generation_input"].sel(gen_param="generation_mw")
+    ds_cap = datasets_dict["generation_input"].sel(gen_param="capacity_mwp")
 
-    # Generation dropout with a -30 minute history should blank only the t0 timestep.
+    # Generation dropout with a -30 minute cutoff should blank everything from t0 onwards,
+    # including timesteps beyond t0.
     assert not np.any(np.isnan(ds_gen.sel(time_utc=slice(None, "2023-01-01T11:30"))))
-    assert np.all(np.isnan(ds_gen.sel(time_utc=t0)))
-    assert not np.any(np.isnan(ds_gen.sel(time_utc=slice("2023-01-01T12:30", None))))
+    assert np.all(np.isnan(ds_gen.sel(time_utc=slice("2023-01-01T12:00", None))))
+
+    # capacity_mwp is dropped out along with generation_mw, using the same cutoff.
+    assert not np.any(np.isnan(ds_cap.sel(time_utc=slice(None, "2023-01-01T11:30"))))
+    assert np.all(np.isnan(ds_cap.sel(time_utc=slice("2023-01-01T12:00", None))))
 
     # Satellite dropout is disabled, so the helper should leave it untouched.
     xr.testing.assert_equal(datasets_dict["sat"], sat)

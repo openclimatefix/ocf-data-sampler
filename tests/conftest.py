@@ -283,18 +283,51 @@ def site_generation_zarr_path(session_tmp_path, ds_site_generation):
     yield save_zarr(ds_site_generation, session_tmp_path, "site_generation.zarr")
 
 
+def _locations_dataset_from_generation(ds_generation):
+    """Build a standalone locations metadata dataset from a generation dataset's location coords.
+
+    Excludes location_id 0 - in the generation fixtures that's a placeholder used only for
+    summation models, not a real samplable location, so a properly curated locations catalog
+    wouldn't list it even though generation does.
+    """
+    ds_generation = ds_generation.sel(
+        location_id=[loc_id for loc_id in ds_generation["location_id"].values if loc_id != 0],
+    )
+    return xr.Dataset(
+        data_vars={
+            "longitude": ("location_id", ds_generation["longitude"].values),
+            "latitude": ("location_id", ds_generation["latitude"].values),
+        },
+        coords={"location_id": ds_generation["location_id"].values},
+    )
+
+
+@pytest.fixture(scope="session")
+def locations_zarr_path(session_tmp_path, ds_generation):
+    ds_locations = _locations_dataset_from_generation(ds_generation)
+    yield save_zarr(ds_locations, session_tmp_path, "locations.zarr")
+
+
+@pytest.fixture(scope="session")
+def site_locations_zarr_path(session_tmp_path, ds_site_generation):
+    ds_locations = _locations_dataset_from_generation(ds_site_generation)
+    yield save_zarr(ds_locations, session_tmp_path, "site_locations.zarr")
+
+
 @pytest.fixture()
 def pvnet_config_filename(
     tmp_path,
     config_filename,
     nwp_ukv_zarr_path,
     generation_zarr_path,
+    locations_zarr_path,
     sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.generation.zarr_path = generation_zarr_path
+    config.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.satellite.zarr_path = sat_zarr_path
+    config.generation.zarr_path = generation_zarr_path
+    config.sampling_grid.locations_zarr_path = locations_zarr_path
 
     path = tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))
@@ -307,12 +340,14 @@ def pvnet_site_config_filename(
     config_filename,
     nwp_ukv_zarr_path,
     site_generation_zarr_path,
+    site_locations_zarr_path,
     sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.generation.zarr_path = site_generation_zarr_path
+    config.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.satellite.zarr_path = sat_zarr_path
+    config.generation.zarr_path = site_generation_zarr_path
+    config.sampling_grid.locations_zarr_path = site_locations_zarr_path
 
     path = session_tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))

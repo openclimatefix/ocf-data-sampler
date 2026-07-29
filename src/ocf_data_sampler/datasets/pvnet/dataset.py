@@ -12,15 +12,13 @@ from typing_extensions import override
 from ocf_data_sampler.common.lightarray import LightDataArray
 from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
 from ocf_data_sampler.config.load import load_yaml_configuration
-from ocf_data_sampler.config.model import Configuration
+from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.cache import PickleCacheMixin
 from ocf_data_sampler.datasets.pvnet.loading import get_dataset_dict
 from ocf_data_sampler.datasets.pvnet.materialise import load_data_dict
 from ocf_data_sampler.datasets.pvnet.preprocess import (
-    apply_dropout_to_datasets,
     config_normalization_values_to_dicts,
-    diff_nwp_data,
-    fill_nans_in_dataset_dicts,
+    preprocess_dataset_dict,
 )
 from ocf_data_sampler.datasets.pvnet.sample import (
     convert_to_numpy_sample,
@@ -35,6 +33,7 @@ from ocf_data_sampler.datasets.pvnet.slicing import (
 from ocf_data_sampler.datasets.pvnet.types import NumpySample, SourceDict, TensorBatch
 from ocf_data_sampler.datasets.pvnet.valid_t0s import find_valid_time_periods
 from ocf_data_sampler.features.time_encodings import encode_datetimes
+from ocf_data_sampler.load import open_locations
 from ocf_data_sampler.select import (
     fill_time_periods,
     find_contiguous_t0_periods,
@@ -46,21 +45,23 @@ logger = logging.getLogger(__name__)
 
 
 
-def get_locations(generation_data: xr.DataArray) -> list[Location]:
-    """Get list of locations of all locations.
+def get_locations(zarr_path: str) -> list[Location]:
+    """Load the locations metadata and build the list of all locations.
 
     Args:
-        generation_data: xarray dataarray of generation data with location info
+        zarr_path: Path to the locations zarr data
     """
+    locations_data = open_locations(zarr_path)
+
     locations = []
-    location_ids = generation_data["location_id"].values
+    location_ids = locations_data["location_id"].values
 
     for location_id in location_ids:
-        gen_data = generation_data.sel(location_id=location_id)
+        loc_data = locations_data.sel(location_id=location_id)
         locations.append(
             Location(
-                x=gen_data["longitude"].values,
-                y=gen_data["latitude"].values,
+                x=loc_data["longitude"].values,
+                y=loc_data["latitude"].values,
                 coord_system="lon_lat",
                 id=int(location_id),
             ),
@@ -161,6 +162,69 @@ def add_alternate_coordinate_projections(
     return locations
 
 
+def build_numpy_sample(
+    dataset_dict: SourceDict,
+    t0: np.datetime64,
+    location: Location,
+    config: PVNetDataConfig,
+    include_extra_metadata: bool = False,
+) -> NumpySample:
+    """Convert data to numpy arrays and add auxiliary features.
+
+    Note: the data in `dataset_dict` is expected to already be preprocessed - see
+    `preprocess_dataset_dict`.
+
+    Args:
+        dataset_dict: Dictionary of xarray datasets
+        t0: init-time for sample
+        location: location of the sample
+        config: PVNetDataConfig object
+        include_extra_metadata: Whether to add additional non-essential metadata to the sample
+    """
+    # Convert all xarray modalities to a single NumpySample
+    sample = convert_to_numpy_sample(dataset_dict, include_extra_metadata)
+
+    sample["location_id"] = location.id
+    lon, lat = location.in_coord_system("lon_lat")
+
+    if include_extra_metadata:
+        sample["location_longitude"] = lon
+        sample["location_latitude"] = lat
+
+    # Add t0 embedding if configured
+    if config.t0_embedding is not None:
+        sample.update(
+            make_t0_encoding_numpy_sample(t0, config.t0_embedding.embeddings),
+        )
+
+    # Add datetime encodings if configured
+    if config.datetime_encoding is not None:
+        dt_config = config.datetime_encoding
+
+        datetimes = date_range(
+            t0 + minutes(dt_config.interval_start_minutes),
+            t0 + minutes(dt_config.interval_end_minutes),
+            freq=minutes(dt_config.time_resolution_minutes),
+        )
+        sample.update(encode_datetimes(datetimes=datetimes))
+
+    # Add solar position if configured
+    if config.solar_position is not None:
+        solar_config = config.solar_position
+
+        # Create datetime range for solar position calculation
+        datetimes = date_range(
+            t0 + minutes(solar_config.interval_start_minutes),
+            t0 + minutes(solar_config.interval_end_minutes),
+            freq=minutes(solar_config.time_resolution_minutes),
+        )
+
+        sample.update(make_sun_position_numpy_sample(datetimes, lon=lon, lat=lat))
+
+    sample["t0"] = get_posix_timestamp(t0)
+
+    return sample
+
 
 class AbstractPVNetDataset(PickleCacheMixin, Dataset):
     """Abstract class for PVNet datasets."""
@@ -191,10 +255,25 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         config = load_yaml_configuration(config_filename)
 
-        datasets_dict = get_dataset_dict(config.input_data)
+        locations = get_locations(config.sampling_grid.locations_zarr_path)
 
-        # Check if generation data has nans
-        self.complete_generation = not datasets_dict["generation"].isnull().any()
+        datasets_dict = get_dataset_dict(config)
+
+        if "generation" in datasets_dict:
+            location_ids = [loc.id for loc in locations]
+            missing = np.setdiff1d(location_ids, datasets_dict["generation"]["location_id"].values)
+            if len(missing) > 0:
+                raise ValueError(f"Generation data is missing for location IDs: {missing}")
+
+            # Restrict to the catalog's locations - generation may have extra ids that aren't
+            # real samplable points (e.g. a summation-model placeholder).
+            datasets_dict["generation"] = datasets_dict["generation"].sel(location_id=location_ids)
+
+        # Check if generation data has nans. If generation isn't configured at all, there's no
+        # per-location data availability to consider, so a single global t0 grid still applies.
+        self.complete_generation = (
+            "generation" not in datasets_dict or not datasets_dict["generation"].isnull().any()
+        )
 
         if self.complete_generation:
             valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
@@ -219,9 +298,6 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
             self.valid_t0_and_location_ids = valid_t0_and_location_ids
 
-        # Construct list of locations to sample from
-        locations = get_locations(generation_data=datasets_dict["generation"])
-
         self.locations = add_alternate_coordinate_projections(locations, datasets_dict)
 
         self.config = config
@@ -231,12 +307,6 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             self.datasets_dict = datasets_dict
         else:
             self.datasets_dict = xarray_to_lightarray_dict(datasets_dict)
-
-        # Assign t0 idx value
-        self.t0_idx = (
-            -config.input_data.generation.interval_start_minutes
-            // config.input_data.generation.time_resolution_minutes
-        )
 
         # Extract the normalisation values from the config for faster access
         mean_dict, std_dict, clip_min_dict, clip_max_dict = (
@@ -262,113 +332,30 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         return index
 
-    def process_and_combine_datasets(
-        self,
-        dataset_dict: SourceDict,
-        t0: np.datetime64,
-        location: Location,
-    ) -> NumpySample:
-        """Normalise and convert data to numpy arrays.
-
-        Args:
-            dataset_dict: Dictionary of xarray datasets
-            t0: init-time for sample
-            location: location of the sample
-        """
-        # Normalise NWP
-        if "nwp" in dataset_dict:
-            for nwp_key, da_nwp in dataset_dict["nwp"].items():
-                channel_means = self.mean_dict["nwp"][nwp_key]
-                channel_stds = self.std_dict["nwp"][nwp_key]
-                channel_mins = self.clip_min_dict["nwp"][nwp_key]
-                channel_maxs = self.clip_max_dict["nwp"][nwp_key]
-                dataset_dict["nwp"][nwp_key].data = (
-                    (da_nwp.data.clip(channel_mins, channel_maxs) - channel_means)
-                    / channel_stds
-                )
-
-        # Normalise satellite
-        if "sat" in dataset_dict:
-            channel_means = self.mean_dict["sat"]
-            channel_stds = self.std_dict["sat"]
-            channel_mins = self.clip_min_dict["sat"]
-            channel_maxs = self.clip_max_dict["sat"]
-            dataset_dict["sat"].data = (
-                (dataset_dict["sat"].data.clip(channel_mins, channel_maxs) - channel_means)
-                / channel_stds
-            )
-
-        # Fill NaNs
-        dataset_dict = fill_nans_in_dataset_dicts(dataset_dict, config=self.config)
-
-        # Convert all xarray modalities to a single NumpySample
-        sample = convert_to_numpy_sample(dataset_dict, self.t0_idx, self.include_extra_metadata)
-
-        # Add location metadata not present on the DataArray
-        if "generation" in dataset_dict:
-            sample["location_id"] = location.id
-
-        # Add datetime encodings over the full generation time range
-        generation_config = self.config.input_data.generation
-        datetimes = date_range(
-            t0 + minutes(generation_config.interval_start_minutes),
-            t0 + minutes(generation_config.interval_end_minutes),
-            freq=minutes(generation_config.time_resolution_minutes),
-        )
-        sample.update(encode_datetimes(datetimes=datetimes))
-
-        # Add t0 embedding if configured
-        if self.config.input_data.t0_embedding is not None:
-            sample.update(
-                make_t0_encoding_numpy_sample(t0, self.config.input_data.t0_embedding.embeddings),
-            )
-
-        # Add solar position if configured
-        if self.config.input_data.solar_position is not None:
-            solar_config = self.config.input_data.solar_position
-
-            # Create datetime range for solar position calculation
-            datetimes = date_range(
-                t0 + minutes(solar_config.interval_start_minutes),
-                t0 + minutes(solar_config.interval_end_minutes),
-                freq=minutes(solar_config.time_resolution_minutes),
-            )
-            sample.update(
-                make_sun_position_numpy_sample(
-                    datetimes,
-                    dataset_dict["generation"]["longitude"].values,
-                    dataset_dict["generation"]["latitude"].values,
-                ),
-            )
-
-        sample["t0"] = get_posix_timestamp(t0)
-
-        return sample
-
     @staticmethod
     def find_valid_t0_times(
         datasets_dict: SourceDict,
-        config: Configuration,
+        config: PVNetDataConfig,
     ) -> NDArray[np.datetime64]:
         """Find the t0 times where all of the requested input data is available.
 
         Args:
             datasets_dict: A dictionary of input datasets
-            config: Configuration file
+            config: PVNetDataConfig file
         """
         valid_time_periods = find_valid_time_periods(datasets_dict, config)
 
         # Fill out the contiguous time periods to get the t0 times
         valid_t0_times = fill_time_periods(
             valid_time_periods,
-            freq=minutes(config.input_data.generation.time_resolution_minutes),
+            freq=minutes(config.sampling_grid.t0_resolution_minutes),
         )
         return valid_t0_times
 
     @staticmethod
     def find_valid_t0_and_location_ids(
         datasets_dict: SourceDict,
-        config: Configuration,
+        config: PVNetDataConfig,
     ) -> pd.DataFrame:
         """Find the t0 times where all of the requested input data is available for each location.
 
@@ -378,7 +365,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         Args:
             datasets_dict: A dictionary of input datasets
-            config: Configuration file
+            config: PVNetDataConfig file
         """
         # Get valid time period for nwp and satellite
         datasets_without_generation = {k: v for k, v in datasets_dict.items() if k != "generation"}
@@ -387,28 +374,34 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         # Loop over each location in system id and obtain valid periods
         generations = datasets_dict["generation"]
         location_ids = generations.location_id.values
-        generation_config = config.input_data.generation
+        generation_config = config.generation
+        generation_windows = [
+            w for w in (generation_config.input, generation_config.target) if w is not None
+        ]
         valid_t0_and_location_ids = []
         for location_id in location_ids:
             generation = generations.sel(location_id=location_id)
             # Drop NaN values
             generation = generation.dropna(dim="time_utc")
 
-            # Obtain valid time periods for this location
-            time_periods = find_contiguous_t0_periods(
-                generation["time_utc"].values,
-                time_resolution=minutes(generation_config.time_resolution_minutes),
-                interval_start=minutes(generation_config.interval_start_minutes),
-                interval_end=minutes(generation_config.interval_end_minutes),
-            )
+            # Obtain valid time periods for this location, for each configured window
+            time_periods_per_window = [
+                find_contiguous_t0_periods(
+                    generation["time_utc"].values,
+                    time_resolution=minutes(generation_config.time_resolution_minutes),
+                    interval_start=minutes(window_config.interval_start_minutes),
+                    interval_end=minutes(window_config.interval_end_minutes),
+                )
+                for window_config in generation_windows
+            ]
             valid_time_periods_per_location = intersect_time_periods(
-                [valid_time_periods, time_periods],
+                [valid_time_periods, *time_periods_per_window],
             )
 
             # Fill out contiguous time periods to get t0 times
             valid_t0_times_per_location = fill_time_periods(
                 valid_time_periods_per_location,
-                freq=minutes(generation_config.time_resolution_minutes),
+                freq=minutes(config.sampling_grid.t0_resolution_minutes),
             )
 
             valid_t0_per_location = pd.DataFrame(index=valid_t0_times_per_location)
@@ -451,10 +444,13 @@ class PVNetDataset(AbstractPVNetDataset):
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
-        # Apply dropout to the data sources in-place
-        apply_dropout_to_datasets(sample_dict, t0, self.config)
-        sample_dict = diff_nwp_data(sample_dict, self.config)
-        return self.process_and_combine_datasets(sample_dict, t0, location)
+        sample_dict = preprocess_dataset_dict(
+            sample_dict, t0, self.config,
+            self.mean_dict, self.std_dict, self.clip_min_dict, self.clip_max_dict,
+        )
+        return build_numpy_sample(
+            sample_dict, t0, location, self.config, self.include_extra_metadata,
+        )
 
     @override
     def __getitem__(self, idx: int) -> NumpySample:
@@ -549,19 +545,19 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
         # Slice by time then load to avoid loading the data multiple times from disk
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
-        # Apply dropout to the data sources in-place
-        apply_dropout_to_datasets(sample_dict, t0, self.config)
-        sample_dict = diff_nwp_data(sample_dict, self.config)
+        # Preprocessing is location-independent, so do it once before slicing per-location below
+        sample_dict = preprocess_dataset_dict(
+            sample_dict, t0, self.config,
+            self.mean_dict, self.std_dict, self.clip_min_dict, self.clip_max_dict,
+        )
 
         samples = []
 
         # Prepare sample for each location
         for location in self.locations:
             sliced_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
-            numpy_sample = self.process_and_combine_datasets(
-                sliced_sample_dict,
-                t0,
-                location,
+            numpy_sample = build_numpy_sample(
+                sliced_sample_dict, t0, location, self.config, self.include_extra_metadata,
             )
             samples.append(numpy_sample)
 

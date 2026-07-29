@@ -3,10 +3,10 @@
 import fsspec
 from pyaml_env import parse_config
 
-from ocf_data_sampler.config.model import Configuration
+from ocf_data_sampler.config.model import PVNetDataConfig
 
 
-def load_yaml_configuration(filename: str) -> Configuration:
+def load_yaml_configuration(filename: str) -> PVNetDataConfig:
     """Load a yaml file which has a configuration in it.
 
     Args:
@@ -19,4 +19,4 @@ def load_yaml_configuration(filename: str) -> Configuration:
     with fsspec.open(filename, mode="r") as stream:
         configuration = parse_config(data=stream)
 
-    return Configuration(**configuration)
+    return PVNetDataConfig(**configuration)
