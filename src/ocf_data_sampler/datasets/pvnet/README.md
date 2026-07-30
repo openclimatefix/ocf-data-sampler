@@ -53,3 +53,13 @@ graph TD
     E0[Extra processing and add features like sun/time encodings]
     E0 --> F[Sample]
 ```
+
+### Randomness
+
+Dropout and the time-slice choices draw from **global** NumPy state (`np.random`), not from a
+generator owned by the dataset. Under a PyTorch `DataLoader` this is seeded per worker
+automatically, so a run is reproducible from a single global seed — with Lightning, use
+`seed_everything(seed, workers=True)`. If you use the dataset outside a `DataLoader`, seed
+`np.random` yourself. Note that a given index does not map to a fixed random draw: the draw
+depends on how many samples that worker has already produced, so it also shifts if you change
+`num_workers`.
