@@ -63,7 +63,8 @@ class FillValueMixin(Base):
 
     dropout_fill_value: float = Field(
         default=0.0,
-        description="The value used to fill in dropped out data or any missing values."
+        description="The value used to fill in dropped out data or any missing values. This is "
+        "applied after normalisation, so it is in normalised units."
     )
 
 
