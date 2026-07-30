@@ -10,18 +10,15 @@ from ocf_data_sampler.load import open_generation, open_nwp, open_sat_data
 def get_dataset_dict(config: PVNetDataConfig) -> SourceDict[xr.DataArray]:
     """Construct dictionary of all of the per-sample input data sources.
 
-    Locations metadata is not included here - unlike generation/nwp/satellite it isn't a
-    per-sample source, so it's loaded separately by the caller - see
-    `ocf_data_sampler.load.locations.open_locations`.
+    Locations metadata is deliberately excluded - it isn't a per-sample source, so the caller
+    loads it separately.
 
     Args:
         config: PVNetDataConfig configuration object
     """
     datasets_dict = {}
 
-    # Load generation data unless not configured. Any locations generation has that aren't in
-    # the locations catalog (e.g. an id used only for summation models) get filtered out later,
-    # once the catalog is available - see AbstractPVNetDataset.__init__.
+    # Load generation data if in config
     if config.generation is not None:
         datasets_dict["generation"] = open_generation(zarr_path=config.generation.zarr_path)
 

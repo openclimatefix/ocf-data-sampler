@@ -310,11 +310,10 @@ class MultiNWP(RootModel):
 
 
 class GenerationWindow(Base):
-    """Mixin class, to add interval start and end minutes for a generation window.
+    """Interval bounds for a generation window.
 
-    Unlike `TimeWindowMixin`, the temporal resolution is not included here - it belongs to the
-    shared generation data source (`Generation.time_resolution_minutes`), not to an individual
-    window over it.
+    Unlike `TimeWindowMixin`, no temporal resolution here - it belongs to the shared
+    generation data source (`Generation.time_resolution_minutes`), not to an individual window.
     """
 
     interval_start_minutes: int = Field(
@@ -340,27 +339,19 @@ class GenerationWindow(Base):
 
 
 class GenerationInputWindow(GenerationWindow, DropoutMixin):
-    """Generation input window configuration model, used for `Generation.input`.
+    """A generation window with dropout configuration.
 
-    Extends `GenerationWindow` with dropout configuration, since only the input window (not the
-    prediction target) should ever be randomly masked out.
+    Dropout is configurable here since only the input window (not the prediction target)
+    should ever be randomly masked out.
     """
 
 
 class GenerationTargetWindow(GenerationWindow, FillValueMixin):
-    """Generation target window configuration model, used for `Generation.target`."""
+    """Generation target window configuration model."""
 
 
 class Generation(Base):
-    """Generation configuration model.
-
-    Bundles the shared generation data source (`zarr_path`, `time_resolution_minutes`) with its
-    `input` and `target` windows - two independently configurable time windows over the same
-    underlying data. `time_resolution_minutes` describes generation's own native data cadence
-    (used for gap detection and windowed slicing of generation's own data) - it is independent
-    of `SamplingGrid.t0_resolution_minutes`, which is the cadence t0 candidates are enumerated
-    at and may legitimately differ (e.g. generation stored every 5 minutes, sampled every 30).
-    """
+    """Generation configuration model."""
 
     zarr_path: str = Field(
         ...,
@@ -401,25 +392,20 @@ class Generation(Base):
 
 
 class SamplingGrid(Base):
-    """Configuration for the (location, time) grid that t0 times are sampled from.
-
-    `locations_zarr_path` points to the locations metadata (location IDs and their
-    coordinates) - see `ocf_data_sampler.load.locations.open_locations`.
-    `t0_resolution_minutes` is the cadence t0 candidates are enumerated at, needed to compute
-    valid t0 times regardless of which other input sources are configured - it is not any one
-    source's own native data resolution (see `Generation.time_resolution_minutes` for that).
-    """
+    """Configuration for the (location, time) grid that t0 times are sampled from."""
 
     locations_zarr_path: str = Field(
         ...,
-        description="Absolute or relative zarr filepath to the locations metadata. Prefix with "
-        "a protocol like s3:// to read from alternative filesystems.",
+        description="Absolute or relative zarr filepath to the locations metadata (location IDs "
+        "and their coordinates) - see `ocf_data_sampler.load.locations.open_locations`. Prefix "
+        "with a protocol like s3:// to read from alternative filesystems.",
     )
 
     t0_resolution_minutes: int = Field(
         ...,
         gt=0,
-        description="The resolution of the t0 sampling grid, in minutes.",
+        description="The cadence t0 candidates are enumerated at, needed to compute valid t0 "
+        "times regardless of which other input sources are configured.",
     )
 
 

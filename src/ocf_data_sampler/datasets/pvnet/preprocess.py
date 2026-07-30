@@ -92,12 +92,6 @@ def normalise_dataset_dicts(
 ) -> SourceDict:
     """Normalise the NWP, satellite, and generation data in-place.
 
-    NWP and satellite are normalised using the per-channel mean/std/clip constants from config.
-    Generation is normalised differently: `generation_mw` is rescaled to a capacity factor by
-    dividing by `capacity_mwp`, which is time-varying, per-location data rather than a config
-    constant - so it can't use the same clip/mean/std path. `capacity_mwp` itself is left
-    unchanged, since it's exposed raw in the output sample.
-
     Args:
         dataset_dict: Dictionary of xarray datasets
         mean_dict: Means, as constructed by `config_normalization_values_to_dicts`
@@ -127,28 +121,43 @@ def normalise_dataset_dicts(
         )
 
     for key in ("generation_input", "generation_target"):
-        if key not in dataset_dict:
-            continue
-
-        da = dataset_dict[key]
-        gen_idx = list(da["gen_param"].values).index("generation_mw")
-        cap_idx = list(da["gen_param"].values).index("capacity_mwp")
-
-        generation_values = da.isel(gen_param=gen_idx).values
-        capacity_values = da.isel(gen_param=cap_idx).values
-
-        # capacity_mwp is time-varying (per timestep, per location) - normalise element-wise
-        # rather than by a single scalar. Where capacity is 0 the ratio is undefined, so we
-        # emit NaN rather than silently switching units (raw MW) or dividing by zero - dropout
-        # fill (later in the pipeline) replaces it with a fixed value in normalised units.
-        da.data[..., gen_idx] = np.divide(
-            generation_values,
-            capacity_values,
-            out=np.full_like(generation_values, np.nan, dtype=float),
-            where=capacity_values != 0,
-        )
+        if key in dataset_dict:
+            dataset_dict[key] = normalise_generation_by_capacity(dataset_dict[key])
 
     return dataset_dict
+
+
+def normalise_generation_by_capacity(da: TArray) -> TArray:
+    """Rescale `generation_mw` to a capacity factor, leaving `capacity_mwp` unchanged.
+
+    Zero capacity means no plant, so the capacity factor is taken as 0 rather than the undefined
+    0/0. Emitting NaN instead would route it through the dropout fill, which signals missing data
+    rather than a known-zero output.
+
+    Args:
+        da: Generation DataArray-like with a `gen_param` dimension
+    """
+    gen_params = list(da["gen_param"].values)
+    gen_idx = gen_params.index("generation_mw")
+    cap_idx = gen_params.index("capacity_mwp")
+
+    generation_values = da.isel(gen_param=gen_idx).values
+    capacity_values = da.isel(gen_param=cap_idx).values
+
+    normalised = np.divide(
+        generation_values,
+        capacity_values,
+        out=np.zeros_like(generation_values, dtype=float),
+        where=capacity_values != 0,
+    )
+
+    new_data = da.data.copy()
+    index = [slice(None)] * new_data.ndim
+    index[da.dims.index("gen_param")] = gen_idx
+    new_data[tuple(index)] = normalised
+    da.data = new_data
+
+    return da
 
 
 def diff_nwp_data(dataset_dict: SourceDict, config: PVNetDataConfig) -> SourceDict:

@@ -265,8 +265,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             if len(missing) > 0:
                 raise ValueError(f"Generation data is missing for location IDs: {missing}")
 
-            # Restrict to the catalog's locations - generation may have extra ids that aren't
-            # real samplable points (e.g. a summation-model placeholder).
+            # Slice the generation data to only include the specified locations. This allows us to
+            # quality check the generation data for nans and find valid t0 times for each location.
             datasets_dict["generation"] = datasets_dict["generation"].sel(location_id=location_ids)
 
         # Check if generation data has nans. If generation isn't configured at all, there's no

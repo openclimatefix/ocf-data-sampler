@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration
@@ -68,11 +69,61 @@ def test_normalise_dataset_dicts_generation():
         assert normalised[1, 0] == 1.0
         assert normalised[1, 1] == 0.5
 
-        # Zero capacity normalises to NaN rather than raw MW or a division error
-        assert np.isnan(normalised[0, 1])
+        # Zero capacity normalises to 0 rather than raw MW or a division error
+        assert normalised[0, 1] == 0.0
 
         # capacity_mwp itself is left unchanged
         assert np.array_equal(result.sel(gen_param="capacity_mwp").values, capacity_mwp)
+
+
+def _generation_source(generation_mw: np.ndarray, capacity_mwp: np.ndarray) -> xr.DataArray:
+    """Build a generation DataArray with `n` timesteps for a single location."""
+    return xr.DataArray(
+        np.stack([generation_mw[:, None], capacity_mwp[:, None]], axis=-1),
+        coords={
+            "time_utc": pd.date_range("2023-01-01", periods=len(generation_mw), freq="30min"),
+            "location_id": [1],
+            "gen_param": ["generation_mw", "capacity_mwp"],
+        },
+        dims=("time_utc", "location_id", "gen_param"),
+    )
+
+
+def test_normalise_does_not_mutate_shared_source():
+    """Normalising windows must not write through to the array they were sliced from.
+
+    Time slices are views onto the eagerly-loaded source, so an in-place write would corrupt it
+    for every later sample and double-normalise timesteps shared by the two windows.
+    """
+    src = _generation_source(np.array([100.0, 150.0, 200.0]), np.full(3, 100.0))
+    before = src.values.copy()
+
+    # Windows deliberately overlap on the middle timestep
+    datasets_dict = {
+        "generation_input": src.isel(time_utc=slice(0, 2)),
+        "generation_target": src.isel(time_utc=slice(1, 3)),
+    }
+    datasets_dict = normalise_dataset_dicts(datasets_dict, {}, {}, {}, {})
+
+    assert np.array_equal(src.values, before), "source array was mutated by normalisation"
+
+    def generation_of(key: str) -> np.ndarray:
+        return datasets_dict[key].sel(gen_param="generation_mw").values.ravel()
+
+    assert np.array_equal(generation_of("generation_input"), [1.0, 1.5])
+    # The shared timestep is normalised once, not once per window
+    assert np.array_equal(generation_of("generation_target"), [1.5, 2.0])
+
+
+def test_normalise_generation_is_dimension_order_agnostic():
+    """`gen_param` is indexed by name, so it need not be the last dimension."""
+    src = _generation_source(np.array([100.0, 150.0, 200.0]), np.full(3, 100.0))
+    transposed = src.transpose("gen_param", "time_utc", "location_id")
+
+    result = normalise_dataset_dicts({"generation_input": transposed}, {}, {}, {}, {})
+
+    normalised = result["generation_input"].sel(gen_param="generation_mw").values.ravel()
+    assert np.array_equal(normalised, [1.0, 1.5, 2.0])
 
 
 def test_apply_dropout_to_datasets(pvnet_config_filename):
