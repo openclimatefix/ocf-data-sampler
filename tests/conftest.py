@@ -192,23 +192,52 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     yield save_zarr(ds, session_tmp_path, "cloudcasting.zarr", chunks)
 
 
-@pytest.fixture(scope="session")
-def ds_generation(session_rng):
-    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    location_ids = np.arange(318)
-    # Rough UK bounding box
+def _locations_dataset(session_rng, location_ids):
+    """Build a locations catalog over the given IDs, with random points in a rough UK bbox."""
     lat_min, lat_max = 49.9, 58.7
     lon_min, lon_max = -8.6, 1.8
 
-    # Generate random uniform points
-    longitudes = session_rng.uniform(lon_min, lon_max, len(location_ids)).astype("float64")
-    latitudes = session_rng.uniform(lat_min, lat_max, len(location_ids)).astype("float64")
+    return xr.Dataset(
+        data_vars={
+            "longitude": (
+                "location_id",
+                session_rng.uniform(lon_min, lon_max, len(location_ids)).astype("float64"),
+            ),
+            "latitude": (
+                "location_id",
+                session_rng.uniform(lat_min, lat_max, len(location_ids)).astype("float64"),
+            ),
+        },
+        coords={"location_id": location_ids},
+    )
+
+
+@pytest.fixture(scope="session")
+def ds_locations(session_rng):
+    """The locations catalog - the source of truth for which locations are samplable."""
+    return _locations_dataset(session_rng, np.arange(1, 318))
+
+
+@pytest.fixture(scope="session")
+def ds_site_locations(session_rng):
+    """The locations catalog for the site-level fixtures."""
+    return _locations_dataset(session_rng, np.arange(1, 11))
+
+
+@pytest.fixture(scope="session")
+def ds_generation(session_rng, ds_locations):
+    """Generation for every catalogued location, plus ID 0.
+
+    ID 0 is a summation-model placeholder which the catalog deliberately does not list, so this
+    exercises the filtering of generation IDs down to the catalog's locations.
+    """
+    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
+    location_ids = np.concatenate([[0], ds_locations["location_id"].values])
 
     capacity = np.ones((len(times), len(location_ids)))
 
     generation = session_rng.uniform(0, 200, (len(times), len(location_ids))).astype(np.float32)
 
-    # Build Dataset
     return xr.Dataset(
         data_vars={
             "capacity_mwp": (("time_utc", "location_id"), capacity),
@@ -217,28 +246,19 @@ def ds_generation(session_rng):
         coords={
             "time_utc": times,
             "location_id": location_ids,
-            "longitude": ("location_id", longitudes),
-            "latitude": ("location_id", latitudes),
         },
     )
 
 
 # location data (non overlapping time periods) and starting with id 1
 @pytest.fixture(scope="session")
-def ds_site_generation(session_rng):
+def ds_site_generation(session_rng, ds_site_locations):
     # Define a global time range (covers all possible site periods)
     global_times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
     n_times = len(global_times)
 
-    location_ids = np.arange(1, 11)
+    location_ids = ds_site_locations["location_id"].values
     n_sites = len(location_ids)
-
-    # Rough UK bounding box
-    lat_min, lat_max = 49.9, 58.7
-    lon_min, lon_max = -8.6, 1.8
-
-    longitudes = session_rng.uniform(lon_min, lon_max, n_sites).astype("float64")
-    latitudes = session_rng.uniform(lat_min, lat_max, n_sites).astype("float64")
 
     # Initialize with NaNs
     capacity = np.full((n_times, n_sites), np.nan, dtype="float32")
@@ -258,7 +278,6 @@ def ds_site_generation(session_rng):
             "float32",
         )
 
-    # Build Dataset
     return xr.Dataset(
         data_vars={
             "capacity_mwp": (("time_utc", "location_id"), capacity),
@@ -267,8 +286,6 @@ def ds_site_generation(session_rng):
         coords={
             "time_utc": global_times,
             "location_id": location_ids,
-            "longitude": ("location_id", longitudes),
-            "latitude": ("location_id", latitudes),
         },
     )
 
@@ -283,35 +300,14 @@ def site_generation_zarr_path(session_tmp_path, ds_site_generation):
     yield save_zarr(ds_site_generation, session_tmp_path, "site_generation.zarr")
 
 
-def _locations_dataset_from_generation(ds_generation):
-    """Build a standalone locations metadata dataset from a generation dataset's location coords.
-
-    Excludes location_id 0 - in the generation fixtures that's a placeholder used only for
-    summation models, not a real samplable location, so a properly curated locations catalog
-    wouldn't list it even though generation does.
-    """
-    ds_generation = ds_generation.sel(
-        location_id=[loc_id for loc_id in ds_generation["location_id"].values if loc_id != 0],
-    )
-    return xr.Dataset(
-        data_vars={
-            "longitude": ("location_id", ds_generation["longitude"].values),
-            "latitude": ("location_id", ds_generation["latitude"].values),
-        },
-        coords={"location_id": ds_generation["location_id"].values},
-    )
-
-
 @pytest.fixture(scope="session")
-def locations_zarr_path(session_tmp_path, ds_generation):
-    ds_locations = _locations_dataset_from_generation(ds_generation)
+def locations_zarr_path(session_tmp_path, ds_locations):
     yield save_zarr(ds_locations, session_tmp_path, "locations.zarr")
 
 
 @pytest.fixture(scope="session")
-def site_locations_zarr_path(session_tmp_path, ds_site_generation):
-    ds_locations = _locations_dataset_from_generation(ds_site_generation)
-    yield save_zarr(ds_locations, session_tmp_path, "site_locations.zarr")
+def site_locations_zarr_path(session_tmp_path, ds_site_locations):
+    yield save_zarr(ds_site_locations, session_tmp_path, "site_locations.zarr")
 
 
 @pytest.fixture()

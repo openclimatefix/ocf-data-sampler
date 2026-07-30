@@ -34,8 +34,8 @@ def convert_to_numpy_sample(
 
         da = datasets_dict[key]
 
-        # generation_mw has already been normalised in-place to a capacity factor so should be in
-        # range [0, 1]. capacity_mwp is still in MW
+        # generation_mw is expected to already been normalised by capacity so should be in the
+        # range [0, 1]. capacity_mwp is still expected to be in MW
         gen_idx = list(da["gen_param"].values).index("generation_mw")
         cap_idx = list(da["gen_param"].values).index("capacity_mwp")
 

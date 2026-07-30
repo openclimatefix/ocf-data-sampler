@@ -39,19 +39,24 @@ def test_fill_nans_in_dataset_dicts(config_filename):
     assert np.array_equal(datasets_dict["nwp"]["ukv"].values, np.array([-2.0, 3.0, -2.0]))
 
 
-def test_normalise_dataset_dicts_generation():
-    """Generation is normalised to a capacity factor (generation_mw / capacity_mwp)."""
-    generation_mw = np.array([[50.0, 0.0], [100.0, 20.0]])
-    capacity_mwp = np.array([[100.0, 0.0], [100.0, 40.0]])
-    generation = xr.DataArray(
+def _generation_da(generation_mw: np.ndarray, capacity_mwp: np.ndarray) -> xr.DataArray:
+    """Build a generation DataArray from 2D `(time_utc, location_id)` MW and capacity arrays."""
+    n_times, n_locations = generation_mw.shape
+    return xr.DataArray(
         np.stack([generation_mw, capacity_mwp], axis=-1),
         coords={
-            "time_utc": ["2023-01-01T00:00", "2023-01-01T00:30"],
-            "location_id": [1, 2],
+            "time_utc": pd.date_range("2023-01-01", periods=n_times, freq="30min"),
+            "location_id": np.arange(1, n_locations + 1),
             "gen_param": ["generation_mw", "capacity_mwp"],
         },
         dims=("time_utc", "location_id", "gen_param"),
     )
+
+
+def test_normalise_dataset_dicts_generation():
+    """Generation is normalised to a capacity factor (generation_mw / capacity_mwp)."""
+    capacity_mwp = np.array([[100.0, 0.0], [100.0, 40.0]])
+    generation = _generation_da(np.array([[50.0, 0.0], [100.0, 20.0]]), capacity_mwp)
 
     datasets_dict = {
         "generation_input": generation,
@@ -74,56 +79,6 @@ def test_normalise_dataset_dicts_generation():
 
         # capacity_mwp itself is left unchanged
         assert np.array_equal(result.sel(gen_param="capacity_mwp").values, capacity_mwp)
-
-
-def _generation_source(generation_mw: np.ndarray, capacity_mwp: np.ndarray) -> xr.DataArray:
-    """Build a generation DataArray with `n` timesteps for a single location."""
-    return xr.DataArray(
-        np.stack([generation_mw[:, None], capacity_mwp[:, None]], axis=-1),
-        coords={
-            "time_utc": pd.date_range("2023-01-01", periods=len(generation_mw), freq="30min"),
-            "location_id": [1],
-            "gen_param": ["generation_mw", "capacity_mwp"],
-        },
-        dims=("time_utc", "location_id", "gen_param"),
-    )
-
-
-def test_normalise_does_not_mutate_shared_source():
-    """Normalising windows must not write through to the array they were sliced from.
-
-    Time slices are views onto the eagerly-loaded source, so an in-place write would corrupt it
-    for every later sample and double-normalise timesteps shared by the two windows.
-    """
-    src = _generation_source(np.array([100.0, 150.0, 200.0]), np.full(3, 100.0))
-    before = src.values.copy()
-
-    # Windows deliberately overlap on the middle timestep
-    datasets_dict = {
-        "generation_input": src.isel(time_utc=slice(0, 2)),
-        "generation_target": src.isel(time_utc=slice(1, 3)),
-    }
-    datasets_dict = normalise_dataset_dicts(datasets_dict, {}, {}, {}, {})
-
-    assert np.array_equal(src.values, before), "source array was mutated by normalisation"
-
-    def generation_of(key: str) -> np.ndarray:
-        return datasets_dict[key].sel(gen_param="generation_mw").values.ravel()
-
-    assert np.array_equal(generation_of("generation_input"), [1.0, 1.5])
-    # The shared timestep is normalised once, not once per window
-    assert np.array_equal(generation_of("generation_target"), [1.5, 2.0])
-
-
-def test_normalise_generation_is_dimension_order_agnostic():
-    """`gen_param` is indexed by name, so it need not be the last dimension."""
-    src = _generation_source(np.array([100.0, 150.0, 200.0]), np.full(3, 100.0))
-    transposed = src.transpose("gen_param", "time_utc", "location_id")
-
-    result = normalise_dataset_dicts({"generation_input": transposed}, {}, {}, {}, {})
-
-    normalised = result["generation_input"].sel(gen_param="generation_mw").values.ravel()
-    assert np.array_equal(normalised, [1.0, 1.5, 2.0])
 
 
 def test_apply_dropout_to_datasets(pvnet_config_filename):

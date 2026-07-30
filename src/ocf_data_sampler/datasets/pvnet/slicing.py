@@ -95,13 +95,12 @@ def reduce_spatial_extent_of_datasets(
 
 
     if "sat" in datasets_dict:
-        sat_config = config.satellite
 
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels_multiple(
             datasets_dict["sat"],
             locations,
-            height_pixels=sat_config.image_size_pixels_height,
-            width_pixels=sat_config.image_size_pixels_width,
+            height_pixels=config.satellite.image_size_pixels_height,
+            width_pixels=config.satellite.image_size_pixels_width,
         )
 
     if "generation" in datasets_dict:
@@ -153,21 +152,19 @@ def slice_datasets_by_time(
             )
 
     if "sat" in datasets_dict:
-        sat_config = config.satellite
 
         sliced_datasets_dict["sat"] = select_time_slice(
             datasets_dict["sat"],
             t0,
-            time_resolution=minutes(sat_config.time_resolution_minutes),
-            interval_start=minutes(sat_config.interval_start_minutes),
-            interval_end=minutes(sat_config.interval_end_minutes),
+            time_resolution=minutes(config.satellite.time_resolution_minutes),
+            interval_start=minutes(config.satellite.interval_start_minutes),
+            interval_end=minutes(config.satellite.interval_end_minutes),
         )
 
     if "generation" in datasets_dict:
-        generation_config = config.generation
         for key, window_config in (
-            ("generation_input", generation_config.input),
-            ("generation_target", generation_config.target),
+            ("generation_input", config.generation.input),
+            ("generation_target", config.generation.target),
         ):
             if window_config is None:
                 continue
@@ -175,7 +172,7 @@ def slice_datasets_by_time(
             sliced_datasets_dict[key] = select_time_slice(
                 datasets_dict["generation"],
                 t0,
-                time_resolution=minutes(generation_config.time_resolution_minutes),
+                time_resolution=minutes(config.generation.time_resolution_minutes),
                 interval_start=minutes(window_config.interval_start_minutes),
                 interval_end=minutes(window_config.interval_end_minutes),
             )

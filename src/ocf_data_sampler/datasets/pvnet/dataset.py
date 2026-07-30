@@ -289,7 +289,9 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                 "Generation data has nans so t0s are handled separately for each location_id.",
             )
             # If non-identical times per location, find valid t0s per location id
-            valid_t0_and_location_ids = self.find_valid_t0_and_location_ids(datasets_dict, config)
+            valid_t0_and_location_ids = self.find_valid_t0_and_location_ids(
+                datasets_dict, locations, config,
+            )
 
             # Filter t0 times to given range
             if time_periods is not None:
@@ -355,6 +357,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
     @staticmethod
     def find_valid_t0_and_location_ids(
         datasets_dict: SourceDict,
+        locations: list[Location],
         config: PVNetDataConfig,
     ) -> pd.DataFrame:
         """Find the t0 times where all of the requested input data is available for each location.
@@ -365,6 +368,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         Args:
             datasets_dict: A dictionary of input datasets
+            locations: The locations to find valid t0 times for
             config: PVNetDataConfig file
         """
         # Get valid time period for nwp and satellite
@@ -372,23 +376,23 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         valid_time_periods = find_valid_time_periods(datasets_without_generation, config)
 
         # Loop over each location in system id and obtain valid periods
-        generations = datasets_dict["generation"]
-        location_ids = generations.location_id.values
-        generation_config = config.generation
         generation_windows = [
-            w for w in (generation_config.input, generation_config.target) if w is not None
+            w for w in (config.generation.input, config.generation.target) if w is not None
         ]
         valid_t0_and_location_ids = []
-        for location_id in location_ids:
-            generation = generations.sel(location_id=location_id)
-            # Drop NaN values
-            generation = generation.dropna(dim="time_utc")
+        for location in locations:
+            # Drop NaN values for location
+            generation = (
+                datasets_dict["generation"]
+                .sel(location_id=location.id)
+                .dropna(dim="time_utc")
+            )
 
             # Obtain valid time periods for this location, for each configured window
             time_periods_per_window = [
                 find_contiguous_t0_periods(
                     generation["time_utc"].values,
-                    time_resolution=minutes(generation_config.time_resolution_minutes),
+                    time_resolution=minutes(config.generation.time_resolution_minutes),
                     interval_start=minutes(window_config.interval_start_minutes),
                     interval_end=minutes(window_config.interval_end_minutes),
                 )
@@ -405,7 +409,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             )
 
             valid_t0_per_location = pd.DataFrame(index=valid_t0_times_per_location)
-            valid_t0_per_location["location_id"] = location_id
+            valid_t0_per_location["location_id"] = location.id
             valid_t0_and_location_ids.append(valid_t0_per_location)
 
         valid_t0_and_location_ids = pd.concat(valid_t0_and_location_ids)

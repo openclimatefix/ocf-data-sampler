@@ -199,11 +199,10 @@ def apply_dropout_to_datasets(
             dropout_frac=config.satellite.dropout_fraction,
         )
 
+    # generation_target is never dropped out since it's the prediction target
     if "generation_input" in datasets_dict:
 
-        # capacity_mwp is dropped out along with generation_mw - if the input feed was stale for
-        # this timestep, we didn't know the capacity at that point either.
-        # generation_target is never dropped out - it's the prediction target, not an input.
+        # Note: capacity_mwp is dropped out along with generation_mw
         apply_dropout(
             datasets_dict["generation_input"],
             t0,
