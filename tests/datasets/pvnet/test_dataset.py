@@ -87,6 +87,7 @@ def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
 
 
 def test_get_time_periods_mask():
+    # The periods are half-open - inclusive of the start time, exclusive of the end time
     times = pd.to_datetime([
         "2023-01-01 05:00",
         "2023-01-01 06:00",
@@ -96,7 +97,7 @@ def test_get_time_periods_mask():
         "2023-01-01 12:00",
         "2023-01-01 12:30",
         "2023-01-01 13:00",
-    ])
+    ]).values
 
     mask = get_time_periods_mask(
         times,
@@ -105,15 +106,26 @@ def test_get_time_periods_mask():
             ("2023-01-01 12:00", "2023-01-01 13:00"),
         ],
     )
-    expected_mask = np.array([False, True, True, True, False, True, True, True])
+    expected_mask = np.array([False, True, True, False, False, True, True, False])
     assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
 
     mask = get_time_periods_mask(
         times,
         time_periods=[(None, "2023-01-01 07:00")],
     )
-    expected_mask = np.array([True, True, True, True, False, False, False, False])
+    expected_mask = np.array([True, True, True, False, False, False, False, False])
     assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
+
+    mask = get_time_periods_mask(
+        times,
+        time_periods=[("2023-01-01 12:30", None)],
+    )
+    expected_mask = np.array([False, False, False, False, False, False, True, True])
+    assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
+
+    # Unbounded in both directions - no time is filtered out, including the last one
+    mask = get_time_periods_mask(times, time_periods=[(None, None)])
+    assert mask.all(), f"Expected all times to be kept but got {mask}"
 
 
 def _expected_num_locations(dataset, catalog_ids):
@@ -130,8 +142,9 @@ def test_pvnet_dataset(pvnet_config_filename):
         ],
     )
 
-    expected_t0s = 6  # 2 time periods each with 3 t0s (inclusive) at 30 minute intervals
+    expected_t0s = 4  # 2 half-open time periods each with 2 t0s at 30 minute intervals
     num_locs = _expected_num_locations(dataset, LOCATION_IDS)
+
     assert len(dataset.locations) == num_locs
 
     assert len(dataset.valid_t0_times) == expected_t0s
@@ -170,8 +183,9 @@ def test_pvnet_dataset_sites(pvnet_site_config_filename):
         ],
     )
 
-    expected_t0s = 6  # 2 time periods each with 3 t0s (inclusive) at 30 minute intervals
+    expected_t0s = 4  # 2 half-open time periods each with 2 t0s at 30 minute intervals
     num_locs = _expected_num_locations(dataset, SITE_LOCATION_IDS)
+
     assert len(dataset.locations) == num_locs
     # Should be less than num_locs * expected_t0s as not all locations have data for all t0s
     # in the time periods
@@ -179,6 +193,14 @@ def test_pvnet_dataset_sites(pvnet_site_config_filename):
 
     sample = dataset[0]
     _pvnet_dataset_sample_check(sample, dataset.config)
+
+
+def test_pvnet_dataset_sites_unbounded_time_periods(pvnet_site_config_filename):
+    """Unbounded time periods on the per-location t0 path (NaN-bearing generation)."""
+    dataset = PVNetDataset(pvnet_site_config_filename, time_periods=[(None, None)])
+    assert not dataset.complete_generation
+    # An unbounded period should filter out nothing
+    assert len(dataset) == len(PVNetDataset(pvnet_site_config_filename))
 
 
 def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
