@@ -1,3 +1,4 @@
+import os
 import pickle
 
 import numpy as np
@@ -393,6 +394,19 @@ def test_pvnet_dataset_pickle(tmp_path, pvnet_config_filename):
     dataset = PVNetDataset(pvnet_config_filename)
     pickle_bytes = pickle.dumps(dataset)
     _ = pickle.loads(pickle_bytes)  # noqa: S301
+
+
+def test_pvnet_dataset_pickle_missing_presaved_file(tmp_path, pvnet_config_filename):
+    """Unpickling must fail loudly if the presaved state file has gone missing."""
+    pickle_path = f"{tmp_path}.pkl"
+    dataset = PVNetDataset(pvnet_config_filename)
+    dataset.presave_pickle(pickle_path)
+    pickle_bytes = pickle.dumps(dataset)
+
+    os.remove(pickle_path)
+
+    with pytest.raises(FileNotFoundError, match="Presaved state file not found"):
+        _ = pickle.loads(pickle_bytes)  # noqa: S301
 
 
 def test_pvnet_dataset_get_sample(pvnet_config_filename):
