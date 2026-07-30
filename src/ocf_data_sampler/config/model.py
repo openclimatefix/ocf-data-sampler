@@ -1,6 +1,6 @@
 """Configuration model for the PVNet dataset."""
 
-from collections.abc import Iterator
+from collections.abc import ItemsView, Iterator, KeysView
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
@@ -281,13 +281,12 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
 
 
 class MultiNWP(RootModel):
-    """Configuration for multiple NWPs."""
+    """Configuration for multiple NWPs.
+
+    The NWP sources are accessed dict-style - `config.nwp["ukv"]`, not `config.nwp.ukv`.
+    """
 
     root: dict[str, NWP]
-
-    @override
-    def __getattr__(self, item: str) -> NWP:
-        return self.root[item]
 
     @override
     def __getitem__(self, item: str) -> NWP:
@@ -301,11 +300,11 @@ class MultiNWP(RootModel):
     def __iter__(self) -> Iterator:
         return iter(self.root)
 
-    def keys(self) -> Iterator[str]:
+    def keys(self) -> KeysView[str]:
         """Returns dictionary-like keys."""
         return self.root.keys()
 
-    def items(self) -> Iterator[tuple[str, NWP]]:
+    def items(self) -> ItemsView[str, NWP]:
         """Returns dictionary-like items."""
         return self.root.items()
 
