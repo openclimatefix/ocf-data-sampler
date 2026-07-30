@@ -27,14 +27,16 @@ def encode_datetimes(datetimes: NDArray[np.datetime64]) -> dict[str, NDArray[np.
     day_fraction = get_day_fraction(datetimes)
     day_of_year = get_day_of_year(datetimes)
 
+    days_in_year = 365 + get_is_leap_year(datetimes).astype(int)
+
     time_in_radians = (2 * np.pi) * day_fraction
-    date_in_radians = (2 * np.pi) * (day_of_year / 365)
+    date_in_radians = (2 * np.pi) * ((day_of_year - 1) / days_in_year)
 
     return {
-        "date_sin": np.sin(date_in_radians),
-        "date_cos": np.cos(date_in_radians),
-        "time_sin": np.sin(time_in_radians),
-        "time_cos": np.cos(time_in_radians),
+        "date_sin": np.sin(date_in_radians).astype(np.float32),
+        "date_cos": np.cos(date_in_radians).astype(np.float32),
+        "time_sin": np.sin(time_in_radians).astype(np.float32),
+        "time_cos": np.cos(time_in_radians).astype(np.float32),
     }
 
 
