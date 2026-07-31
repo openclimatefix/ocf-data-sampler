@@ -13,7 +13,6 @@ import tensorstore as ts
 import xarray as xr
 import xarray_tensorstore as xrt
 
-
 ZarrSource: TypeAlias = str | list[str] | tuple[str, ...]
 
 
@@ -44,7 +43,7 @@ def _validate(datasets: Sequence[xr.Dataset], concat_dim: str) -> None:
         for dim, size in first.sizes.items():
             if dim != concat_dim and ds.sizes.get(dim) != size:
                 raise ValueError(f"dataset {i}: {dim}={ds.sizes.get(dim)}, expected {size}")
-    
+
         # All data_vars must have the same dims and dtype
         for name in first.data_vars:
             if ds[name].dims != first[name].dims or ds[name].dtype != first[name].dtype:
@@ -54,7 +53,7 @@ def _validate(datasets: Sequence[xr.Dataset], concat_dim: str) -> None:
                 )
 
         # All coords and data_vars which don't contain the concat_dim dimension must be identical
-        # Note: `.equals()` reads lazy data into memory. This is fine for coords and static vars, 
+        # Note: `.equals()` reads lazy data into memory. This is fine for coords and static vars,
         # which should be small
         for name in [*first.coords, *first.data_vars]:
             if concat_dim not in first[name].dims and not ds[name].equals(first[name]):
@@ -66,7 +65,7 @@ def _validate(datasets: Sequence[xr.Dataset], concat_dim: str) -> None:
 def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Dataset:
     """Concatenate tensorstore-backed Datasets along an existing dimension, lazily.
 
-    Data variables containing the `concat_dim` dimension are concatenated lazily using TensorStore. 
+    Data variables containing the `concat_dim` dimension are concatenated lazily using TensorStore.
     Everything else must match across datasets and is taken from the first dataset, as are attrs.
 
     Args:
@@ -79,11 +78,11 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
     _validate(datasets, concat_dim)
     first = datasets[0]
 
-    # Create a new shell dataset which contains only the concatenated coords. We will handle the 
+    # Create a new shell dataset which contains only the concatenated coords. We will handle the
     # data_vars separately so we can lazily concatenate them with tensorstore.
-    # - combine_attrs="override" keeps the attrs of the first dataset, which is the behaviour we 
-    #   copy for the data_vars below. 
-    # - join="exact" ensures that the coords are identical across datasets, which is a bakstop for 
+    # - combine_attrs="override" keeps the attrs of the first dataset, which is the behaviour we
+    #   copy for the data_vars below.
+    # - join="exact" ensures that the coords are identical across datasets, which is a bakstop for
     #   the _validate() check above.
     out = xr.concat(
         [ds.drop_vars(first.data_vars) for ds in datasets],
