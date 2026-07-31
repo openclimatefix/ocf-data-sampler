@@ -2,7 +2,7 @@ import dask.array
 import numpy as np
 import xarray as xr
 
-from ocf_data_sampler.common.xr_tensorstore import _open_single_zarr
+from ocf_data_sampler.common.xr_tensorstore import open_zarr_paths
 from ocf_data_sampler.datasets.pvnet.materialise import load, load_data_dict
 
 
@@ -30,7 +30,7 @@ def test_load_data_dict(tmp_path):
     da_dask.to_dataset(name="dummy_array").to_zarr(tmp_path)
 
     # Re-open with tensorstore
-    da_ts = _open_single_zarr(str(tmp_path)).dummy_array
+    da_ts = open_zarr_paths(str(tmp_path)).dummy_array
 
     # Create a nested dictionary with tensorstore arrays
     lazy_data_dict = {
