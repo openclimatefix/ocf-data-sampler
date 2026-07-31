@@ -4,6 +4,8 @@ from pydantic import ValidationError
 from ocf_data_sampler.config.load import load_yaml_configuration
 from ocf_data_sampler.config.model import PVNetDataConfig
 
+_MINIMAL_SAMPLING_GRID = {"locations_zarr_path": "locations.zarr", "t0_resolution_minutes": 30}
+
 
 def _load_config_and_provider(config_path):
     config = load_yaml_configuration(config_path)
@@ -14,9 +16,6 @@ def _load_config_and_provider(config_path):
 def _validate_configuration(config):
     """Recreate config instance from dict to trigger validation."""
     return PVNetDataConfig(**config.model_dump())
-
-
-_MINIMAL_SAMPLING_GRID = {"locations_zarr_path": "locations.zarr", "t0_resolution_minutes": 30}
 
 
 def test_default_configuration():
