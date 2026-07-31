@@ -11,6 +11,7 @@ from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.datasets.pvnet.dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
+    get_locations,
     get_time_periods_mask,
 )
 
@@ -133,6 +134,24 @@ def test_pvnet_dataset(pvnet_config_filename):
     sample = dataset[0]
 
     _pvnet_dataset_sample_check(sample, dataset.config)
+
+
+def test_get_locations_exclude_ids(locations_csv_path):
+    excluded_ids = [1, 5, 317]
+    locations = get_locations(locations_csv_path, exclude_ids=excluded_ids)
+
+    assert len(locations) == 317 - len(excluded_ids)
+    assert not set(excluded_ids) & {loc.id for loc in locations}
+
+
+def test_get_locations_exclude_unknown_id(locations_csv_path):
+    with pytest.raises(ValueError, match="not in the locations data"):
+        get_locations(locations_csv_path, exclude_ids=[1, 9999])
+
+
+def test_get_locations_exclude_all_ids(locations_csv_path):
+    with pytest.raises(ValueError, match=r"All location IDs .* have been excluded"):
+        get_locations(locations_csv_path, exclude_ids=list(range(1, 318)))
 
 
 def test_pvnet_dataset_sites(pvnet_site_config_filename):

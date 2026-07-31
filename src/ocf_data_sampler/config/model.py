@@ -394,11 +394,16 @@ class Generation(Base):
 class SamplingGrid(Base):
     """Configuration for the (location, time) grid that t0 times are sampled from."""
 
-    locations_zarr_path: str = Field(
+    locations_csv_path: str = Field(
         ...,
-        description="Absolute or relative zarr filepath to the locations metadata (location IDs "
-        "and their coordinates) - see `ocf_data_sampler.load.locations.open_locations`. Prefix "
-        "with a protocol like s3:// to read from alternative filesystems.",
+        description="Absolute or relative CSV filepath to the locations metadata (location IDs "
+        "and their coordinates) - see `ocf_data_sampler.load.locations.open_locations`.",
+    )
+
+    exclude_location_ids: list[int] = Field(
+        default=[],
+        description="Location IDs from the locations metadata to drop from the sampling grid. "
+        "Every ID listed must be present in the locations data.",
     )
 
     t0_resolution_minutes: int = Field(
@@ -407,6 +412,14 @@ class SamplingGrid(Base):
         description="The cadence t0 candidates are enumerated at, needed to compute valid t0 "
         "times regardless of which other input sources are configured.",
     )
+
+    @field_validator("exclude_location_ids")
+    def validate_exclude_location_ids_unique(cls, v: list[int]) -> list[int]:
+        """Validate 'exclude_location_ids'."""
+        duplicates = {i for i in v if v.count(i) > 1}
+        if duplicates:
+            raise ValueError(f"exclude_location_ids contains duplicates: {sorted(duplicates)}")
+        return v
 
 
 class SolarPosition(TimeWindowMixin):

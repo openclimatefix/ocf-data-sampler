@@ -1,5 +1,5 @@
 sampling_grid:
-  locations_zarr_path: set_in_temp_file
+  locations_csv_path: set_in_temp_file
   t0_resolution_minutes: 30
 
 generation:

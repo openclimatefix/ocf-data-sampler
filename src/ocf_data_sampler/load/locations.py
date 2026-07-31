@@ -1,47 +1,51 @@
 """Functions for loading locations metadata.
 
-Locations data schema: a Zarr file with the following data variables and dimensions/coordinates:
+Locations data schema: a CSV file with the following columns:
 
-Dimensions: (location_id,)
-Data Variables:
-    longitude (location_id): The longitudes of the locations
-    latitude (location_id): The latitudes of the locations
-Coordinates:
-    location_id (location_id): The integer IDs of the locations
+    location_id: The integer IDs of the locations
+    longitude: The longitudes of the locations
+    latitude: The latitudes of the locations
+
+Rows must be in increasing `location_id` order, and no value may be left blank (i.e. no NaNs).
+
+A CSV is used rather than zarr since this catalogue is small and benefits from being human
+readable and hand editable. Additional columns may be included to make the file easier to work with,
+but are dropped on load.
 """
 
-import numpy as np
-import xarray as xr
+import pandas as pd
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
-from ocf_data_sampler.load.conventions import validate_coords
 
 
-def open_locations(zarr_path: str) -> xr.Dataset:
-    """Open and eagerly load the locations metadata and validate its data types.
+def open_locations(csv_path: str) -> pd.DataFrame:
+    """Open the locations metadata and validate its columns and data types.
 
     Args:
-        zarr_path: Path to the locations zarr data
+        csv_path: Path to the locations CSV data
 
     Returns:
-        xr.Dataset: The opened locations metadata
+        pd.DataFrame: The locations metadata, in increasing location ID order
     """
-    ds = xr.open_zarr(zarr_path, chunks=None)
+    column_dtypes = {
+        "location_id": "int64",
+        "longitude": "float64",
+        "latitude": "float64",
+    }
+    df = pd.read_csv(csv_path, dtype=column_dtypes)
 
-    if set(ds.data_vars) != {"longitude", "latitude"}:
+    if missing_columns := set(column_dtypes) - set(df.columns):
         raise ValueError(
-            f"Locations data should have variables 'longitude' and 'latitude', "
-            f"but found {set(ds.data_vars)} instead."
+            f"Locations data should have columns {list(column_dtypes)}, but the following "
+            f"were missing: {missing_columns}",
         )
 
-    validate_coords(ds, {"location_id": np.integer}, source="locations data")
+    # Extra columns are allowed in the file, but are dropped on load to avoid bloat
+    df = df[list(column_dtypes)]
 
-    for var in ("longitude", "latitude"):
-        if not np.issubdtype(ds[var].dtype, np.floating):
-            raise TypeError(f"{var} in locations data should be floating, not {ds[var].dtype}")
+    if df.isna().any().any():
+        raise ValueError("Locations data must not contain missing values")
 
-    ds = ds.load()
+    assert_values_unique_increasing(df["location_id"].values, "location_id")
 
-    assert_values_unique_increasing(ds["location_id"].values, "location_id")
-
-    return ds
+    return df

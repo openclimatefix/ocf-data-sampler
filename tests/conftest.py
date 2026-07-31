@@ -62,6 +62,13 @@ def create_xr_dataset(coords, data, name, attrs=None):
     return da.to_dataset(name=name)
 
 
+def save_csv(df, path, filename):
+    """Save dataframe to csv"""
+    csv_path = path / filename
+    df.to_csv(csv_path, index=False)
+    return str(csv_path)
+
+
 def save_zarr(ds, path, filename, chunks=None):
     """Save dataset to zarr"""
     if chunks:
@@ -192,47 +199,41 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     yield save_zarr(ds, session_tmp_path, "cloudcasting.zarr", chunks)
 
 
-def _locations_dataset(session_rng, location_ids):
+def _locations_dataframe(session_rng, location_ids):
     """Build a locations catalog over the given IDs, with random points in a rough UK bbox."""
     lat_min, lat_max = 49.9, 58.7
     lon_min, lon_max = -8.6, 1.8
 
-    return xr.Dataset(
-        data_vars={
-            "longitude": (
-                "location_id",
-                session_rng.uniform(lon_min, lon_max, len(location_ids)).astype("float64"),
-            ),
-            "latitude": (
-                "location_id",
-                session_rng.uniform(lat_min, lat_max, len(location_ids)).astype("float64"),
-            ),
+    return pd.DataFrame(
+        {
+            "location_id": location_ids,
+            "longitude": session_rng.uniform(lon_min, lon_max, len(location_ids)),
+            "latitude": session_rng.uniform(lat_min, lat_max, len(location_ids)),
         },
-        coords={"location_id": location_ids},
     )
 
 
 @pytest.fixture(scope="session")
-def ds_locations(session_rng):
+def df_locations(session_rng):
     """The locations catalog - the source of truth for which locations are samplable."""
-    return _locations_dataset(session_rng, np.arange(1, 318))
+    return _locations_dataframe(session_rng, np.arange(1, 318))
 
 
 @pytest.fixture(scope="session")
-def ds_site_locations(session_rng):
+def df_site_locations(session_rng):
     """The locations catalog for the site-level fixtures."""
-    return _locations_dataset(session_rng, np.arange(1, 11))
+    return _locations_dataframe(session_rng, np.arange(1, 11))
 
 
 @pytest.fixture(scope="session")
-def ds_generation(session_rng, ds_locations):
+def ds_generation(session_rng, df_locations):
     """Generation for every catalogued location, plus ID 0.
 
     ID 0 is a summation-model placeholder which the catalog deliberately does not list, so this
     exercises the filtering of generation IDs down to the catalog's locations.
     """
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    location_ids = np.concatenate([[0], ds_locations["location_id"].values])
+    location_ids = np.concatenate([[0], df_locations["location_id"].values])
 
     capacity = np.ones((len(times), len(location_ids)))
 
@@ -252,12 +253,12 @@ def ds_generation(session_rng, ds_locations):
 
 # location data (non overlapping time periods) and starting with id 1
 @pytest.fixture(scope="session")
-def ds_site_generation(session_rng, ds_site_locations):
+def ds_site_generation(session_rng, df_site_locations):
     # Define a global time range (covers all possible site periods)
     global_times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
     n_times = len(global_times)
 
-    location_ids = ds_site_locations["location_id"].values
+    location_ids = df_site_locations["location_id"].values
     n_sites = len(location_ids)
 
     # Initialize with NaNs
@@ -301,13 +302,13 @@ def site_generation_zarr_path(session_tmp_path, ds_site_generation):
 
 
 @pytest.fixture(scope="session")
-def locations_zarr_path(session_tmp_path, ds_locations):
-    yield save_zarr(ds_locations, session_tmp_path, "locations.zarr")
+def locations_csv_path(session_tmp_path, df_locations):
+    yield save_csv(df_locations, session_tmp_path, "locations.csv")
 
 
 @pytest.fixture(scope="session")
-def site_locations_zarr_path(session_tmp_path, ds_site_locations):
-    yield save_zarr(ds_site_locations, session_tmp_path, "site_locations.zarr")
+def site_locations_csv_path(session_tmp_path, df_site_locations):
+    yield save_csv(df_site_locations, session_tmp_path, "site_locations.csv")
 
 
 @pytest.fixture()
@@ -316,14 +317,14 @@ def pvnet_config_filename(
     config_filename,
     nwp_ukv_zarr_path,
     generation_zarr_path,
-    locations_zarr_path,
+    locations_csv_path,
     sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
     config.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
     config.satellite.zarr_path = sat_zarr_path
     config.generation.zarr_path = generation_zarr_path
-    config.sampling_grid.locations_zarr_path = locations_zarr_path
+    config.sampling_grid.locations_csv_path = locations_csv_path
 
     path = tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))
@@ -336,14 +337,14 @@ def pvnet_site_config_filename(
     config_filename,
     nwp_ukv_zarr_path,
     site_generation_zarr_path,
-    site_locations_zarr_path,
+    site_locations_csv_path,
     sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
     config.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
     config.satellite.zarr_path = sat_zarr_path
     config.generation.zarr_path = site_generation_zarr_path
-    config.sampling_grid.locations_zarr_path = site_locations_zarr_path
+    config.sampling_grid.locations_csv_path = site_locations_csv_path
 
     path = session_tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))

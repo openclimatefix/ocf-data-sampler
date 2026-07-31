@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from ocf_data_sampler.config.load import load_yaml_configuration
 from ocf_data_sampler.config.model import PVNetDataConfig
 
-_MINIMAL_SAMPLING_GRID = {"locations_zarr_path": "locations.zarr", "t0_resolution_minutes": 30}
+_MINIMAL_SAMPLING_GRID = {"locations_csv_path": "locations.csv", "t0_resolution_minutes": 30}
 
 
 def _load_config_and_provider(config_path):

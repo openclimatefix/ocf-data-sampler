@@ -45,29 +45,36 @@ logger = logging.getLogger(__name__)
 
 
 
-def get_locations(zarr_path: str) -> list[Location]:
+def get_locations(csv_path: str, exclude_ids: list[int] | None = None) -> list[Location]:
     """Load the locations metadata and build the list of all locations.
 
     Args:
-        zarr_path: Path to the locations zarr data
+        csv_path: Path to the locations CSV data
+        exclude_ids: Location IDs to drop from the returned locations
     """
-    locations_data = open_locations(zarr_path)
+    locations_data = open_locations(csv_path)
 
-    locations = []
-    location_ids = locations_data["location_id"].values
+    if exclude_ids:
+        missing_ids = np.setdiff1d(exclude_ids, locations_data["location_id"].values)
+        if len(missing_ids) > 0:
+            raise ValueError(
+                f"Cannot exclude location IDs which are not in the locations data: {missing_ids}",
+            )
 
-    for location_id in location_ids:
-        loc_data = locations_data.sel(location_id=location_id)
-        locations.append(
-            Location(
-                x=loc_data["longitude"].values,
-                y=loc_data["latitude"].values,
-                coord_system="lon_lat",
-                id=int(location_id),
-            ),
+        locations_data = locations_data[~locations_data["location_id"].isin(exclude_ids)]
+
+        if len(locations_data) == 0:
+            raise ValueError("All location IDs in the locations data have been excluded")
+
+    return [
+        Location(
+            x=row.longitude,
+            y=row.latitude,
+            coord_system="lon_lat",
+            id=int(row.location_id),
         )
-
-    return locations
+        for row in locations_data.itertuples()
+    ]
 
 
 def xarray_to_lightarray_dict(
@@ -255,7 +262,10 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         config = load_yaml_configuration(config_filename)
 
-        locations = get_locations(config.sampling_grid.locations_zarr_path)
+        locations = get_locations(
+            config.sampling_grid.locations_csv_path,
+            config.sampling_grid.exclude_location_ids,
+        )
 
         datasets_dict = get_dataset_dict(config)
 
