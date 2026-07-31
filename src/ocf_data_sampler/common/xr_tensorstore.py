@@ -33,10 +33,14 @@ def _validate(datasets: Sequence[xr.Dataset], concat_dim: str) -> None:
 
         # All coords and data_vars must be present in all datasets
         if set(ds.coords) != set(first.coords):
-            raise ValueError(f"dataset {i}: coords {sorted(ds.coords)} != {sorted(first.coords)}")
+            raise ValueError(
+                f"dataset {i}: coords {sorted(ds.coords, key=str)} "
+                f"!= {sorted(first.coords, key=str)}"
+            )
         if set(ds.data_vars) != set(first.data_vars):
             raise ValueError(
-                f"dataset {i}: data_vars {sorted(ds.data_vars)} != {sorted(first.data_vars)}"
+                f"dataset {i}: data_vars {sorted(ds.data_vars, key=str)} "
+                f"!= {sorted(first.data_vars, key=str)}"
             )
 
         # All dims except concat_dim must match in size
