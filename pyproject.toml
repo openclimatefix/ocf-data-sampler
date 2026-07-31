@@ -39,6 +39,7 @@ dev = [
     # Testing
     "pytest",
     "pvlib",
+    "dask",
     "ruff >= 0.9.2",
     "ty",
     # LSP Support
