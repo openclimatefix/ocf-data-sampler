@@ -88,7 +88,7 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
     #   copy for the data_vars below.
     # - join="exact" ensures that the coords are identical across datasets, which is a bakstop for
     #   the _validate() check above.
-    out = xr.concat(
+    ds_out = xr.concat(
         [ds.drop_vars(first.data_vars) for ds in datasets],
         dim=concat_dim,
         join="exact",
@@ -101,10 +101,10 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
                 [_tensorstore_of(ds[name]) for ds in datasets],
                 axis=da.dims.index(concat_dim),
             )
-            out[name] = xr.Variable(da.dims, xrt._TensorStoreAdapter(store), attrs=da.attrs)
+            ds_out[name] = xr.Variable(da.dims, xrt._TensorStoreAdapter(store), attrs=da.attrs)
         else:
-            out[name] = da.variable  # attrs travel with the Variable; xarray copies on assign
-    return out
+            ds_out[name] = da.variable  # attrs travel with the Variable; xarray copies on assign
+    return ds_out
 
 
 def open_zarr_paths(zarr_path: ZarrSource, concat_dim: str | None = None) -> xr.Dataset:
