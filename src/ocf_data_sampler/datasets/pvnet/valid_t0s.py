@@ -81,7 +81,10 @@ def find_valid_time_periods(
             raise ValueError("No valid t0 periods found for satellite data")
 
     if "generation" in datasets_dict:
-        for window_config in (config.generation.input, config.generation.target):
+        for window_name, window_config in (
+            ("input", config.generation.input),
+            ("target", config.generation.target),
+        ):
             if window_config is None:
                 continue
 
@@ -93,13 +96,14 @@ def find_valid_time_periods(
             )
 
             if len(time_periods) == 0:
-                raise ValueError("No valid t0 periods found for generation data")
+                raise ValueError(
+                    f"No valid t0 periods found for {window_name} generation data",
+                )
 
             contiguous_time_periods.append(time_periods)
 
     # Find joint overlapping contiguous time periods
     valid_time_periods = intersect_time_periods(contiguous_time_periods)
-
 
     # check there are some valid time periods
     if len(valid_time_periods) == 0:
