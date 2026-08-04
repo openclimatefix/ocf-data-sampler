@@ -14,8 +14,10 @@ class PickleCacheMixin:
     def presave_pickle(self, pickle_path: str) -> None:
         """Save the full object state to a pickle file and store the pickle path.
 
-        The object is then pickled by reference, so the file must be readable wherever it is
-        unpickled. The state is a snapshot - call this again after mutating the object.
+        The object will be pickled by reference after calling this function, so the 
+        file must be readable wherever it is unpickled. 
+        
+        The saved state is a snapshot - call this again after mutating the object.
 
         Args:
             pickle_path: Where to write the object state to.
