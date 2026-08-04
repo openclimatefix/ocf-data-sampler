@@ -75,10 +75,7 @@ def find_valid_time_periods(
         contiguous_time_periods.append(time_periods)
 
     if "generation" in datasets_dict:
-        for window_name, window_config in (
-            ("input", config.generation.input),
-            ("target", config.generation.target),
-        ):
+        for window_config in (config.generation.input, config.generation.target):
             if window_config is None:
                 continue
 
