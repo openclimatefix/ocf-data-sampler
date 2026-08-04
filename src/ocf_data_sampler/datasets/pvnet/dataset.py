@@ -399,7 +399,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             locations: The locations to find valid t0 times for
             config: PVNetDataConfig file
         """
-        # Get valid time period for inputs other than generation
+        # Get valid time periods for inputs other than generation
         non_gen_time_periods = find_valid_time_periods(
             datasets_dict={k: v for k, v in datasets_dict.items() if k != "generation"},
             config=config,
