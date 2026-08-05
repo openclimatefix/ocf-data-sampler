@@ -16,7 +16,7 @@ import xarray_tensorstore as xrt
 ZarrSource: TypeAlias = str | list[str] | tuple[str, ...]
 
 
-def _tensorstore_of(da: xr.DataArray) -> ts.TensorStore:
+def _extract_tensorstore(da: xr.DataArray) -> ts.TensorStore:
     """Extract the backing TensorStore, or fail with a message that says why."""
     data = da.variable._data
     if not isinstance(data, xrt._TensorStoreAdapter):
@@ -98,7 +98,7 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
     for name, da in first.data_vars.items():
         if concat_dim in da.dims:
             store = ts.concat(
-                [_tensorstore_of(ds[name]) for ds in datasets],
+                [_extract_tensorstore(ds[name]) for ds in datasets],
                 axis=da.dims.index(concat_dim),
             )
             ds_out[name] = xr.Variable(da.dims, xrt._TensorStoreAdapter(store), attrs=da.attrs)

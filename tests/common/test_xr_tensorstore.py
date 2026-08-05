@@ -3,7 +3,7 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.common.xr_tensorstore import (
-    _tensorstore_of,
+    _extract_tensorstore,
     concat_tensorstore,
     open_zarr_paths,
 )
@@ -81,7 +81,7 @@ def test_concat_stays_tensorstore_backed(tensorstore_datasets):
     ds_ts = concat_tensorstore(tensorstore_datasets, concat_dim="init_time_utc")
 
     # Raises TypeError if the variable has been materialised
-    store = _tensorstore_of(ds_ts["ECMWF_UK"])
+    store = _extract_tensorstore(ds_ts["ECMWF_UK"])
     assert store.shape == ds_ts["ECMWF_UK"].shape
 
 
