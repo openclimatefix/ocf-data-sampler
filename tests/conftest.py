@@ -14,6 +14,12 @@ CONFIG_DIR = TEST_DIR / "fixtures" / "configs"
 NWP_FREQ = pd.Timedelta("3h")
 RANDOM_SEED = 42
 
+# The LOCATION_IDS catalog mirrors the GSPs: ID 0 is the national aggregate and IDs 1-317 are the
+# regional GSPs
+LOCATION_IDS = tuple(range(318))
+# The SITE_LOCATION_IDS catalog has no national aggregate since they mirror different sites
+SITE_LOCATION_IDS = tuple(range(1, 11))
+
 UK_SAT_AREA = """msg_seviri_rss_3km:
     description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
     projection:
@@ -216,33 +222,31 @@ def _locations_dataframe(session_rng, location_ids):
 @pytest.fixture(scope="session")
 def df_locations(session_rng):
     """The locations catalog - the source of truth for which locations are samplable."""
-    return _locations_dataframe(session_rng, np.arange(1, 318))
+    return _locations_dataframe(session_rng, LOCATION_IDS)
 
 
 @pytest.fixture(scope="session")
 def df_site_locations(session_rng):
     """The locations catalog for the site-level fixtures."""
-    return _locations_dataframe(session_rng, np.arange(1, 11))
+    return _locations_dataframe(session_rng, SITE_LOCATION_IDS)
 
 
 @pytest.fixture(scope="session")
 def ds_generation(session_rng, df_locations):
-    """Generation for every catalogued location, plus ID 0.
+    """Generation for every catalogued location with no missing generation data"""
 
-    ID 0 is a summation-model placeholder which the catalog deliberately does not list, so this
-    exercises the filtering of generation IDs down to the catalog's locations.
-    """
     times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    location_ids = np.concatenate([[0], df_locations["location_id"].values])
+    location_ids = df_locations["location_id"].values
+    shape = (len(times), len(location_ids))
 
-    capacity = np.ones((len(times), len(location_ids)))
-
-    generation = session_rng.uniform(0, 200, (len(times), len(location_ids))).astype(np.float32)
+    capacity = 200
+    capacities = np.full(shape, fill_value=capacity, dtype="float32")
+    generations = session_rng.uniform(0, capacity, shape).astype("float32")
 
     return xr.Dataset(
         data_vars={
-            "capacity_mwp": (("time_utc", "location_id"), capacity),
-            "generation_mw": (("time_utc", "location_id"), generation),
+            "capacity_mwp": (("time_utc", "location_id"), capacities),
+            "generation_mw": (("time_utc", "location_id"), generations),
         },
         coords={
             "time_utc": times,
@@ -345,6 +349,8 @@ def pvnet_site_config_filename(
     config.satellite.zarr_path = sat_zarr_path
     config.generation.zarr_path = site_generation_zarr_path
     config.sampling_grid.locations_csv_path = site_locations_csv_path
+    # The site catalog has no national aggregate, so nothing to exclude
+    config.sampling_grid.exclude_location_ids = []
 
     path = session_tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))

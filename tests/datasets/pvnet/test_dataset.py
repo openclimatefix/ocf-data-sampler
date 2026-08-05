@@ -14,6 +14,7 @@ from ocf_data_sampler.datasets.pvnet.dataset import (
     get_locations,
     get_time_periods_mask,
 )
+from tests.conftest import LOCATION_IDS, SITE_LOCATION_IDS
 
 
 def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
@@ -115,6 +116,11 @@ def test_get_time_periods_mask():
     assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
 
 
+def _expected_num_locations(dataset, catalog_ids):
+    """The catalogued locations which survive the config's exclusion list."""
+    return len(catalog_ids) - len(dataset.config.sampling_grid.exclude_location_ids)
+
+
 def test_pvnet_dataset(pvnet_config_filename):
     dataset = PVNetDataset(
         pvnet_config_filename,
@@ -125,7 +131,7 @@ def test_pvnet_dataset(pvnet_config_filename):
     )
 
     expected_t0s = 6  # 2 time periods each with 3 t0s (inclusive) at 30 minute intervals
-    num_locs = 317 # Quantity of regional GSPs
+    num_locs = _expected_num_locations(dataset, LOCATION_IDS)
     assert len(dataset.locations) == num_locs
 
     assert len(dataset.valid_t0_times) == expected_t0s
@@ -137,21 +143,22 @@ def test_pvnet_dataset(pvnet_config_filename):
 
 
 def test_get_locations_exclude_ids(locations_csv_path):
-    excluded_ids = [1, 5, 317]
+    excluded_ids = [LOCATION_IDS[0], LOCATION_IDS[5], LOCATION_IDS[-1]]
     locations = get_locations(locations_csv_path, exclude_ids=excluded_ids)
 
-    assert len(locations) == 317 - len(excluded_ids)
+    assert len(locations) == len(LOCATION_IDS) - len(excluded_ids)
     assert not set(excluded_ids) & {loc.id for loc in locations}
 
 
 def test_get_locations_exclude_unknown_id(locations_csv_path):
+    unknown_id = max(LOCATION_IDS) + 1
     with pytest.raises(ValueError, match="not in the locations data"):
-        get_locations(locations_csv_path, exclude_ids=[1, 9999])
+        get_locations(locations_csv_path, exclude_ids=[unknown_id])
 
 
 def test_get_locations_exclude_all_ids(locations_csv_path):
     with pytest.raises(ValueError, match=r"All location IDs .* have been excluded"):
-        get_locations(locations_csv_path, exclude_ids=list(range(1, 318)))
+        get_locations(locations_csv_path, exclude_ids=list(LOCATION_IDS))
 
 
 def test_pvnet_dataset_sites(pvnet_site_config_filename):
@@ -164,7 +171,7 @@ def test_pvnet_dataset_sites(pvnet_site_config_filename):
     )
 
     expected_t0s = 6  # 2 time periods each with 3 t0s (inclusive) at 30 minute intervals
-    num_locs = 10
+    num_locs = _expected_num_locations(dataset, SITE_LOCATION_IDS)
     assert len(dataset.locations) == num_locs
     # Should be less than num_locs * expected_t0s as not all locations have data for all t0s
     # in the time periods
@@ -195,14 +202,14 @@ def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
 def test_pvnet_concurrent_dataset(pvnet_config_filename):
     # Create dataset object using limited set of GSPs
     dataset = PVNetConcurrentDataset(pvnet_config_filename)
-    num_gsps = 317
-    assert len(dataset.locations) == num_gsps  # Quantity of regional GSPs
+    num_locations = _expected_num_locations(dataset, LOCATION_IDS)
+    assert len(dataset.locations) == num_locations
     # NB. I have not checked the value (39 below) is in fact correct
     assert len(dataset.valid_t0_times) == 39
     assert len(dataset) == 39
 
     sample = dataset[0]
-    _pvnet_dataset_sample_check(sample, dataset.config, (num_gsps,))
+    _pvnet_dataset_sample_check(sample, dataset.config, (num_locations,))
 
 
 def test_pvnet_dataset_getitem_bounds(pvnet_config_filename):
@@ -271,7 +278,7 @@ def test_pvnet_dataset_without_generation(tmp_path, pvnet_config_filename):
     assert dataset.complete_generation
 
     # All locations from the locations catalog are available - none to filter out
-    assert len(dataset.locations) == 317
+    assert len(dataset.locations) == _expected_num_locations(dataset, LOCATION_IDS)
 
     sample = dataset[0]
     assert "generation_input" not in sample

@@ -1,6 +1,7 @@
 sampling_grid:
   locations_csv_path: set_in_temp_file
   t0_resolution_minutes: 30
+  exclude_location_ids: [0]
 
 generation:
   zarr_path: set_in_temp_file

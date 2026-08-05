@@ -6,6 +6,7 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.load.generation import open_generation
+from tests.conftest import LOCATION_IDS
 
 
 def test_open_generation(generation_zarr_path):
@@ -14,7 +15,8 @@ def test_open_generation(generation_zarr_path):
 
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "location_id", "gen_param")
-    assert da.shape == (49, 318, 2)
+    # 24 hours of 30 minute data (inclusive), every catalogued location, capacity + generation
+    assert da.shape == (49, len(LOCATION_IDS), 2)
     assert len(np.unique(da.coords["location_id"])) == da.shape[1]
 
 
