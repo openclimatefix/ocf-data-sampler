@@ -181,7 +181,7 @@ def apply_dropout_to_datasets(
     t0: np.datetime64,
     config: PVNetDataConfig,
 ) -> None:
-    """Apply dropout in-placeto the dictionary of input data sources around a given t0 time.
+    """Apply dropout in-place to the dictionary of input data sources around a given t0 time.
 
     Args:
         datasets_dict: Dictionary of the input data sources
