@@ -10,6 +10,27 @@ from ocf_data_sampler.datasets.pvnet.preprocess import (
 )
 
 
+def _generation_da(generation_mw: np.ndarray, capacity_mwp: np.ndarray) -> xr.DataArray:
+    """Build a generation DataArray from 2D `(time_utc, location_id)` MW and capacity arrays."""
+    n_times, n_locations = generation_mw.shape
+    return xr.DataArray(
+        np.stack([generation_mw, capacity_mwp], axis=-1),
+        coords={
+            "time_utc": pd.date_range("2023-01-01", periods=n_times, freq="30min"),
+            "location_id": np.arange(1, n_locations + 1),
+            "gen_param": ["generation_mw", "capacity_mwp"],
+        },
+        dims=("time_utc", "location_id", "gen_param"),
+    )
+
+
+def _assert_dropout_applied(da: xr.DataArray, cutoff_time: np.datetime64):
+    """Assert that all values after the cutoff time are NaN, and all values before are not NaN.
+    """
+    assert not np.any(np.isnan(da.sel(time_utc=slice(None, cutoff_time))))
+    assert np.all(np.isnan(da.sel(time_utc=slice(cutoff_time + np.timedelta64(1, "s"), None))))
+
+
 def test_fill_nans_in_dataset_dicts(config_filename):
     """Test the fill_nans_in_arrays function from configuration"""
 
@@ -37,20 +58,6 @@ def test_fill_nans_in_dataset_dicts(config_filename):
     assert np.array_equal(datasets_dict["generation_target"].values, expected_gen)
     assert np.array_equal(datasets_dict["sat"].values, np.array([1.0, -1.0, 3.0, -1.0]))
     assert np.array_equal(datasets_dict["nwp"]["ukv"].values, np.array([-2.0, 3.0, -2.0]))
-
-
-def _generation_da(generation_mw: np.ndarray, capacity_mwp: np.ndarray) -> xr.DataArray:
-    """Build a generation DataArray from 2D `(time_utc, location_id)` MW and capacity arrays."""
-    n_times, n_locations = generation_mw.shape
-    return xr.DataArray(
-        np.stack([generation_mw, capacity_mwp], axis=-1),
-        coords={
-            "time_utc": pd.date_range("2023-01-01", periods=n_times, freq="30min"),
-            "location_id": np.arange(1, n_locations + 1),
-            "gen_param": ["generation_mw", "capacity_mwp"],
-        },
-        dims=("time_utc", "location_id", "gen_param"),
-    )
 
 
 def test_normalise_dataset_dicts_generation():
@@ -84,55 +91,41 @@ def test_normalise_dataset_dicts_generation():
 def test_apply_dropout_to_datasets(pvnet_config_filename):
     config = load_yaml_configuration(pvnet_config_filename)
 
-    # Set dropout on the input window only - generation.target has no dropout config
     config.generation.input.dropout_timedeltas_minutes = [-30]
     config.generation.input.dropout_fraction = 1.0
-    config.satellite.dropout_timedeltas_minutes = []
-    config.satellite.dropout_fraction = 0
 
-    t0 = np.datetime64("2023-01-01 12:00")
-    times = np.array(
-        [
-            "2023-01-01T11:00",
-            "2023-01-01T11:30",
-            "2023-01-01T12:00",
-            "2023-01-01T12:30",
-        ],
-        dtype="datetime64[m]",
-    )
-    generation_mw = np.arange(4 * 2, dtype=float).reshape(4, 2)
-    capacity_mwp = np.ones((4, 2))
-    generation = xr.DataArray(
-        np.stack([generation_mw, capacity_mwp], axis=-1),
-        coords={
-            "time_utc": times,
-            "location_id": [1, 2],
-            "gen_param": ["generation_mw", "capacity_mwp"],
-        },
-        dims=("time_utc", "location_id", "gen_param"),
-    )
+    config.satellite.dropout_timedeltas_minutes = [-60]
+    config.satellite.dropout_fraction = 1.0
+
+    generation_input = _generation_da(generation_mw=np.ones((4, 2)),  capacity_mwp=np.ones((4, 2)))
+    generation_target = generation_input.copy(deep=True)
+
+    t0 = np.datetime64("2023-01-01 00:00")
+
+    times = pd.date_range(end=t0, periods=4, freq="30min").values
+
     sat = xr.DataArray(
         np.arange(4, dtype=float),
         coords={"time_utc": times},
         dims=("time_utc",),
     )
 
-    datasets_dict = {"generation_input": generation, "sat": sat}
+    datasets_dict = {
+        "generation_input": generation_input,
+        "generation_target": generation_target,
+        "sat": sat
+    }
 
     apply_dropout_to_datasets(datasets_dict, t0, config)
 
-    ds_gen = datasets_dict["generation_input"].sel(gen_param="generation_mw")
-    ds_cap = datasets_dict["generation_input"].sel(gen_param="capacity_mwp")
+    # Generation dropout with a -30 minute cutoff should blank everything from t0
+    _assert_dropout_applied(datasets_dict["generation_input"], t0 - np.timedelta64(30, "m"))
 
-    # Generation dropout with a -30 minute cutoff should blank everything from t0 onwards,
-    # including timesteps beyond t0.
-    assert not np.any(np.isnan(ds_gen.sel(time_utc=slice(None, "2023-01-01T11:30"))))
-    assert np.all(np.isnan(ds_gen.sel(time_utc=slice("2023-01-01T12:00", None))))
+    # No dropout is applied to generation.target, so it should have no NaNs
+    assert not np.any(np.isnan(datasets_dict["generation_target"]))
 
-    # capacity_mwp is dropped out along with generation_mw, using the same cutoff.
-    assert not np.any(np.isnan(ds_cap.sel(time_utc=slice(None, "2023-01-01T11:30"))))
-    assert np.all(np.isnan(ds_cap.sel(time_utc=slice("2023-01-01T12:00", None))))
+    # Satellite dropout with a -60 minute cutoff should blank everything from t0 - 60 minutes
+    _assert_dropout_applied(datasets_dict["sat"], t0 - np.timedelta64(60, "m"))
 
-    # Satellite dropout is disabled, so the helper should leave it untouched.
-    xr.testing.assert_equal(datasets_dict["sat"], sat)
+
 
