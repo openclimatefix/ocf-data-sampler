@@ -150,6 +150,14 @@ def find_contiguous_t0_periods_nwp(
     else:
         init_end_timedelta = min(last_forecast_step - interval_end, max_staleness)
 
+    # Each init-time is unusable before init_start_timedelta and after init_end_timedelta. If they
+    # are the wrong way round then no t0 can ever use it, and every period below will be empty
+    if init_end_timedelta < init_start_timedelta:
+        raise ValueError(
+            f"Init-times are usable from {init_start_timedelta} after init-time, but only until "
+            f"{init_end_timedelta}, so no t0s are available.",
+        )
+
     # Store contiguous periods
     contiguous_periods: list[list[np.datetime64]] = []
 

@@ -62,9 +62,6 @@ def find_valid_time_periods(
                 max_staleness=max_staleness,
             )
 
-            if len(time_periods) == 0:
-                raise ValueError(f"No valid t0 periods found for {nwp_key} NWP data")
-
             contiguous_time_periods.append(time_periods)
 
     if "sat" in datasets_dict:
@@ -77,14 +74,8 @@ def find_valid_time_periods(
 
         contiguous_time_periods.append(time_periods)
 
-        if len(time_periods) == 0:
-            raise ValueError("No valid t0 periods found for satellite data")
-
     if "generation" in datasets_dict:
-        for window_name, window_config in (
-            ("input", config.generation.input),
-            ("target", config.generation.target),
-        ):
+        for window_config in (config.generation.input, config.generation.target):
             if window_config is None:
                 continue
 
@@ -94,11 +85,6 @@ def find_valid_time_periods(
                 interval_start=minutes(window_config.interval_start_minutes),
                 interval_end=minutes(window_config.interval_end_minutes),
             )
-
-            if len(time_periods) == 0:
-                raise ValueError(
-                    f"No valid t0 periods found for {window_name} generation data",
-                )
 
             contiguous_time_periods.append(time_periods)
 
