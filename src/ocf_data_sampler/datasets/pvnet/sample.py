@@ -10,7 +10,6 @@ from ocf_data_sampler.features.time_encodings import encode_t0
 
 def convert_to_numpy_sample(
     datasets_dict: SourceDict,
-    t0_idx: int,
     include_extra_metadata: bool = False,
 ) -> NumpySample:
     """Convert a dictionary of xarray objects to a NumpySample.
@@ -18,10 +17,10 @@ def convert_to_numpy_sample(
     Args:
         datasets_dict: Dictionary of xarray DataArrays, with same structure as used inside
             PVNetDataset classes. Expected keys are any of following:
-            - "generation": DataArray of generation data
+            - "generation_input": DataArray of generation data used as model input
+            - "generation_target": DataArray of generation data used as the prediction target
             - "sat": DataArray of satellite data
             - "nwp": dict of DataArrays by provider name (e.g. {"ukv": da, "ecmwf": da})
-        t0_idx: Index of t0 within generation
         include_extra_metadata: Whether to add additional non-essential metadata to the batch
 
     Returns:
@@ -29,35 +28,24 @@ def convert_to_numpy_sample(
     """
     numpy_sample: NumpySample = {}
 
-    if "generation" in datasets_dict:
-        da = datasets_dict["generation"]
+    for key in ("generation_input", "generation_target"):
+        if key not in datasets_dict:
+            continue
 
-        # Get the position index of the generation and capacities
+        da = datasets_dict[key]
+
+        # generation_mw is expected to already been normalised by capacity so should be in the
+        # range [0, 1]. capacity_mwp is still expected to be in MW
         gen_idx = list(da["gen_param"].values).index("generation_mw")
         cap_idx = list(da["gen_param"].values).index("capacity_mwp")
 
-        generation_values = da.isel(gen_param=gen_idx).values
-        capacity_value = da.isel(gen_param=cap_idx).values[0]
-
-        if capacity_value!=0:
-            generation_values = generation_values/capacity_value
-
         numpy_sample.update(
             {
-                "generation": generation_values,
-                "capacity_mwp": capacity_value,
-                "generation_t0_idx": int(t0_idx),
-                "generation_time_utc": da["time_utc"].values.astype(float),
+                key: da.isel(gen_param=gen_idx).values,
+                f"{key}_capacity_mwp": da.isel(gen_param=cap_idx).values,
+                f"{key}_time_utc": da["time_utc"].values.astype(float),
             },
         )
-
-        if include_extra_metadata:
-            numpy_sample.update(
-                {
-                    "location_longitude": float(da["longitude"].values),
-                    "location_latitude": float(da["latitude"].values),
-                },
-            )
 
     if "sat" in datasets_dict:
         da = datasets_dict["sat"]

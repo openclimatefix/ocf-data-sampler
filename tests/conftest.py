@@ -14,6 +14,12 @@ CONFIG_DIR = TEST_DIR / "fixtures" / "configs"
 NWP_FREQ = pd.Timedelta("3h")
 RANDOM_SEED = 42
 
+# The LOCATION_IDS catalog mirrors the GSPs: ID 0 is the national aggregate and IDs 1-317 are the
+# regional GSPs
+LOCATION_IDS = tuple(range(318))
+# The SITE_LOCATION_IDS catalog has no national aggregate since they mirror different sites
+SITE_LOCATION_IDS = tuple(range(1, 11))
+
 UK_SAT_AREA = """msg_seviri_rss_3km:
     description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
     projection:
@@ -60,6 +66,13 @@ def create_xr_dataset(coords, data, name, attrs=None):
     if attrs:
         da.attrs.update(attrs)
     return da.to_dataset(name=name)
+
+
+def save_csv(df, path, filename):
+    """Save dataframe to csv"""
+    csv_path = path / filename
+    df.to_csv(csv_path, index=False)
+    return str(csv_path)
 
 
 def save_zarr(ds, path, filename, chunks=None):
@@ -192,53 +205,65 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     yield save_zarr(ds, session_tmp_path, "cloudcasting.zarr", chunks)
 
 
-@pytest.fixture(scope="session")
-def ds_generation(session_rng):
-    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    location_ids = np.arange(318)
-    # Rough UK bounding box
+def _locations_dataframe(session_rng, location_ids):
+    """Build a locations catalog over the given IDs, with random points in a rough UK bbox."""
     lat_min, lat_max = 49.9, 58.7
     lon_min, lon_max = -8.6, 1.8
 
-    # Generate random uniform points
-    longitudes = session_rng.uniform(lon_min, lon_max, len(location_ids)).astype("float64")
-    latitudes = session_rng.uniform(lat_min, lat_max, len(location_ids)).astype("float64")
+    return pd.DataFrame(
+        {
+            "location_id": location_ids,
+            "longitude": session_rng.uniform(lon_min, lon_max, len(location_ids)),
+            "latitude": session_rng.uniform(lat_min, lat_max, len(location_ids)),
+        },
+    )
 
-    capacity = np.ones((len(times), len(location_ids)))
 
-    generation = session_rng.uniform(0, 200, (len(times), len(location_ids))).astype(np.float32)
+@pytest.fixture(scope="session")
+def df_locations(session_rng):
+    """The locations catalog - the source of truth for which locations are samplable."""
+    return _locations_dataframe(session_rng, LOCATION_IDS)
 
-    # Build Dataset
+
+@pytest.fixture(scope="session")
+def df_site_locations(session_rng):
+    """The locations catalog for the site-level fixtures."""
+    return _locations_dataframe(session_rng, SITE_LOCATION_IDS)
+
+
+@pytest.fixture(scope="session")
+def ds_generation(session_rng, df_locations):
+    """Generation for every catalogued location with no missing generation data"""
+
+    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
+    location_ids = df_locations["location_id"].values
+    shape = (len(times), len(location_ids))
+
+    capacity = 200
+    capacities = np.full(shape, fill_value=capacity, dtype="float32")
+    generations = session_rng.uniform(0, capacity, shape).astype("float32")
+
     return xr.Dataset(
         data_vars={
-            "capacity_mwp": (("time_utc", "location_id"), capacity),
-            "generation_mw": (("time_utc", "location_id"), generation),
+            "capacity_mwp": (("time_utc", "location_id"), capacities),
+            "generation_mw": (("time_utc", "location_id"), generations),
         },
         coords={
             "time_utc": times,
             "location_id": location_ids,
-            "longitude": ("location_id", longitudes),
-            "latitude": ("location_id", latitudes),
         },
     )
 
 
 # location data (non overlapping time periods) and starting with id 1
 @pytest.fixture(scope="session")
-def ds_site_generation(session_rng):
+def ds_site_generation(session_rng, df_site_locations):
     # Define a global time range (covers all possible site periods)
     global_times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
     n_times = len(global_times)
 
-    location_ids = np.arange(1, 11)
+    location_ids = df_site_locations["location_id"].values
     n_sites = len(location_ids)
-
-    # Rough UK bounding box
-    lat_min, lat_max = 49.9, 58.7
-    lon_min, lon_max = -8.6, 1.8
-
-    longitudes = session_rng.uniform(lon_min, lon_max, n_sites).astype("float64")
-    latitudes = session_rng.uniform(lat_min, lat_max, n_sites).astype("float64")
 
     # Initialize with NaNs
     capacity = np.full((n_times, n_sites), np.nan, dtype="float32")
@@ -258,7 +283,6 @@ def ds_site_generation(session_rng):
             "float32",
         )
 
-    # Build Dataset
     return xr.Dataset(
         data_vars={
             "capacity_mwp": (("time_utc", "location_id"), capacity),
@@ -267,8 +291,6 @@ def ds_site_generation(session_rng):
         coords={
             "time_utc": global_times,
             "location_id": location_ids,
-            "longitude": ("location_id", longitudes),
-            "latitude": ("location_id", latitudes),
         },
     )
 
@@ -283,18 +305,30 @@ def site_generation_zarr_path(session_tmp_path, ds_site_generation):
     yield save_zarr(ds_site_generation, session_tmp_path, "site_generation.zarr")
 
 
+@pytest.fixture(scope="session")
+def locations_csv_path(session_tmp_path, df_locations):
+    yield save_csv(df_locations, session_tmp_path, "locations.csv")
+
+
+@pytest.fixture(scope="session")
+def site_locations_csv_path(session_tmp_path, df_site_locations):
+    yield save_csv(df_site_locations, session_tmp_path, "site_locations.csv")
+
+
 @pytest.fixture()
 def pvnet_config_filename(
     tmp_path,
     config_filename,
     nwp_ukv_zarr_path,
     generation_zarr_path,
+    locations_csv_path,
     sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.generation.zarr_path = generation_zarr_path
+    config.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.satellite.zarr_path = sat_zarr_path
+    config.generation.zarr_path = generation_zarr_path
+    config.sampling_grid.locations_csv_path = locations_csv_path
 
     path = tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))
@@ -307,12 +341,16 @@ def pvnet_site_config_filename(
     config_filename,
     nwp_ukv_zarr_path,
     site_generation_zarr_path,
+    site_locations_csv_path,
     sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.generation.zarr_path = site_generation_zarr_path
+    config.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.satellite.zarr_path = sat_zarr_path
+    config.generation.zarr_path = site_generation_zarr_path
+    config.sampling_grid.locations_csv_path = site_locations_csv_path
+    # The site catalog has no national aggregate, so nothing to exclude
+    config.sampling_grid.exclude_location_ids = []
 
     path = session_tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))

@@ -1,41 +1,31 @@
 """Loads all data sources."""
 
-import logging
-
 import xarray as xr
 
-from ocf_data_sampler.config import InputData
+from ocf_data_sampler.config import PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import SourceDict
 from ocf_data_sampler.load import open_generation, open_nwp, open_sat_data
 
-logger = logging.getLogger(__name__)
 
+def get_dataset_dict(config: PVNetDataConfig) -> SourceDict[xr.DataArray]:
+    """Construct dictionary of all of the per-sample input data sources.
 
-def get_dataset_dict(input_config: InputData) -> SourceDict[xr.DataArray]:
-    """Construct dictionary of all of the input data sources.
+    Locations metadata is deliberately excluded - it isn't a per-sample source, so the caller
+    loads it separately.
 
     Args:
-        input_config: InputData configuration object
+        config: PVNetDataConfig configuration object
     """
     datasets_dict = {}
 
-    # Load generation data unless the path is None
-    if input_config.generation and input_config.generation.zarr_path:
-        da_generation = open_generation(zarr_path=input_config.generation.zarr_path)
-
-        # Remove location_id 0 if more than one location present
-        if len(da_generation["location_id"]) > 1 and 0 in da_generation["location_id"].values:
-            da_generation = da_generation.drop_sel(location_id=0)
-            logger.info(
-                "Id 0 has been filtered out, this is only used for summation models.",
-            )
-
-        datasets_dict["generation"] = da_generation
+    # Load generation data if in config
+    if config.generation is not None:
+        datasets_dict["generation"] = open_generation(zarr_path=config.generation.zarr_path)
 
     # Load NWP data if in config
-    if input_config.nwp:
+    if config.nwp:
         datasets_dict["nwp"] = {}
-        for nwp_source, nwp_config in input_config.nwp.items():
+        for nwp_source, nwp_config in config.nwp.items():
             da_nwp = open_nwp(zarr_path=nwp_config.zarr_path, provider=nwp_config.provider)
 
             da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
@@ -43,12 +33,11 @@ def get_dataset_dict(input_config: InputData) -> SourceDict[xr.DataArray]:
             datasets_dict["nwp"][nwp_source] = da_nwp
 
     # Load satellite data if in config
-    if input_config.satellite:
-        sat_config = input_config.satellite
+    if config.satellite:
 
-        da_sat = open_sat_data(sat_config.zarr_path)
+        da_sat = open_sat_data(config.satellite.zarr_path)
 
-        da_sat = da_sat.sel(channel=list(sat_config.channels))
+        da_sat = da_sat.sel(channel=list(config.satellite.channels))
 
         datasets_dict["sat"] = da_sat
 

@@ -10,14 +10,14 @@ import os
 import fsspec
 import yaml
 
-from ocf_data_sampler.config.model import Configuration
+from ocf_data_sampler.config.model import PVNetDataConfig
 
 
-def save_yaml_configuration(configuration: Configuration, filename: str) -> None:
+def save_yaml_configuration(configuration: PVNetDataConfig, filename: str) -> None:
     """Save a configuration object to a YAML file.
 
     Args:
-        configuration: Configuration object containing the settings to save
+        configuration: PVNetDataConfig object containing the settings to save
         filename: Destination path for the YAML file. Can be a local path or
                  cloud storage URL (e.g., 'gs://', 's3://'). For local paths,
                  absolute paths are recommended.

@@ -4,7 +4,7 @@ import numpy as np
 
 from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
 from ocf_data_sampler.common.time_utils import minutes
-from ocf_data_sampler.config.model import Configuration
+from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import SourceDict
 from ocf_data_sampler.select.spatial_slice import (
     select_spatial_slice_pixels,
@@ -17,29 +17,24 @@ from ocf_data_sampler.spatial import Location
 def slice_datasets_by_space(
     datasets_dict: SourceDict,
     location: Location,
-    config: Configuration,
+    config: PVNetDataConfig,
 ) -> SourceDict:
     """Slice the dictionary of input data sources around a given location.
 
     Args:
         datasets_dict: Dictionary of the input data sources
         location: The location to sample around
-        config: Configuration object.
+        config: PVNetDataConfig object.
 
     Returns:
         A dictionary of the sliced input data sources.
     """
-    if not set(datasets_dict.keys()).issubset({"nwp", "sat", "generation"}):
-        raise ValueError(
-            "'datasets_dict' should only contain keys 'nwp', 'sat', 'generation'",
-        )
-
     sliced_datasets_dict = {}
 
     if "nwp" in datasets_dict:
         sliced_datasets_dict["nwp"] = {}
 
-        for nwp_key, nwp_config in config.input_data.nwp.items():
+        for nwp_key, nwp_config in config.nwp.items():
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
                 datasets_dict["nwp"][nwp_key],
                 location,
@@ -48,21 +43,24 @@ def slice_datasets_by_space(
             )
 
     if "sat" in datasets_dict:
-        sat_config = config.input_data.satellite
-
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels(
             datasets_dict["sat"],
             location,
-            height_pixels=sat_config.image_size_pixels_height,
-            width_pixels=sat_config.image_size_pixels_width,
+            height_pixels=config.satellite.image_size_pixels_height,
+            width_pixels=config.satellite.image_size_pixels_width,
         )
 
-    if "generation" in datasets_dict:
+    # Depending on whether this is called before or after time-slicing, the generation data is
+    # under a single "generation" key (raw, pre-split) or "generation_input"/"generation_target"
+    # (post-split) - slice whichever of these are present by location.
+    for key in ("generation", "generation_input", "generation_target"):
+        if key not in datasets_dict:
+            continue
 
-        location_ids = datasets_dict["generation"]["location_id"].values
+        location_ids = datasets_dict[key]["location_id"].values
         loc_index = get_indices_in_sorted_unique(location_ids, location.id)
 
-        sliced_datasets_dict["generation"] = datasets_dict["generation"].isel(location_id=loc_index)
+        sliced_datasets_dict[key] = datasets_dict[key].isel(location_id=loc_index)
 
     return sliced_datasets_dict
 
@@ -70,14 +68,14 @@ def slice_datasets_by_space(
 def reduce_spatial_extent_of_datasets(
     datasets_dict: SourceDict,
     locations: list[Location],
-    config: Configuration,
+    config: PVNetDataConfig,
 ) -> SourceDict:
     """Reduce the spatial extent of the datasets to only cover the locations.
 
     Args:
         datasets_dict: Dictionary of the input data sources
         locations: List of locations to reduce to
-        config: Configuration object
+        config: PVNetDataConfig object
 
     Returns:
         A dictionary of the reduced input data sources.
@@ -87,7 +85,7 @@ def reduce_spatial_extent_of_datasets(
     if "nwp" in datasets_dict:
         sliced_datasets_dict["nwp"] = {}
 
-        for nwp_key, nwp_config in config.input_data.nwp.items():
+        for nwp_key, nwp_config in config.nwp.items():
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels_multiple(
                 datasets_dict["nwp"][nwp_key],
                 locations,
@@ -97,13 +95,12 @@ def reduce_spatial_extent_of_datasets(
 
 
     if "sat" in datasets_dict:
-        sat_config = config.input_data.satellite
 
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels_multiple(
             datasets_dict["sat"],
             locations,
-            height_pixels=sat_config.image_size_pixels_height,
-            width_pixels=sat_config.image_size_pixels_width,
+            height_pixels=config.satellite.image_size_pixels_height,
+            width_pixels=config.satellite.image_size_pixels_width,
         )
 
     if "generation" in datasets_dict:
@@ -115,14 +112,14 @@ def reduce_spatial_extent_of_datasets(
 def slice_datasets_by_time(
     datasets_dict: SourceDict,
     t0: np.datetime64,
-    config: Configuration,
+    config: PVNetDataConfig,
 ) -> SourceDict:
     """Slice the dictionary of input data sources around a given t0 time.
 
     Args:
         datasets_dict: Dictionary of the input data sources
         t0: The init-time
-        config: Configuration object.
+        config: PVNetDataConfig object.
 
     Returns:
         A dictionary of the sliced input data sources.
@@ -133,7 +130,7 @@ def slice_datasets_by_time(
         sliced_datasets_dict["nwp"] = {}
 
         for nwp_key, da_nwp in datasets_dict["nwp"].items():
-            nwp_config = config.input_data.nwp[nwp_key]
+            nwp_config = config.nwp[nwp_key]
 
             # Add a buffer if we need to diff some of the channels in time
             if len(nwp_config.accum_channels)>0:
@@ -155,25 +152,29 @@ def slice_datasets_by_time(
             )
 
     if "sat" in datasets_dict:
-        sat_config = config.input_data.satellite
 
         sliced_datasets_dict["sat"] = select_time_slice(
             datasets_dict["sat"],
             t0,
-            time_resolution=minutes(sat_config.time_resolution_minutes),
-            interval_start=minutes(sat_config.interval_start_minutes),
-            interval_end=minutes(sat_config.interval_end_minutes),
+            time_resolution=minutes(config.satellite.time_resolution_minutes),
+            interval_start=minutes(config.satellite.interval_start_minutes),
+            interval_end=minutes(config.satellite.interval_end_minutes),
         )
 
     if "generation" in datasets_dict:
-        generation_config = config.input_data.generation
+        for key, window_config in (
+            ("generation_input", config.generation.input),
+            ("generation_target", config.generation.target),
+        ):
+            if window_config is None:
+                continue
 
-        sliced_datasets_dict["generation"] = select_time_slice(
-            datasets_dict["generation"],
-            t0,
-            time_resolution=minutes(generation_config.time_resolution_minutes),
-            interval_start=minutes(generation_config.interval_start_minutes),
-            interval_end=minutes(generation_config.interval_end_minutes),
-        )
+            sliced_datasets_dict[key] = select_time_slice(
+                datasets_dict["generation"],
+                t0,
+                time_resolution=minutes(config.generation.time_resolution_minutes),
+                interval_start=minutes(window_config.interval_start_minutes),
+                interval_end=minutes(window_config.interval_end_minutes),
+            )
 
     return sliced_datasets_dict
