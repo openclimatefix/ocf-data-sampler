@@ -6,6 +6,7 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.load.generation import open_generation
+from tests.conftest import LOCATION_IDS
 
 
 def test_open_generation(generation_zarr_path):
@@ -13,9 +14,9 @@ def test_open_generation(generation_zarr_path):
     da = open_generation(generation_zarr_path)
 
     assert isinstance(da, xr.DataArray)
-    assert da.dims == ("time_utc", "location_id")
-    assert {"capacity_mwp", "longitude", "latitude"}.issubset(da.coords)
-    assert da.shape == (49, 318)
+    assert da.dims == ("time_utc", "location_id", "gen_param")
+    # 24 hours of 30 minute data (inclusive), every catalogued location, capacity + generation
+    assert da.shape == (49, len(LOCATION_IDS), 2)
     assert len(np.unique(da.coords["location_id"])) == da.shape[1]
 
 
@@ -28,32 +29,16 @@ def test_open_generation_bad_dtype(tmp_path: Path):
     bad_ds = xr.Dataset(
         data_vars={
             "generation_mw": (("time_utc", "location_id"), np.random.randint(0, 100, (10, 2))),
-            "capacity_mwp": (("location_id",), [90.0, 110.0]),
+            "capacity_mwp": (("location_id",), [90, 110]),
         },
         coords={
             "time_utc": pd.to_datetime(pd.date_range("2023-01-01", periods=10, freq="30min")),
             "location_id": [1, 2],
+            "longitude": (("location_id",), [0.0, 1.0]),
+            "latitude": (("location_id",), [0.0, 1.0]),
         },
     )
     bad_ds.to_zarr(zarr_path)
 
-    with pytest.raises(TypeError, match="generation_mw should be floating"):
-        open_generation(zarr_path=zarr_path)
-
-
-def test_open_generation_bad_dtype_capacity(tmp_path: Path):
-    """Test that open_generation raises a TypeError when capacity_mwp is integer."""
-    zarr_path = tmp_path / "bad_capacity.zarr"
-    bad_ds = xr.Dataset(
-        data_vars={
-            "generation_mw": (("time_utc", "location_id"), np.random.rand(5, 2).astype(np.float32)),
-            "capacity_mwp": (("location_id",), np.array([90, 110])),
-        },
-        coords={
-            "time_utc": pd.date_range("2023-01-01", periods=5, freq="30min"),
-            "location_id": [1, 2],
-        },
-    )
-    bad_ds.to_zarr(zarr_path)
-    with pytest.raises(TypeError, match="capacity_mwp should be floating"):
-        open_generation(zarr_path=zarr_path)
+    with pytest.raises(TypeError, match="generation and capacity values should be floating"):
+        open_generation(zarr_path=str(zarr_path))

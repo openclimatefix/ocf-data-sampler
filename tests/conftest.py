@@ -10,9 +10,15 @@ from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configura
 
 # Constants
 TEST_DIR = Path(__file__).parent
-CONFIG_DIR = TEST_DIR / "test_data" / "configs"
+CONFIG_DIR = TEST_DIR / "fixtures" / "configs"
 NWP_FREQ = pd.Timedelta("3h")
 RANDOM_SEED = 42
+
+# The LOCATION_IDS catalog mirrors the GSPs: ID 0 is the national aggregate and IDs 1-317 are the
+# regional GSPs
+LOCATION_IDS = tuple(range(318))
+# The SITE_LOCATION_IDS catalog has no national aggregate since they mirror different sites
+SITE_LOCATION_IDS = tuple(range(1, 11))
 
 UK_SAT_AREA = """msg_seviri_rss_3km:
     description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
@@ -62,6 +68,13 @@ def create_xr_dataset(coords, data, name, attrs=None):
     return da.to_dataset(name=name)
 
 
+def save_csv(df, path, filename):
+    """Save dataframe to csv"""
+    csv_path = path / filename
+    df.to_csv(csv_path, index=False)
+    return str(csv_path)
+
+
 def save_zarr(ds, path, filename, chunks=None):
     """Save dataset to zarr"""
     if chunks:
@@ -87,23 +100,22 @@ def sat_zarr_path(session_tmp_path):
         "WV_062",
         "WV_073",
     ]
-    data = dask.array.zeros(
+    data = dask.array.random.random(
         (len(variables), 288, 100, 100),
         chunks=(-1, 10, -1, -1),
-        dtype=np.float32,
-    )
+    ).astype(np.float32)
     data[:, 10, :, :] = np.nan
 
     ds = xr.DataArray(
         data,
         coords={
-            "variable": variables,
-            "time": pd.date_range("2023-01-01 00:00", "2023-01-01 23:55", freq="5min"),
+            "channel": variables,
+            "time_utc": pd.date_range("2023-01-01 00:00", "2023-01-01 23:55", freq="5min"),
             "y_geostationary": np.linspace(4191563, 5304712, 100),
             "x_geostationary": np.linspace(15002, -1824245, 100),
         },
         attrs={"area": UK_SAT_AREA},
-    ).to_dataset(name="data")
+    ).to_dataset(name="data", promote_attrs=True)
 
     yield save_zarr(ds, session_tmp_path, "test_sat.zarr")
 
@@ -112,11 +124,11 @@ def sat_zarr_path(session_tmp_path):
 @pytest.fixture(scope="session")
 def ds_nwp_ukv(session_rng):
     coords = {
-        "init_time": pd.date_range("2023-01-01 00:00", freq="180min", periods=24 * 7),
+        "init_time_utc": pd.date_range("2023-01-01 00:00", freq="180min", periods=24 * 7),
         "variable": ["si10", "dswrf", "t", "prate"],
         "step": pd.timedelta_range("0h", "10h", freq="1h"),
-        "x": np.linspace(-239_000, 857_000, 50),
-        "y": np.linspace(-183_000, 1225_000, 100),
+        "x_osgb": np.linspace(-239_000, 857_000, 50),
+        "y_osgb": np.linspace(-183_000, 1225_000, 100),
     }
     shape = tuple(len(v) for v in coords.values())
     data = session_rng.uniform(0, 200, shape).astype(np.float32)
@@ -125,7 +137,13 @@ def ds_nwp_ukv(session_rng):
 
 @pytest.fixture(scope="session")
 def nwp_ukv_zarr_path(session_tmp_path, ds_nwp_ukv):
-    chunks = {"init_time": 1, "step": -1, "variable": -1, "x": 50, "y": 50}
+    chunks = {
+        "init_time_utc": 1,
+        "step": -1,
+        "variable": -1,
+        "x_osgb": 50,
+        "y_osgb": 50,
+    }
     yield save_zarr(ds_nwp_ukv, session_tmp_path, "ukv_nwp.zarr", chunks)
 
 
@@ -147,7 +165,7 @@ def ds_nwp_ukv_time_sliced(session_rng):
 @pytest.fixture(scope="session")
 def ds_nwp_ecmwf(session_rng):
     coords = {
-        "init_time": pd.date_range("2023-01-01 00:00", freq="6h", periods=24 * 7),
+        "init_time_utc": pd.date_range("2023-01-01 00:00", freq="6h", periods=24 * 7),
         "variable": ["t2m", "dswrf", "mcc"],
         "step": pd.timedelta_range("0h", "14h", freq="1h"),
         "longitude": np.arange(-12.0, 3.0),
@@ -160,59 +178,14 @@ def ds_nwp_ecmwf(session_rng):
 
 @pytest.fixture(scope="session")
 def nwp_ecmwf_zarr_path(session_tmp_path, ds_nwp_ecmwf):
-    chunks = {"init_time": 1, "step": -1, "variable": -1, "longitude": 50, "latitude": 50}
-    yield save_zarr(ds_nwp_ecmwf, session_tmp_path, "ukv_ecmwf.zarr", chunks)
-
-
-@pytest.fixture(scope="session")
-def icon_eu_zarr_path(session_tmp_path, session_rng):
-    step = pd.timedelta_range("0h", "5D", freq="1h")
-    channels = np.array(["t_1000hPa", "u_10m", "v_10m"], dtype=str)
-    lat = np.linspace(29.5, 35.69, 100)
-    lon = np.linspace(-23.5, -17.31, 100)
-
-    attrs = {
-        "Conventions": "CF-1.7",
-        "GRIB_centre": "edzw",
-        "GRIB_centreDescription": "Offenbach",
-        "GRIB_edition": 2,
-        "institution": "Offenbach",
-    }
-
-    paths = []
-    for hour in ["00", "06"]:
-        data = session_rng.random((len(step), len(channels), len(lat), len(lon))).astype(np.float32)
-        time_utc = pd.Timestamp(f"2021-11-01T{hour}:00:00")
-
-        da = xr.DataArray(
-            data,
-            coords={
-                "step": step,
-                "channel": channels,
-                "longitude": lon,
-                "latitude": lat,
-                "init_time_utc": time_utc,
-            },
-            dims=("step", "channel", "longitude", "latitude"),
-            attrs=attrs,
-        )
-        da.coords["valid_time"] = da.init_time_utc + da.step
-
-        paths.append(
-            save_zarr(
-                da.to_dataset(name="icon_eu_data"),
-                session_tmp_path,
-                f"20211101_{hour}.zarr",
-            ),
-        )
-
-    return paths
+    chunks = {"init_time_utc": 1, "step": -1, "variable": -1, "longitude": 50, "latitude": 50}
+    yield save_zarr(ds_nwp_ecmwf, session_tmp_path, "ecmwf_nwp.zarr", chunks)
 
 
 @pytest.fixture(scope="session")
 def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     coords = {
-        "init_time": pd.date_range("2023-01-01 00:00", freq="1h", periods=2),
+        "init_time_utc": pd.date_range("2023-01-01 00:00", freq="1h", periods=2),
         "variable": ["IR_097", "VIS008", "WV_073"],
         "step": pd.timedelta_range("15min", "180min", freq="15min"),
         "x_geostationary": np.linspace(15002, -1824245, 100),
@@ -223,7 +196,7 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
 
     ds = create_xr_dataset(coords, data, "sat_pred", attrs={"area": UK_SAT_AREA})
     chunks = {
-        "init_time": 1,
+        "init_time_utc": 1,
         "step": -1,
         "variable": -1,
         "x_geostationary": 50,
@@ -232,53 +205,65 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     yield save_zarr(ds, session_tmp_path, "cloudcasting.zarr", chunks)
 
 
-@pytest.fixture(scope="session")
-def ds_generation(session_rng):
-    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
-    location_ids = np.arange(318)
-    # Rough UK bounding box
+def _locations_dataframe(session_rng, location_ids):
+    """Build a locations catalog over the given IDs, with random points in a rough UK bbox."""
     lat_min, lat_max = 49.9, 58.7
     lon_min, lon_max = -8.6, 1.8
 
-    # Generate random uniform points
-    longitudes = session_rng.uniform(lon_min, lon_max, len(location_ids)).astype("float64")
-    latitudes = session_rng.uniform(lat_min, lat_max, len(location_ids)).astype("float64")
+    return pd.DataFrame(
+        {
+            "location_id": location_ids,
+            "longitude": session_rng.uniform(lon_min, lon_max, len(location_ids)),
+            "latitude": session_rng.uniform(lat_min, lat_max, len(location_ids)),
+        },
+    )
 
-    capacity = np.ones((len(times), len(location_ids)))
 
-    generation = session_rng.uniform(0, 200, (len(times), len(location_ids))).astype(np.float32)
+@pytest.fixture(scope="session")
+def df_locations(session_rng):
+    """The locations catalog - the source of truth for which locations are samplable."""
+    return _locations_dataframe(session_rng, LOCATION_IDS)
 
-    # Build Dataset
+
+@pytest.fixture(scope="session")
+def df_site_locations(session_rng):
+    """The locations catalog for the site-level fixtures."""
+    return _locations_dataframe(session_rng, SITE_LOCATION_IDS)
+
+
+@pytest.fixture(scope="session")
+def ds_generation(session_rng, df_locations):
+    """Generation for every catalogued location with no missing generation data"""
+
+    times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
+    location_ids = df_locations["location_id"].values
+    shape = (len(times), len(location_ids))
+
+    capacity = 200
+    capacities = np.full(shape, fill_value=capacity, dtype="float32")
+    generations = session_rng.uniform(0, capacity, shape).astype("float32")
+
     return xr.Dataset(
         data_vars={
-            "capacity_mwp": (("time_utc", "location_id"), capacity),
-            "generation_mw": (("time_utc", "location_id"), generation),
+            "capacity_mwp": (("time_utc", "location_id"), capacities),
+            "generation_mw": (("time_utc", "location_id"), generations),
         },
         coords={
             "time_utc": times,
             "location_id": location_ids,
-            "longitude": ("location_id", longitudes),
-            "latitude": ("location_id", latitudes),
         },
     )
 
 
 # location data (non overlapping time periods) and starting with id 1
 @pytest.fixture(scope="session")
-def ds_site_generation(session_rng):
+def ds_site_generation(session_rng, df_site_locations):
     # Define a global time range (covers all possible site periods)
     global_times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="30min")
     n_times = len(global_times)
 
-    location_ids = np.arange(1, 11)
+    location_ids = df_site_locations["location_id"].values
     n_sites = len(location_ids)
-
-    # Rough UK bounding box
-    lat_min, lat_max = 49.9, 58.7
-    lon_min, lon_max = -8.6, 1.8
-
-    longitudes = session_rng.uniform(lon_min, lon_max, n_sites).astype("float64")
-    latitudes = session_rng.uniform(lat_min, lat_max, n_sites).astype("float64")
 
     # Initialize with NaNs
     capacity = np.full((n_times, n_sites), np.nan, dtype="float32")
@@ -298,7 +283,6 @@ def ds_site_generation(session_rng):
             "float32",
         )
 
-    # Build Dataset
     return xr.Dataset(
         data_vars={
             "capacity_mwp": (("time_utc", "location_id"), capacity),
@@ -307,8 +291,6 @@ def ds_site_generation(session_rng):
         coords={
             "time_utc": global_times,
             "location_id": location_ids,
-            "longitude": ("location_id", longitudes),
-            "latitude": ("location_id", latitudes),
         },
     )
 
@@ -323,18 +305,30 @@ def site_generation_zarr_path(session_tmp_path, ds_site_generation):
     yield save_zarr(ds_site_generation, session_tmp_path, "site_generation.zarr")
 
 
+@pytest.fixture(scope="session")
+def locations_csv_path(session_tmp_path, df_locations):
+    yield save_csv(df_locations, session_tmp_path, "locations.csv")
+
+
+@pytest.fixture(scope="session")
+def site_locations_csv_path(session_tmp_path, df_site_locations):
+    yield save_csv(df_site_locations, session_tmp_path, "site_locations.csv")
+
+
 @pytest.fixture()
 def pvnet_config_filename(
     tmp_path,
     config_filename,
     nwp_ukv_zarr_path,
     generation_zarr_path,
+    locations_csv_path,
     sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.generation.zarr_path = generation_zarr_path
+    config.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.satellite.zarr_path = sat_zarr_path
+    config.generation.zarr_path = generation_zarr_path
+    config.sampling_grid.locations_csv_path = locations_csv_path
 
     path = tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))
@@ -347,12 +341,16 @@ def pvnet_site_config_filename(
     config_filename,
     nwp_ukv_zarr_path,
     site_generation_zarr_path,
+    site_locations_csv_path,
     sat_zarr_path,
 ):
     config = load_yaml_configuration(config_filename)
-    config.input_data.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
-    config.input_data.satellite.zarr_path = sat_zarr_path
-    config.input_data.generation.zarr_path = site_generation_zarr_path
+    config.nwp["ukv"].zarr_path = nwp_ukv_zarr_path
+    config.satellite.zarr_path = sat_zarr_path
+    config.generation.zarr_path = site_generation_zarr_path
+    config.sampling_grid.locations_csv_path = site_locations_csv_path
+    # The site catalog has no national aggregate, so nothing to exclude
+    config.sampling_grid.exclude_location_ids = []
 
     path = session_tmp_path / "configuration.yaml"
     save_yaml_configuration(config, str(path))
