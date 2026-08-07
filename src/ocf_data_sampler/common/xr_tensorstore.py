@@ -1,96 +1,110 @@
-"""Utilities for loading TensorStore data into Xarray.
+"""Utilities for opening and lazily concatenating TensorStore-backed Xarray datasets.
 
-This module uses and adapts internal functions from the Google xarray-tensorstore project [1],
-licensed under the Apache License, Version 2.0. See [2] for details.
-
-Modifications copyright 2025 Open Climate Fix. Licensed under the MIT License.
-
-Modifications from the original include:
-- Adding support for opening multiple zarr files as a single xarray object
-- Support for zarr 3 -> https://github.com/google/xarray-tensorstore/pull/22
-
-References:
-    [1] https://github.com/google/xarray-tensorstore
-    [2] https://www.apache.org/licenses/LICENSE-2.0
+Note: this module relies on `xarray_tensorstore` internals (`_TensorStoreAdapter`) to reach
+the underlying TensorStore without materialising data. The dependency is pinned in
+pyproject.toml; upgrades need checking against this.
 """
 
-import logging
-import os
-import re
+from collections.abc import Sequence
 from glob import glob, has_magic
-from typing import Any, TypeAlias, cast
+from typing import TypeAlias
 
 import tensorstore as ts
 import xarray as xr
-import zarr
-from xarray_tensorstore import (
-    _DEFAULT_STORAGE_DRIVER,
-    _raise_if_mask_and_scale_used_for_data_vars,
-    _TensorStoreAdapter,
-)
-
-logger = logging.getLogger(__name__)
+import xarray_tensorstore as xrt
 
 ZarrSource: TypeAlias = str | list[str] | tuple[str, ...]
 
 
-def _zarr_spec_from_path(path: str, zarr_format: int) -> dict[str, Any]:
-    if re.match(r"\w+\://", path):  # path is a URI
-        kv_store: str | dict[str, str] = path
-    else:
-        kv_store = {"driver": _DEFAULT_STORAGE_DRIVER, "path": path}
-    return {"driver": f"zarr{zarr_format}", "kvstore": kv_store}
+def _extract_tensorstore(da: xr.DataArray) -> ts.TensorStore:
+    """Extract the backing TensorStore, or fail with a message that says why."""
+    data = da.variable._data
+    if not isinstance(data, xrt._TensorStoreAdapter):
+        raise TypeError(f"{da.name!r} is backed by {type(data).__name__}, expected TensorStore.")
+    return data.array
 
 
-def _get_data_variable_array_futures(
-    path: str,
-    context: ts.Context | None,
-    variables: list[str],
-) -> dict[str, ts.Future[ts.TensorStore]]:
-    """Open all data variables in a zarr group and return futures.
+def _validate(datasets: Sequence[xr.Dataset], concat_dim: str) -> None:
+    first, *rest = datasets
+    if concat_dim not in first.dims:
+        raise ValueError(f"{concat_dim!r} is not a dimension: {tuple(first.dims)}")
+
+    for i, ds in enumerate(rest, start=1):
+
+        # All coords and data_vars must be present in all datasets
+        if set(ds.coords) != set(first.coords):
+            raise ValueError(
+                f"dataset {i}: coords {sorted(ds.coords, key=str)} "
+                f"!= {sorted(first.coords, key=str)}"
+            )
+        if set(ds.data_vars) != set(first.data_vars):
+            raise ValueError(
+                f"dataset {i}: data_vars {sorted(ds.data_vars, key=str)} "
+                f"!= {sorted(first.data_vars, key=str)}"
+            )
+
+        # All dims except concat_dim must match in size
+        for dim, size in first.sizes.items():
+            if dim != concat_dim and ds.sizes.get(dim) != size:
+                raise ValueError(f"dataset {i}: {dim}={ds.sizes.get(dim)}, expected {size}")
+
+        # All data_vars must have the same dims and dtype
+        for name in first.data_vars:
+            if ds[name].dims != first[name].dims or ds[name].dtype != first[name].dtype:
+                raise ValueError(
+                    f"dataset {i}: {name!r} is {ds[name].dims}/{ds[name].dtype}, "
+                    f"expected {first[name].dims}/{first[name].dtype}"
+                )
+
+        # All coords and data_vars which don't contain the concat_dim dimension must be identical
+        # Note: `.equals()` reads lazy data into memory. This is fine for coords and static vars,
+        # which should be small
+        for name in [*first.coords, *first.data_vars]:
+            if concat_dim not in first[name].dims and not ds[name].equals(first[name]):
+                raise ValueError(
+                    f"dataset {i}: {name!r} does not span {concat_dim!r} but differs"
+                )
+
+
+def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Dataset:
+    """Concatenate tensorstore-backed Datasets along an existing dimension, lazily.
+
+    Data variables containing the `concat_dim` dimension are concatenated lazily using TensorStore.
+    Everything else must match across datasets and is taken from the first dataset, as are attrs.
 
     Args:
-        path: path or URI to zarr group to open.
-        context: TensorStore configuration options to use when opening arrays.
-        variables: The variables in the zarr groupto open.
+        datasets: Sequence of Datasets to concatenate.
+        concat_dim: Dimension along which to concatenate.
     """
-    zarr_format = zarr.open(path).metadata.zarr_format
-    specs = {k: _zarr_spec_from_path(os.path.join(path, k), zarr_format) for k in variables}
-    return {k: ts.open(spec, read=True, write=False, context=context) for k, spec in specs.items()}
+    datasets = list(datasets)
+    if len(datasets) < 2:
+        raise ValueError("need at least two datasets")
+    _validate(datasets, concat_dim)
+    first = datasets[0]
 
+    # Create a new shell dataset which contains only the concatenated coords. We will handle the
+    # data_vars separately so we can lazily concatenate them with tensorstore.
+    # - combine_attrs="override" keeps the attrs of the first dataset, which is the behaviour we
+    #   copy for the data_vars below.
+    # - join="exact" ensures that the coords are identical across datasets, which is a bakstop for
+    #   the _validate() check above.
+    ds_out = xr.concat(
+        [ds.drop_vars(first.data_vars) for ds in datasets],
+        dim=concat_dim,
+        join="exact",
+        combine_attrs="override",
+    )
 
-def _tensorstore_open_zarrs(
-    paths: list[str],
-    data_vars: list[str],
-    concat_axes: list[int],
-    context: ts.Context,
-) -> dict[str, ts.TensorStore]:
-    """Open multiple zarrs with TensorStore.
-
-    Args:
-        paths: List of paths to zarr stores.
-        data_vars: List of data variable names to open.
-        concat_axes: List of axes along which to concatenate the data variables.
-        context: TensorStore context.
-    """
-    # Open all the variables from all the datasets - returned as futures
-    array_futures_list: list[dict[str, ts.Future[ts.TensorStore]]] = []
-    for path in paths:
-        array_futures_list.append(_get_data_variable_array_futures(path, context, data_vars))
-
-    # Wait for the async open operations
-    arrays_list: list[dict[str, ts.TensorStore]] = [
-        {k: future.result() for k, future in array_futures.items()}
-        for array_futures in array_futures_list
-    ]
-
-    # Concatenate each of the variables along the required axis
-    arrays: dict[str, ts.TensorStore] = {}
-    for k, axis in zip(data_vars, concat_axes, strict=True):
-        variable_arrays = [d[k] for d in arrays_list]
-        arrays[k] = ts.concat(variable_arrays, axis=axis)
-
-    return arrays
+    for name, da in first.data_vars.items():
+        if concat_dim in da.dims:
+            store = ts.concat(
+                [_extract_tensorstore(ds[name]) for ds in datasets],
+                axis=da.dims.index(concat_dim),
+            )
+            ds_out[name] = xr.Variable(da.dims, xrt._TensorStoreAdapter(store), attrs=da.attrs)
+        else:
+            ds_out[name] = da.variable  # attrs travel with the Variable; xarray copies on assign
+    return ds_out
 
 
 def open_zarr_paths(zarr_path: ZarrSource, concat_dim: str | None = None) -> xr.Dataset:
@@ -103,7 +117,7 @@ def open_zarr_paths(zarr_path: ZarrSource, concat_dim: str | None = None) -> xr.
     if isinstance(zarr_path, str):
         path = zarr_path
         if not has_magic(path):
-            return _open_single_zarr(path)
+            return xrt.open_zarr(path)
         paths = sorted(glob(path))
     else:
         paths = list(zarr_path)
@@ -112,111 +126,9 @@ def open_zarr_paths(zarr_path: ZarrSource, concat_dim: str | None = None) -> xr.
         raise ValueError(f"No Zarr stores found for {zarr_path!r}")
 
     if len(paths) == 1:
-        return _open_single_zarr(paths[0])
+        return xrt.open_zarr(paths[0])
 
     if concat_dim is None:
         raise ValueError("`concat_dim` must be specified when opening multiple Zarr stores")
 
-    return _open_and_concat_zarrs(paths, concat_dim)
-
-
-def _open_single_zarr(
-    path: str,
-    context: ts.Context | None = None,
-    mask_and_scale: bool = True,
-) -> xr.Dataset:
-    """Open an xarray.Dataset from zarr using TensorStore.
-
-    Args:
-        path: path or URI to zarr group to open.
-        context: TensorStore configuration options to use when opening arrays.
-        mask_and_scale: if True (default), attempt to apply masking and scaling like
-          xarray.open_zarr(). This is only supported for coordinate variables and
-          otherwise will raise an error.
-
-    Returns:
-        Dataset with all data variables opened via TensorStore.
-    """
-    if context is None:
-        context = ts.Context()
-
-    # Avoid using dask by settung `chunks=None`
-    ds = xr.open_zarr(path, chunks=None, mask_and_scale=mask_and_scale, consolidated=False)
-
-    if mask_and_scale:
-        _raise_if_mask_and_scale_used_for_data_vars(ds)
-
-    # Open all data variables using tensorstore - returned as futures
-    data_vars = list(ds.data_vars)
-    array_futures = _get_data_variable_array_futures(path, context, data_vars)
-
-    # Wait for the async open operations
-    arrays = {k: future.result() for k, future in array_futures.items()}
-
-    # Adapt the tensorstore arrays and plug them into the xarray object
-    new_data = {k: _TensorStoreAdapter(v) for k, v in arrays.items()}
-
-    return cast("xr.Dataset", ds.copy(data=new_data))
-
-
-def _open_and_concat_zarrs(
-    paths: list[str],
-    concat_dim: str,
-    context: ts.Context | None = None,
-    mask_and_scale: bool = True,
-) -> xr.Dataset:
-    """Open multiple zarrs with TensorStore.
-
-    Args:
-        paths: List of paths to zarr stores.
-        concat_dim: Dimension along which to concatenate the data variables.
-        context: TensorStore context.
-        mask_and_scale: Whether to mask and scale the data.
-
-    Returns:
-        Concatenated Dataset with all data variables opened via TensorStore.
-    """
-    if context is None:
-        context = ts.Context()
-
-    ds_list = [
-        xr.open_zarr(p, mask_and_scale=mask_and_scale, decode_timedelta=True, consolidated=False)
-        for p in paths
-    ]
-    try:
-        ds = xr.concat(
-            ds_list,
-            dim=concat_dim,
-            data_vars="minimal",
-            compat="equals",
-            combine_attrs="drop_conflicts",
-            join="exact",
-        )
-    except ValueError:
-        logger.warning(
-            f"Coordinate mismatch found when opening paths {paths}. Opening with `join='override'` "
-            "to ignore coordinate mismatches. THIS MAY CAUSE UNEXPECTED BEHAVIOUR.",
-        )
-        ds = xr.concat(
-            ds_list,
-            dim=concat_dim,
-            data_vars="minimal",
-            compat="equals",
-            combine_attrs="drop_conflicts",
-            join="override",
-        )
-
-    if mask_and_scale:
-        _raise_if_mask_and_scale_used_for_data_vars(ds)
-
-    # Find the axis along which each data array must be concatenated
-    data_vars = list(ds.data_vars)
-    concat_axes = [ds[v].dims.index(concat_dim) for v in data_vars]
-
-    # Open and concat all zarrs so each variables is a single TensorStore array
-    arrays = _tensorstore_open_zarrs(paths, data_vars, concat_axes, context)
-
-    # Plug the arrays into the xarray object
-    new_data = {k: _TensorStoreAdapter(v) for k, v in arrays.items()}
-
-    return cast("xr.Dataset", ds.copy(data=new_data))
+    return concat_tensorstore([xrt.open_zarr(p) for p in paths], concat_dim)

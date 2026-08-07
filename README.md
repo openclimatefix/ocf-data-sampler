@@ -18,7 +18,7 @@ We are currently migrating to this repo from [ocf_datapipes](https://github.com/
 
 This project is primarily licensed under the MIT License (see LICENSE).
 
-It includes and adapts internal functions from the Google xarray-tensorstore project, licensed under the Apache License, Version 2.0.
+It includes and adapts the `ephemeris()` function from the [pvlib-python](https://github.com/pvlib/pvlib-python) project, licensed under the BSD 3-Clause License. The original notice is retained in `src/ocf_data_sampler/features/solar.py`.
 
 ## Documentation
 

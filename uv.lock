@@ -840,7 +840,6 @@ wheels = [
 name = "ocf-data-sampler"
 source = { editable = "." }
 dependencies = [
-    { name = "dask" },
     { name = "numcodecs" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -858,6 +857,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "dask" },
     { name = "pvlib" },
     { name = "pytest" },
     { name = "python-lsp-ruff" },
@@ -868,7 +868,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dask" },
     { name = "numcodecs" },
     { name = "numpy" },
     { name = "pandas" },
@@ -878,12 +877,13 @@ requires-dist = [
     { name = "pyresample" },
     { name = "torch" },
     { name = "xarray" },
-    { name = "xarray-tensorstore", specifier = "==0.1.5" },
+    { name = "xarray-tensorstore", specifier = "==0.3.0" },
     { name = "zarr", specifier = ">=3" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "dask" },
     { name = "pvlib" },
     { name = "pytest" },
     { name = "python-lsp-ruff" },
@@ -1823,7 +1823,7 @@ wheels = [
 
 [[package]]
 name = "xarray-tensorstore"
-version = "0.1.5"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -1833,9 +1833,9 @@ dependencies = [
     { name = "zarr", version = "3.1.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "zarr", version = "3.2.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/62/a2/6c1dbf9562b59ee5520118d56e169e58a1130685006baf573dfda01d2ae3/xarray-tensorstore-0.1.5.tar.gz", hash = "sha256:a8e17c08df6b32875e50f7b9278a64bbd9156b660d2245153abba4b2a9b30e9c", size = 9258, upload-time = "2024-11-08T23:12:45.023Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/64/64d401494b1cd8943960b1f9197ab4605433a4b648187881f36140c0b8d2/xarray_tensorstore-0.3.0.tar.gz", hash = "sha256:3f01a8182b2d09b6e9a365b206a648fd0bbbb0dd6b676b3b86864f8e52d5495e", size = 10560, upload-time = "2025-10-31T21:35:11.586Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/79/76a418041aed181dc950ac9c2d8843763f8ae6fcbe13f9eb1d09e36be749/xarray_tensorstore-0.1.5-py3-none-any.whl", hash = "sha256:e641714cb05a4540da04b5f1c259e9617a17e7855c29aeb7d72af5de57ab648d", size = 9375, upload-time = "2024-11-08T23:12:43.27Z" },
+    { url = "https://files.pythonhosted.org/packages/08/81/5f57b39b1661ddf9a6e1403ca7289c1a6dab6028f8623c484cb693489579/xarray_tensorstore-0.3.0-py3-none-any.whl", hash = "sha256:f8415bda9f4dd52857c62ee280a6d19c7e5c596bdc8be7818635ea4bc38d6a97", size = 10552, upload-time = "2025-10-31T21:35:09.976Z" },
 ]
 
 [[package]]
