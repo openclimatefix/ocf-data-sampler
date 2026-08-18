@@ -7,6 +7,7 @@ All providers follow the same pipeline:
 handle the open + renaming step that differs between data sources.
 """
 
+import json
 import logging
 
 import xarray as xr
@@ -104,6 +105,11 @@ def open_cloudcasting(zarr_path: str | list[str]) -> xr.DataArray:
         [2] https://github.com/ClimeTrend/cloudcasting
         [3] https://github.com/openclimatefix/sat_pred
     """
-    ds = open_zarr_paths(zarr_path, backend="tensorstore")
-    ds = ds.rename({"init_time": "init_time_utc", "variable": "channel"})
-    return _open_regular_grid_nwp(ds, x_coord="x_geostationary", y_coord="y_geostationary")
+    ds = open_zarr_paths(zarr_path, time_dim="init_time_utc", backend="tensorstore")
+    da = _open_regular_grid_nwp(ds, x_coord="x_geostationary", y_coord="y_geostationary")
+
+    # Copy the area attribute if missing
+    if "area" not in da.attrs:
+        da.attrs["area"] = json.dumps(ds.attrs["area"])
+
+    return da
