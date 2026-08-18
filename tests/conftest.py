@@ -212,8 +212,8 @@ def icon_eu_zarr_path(session_tmp_path, session_rng):
 @pytest.fixture(scope="session")
 def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
     coords = {
-        "init_time": pd.date_range("2023-01-01 00:00", freq="1h", periods=2),
-        "variable": ["IR_097", "VIS008", "WV_073"],
+        "init_time_utc": pd.date_range("2023-01-01 00:00", freq="1h", periods=2),
+        "channel": ["IR_097", "VIS008", "WV_073"],
         "step": pd.timedelta_range("15min", "180min", freq="15min"),
         "x_geostationary": np.linspace(15002, -1824245, 100),
         "y_geostationary": np.linspace(4191563, 5304712, 100),
@@ -223,9 +223,9 @@ def nwp_cloudcasting_zarr_path(session_tmp_path, session_rng):
 
     ds = create_xr_dataset(coords, data, "sat_pred", attrs={"area": UK_SAT_AREA})
     chunks = {
-        "init_time": 1,
+        "init_time_utc": 1,
         "step": -1,
-        "variable": -1,
+        "channel": -1,
         "x_geostationary": 50,
         "y_geostationary": 50,
     }
