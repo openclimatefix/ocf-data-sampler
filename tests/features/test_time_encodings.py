@@ -34,54 +34,67 @@ def test_encode_datetimes():
 
 def test_encode_t0():
 
-    def check(t0s, embeddings, xs, period_floats):
-        # Test the results are expected for each t0 time
-        for x, t0 in zip(xs, t0s, strict=True):
-            results = encode_t0(t0, embeddings)
+    # Check hourly embedding codepath
 
-            expected_results = []
-            for p, (_, emb_type) in zip(period_floats, embeddings, strict=True):
-                if emb_type=="cyclic":
-                    expected_results.extend([np.sin(2*np.pi*(x / p)), np.cos(2*np.pi*(x / p))])
-                elif emb_type=="linear":
-                    expected_results.append(x / p)
-                else:
-                    raise ValueError
+    # Define some t0 times to check for
+    t0s = pd.date_range("2024-01-01 00:00", "2024-01-01 23:55", freq="5min").values
+    # These are the fractional hour-of-day for the above
+    hour_floats = np.arange(0, 24, 5 / 60)
 
-            expected_results = np.array(expected_results)
+    # Check over multiple frequencies
+    for h_freq in [1, 2, 3]:
+        hours = f"{h_freq}h"
+        linear_embeddings = [(hours, "linear")]
+        cyclic_embeddings = [(hours, "cyclic")]
 
-            assert len(expected_results)==len(results)
+        for t0, hour_float in zip(t0s, hour_floats, strict=True):
+            # Check linear encodings
+            expected_linear = (hour_float % h_freq) / h_freq
+            result = encode_t0(t0, linear_embeddings)
+            # Linear embedding should be in range [0, 1]
+            assert (result >= 0) & (result <= 1)
+            assert np.isclose(expected_linear, result)
 
-            if not np.allclose(results, expected_results, atol=1e-6):
-                raise ValueError(f"{results}!={expected_results}")
+            # Check cyclic encodings
+            radians = 2 * np.pi * expected_linear
+            expected_cyclic = [np.sin(radians), np.cos(radians)]
+            result = encode_t0(t0, cyclic_embeddings)
+            # Cyclic embedding should be in range [-1, 1]
+            assert ((result >= -1) & (result <= 1)).all()
+            assert np.allclose(expected_cyclic, result)
 
-    # Define some t0 times and periods to check
-    t0s = pd.date_range("2024-01-01 00:00", "2024-01-01 06:00").values
-    embeddings = [("1h", "linear"), ("1h", "cyclic"), ("2h", "cyclic"), ("6h", "cyclic")]
+            # Check multi-embedding ordering
 
-    # Equivalent times and periods in float form
-    xs = np.linspace(0, 6, num=len(t0s))
-    period_floats = [1, 1, 2, 6]
+            # [linear, cyclic]
+            all_embeddings = linear_embeddings + cyclic_embeddings
+            result = encode_t0(t0, all_embeddings)
+            expected = [expected_linear, *expected_cyclic]
+            assert np.allclose(expected, result)
 
-    check(t0s, embeddings, xs, period_floats)
+            # [cyclic, linear]
+            all_embeddings = cyclic_embeddings + linear_embeddings
+            result = encode_t0(t0, all_embeddings)
+            expected = [*expected_cyclic, expected_linear]
+            assert np.allclose(expected, result)
 
-    # Repeat the check focusing on year periods rather than hours
-    t0s = pd.to_datetime(
-        [
-            "2020-01-01 00:00", "2020-01-01 23:30", "2020-01-02 00:00",
-            "2020-06-10 00:00", "2021-01-01 00:00", "2021-01-02 00:00",
-        ],
-    ).values
-    embeddings = [("1y", "cyclic"), ("2y", "cyclic")]
+    # Check remaining portion of yearly embedding codepath for full coverage
 
+    t0_year_floats = [
+        ("2020-01-01 00:00", 2020),
+        ("2020-01-01 23:30", 2020),  # Time of day is ignored
+        ("2020-01-02 00:00", 2020 + 1 / 366),  # 2020 is a leap year
+        ("2020-06-10 00:00", 2020 + 161 / 366),  # 2020-06-10 is the 162nd day of that year
+        ("2021-01-01 00:00", 2021),
+        ("2021-01-02 00:00", 2021 + 1 / 365),  # 2020 is not a leap year
+    ]
 
-    # Equivalent times and periods in float form
-    # Note:
-    # - When doing year encoding we don't consider time of day
-    # - 2020 is a leap year but 2021 is not
-    # - 2020-06-10 is the 162nd day of that year
-    xs = np.array([0, 0, 1/366, 161/366, 1, 1+1/365], dtype=np.float32)
-    period_floats = [1, 2]
-
-    check(t0s, embeddings, xs, period_floats)
-
+    for y_freq in [1, 2]:
+        # We only need to test linear embeddding since the cyclic part is tested for hourly and
+        # these share the same codepath
+        linear_embeddings = [(f"{y_freq}y", "linear")]
+        for t0_str, year_float in t0_year_floats:
+            # Check linear encodings
+            expected_linear = (year_float % y_freq) / y_freq
+            result = encode_t0(np.datetime64(t0_str), linear_embeddings)
+            assert (result >= 0) & (result <= 1)
+            assert np.isclose(expected_linear, result)
