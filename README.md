@@ -22,7 +22,7 @@ It includes and adapts the `ephemeris()` function from the [pvlib-python](https:
 
 ## Documentation
 
-**ocf-data-sampler** doesn't have external documentation _yet_; you can read a bit about how our torch datasets work in the README [here](ocf_data_sampler/torch_datasets/README.md).
+**ocf-data-sampler** doesn't have external documentation _yet_; you can read a bit about how our torch datasets work in the README [here](src/ocf_data_sampler/datasets/pvnet/README.md).
 
 ## FAQ
 

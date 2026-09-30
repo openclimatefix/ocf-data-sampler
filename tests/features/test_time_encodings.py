@@ -19,6 +19,17 @@ def test_encode_datetimes():
     # Values should be between -1 and 1
     for key in ("date_sin", "date_cos", "time_sin", "time_cos"):
         assert np.all(np.abs(features[key]) <= 1)
+        assert features[key].dtype == np.float32
+
+    # The date encoding must agree with encode_t0 and must not alias across the year boundary
+    for datetime in (np.datetime64("2023-01-01"), np.datetime64("2024-12-31")):
+        date_sin = encode_datetimes(np.array([datetime]))["date_sin"][0]
+        assert date_sin == encode_t0(datetime, [("1y", "cyclic")])[0]
+
+    assert (
+        encode_datetimes(np.array([np.datetime64("2023-01-01")]))["date_sin"][0]
+        != encode_datetimes(np.array([np.datetime64("2024-12-31")]))["date_sin"][0]
+    )
 
 
 def test_encode_t0():

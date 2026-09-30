@@ -98,8 +98,10 @@ def get_time_periods_mask(
 ) -> np.ndarray:
     """Get a boolean mask showing which times fall within any of the specified time periods.
 
+    A `None` bound means the period is unbounded in that direction.
+
     Args:
-        times: DatetimeIndex of times to filter
+        times: Array of times to filter
         time_periods: List of tuples specifying the start and end times for each period
     """
     if len(time_periods)==0:
@@ -109,10 +111,15 @@ def get_time_periods_mask(
 
     for start_time, end_time in time_periods:
 
-        start_time = times[0] if start_time is None else np.datetime64(start_time)
-        end_time = times[-1] if end_time is None else np.datetime64(end_time)
+        this_period_mask = np.full(len(times), True)
 
-        mask |= (times >= start_time) & (times <= end_time)
+        # Inclusive of start_time, exclusive of end_time
+        if start_time is not None:
+            this_period_mask &= times >= np.datetime64(start_time)
+        if end_time is not None:
+            this_period_mask &= times < np.datetime64(end_time)
+
+        mask |= this_period_mask
 
     return mask
 
@@ -291,6 +298,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             # Filter t0 times to given range
             if time_periods is not None:
                 mask = get_time_periods_mask(valid_t0_times, time_periods)
+                if not mask.any():
+                    raise ValueError(f"`time_periods` {time_periods} excluded all valid t0 times")
                 valid_t0_times = valid_t0_times[mask]
 
             self.valid_t0_times = valid_t0_times
@@ -305,8 +314,10 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
             # Filter t0 times to given range
             if time_periods is not None:
-                mask = get_time_periods_mask(valid_t0_and_location_ids["t0"], time_periods)
-                valid_t0_and_location_ids = valid_t0_and_location_ids[mask]
+                mask = get_time_periods_mask(valid_t0_and_location_ids["t0"].values, time_periods)
+                if not mask.any():
+                    raise ValueError(f"`time_periods` {time_periods} excluded all valid t0 times")
+                valid_t0_and_location_ids = valid_t0_and_location_ids.iloc[mask]
 
             self.valid_t0_and_location_ids = valid_t0_and_location_ids
 
@@ -362,6 +373,13 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             valid_time_periods,
             freq=minutes(config.sampling_grid.t0_resolution_minutes),
         )
+
+        if len(valid_t0_times) == 0:
+            raise ValueError(
+                f"The inputs overlap, but no period is long enough to contain a t0 on the "
+                f"{config.sampling_grid.t0_resolution_minutes}-minute grid:\n{valid_time_periods}",
+            )
+
         return valid_t0_times
 
     @staticmethod
@@ -381,15 +399,19 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             locations: The locations to find valid t0 times for
             config: PVNetDataConfig file
         """
-        # Get valid time period for nwp and satellite
-        datasets_without_generation = {k: v for k, v in datasets_dict.items() if k != "generation"}
-        valid_time_periods = find_valid_time_periods(datasets_without_generation, config)
+        # Get valid time periods for inputs other than generation
+        non_gen_time_periods = find_valid_time_periods(
+            datasets_dict={k: v for k, v in datasets_dict.items() if k != "generation"},
+            config=config,
+        )
 
-        # Loop over each location in system id and obtain valid periods
+        # There are separate input and target generation slices
         generation_windows = [
             w for w in (config.generation.input, config.generation.target) if w is not None
         ]
-        valid_t0_and_location_ids = []
+
+        # Loop over each location in system id and obtain valid periods
+        valid_t0_and_location_ids: list[pd.DataFrame] = []
         for location in locations:
             # Drop NaN values for location
             generation = (
@@ -398,8 +420,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                 .dropna(dim="time_utc")
             )
 
-            # Obtain valid time periods for this location, for each configured window
-            time_periods_per_window = [
+            # Obtain valid time periods for this location for both input and target generation
+            gen_time_periods = [
                 find_contiguous_t0_periods(
                     generation["time_utc"].values,
                     time_resolution=minutes(config.generation.time_resolution_minutes),
@@ -408,22 +430,29 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
                 )
                 for window_config in generation_windows
             ]
-            valid_time_periods_per_location = intersect_time_periods(
-                [valid_time_periods, *time_periods_per_window],
+            valid_time_periods = intersect_time_periods(
+                [non_gen_time_periods, *gen_time_periods],
             )
 
             # Fill out contiguous time periods to get t0 times
-            valid_t0_times_per_location = fill_time_periods(
-                valid_time_periods_per_location,
+            valid_t0_times = fill_time_periods(
+                valid_time_periods,
                 freq=minutes(config.sampling_grid.t0_resolution_minutes),
             )
 
-            valid_t0_per_location = pd.DataFrame(index=valid_t0_times_per_location)
-            valid_t0_per_location["location_id"] = location.id
-            valid_t0_and_location_ids.append(valid_t0_per_location)
+            if len(valid_t0_times) == 0:
+                logger.warning(f"No valid t0 times found for location {location.id}")
 
-        valid_t0_and_location_ids = pd.concat(valid_t0_and_location_ids)
-        return valid_t0_and_location_ids.reset_index(names="t0")
+            valid_t0_and_location_ids.append(
+                pd.DataFrame({"t0": valid_t0_times, "location_id": location.id})
+            )
+
+        all_valid_t0_and_location_ids = pd.concat(valid_t0_and_location_ids, ignore_index=True)
+
+        if len(all_valid_t0_and_location_ids) == 0:
+            raise ValueError("No valid t0 times found for any location")
+
+        return all_valid_t0_and_location_ids
 
 
 class PVNetDataset(AbstractPVNetDataset):

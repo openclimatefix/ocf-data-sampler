@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from ocf_data_sampler.select.time_periods import (
     fill_time_periods,
@@ -177,6 +178,32 @@ def test_find_contiguous_t0_periods_nwp():
 
         # Check if results are as expected
         assert time_periods.equals(expected)
+
+
+def test_find_contiguous_t0_periods_nwp_forecast_too_short():
+    """Test that a forecast too short to serve any t0 raises rather than emitting empty periods."""
+    init_times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="6h", unit="ns").values
+
+    # The forecast only reaches 2 hours ahead, but each sample needs 3 hours of future data
+    with pytest.raises(ValueError, match="no t0s are available"):
+        find_contiguous_t0_periods_nwp(
+            init_times=init_times,
+            interval_start=np.timedelta64(0, "h"),
+            interval_end=np.timedelta64(3, "h"),
+            first_forecast_step=np.timedelta64(0, "h"),
+            last_forecast_step=np.timedelta64(2, "h"),
+        )
+
+    # The same failure via a max_staleness shorter than the wait imposed by first_forecast_step
+    with pytest.raises(ValueError, match="no t0s are available"):
+        find_contiguous_t0_periods_nwp(
+            init_times=init_times,
+            interval_start=np.timedelta64(0, "h"),
+            interval_end=np.timedelta64(3, "h"),
+            first_forecast_step=np.timedelta64(6, "h"),
+            last_forecast_step=np.timedelta64(36, "h"),
+            max_staleness=np.timedelta64(3, "h"),
+        )
 
 
 def test_intersect_time_periods_with_2_inputs():

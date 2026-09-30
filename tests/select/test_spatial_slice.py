@@ -134,6 +134,17 @@ def test_select_spatial_slice_pixels_out_of_bounds(da):
     assert "Location(id=456, coord_systems=['osgb'], coordinates={'osgb': (90.1, 90.1)})" in msg
 
 
+def test_select_spatial_slice_pixels_multiple_empty_locations(da):
+    """Test that an empty locations list raises rather than returning an empty slice."""
+    with pytest.raises(ValueError, match="`locations` is empty"):
+        select_spatial_slice_pixels_multiple(
+            da,
+            locations=[],
+            width_pixels=3,
+            height_pixels=3,
+        )
+
+
 def test_select_spatial_slice_pixels_multiple_out_of_bounds(da):
     """Test error includes all location context for multi-location spatial slice requests."""
     with pytest.raises(ValueError) as excinfo:

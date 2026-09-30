@@ -5,6 +5,7 @@ from collections.abc import Mapping
 
 import numpy as np
 import xarray as xr
+from numpy.typing import NDArray
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 from ocf_data_sampler.common.xr_tensorstore import ZarrSource, open_zarr_paths
@@ -58,6 +59,7 @@ def open_nwp(zarr_path: ZarrSource, provider: str) -> xr.DataArray:
 
     assert_values_unique_increasing(ds["init_time_utc"].values, "init_time_utc")
     assert_values_unique_increasing(ds["step"].values, "step")
+    _assert_steps_uniformly_spaced(ds["step"].values, provider)
 
     da = extract_single_data_array(ds)
     da = da.transpose("init_time_utc", "step", "channel", x_coord, y_coord)
@@ -66,6 +68,22 @@ def open_nwp(zarr_path: ZarrSource, provider: str) -> xr.DataArray:
         raise TypeError(f"NWP data for {provider} should be floating, not {da.dtype}")
 
     return da
+
+
+def _assert_steps_uniformly_spaced(steps: NDArray[np.timedelta64], provider: str) -> None:
+    """Assert that the forecast steps are evenly spaced.
+
+    Args:
+        steps: The forecast steps, already checked to be unique and increasing.
+        provider: The NWP provider name, used in the error message.
+    """
+    spacings = np.unique(np.diff(steps))
+
+    if len(spacings) > 1:
+        raise ValueError(
+            f"NWP steps for provider {provider!r} must be evenly spaced, but the steps are "
+            f"spaced by {spacings}. Mixed step spacing is not supported.",
+        )
 
 
 def _rename(ds: xr.Dataset, name_mapping: Mapping[str, str]) -> xr.Dataset:

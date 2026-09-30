@@ -166,6 +166,9 @@ def select_spatial_slice_pixels_multiple(
     Returns:
         The selected DataArray-like slice.
     """
+    if len(locations) == 0:
+        raise ValueError("`locations` is empty - there is no region to cover")
+
     target_coords, x_dim, y_dim = find_coord_system(da)
 
     x_values = da[x_dim].values

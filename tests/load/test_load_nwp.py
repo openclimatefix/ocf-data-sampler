@@ -158,6 +158,27 @@ def test_load_ukv_bad_dtype_step(tmp_path):
         open_nwp(zarr_path=str(zarr_path), provider="ukv")
 
 
+def test_load_ukv_rejects_uneven_steps(tmp_path):
+    """Test steps must be evenly spaced - the valid-t0 calculation assumes it."""
+    zarr_path = tmp_path / "uneven_ukv_steps.zarr"
+    array = DataArray(
+        np.random.rand(1, 3, 1, 1, 1).astype(np.float32),
+        dims=("init_time_utc", "step", "channel", "x_osgb", "y_osgb"),
+        coords={
+            "init_time_utc": [np.datetime64("2023-01-01")],
+            # Hourly, then 3-hourly
+            "step": np.array([1, 2, 5], dtype="timedelta64[h]"),
+            "channel": ["t"],
+            "x_osgb": np.array([0], dtype=np.float32),
+            "y_osgb": np.array([50], dtype=np.float32),
+        },
+    )
+    array.to_zarr(zarr_path)
+
+    with pytest.raises(ValueError, match="must be evenly spaced"):
+        open_nwp(zarr_path=str(zarr_path), provider="ukv")
+
+
 def test_load_ecmwf_bad_dtype_longitude(tmp_path):
     """Test validation fails for ECMWF with a non-numeric longitude dtype."""
     zarr_path = tmp_path / "bad_ecmwf_longitude.zarr"
