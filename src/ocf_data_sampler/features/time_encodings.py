@@ -59,27 +59,24 @@ def encode_t0(
     features = []
 
     for period_str, embedding_type in embeddings:
-
         if period_str.endswith("h"):
             period_hours = int(period_str.removesuffix("h"))
-            frac = (get_hour(t0) + get_minute(t0) / 60) / period_hours
+            hour_float = get_hour(t0) + get_minute(t0) / 60
+            frac = (hour_float % period_hours) / period_hours
 
         elif period_str.endswith("y"):
             period_years = int(period_str.removesuffix("y"))
             days_in_year = 366 if get_is_leap_year(t0) else 365
-            frac = (
-                (((get_day_of_year(t0)-1) / days_in_year) + get_year(t0) % period_years)
-                / period_years
-            )
-
+            year_float = get_year(t0) + (get_day_of_year(t0) - 1) / days_in_year
+            frac = (year_float % period_years) / period_years
         else:
             raise ValueError(f"Invalid period_str: {period_str}. Must end with 'h' or 'y'.")
 
-        if embedding_type=="cyclic":
+        if embedding_type == "cyclic":
             radians = 2 * np.pi * frac
             features.extend([np.sin(radians), np.cos(radians)])
 
-        elif embedding_type=="linear":
+        elif embedding_type == "linear":
             features.append(frac)
 
         else:
