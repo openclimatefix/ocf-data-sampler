@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 import pandas as pd
 
@@ -34,67 +36,65 @@ def test_encode_datetimes():
 
 def test_encode_t0():
 
-    # Check hourly embedding codepath
-
-    # Define some t0 times to check for
-    t0s = pd.date_range("2024-01-01 00:00", "2024-01-01 23:55", freq="5min").values
-    # These are the fractional hour-of-day for the above
-    hour_floats = np.arange(0, 24, 5 / 60)
-
-    # Check over multiple frequencies
-    for h_freq in [1, 2, 3]:
-        hours = f"{h_freq}h"
-        linear_embeddings = [(hours, "linear")]
-        cyclic_embeddings = [(hours, "cyclic")]
-
-        for t0, hour_float in zip(t0s, hour_floats, strict=True):
-            # Check linear encodings
-            expected_linear = (hour_float % h_freq) / h_freq
-            result = encode_t0(t0, linear_embeddings)
-            # Linear embedding should be in range [0, 1]
-            assert (result >= 0) & (result <= 1)
-            assert np.isclose(expected_linear, result)
-
-            # Check cyclic encodings
-            radians = 2 * np.pi * expected_linear
-            expected_cyclic = [np.sin(radians), np.cos(radians)]
-            result = encode_t0(t0, cyclic_embeddings)
-            # Cyclic embedding should be in range [-1, 1]
-            assert ((result >= -1) & (result <= 1)).all()
-            assert np.allclose(expected_cyclic, result)
-
-            # Check multi-embedding ordering
-
-            # [linear, cyclic]
-            all_embeddings = linear_embeddings + cyclic_embeddings
-            result = encode_t0(t0, all_embeddings)
-            expected = [expected_linear, *expected_cyclic]
-            assert np.allclose(expected, result)
-
-            # [cyclic, linear]
-            all_embeddings = cyclic_embeddings + linear_embeddings
-            result = encode_t0(t0, all_embeddings)
-            expected = [*expected_cyclic, expected_linear]
-            assert np.allclose(expected, result)
-
-    # Check remaining portion of yearly embedding codepath for full coverage
-
-    t0_year_floats = [
-        ("2020-01-01 00:00", 2020),
-        ("2020-01-01 23:30", 2020),  # Time of day is ignored
-        ("2020-01-02 00:00", 2020 + 1 / 366),  # 2020 is a leap year
-        ("2020-06-10 00:00", 2020 + 161 / 366),  # 2020-06-10 is the 162nd day of that year
-        ("2021-01-01 00:00", 2021),
-        ("2021-01-02 00:00", 2021 + 1 / 365),  # 2020 is not a leap year
+    # Check some input-output pairs for both linear and cyclic encodings for hourly frequencies
+    # These are [datetime, frequency, expected linear fraction through the period] pairs
+    input_output_pairs = [
+        # 1-hour embeddings
+        ("2020-01-01 00:00", "1h", 0),
+        ("2020-01-01 06:10", "1h", 1 / 6),
+        ("2020-01-01 06:30", "1h", 0.5),
+        ("2020-01-01 06:55", "1h", 55 / 60),
+        # N-hour embeddings
+        ("2020-01-01 08:00", "2h", 0),
+        ("2020-01-01 09:00", "2h", 0.5),
+        ("2020-01-01 06:55", "2h", 55 / 120),
+        ("2020-01-01 08:00", "3h", 2 / 3),
+        ("2020-01-01 13:10", "5h", (3 + 1 / 6) / 5),
+        ("2020-01-01 08:00", "24h", 8 / 24),
+        ("2020-01-01 23:30", "24h", 23.5 / 24),
+        # 1-year embeddings
+        ("2020-01-01 00:00", "1y", 0),
+        ("2021-01-01 00:00", "1y", 0),
+        ("2020-01-01 23:30", "1y", 0),  # Time of day is ignored
+        ("2020-01-02 00:00", "1y", 1 / 366),  # 2020 is a leap year hence 366 days
+        ("2020-06-10 00:00", "1y", 161 / 366),  # 2020-06-10 is the 162nd day of that year
+        ("2021-06-10 00:00", "1y", 160 / 365),  # 2021-06-10 is the 161st day of that year
+        ("2021-01-01 00:00", "1y", 0),
+        ("2021-01-02 00:00", "1y", 1 / 365),  # 2020 is not a leap year
+        # N-year embeddings (we are unlikely to use these in practice, but they are supported)
+        ("2020-01-01 00:00", "2y", 0),
+        ("2021-01-01 00:00", "2y", 0.5),
+        ("2022-06-10 00:00", "2y", (160 / 365) / 2),  # 2022-06-10 is the 161st day of that year
+        ("2021-01-01 00:00", "3y", 2 / 3),  # 2019 is divisible by 3. This is 2 years after
+        # 2020 is a leap year but each full year as a single period for N-year embeddings
+        # Hence the difference in the similar rows below
+        ("2018-01-02 00:00", "2y", (1 / 365) / 2),
+        ("2020-01-02 00:00", "2y", (1 / 366) / 2),
     ]
 
-    for y_freq in [1, 2]:
-        # We only need to test linear embeddding since the cyclic part is tested for hourly and
-        # these share the same codepath
-        linear_embeddings = [(f"{y_freq}y", "linear")]
-        for t0_str, year_float in t0_year_floats:
-            # Check linear encodings
-            expected_linear = (year_float % y_freq) / y_freq
-            result = encode_t0(np.datetime64(t0_str), linear_embeddings)
-            assert (result >= 0) & (result <= 1)
-            assert np.isclose(expected_linear, result)
+    for t0_str, freq_str, linear_frac in input_output_pairs:
+        # Check linear encodings
+        linear_result = encode_t0(np.datetime64(t0_str), [(freq_str, "linear")])
+        assert (linear_result >= 0) & (linear_result <= 1)
+        assert np.isclose(linear_frac, linear_result)
+
+        # Check cyclic encodings
+        cyclic_result = encode_t0(np.datetime64(t0_str), [(freq_str, "cyclic")])
+        expected_cyclic = [np.sin(2 * np.pi * linear_frac), np.cos(2 * np.pi * linear_frac)]
+        assert ((cyclic_result >= -1) & (cyclic_result <= 1)).all()
+        assert np.allclose(cyclic_result, expected_cyclic)
+
+    # Check ordering is as expected when configured with multiple embeddings
+    t0 = np.datetime64("2020-06-10 06:30")
+    embedding_result_options = [
+        (("1h", "cyclic"), [np.sin(2 * np.pi * 0.5), np.cos(2 * np.pi * 0.5)]),
+        (("1h", "linear"), [0.5]),
+        (("2h", "linear"), [0.25]),
+        (("1y", "cyclic"), [np.sin(2 * np.pi * (161 / 366)), np.cos(2 * np.pi * (161 / 366))]),
+    ]
+    # Check ordering for all permutations of 2, 3, or 4 embeddings
+    for n in [2, 3, 4]:
+        for embedding_result_set in itertools.permutations(embedding_result_options, n):
+            embeddings, expected_list = list(zip(*embedding_result_set, strict=False))
+            result = encode_t0(t0, embeddings)
+            assert np.allclose(result, np.concatenate(expected_list))
