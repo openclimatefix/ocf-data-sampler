@@ -1,124 +1,70 @@
 """Functions for normalising, differencing, and filling missing values in PVNet input data."""
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.common.types import TArray
-from ocf_data_sampler.config.model import PVNetDataConfig
-from ocf_data_sampler.datasets.pvnet.types import SourceDict
+from ocf_data_sampler.config.model import NormalisationValues, PVNetDataConfig
+from ocf_data_sampler.datasets.pvnet.types import (
+    NormalisationArrays,
+    SourceDict,
+    SourceNormalisationArrays,
+)
 from ocf_data_sampler.features.diff_channels import diff_channels
+from ocf_data_sampler.features.normalisation import clip_and_standardise
 from ocf_data_sampler.select.dropout import apply_dropout
 
 
-def config_normalization_values_to_dicts(
-    config: PVNetDataConfig,
-) -> tuple[dict[str, np.ndarray | dict[str, np.ndarray]]]:
-    """Construct numpy arrays of mean, std, and clip values from the config normalisation constants.
+def _build_source_normalisation_arrays(
+    values: Sequence[NormalisationValues]
+) -> SourceNormalisationArrays:
+    """Build parameters broadcastable over (time, channel, y, x)."""
+    def channel_array(channel_values: list[float]) -> np.ndarray:
+        return np.array(channel_values, dtype=np.float32)[None, :, None, None]
 
-    Args:
-        config: Data configuration.
+    return {
+        "mean": channel_array([v.mean for v in values]),
+        "std": channel_array([v.std for v in values]),
+        "clip_min": channel_array([-np.inf if v.clip_min is None else v.clip_min for v in values]),
+        "clip_max": channel_array([np.inf if v.clip_max is None else v.clip_max for v in values]),
+    }
 
-    Returns:
-        Means dict
-        Stds dict
-        Clip min dict
-        Clip max dict
-    """
-    means_dict = {}
-    stds_dict = {}
-    clip_min_dict = {}
-    clip_max_dict = {}
 
+def build_normalisation_arrays(config: PVNetDataConfig) -> NormalisationArrays:
+    """Build normalisation arrays in configured channel order for each source."""
+    normalisation_arrays: NormalisationArrays = {}
     if config.nwp is not None:
-
-        means_dict["nwp"] = {}
-        stds_dict["nwp"] = {}
-        clip_min_dict["nwp"] = {}
-        clip_max_dict["nwp"] = {}
-
-        for nwp_key, nwp_config in config.nwp.items():
-
-            means_list = []
-            stds_list = []
-            clip_min_list = []
-            clip_max_list = []
-
-            for channel in list(nwp_config.channels):
-                # These accumulated channels are diffed and renamed
-                if channel in nwp_config.accum_channels:
-                    channel =f"diff_{channel}"
-
-                norm_conf = nwp_config.normalisation_constants[channel]
-
-                means_list.append(norm_conf.mean)
-                stds_list.append(norm_conf.std)
-                clip_min_list.append(-np.inf if norm_conf.clip_min is None else norm_conf.clip_min)
-                clip_max_list.append(np.inf if norm_conf.clip_max is None else norm_conf.clip_max)
-
-            means_dict["nwp"][nwp_key] = np.array(means_list)[None, :, None, None]
-            stds_dict["nwp"][nwp_key] = np.array(stds_list)[None, :, None, None]
-            clip_min_dict["nwp"][nwp_key] = np.array(clip_min_list)[None, :, None, None]
-            clip_max_dict["nwp"][nwp_key] = np.array(clip_max_list)[None, :, None, None]
-
+        normalisation_arrays["nwp"] = {}
+        for nwp_source, nwp_config in config.nwp.items():
+            channels = [
+                f"diff_{channel}" if channel in nwp_config.accum_channels else channel
+                for channel in nwp_config.channels
+            ]
+            normalisation_arrays["nwp"][nwp_source] = _build_source_normalisation_arrays(
+                [nwp_config.normalisation_constants[channel] for channel in channels]
+            )
     if config.satellite is not None:
-
-        means_list = []
-        stds_list = []
-        clip_min_list = []
-        clip_max_list = []
-
-        for channel in list(config.satellite.channels):
-            norm_conf = config.satellite.normalisation_constants[channel]
-            means_list.append(norm_conf.mean)
-            stds_list.append(norm_conf.std)
-            clip_min_list.append(-np.inf if norm_conf.clip_min is None else norm_conf.clip_min)
-            clip_max_list.append(np.inf if norm_conf.clip_max is None else norm_conf.clip_max)
-
-        # Convert to array and expand dimensions so we can normalise the 4D sat and NWP sources
-        means_dict["sat"] = np.array(means_list)[None, :, None, None]
-        stds_dict["sat"] = np.array(stds_list)[None, :, None, None]
-        clip_min_dict["sat"] = np.array(clip_min_list)[None, :, None, None]
-        clip_max_dict["sat"] = np.array(clip_max_list)[None, :, None, None]
-
-    return means_dict, stds_dict, clip_min_dict, clip_max_dict
+        sat_config = config.satellite
+        normalisation_arrays["sat"] = _build_source_normalisation_arrays(
+            [sat_config.normalisation_constants[channel] for channel in sat_config.channels]
+        )
+    return normalisation_arrays
 
 
 def normalise_dataset_dicts(
     dataset_dict: SourceDict,
-    mean_dict: dict[str, np.ndarray | dict[str, np.ndarray]],
-    std_dict: dict[str, np.ndarray | dict[str, np.ndarray]],
-    clip_min_dict: dict[str, np.ndarray | dict[str, np.ndarray]],
-    clip_max_dict: dict[str, np.ndarray | dict[str, np.ndarray]],
+    normalisation_arrays: NormalisationArrays,
 ) -> SourceDict:
-    """Normalise the NWP, satellite, and generation data in-place.
-
-    Args:
-        dataset_dict: Dictionary of xarray datasets
-        mean_dict: Means, as constructed by `config_normalization_values_to_dicts`
-        std_dict: Standard deviations, as constructed by `config_normalization_values_to_dicts`
-        clip_min_dict: Clip minimums, as constructed by `config_normalization_values_to_dicts`
-        clip_max_dict: Clip maximums, as constructed by `config_normalization_values_to_dicts`
-    """
+    """Normalise NWP, satellite, and generation data in-place."""
     if "nwp" in dataset_dict:
-        for nwp_key, da_nwp in dataset_dict["nwp"].items():
-            channel_means = mean_dict["nwp"][nwp_key]
-            channel_stds = std_dict["nwp"][nwp_key]
-            channel_mins = clip_min_dict["nwp"][nwp_key]
-            channel_maxs = clip_max_dict["nwp"][nwp_key]
-            dataset_dict["nwp"][nwp_key].data = (
-                (da_nwp.data.clip(channel_mins, channel_maxs) - channel_means)
-                / channel_stds
-            )
+        for nwp_source, da in dataset_dict["nwp"].items():
+            da.data = clip_and_standardise(da.data, **normalisation_arrays["nwp"][nwp_source])
 
     if "sat" in dataset_dict:
-        channel_means = mean_dict["sat"]
-        channel_stds = std_dict["sat"]
-        channel_mins = clip_min_dict["sat"]
-        channel_maxs = clip_max_dict["sat"]
-        dataset_dict["sat"].data = (
-            (dataset_dict["sat"].data.clip(channel_mins, channel_maxs) - channel_means)
-            / channel_stds
-        )
+        da = dataset_dict["sat"]
+        da.data = clip_and_standardise(da.data, **normalisation_arrays["sat"])
 
     for key in ("generation_input", "generation_target"):
         if key in dataset_dict:
@@ -254,10 +200,7 @@ def preprocess_dataset_dict(
     dataset_dict: SourceDict,
     t0: np.datetime64,
     config: PVNetDataConfig,
-    mean_dict: dict[str, np.ndarray | dict[str, np.ndarray]],
-    std_dict: dict[str, np.ndarray | dict[str, np.ndarray]],
-    clip_min_dict: dict[str, np.ndarray | dict[str, np.ndarray]],
-    clip_max_dict: dict[str, np.ndarray | dict[str, np.ndarray]],
+    normalisation_arrays: NormalisationArrays,
 ) -> SourceDict:
     """Diff, normalise, dropout, and fill NaNs in the dictionary of input data sources.
 
@@ -275,15 +218,10 @@ def preprocess_dataset_dict(
         dataset_dict: Dictionary of xarray datasets
         t0: The init-time
         config: PVNetDataConfig object
-        mean_dict: Means, as constructed by `config_normalization_values_to_dicts`
-        std_dict: Standard deviations, as constructed by `config_normalization_values_to_dicts`
-        clip_min_dict: Clip minimums, as constructed by `config_normalization_values_to_dicts`
-        clip_max_dict: Clip maximums, as constructed by `config_normalization_values_to_dicts`
+        normalisation_arrays: Precomputed arrays from `build_normalisation_arrays`
     """
     dataset_dict = diff_nwp_data(dataset_dict, config)
-    dataset_dict = normalise_dataset_dicts(
-        dataset_dict, mean_dict, std_dict, clip_min_dict, clip_max_dict,
-    )
+    dataset_dict = normalise_dataset_dicts(dataset_dict, normalisation_arrays)
     apply_dropout_to_datasets(dataset_dict, t0, config)
     dataset_dict = fill_nans_in_dataset_dicts(dataset_dict, config=config)
     return dataset_dict
