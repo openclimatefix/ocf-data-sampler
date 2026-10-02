@@ -23,6 +23,46 @@ def test_default_configuration():
     _ = PVNetDataConfig(sampling_grid=_MINIMAL_SAMPLING_GRID)
 
 
+@pytest.mark.parametrize("source, resolution", [("generation", 15), ("satellite", 3)])
+def test_sampling_grid_rejects_resolution_non_multiple(config_filename, source, resolution):
+    """The t0 spacing must be a multiple of both the generation and satellite time resolution.
+    """
+    configuration = load_yaml_configuration(config_filename)
+
+    # Limit to one source at a time for easier testing
+    if source == "satellite":
+        configuration.generation = None
+    else:
+        configuration.satellite = None
+
+    # Edit the t0 resolution to be incompatible with the source's time resolution
+    configuration.sampling_grid.t0_resolution_minutes = resolution
+
+    with pytest.raises(
+        ValidationError,
+        match=rf"sampling_grid\.t0_resolution_minutes \({resolution}\) must be divisible by "
+        rf"{source}\.time_resolution_minutes",
+    ):
+        _validate_configuration(configuration)
+
+
+@pytest.mark.parametrize("resolution", [30, 60])
+def test_sampling_grid_accepts_observation_resolution_multiples(config_filename, resolution):
+    configuration = load_yaml_configuration(config_filename)
+
+    configuration.sampling_grid.t0_resolution_minutes = resolution
+    _validate_configuration(configuration)
+
+
+def test_sampling_grid_does_not_require_nwp_resolution_multiple(config_filename):
+    configuration = load_yaml_configuration(config_filename)
+    configuration.satellite = None
+    configuration.generation = None
+    configuration.sampling_grid.t0_resolution_minutes = 7
+
+    _validate_configuration(configuration)
+
+
 def test_extra_field_error():
     """
     Check an extra parameters in config causes error

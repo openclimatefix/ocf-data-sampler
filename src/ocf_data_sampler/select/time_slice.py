@@ -25,20 +25,19 @@ def select_time_slice(
         time_resolution: Distance between neighbouring timestamps
     """
     interval_bounds = np.array([t0 + interval_start, t0 + interval_end], dtype="datetime64[ns]")
-    ceil_interval_bounds = datetime_ceil(interval_bounds, time_resolution)
-    start_ind, end_ind = get_indices_in_sorted_unique(da["time_utc"].values, ceil_interval_bounds)
+    start_ind, end_ind = get_indices_in_sorted_unique(da["time_utc"].values, interval_bounds)
 
-    expected_n_timesteps = int((interval_end - interval_start) // time_resolution) + 1
-    selected_n_timesteps = end_ind - start_ind + 1
+    requested_times = date_range(interval_bounds[0], interval_bounds[1], freq=time_resolution)
+    da_sel = da.isel(time_utc=slice(start_ind, end_ind+1))
 
-    if selected_n_timesteps != expected_n_timesteps:
+    sliced_times = da_sel["time_utc"].values
+    if not np.array_equal(sliced_times, requested_times):
         raise ValueError(
-            f"Requested interval ({interval_start} to {interval_end}) does not match "
-            f"the number of time steps in the sliced data ({selected_n_timesteps}); "
-            f"expected {expected_n_timesteps}"
+            f"Requested times ({requested_times}) do not match time steps in the sliced data "
+            f"({sliced_times})"
         )
 
-    return da.isel(time_utc=slice(start_ind, end_ind+1))
+    return da_sel
 
 
 def select_time_slice_nwp(

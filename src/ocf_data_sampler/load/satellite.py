@@ -12,7 +12,7 @@ from ocf_data_sampler.load.conventions import (
 )
 
 
-def open_sat_data(zarr_path: ZarrSource) -> xr.DataArray:
+def open_satellite(zarr_path: ZarrSource) -> xr.DataArray:
     """Lazily opens the zarr store and validates data types.
 
     Args:

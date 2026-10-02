@@ -6,7 +6,7 @@ import xarray as xr
 from ocf_data_sampler.common.lightarray import LightDataArray
 from ocf_data_sampler.load.generation import open_generation
 from ocf_data_sampler.load.nwp import open_nwp
-from ocf_data_sampler.load.satellite import open_sat_data
+from ocf_data_sampler.load.satellite import open_satellite
 
 
 @pytest.fixture()
@@ -19,7 +19,7 @@ def xr_ukv(nwp_ukv_zarr_path) -> xr.DataArray:
 
 @pytest.fixture()
 def xr_sat(sat_zarr_path) -> xr.DataArray:
-    return open_sat_data(zarr_path=sat_zarr_path)
+    return open_satellite(zarr_path=sat_zarr_path)
 
 
 def test_conversion(xr_gen, xr_ukv, xr_sat):

@@ -410,7 +410,8 @@ class SamplingGrid(Base):
         ...,
         gt=0,
         description="The cadence t0 candidates are enumerated at, needed to compute valid t0 "
-        "times regardless of which other input sources are configured.",
+        "times regardless of which other input sources are configured. Must be a multiple of "
+        "each configured satellite and generation temporal resolution.",
     )
 
     @field_validator("exclude_location_ids")
@@ -481,3 +482,15 @@ class PVNetDataConfig(Base):
     solar_position: SolarPosition | None = None
     datetime_encoding: DatetimeEncoding | None = None
     t0_embedding: T0Embedding | None = None
+
+    @model_validator(mode="after")
+    def validate_observation_sampling_resolution(self) -> "PVNetDataConfig":
+        """Keep sampled t0 times aligned with the observation source grids."""
+        resolution = self.sampling_grid.t0_resolution_minutes
+        for name, source in (("satellite", self.satellite), ("generation", self.generation)):
+            if source is not None and resolution % source.time_resolution_minutes != 0:
+                raise ValueError(
+                    f"sampling_grid.t0_resolution_minutes ({resolution}) must be divisible by "
+                    f"{name}.time_resolution_minutes ({source.time_resolution_minutes})",
+                )
+        return self

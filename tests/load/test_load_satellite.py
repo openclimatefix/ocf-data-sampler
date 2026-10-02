@@ -5,12 +5,12 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from ocf_data_sampler.load.satellite import open_sat_data
+from ocf_data_sampler.load.satellite import open_satellite
 
 
 def test_open_satellite(sat_zarr_path):
     """Test the satellite data loader with valid data."""
-    da = open_sat_data(zarr_path=sat_zarr_path)
+    da = open_satellite(zarr_path=sat_zarr_path)
 
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "channel", "x_geostationary", "y_geostationary")
@@ -22,7 +22,7 @@ def test_open_satellite(sat_zarr_path):
 
 
 def test_open_satellite_bad_dtype(tmp_path: Path):
-    """Test that open_sat_data raises an error if a coordinate has the wrong dtype."""
+    """Test that open_satellite raises an error if a coordinate has the wrong dtype."""
     zarr_path = tmp_path / "bad_sat.zarr"
 
     # Create dataset with an integer channel coordinate - should be a string
@@ -47,4 +47,4 @@ def test_open_satellite_bad_dtype(tmp_path: Path):
         TypeError,
         match="Coordinate 'channel' in satellite data should be str_",
     ):
-        open_sat_data(zarr_path=str(zarr_path))
+        open_satellite(zarr_path=str(zarr_path))
