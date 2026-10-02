@@ -28,7 +28,7 @@ dependencies = [
     "numcodecs",
     "pydantic>=2.11.8",
     "pyproj",
-    "pyaml_env",
+    "pyyaml",
     "pyresample",
     "xarray-tensorstore==0.3.0",
     "zarr>=3",
@@ -146,4 +146,3 @@ docstring-code-line-length = 100
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-

@@ -844,10 +844,10 @@ dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas" },
-    { name = "pyaml-env" },
     { name = "pydantic" },
     { name = "pyproj" },
     { name = "pyresample" },
+    { name = "pyyaml" },
     { name = "torch" },
     { name = "xarray" },
     { name = "xarray-tensorstore" },
@@ -871,10 +871,10 @@ requires-dist = [
     { name = "numcodecs" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "pyaml-env" },
     { name = "pydantic", specifier = ">=2.11.8" },
     { name = "pyproj" },
     { name = "pyresample" },
+    { name = "pyyaml" },
     { name = "torch" },
     { name = "xarray" },
     { name = "xarray-tensorstore", specifier = "==0.3.0" },
@@ -1012,18 +1012,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5c/84/d756868b6e07fb456578d51a579523e333c3525db6143a985222eca905db/pvlib-0.15.2.tar.gz", hash = "sha256:cedec65f6536a21ea64351e651896e849ac95cb5423b5c196262958b40cfac15", size = 38703043, upload-time = "2026-06-16T20:26:33.338Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8c/fb/263271dac97e246c9640eedb52b36087445569268115ff8051dc1736e64b/pvlib-0.15.2-py3-none-any.whl", hash = "sha256:42035b063cc692bc3ece9480246297ccf211c835f1151faa752acac9584f6bb5", size = 19355575, upload-time = "2026-06-16T20:26:30.242Z" },
-]
-
-[[package]]
-name = "pyaml-env"
-version = "1.2.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyyaml" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/35/3d/4d0f51a61208535af89aed36710661a3aa52c4764766db36c974e921d9a1/pyaml_env-1.2.2.tar.gz", hash = "sha256:f83502516b6f1561ba7c2db9ced939a7a9933a66702d8071e98ad07da49a4bb4", size = 12909, upload-time = "2025-01-13T07:45:17.004Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/2d/a9f47c921da9aea3755f6fd72f5d267625334ab567fff7e12498ddc1292a/pyaml_env-1.2.2-py3-none-any.whl", hash = "sha256:1c1c852a805a3ac9f9b57ef995520fdeea1c1a7a1edda6471cdf1b7c2ebb13c9", size = 9073, upload-time = "2025-01-13T07:45:14.869Z" },
 ]
 
 [[package]]
