@@ -14,6 +14,8 @@ def test_open_generation(generation_zarr_path):
     da = open_generation(generation_zarr_path)
 
     assert isinstance(da, xr.DataArray)
+    # Unlike other sources, generation data should be in memory after loading
+    assert da.variable._in_memory
     assert da.dims == ("time_utc", "location_id", "gen_param")
     # 24 hours of 30 minute data (inclusive), every catalogued location, capacity + generation
     assert da.shape == (49, len(LOCATION_IDS), 2)

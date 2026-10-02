@@ -93,7 +93,7 @@ def normalise_generation_by_capacity(da: TArray) -> TArray:
     normalised = np.divide(
         generation_values,
         capacity_values,
-        out=np.zeros_like(generation_values, dtype=float),
+        out=np.zeros_like(generation_values),
         where=capacity_values != 0,
     )
 
@@ -212,7 +212,7 @@ def preprocess_dataset_dict(
       units
     - NaN filling must be done after dropout, since dropout introduces NaNs in the data
 
-    Note: `dataset_dict` is expected to already be loaded - see `load_data_dict`.
+    Note: `dataset_dict` is expected to already be loaded - see `materialise_data`.
 
     Args:
         dataset_dict: Dictionary of xarray datasets

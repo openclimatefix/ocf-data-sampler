@@ -18,6 +18,24 @@ from ocf_data_sampler.datasets.pvnet.dataset import (
 from tests.conftest import LOCATION_IDS, SITE_LOCATION_IDS
 
 
+def _assert_sample_features_float32(sample):
+    """The underlying data for all features should be float32, whether numpy or torch"""
+    feature_keys = {
+        "satellite", "generation_input", "generation_target",
+        "generation_input_capacity_mwp", "generation_target_capacity_mwp",
+        "solar_azimuth", "solar_elevation",
+        "date_sin", "date_cos", "time_sin", "time_cos", "t0_embedding",
+    }
+    nwp_metadata_suffixes = ("_init_time_utc", "_step_hours", "_target_time_utc")
+    for key, value in sample.items():
+        is_nwp_payload = key.startswith("nwp_") and not key.endswith(nwp_metadata_suffixes)
+        if key not in feature_keys and not is_nwp_payload:
+            continue
+        assert isinstance(value, np.ndarray | torch.Tensor), key
+        expected_dtype = np.float32 if isinstance(value, np.ndarray) else torch.float32
+        assert value.dtype == expected_dtype, f"{key}: {value.dtype}"
+
+
 def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
     """Helper function to verify samples"""
 
@@ -25,6 +43,7 @@ def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
         batch_dim = ()
 
     assert isinstance(sample, dict)
+    _assert_sample_features_float32(sample)
 
     # Specific keys should always be present
     required_keys = [
@@ -210,6 +229,8 @@ def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
 
     dataset_nox = PVNetDataset(pvnet_config_filename, use_xarray=False)
     sample_nox = dataset_nox[0]
+    _assert_sample_features_float32(sample)
+    _assert_sample_features_float32(sample_nox)
 
     def check_samples_equal(sample0, sample1):
         assert set(sample0.keys())==set(sample1.keys())
@@ -308,6 +329,7 @@ def test_pvnet_dataset_without_generation(tmp_path, pvnet_config_filename):
     assert "generation_target" not in sample
     assert "nwp_ukv" in sample
     assert "satellite" in sample
+    _assert_sample_features_float32(sample)
 
 
 def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
@@ -344,6 +366,11 @@ def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
     ]
     for key in required_keys:
         assert key in raw_sample, f"Raw Sample: Expected key '{key}' not found"
+    _assert_sample_features_float32(raw_sample)
+
+    batch = next(iter(DataLoader(dataset, batch_size=2, num_workers=0)))
+    _assert_sample_features_float32(batch)
+    assert batch["satellite"].shape == (2, *raw_sample["satellite"].shape)
 
     # Type assertions
     assert isinstance(raw_sample["satellite"], torch.Tensor)

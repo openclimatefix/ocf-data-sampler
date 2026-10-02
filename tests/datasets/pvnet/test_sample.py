@@ -13,7 +13,9 @@ def test_make_sun_position_numpy_sample():
     sample = make_sun_position_numpy_sample(datetimes, lon=0, lat=51.5)
 
     # Assertion accounting for solar coord normalisation
-    assert {"solar_elevation", "solar_azimuth"} <= set(sample)
+    assert set(sample) == {"solar_elevation", "solar_azimuth"}
+    assert sample["solar_elevation"].dtype == np.float32
+    assert sample["solar_azimuth"].dtype == np.float32
     assert np.all((sample["solar_elevation"] >= 0) & (sample["solar_elevation"] <= 1))
     assert np.all((sample["solar_azimuth"] >= 0) & (sample["solar_azimuth"] <= 1))
 

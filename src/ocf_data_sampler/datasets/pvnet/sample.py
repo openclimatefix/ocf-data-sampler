@@ -100,8 +100,8 @@ def make_sun_position_numpy_sample(
     elevation = elevation / 180 + 0.5
 
     return {
-        "solar_azimuth": azimuth,
-        "solar_elevation": elevation,
+        "solar_azimuth": azimuth.astype(np.float32),
+        "solar_elevation": elevation.astype(np.float32),
     }
 
 
