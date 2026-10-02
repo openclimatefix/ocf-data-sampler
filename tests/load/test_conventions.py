@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
+from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.load.conventions import (
     validate_coords,
     validate_step_grid,
@@ -40,7 +41,7 @@ def test_validate_coords_rejects_multidimensional_coord():
 def test_validate_time_grid_accepts_aligned_times(timestamps, resolution_minutes):
     validate_time_grid(
         np.array(timestamps, dtype="datetime64[ns]"),
-        np.timedelta64(resolution_minutes, "m"),
+        minutes(resolution_minutes),
         source="test data",
     )
 
@@ -52,22 +53,22 @@ def test_validate_time_grid_rejects_misaligned_time():
         ValueError,
         match=r"test data: timestamp 2024-01-01T00:06:00.*configured resolution 5 minutes",
     ):
-        validate_time_grid(times, np.timedelta64(5, "m"), source="test data")
+        validate_time_grid(times, minutes(5), source="test data")
 
 
 def test_validate_step_grid_accepts_aligned_steps():
     validate_step_grid(
-        np.array([0, 60, 180], dtype="timedelta64[m]"),
-        np.timedelta64(60, "m"),
+        minutes([0, 60, 180]),
+        minutes(60),
         source="nwp/test",
     )
 
 
 def test_validate_step_grid_rejects_misaligned_step():
-    steps = np.array([0, 60, 90], dtype="timedelta64[m]")
+    steps = minutes([0, 60, 90])
 
     with pytest.raises(
         ValueError,
         match="nwp/test: step 90 minutes is not a multiple of the configured resolution 60 minutes",
     ):
-        validate_step_grid(steps, np.timedelta64(60, "m"), source="nwp/test")
+        validate_step_grid(steps, minutes(60), source="nwp/test")
