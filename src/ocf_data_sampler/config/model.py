@@ -484,8 +484,8 @@ class PVNetDataConfig(Base):
     t0_embedding: T0Embedding | None = None
 
     @model_validator(mode="after")
-    def validate_observation_sampling_resolution(self) -> "PVNetDataConfig":
-        """Keep sampled t0 times aligned with the observation source grids."""
+    def validate_t0_resolution_alignment(self) -> "PVNetDataConfig":
+        """Require the t0 resolution to be multiple of generation and satellite time resolution."""
         resolution = self.sampling_grid.t0_resolution_minutes
         for name, source in (("satellite", self.satellite), ("generation", self.generation)):
             if source is not None and resolution % source.time_resolution_minutes != 0:
