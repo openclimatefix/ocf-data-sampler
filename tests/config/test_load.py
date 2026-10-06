@@ -1,4 +1,4 @@
-from ocf_data_sampler.config.load import load_yaml_configuration
+from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import PVNetDataConfig
 
 
