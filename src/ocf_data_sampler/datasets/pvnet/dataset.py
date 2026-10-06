@@ -15,7 +15,7 @@ from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.cache import PickleCacheMixin
 from ocf_data_sampler.datasets.pvnet.loading import get_dataset_dict
-from ocf_data_sampler.datasets.pvnet.materialise import load_data_dict
+from ocf_data_sampler.datasets.pvnet.materialise import materialise_data
 from ocf_data_sampler.datasets.pvnet.preprocess import (
     build_normalisation_arrays,
     preprocess_dataset_dict,
@@ -480,7 +480,7 @@ class PVNetDataset(AbstractPVNetDataset):
         """
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-        sample_dict = load_data_dict(sample_dict)
+        sample_dict = materialise_data(sample_dict)
         sample_dict = preprocess_dataset_dict(
             sample_dict, t0, self.config, self.normalisation_arrays,
         )
@@ -580,7 +580,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
         """
         # Slice by time then load to avoid loading the data multiple times from disk
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
-        sample_dict = load_data_dict(sample_dict)
+        sample_dict = materialise_data(sample_dict)
         # Preprocessing is location-independent, so do it once before slicing per-location below
         sample_dict = preprocess_dataset_dict(
             sample_dict, t0, self.config, self.normalisation_arrays,
