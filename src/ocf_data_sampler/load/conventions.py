@@ -6,6 +6,7 @@ import numpy as np
 import xarray as xr
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
+from ocf_data_sampler.common.time_utils import datetime_ceil
 
 
 def _is_expected_dtype(actual_dtype: np.dtype, expected_dtype: type[np.generic]) -> bool:
@@ -92,3 +93,39 @@ def extract_single_data_array(ds: xr.Dataset, promote_attrs: bool = True) -> xr.
     if promote_attrs:
         da.attrs.update(ds.attrs)
     return da
+
+
+def validate_time_grid(
+    times: np.ndarray,
+    resolution: np.timedelta64,
+    source: str,
+) -> None:
+    """Check that timestamps lie on the configured sampling grid.
+
+    This allows us to catch any misalignment between the timestamps in the data and the expected
+    resolution early in the pipleline before any errors show up in slicing.
+    """
+    aligned = (times == datetime_ceil(times, resolution))
+
+    if not aligned.all():
+        example = times[~aligned][0]
+        raise ValueError(
+            f"{source}: timestamp {example} is not aligned "
+            f"to the configured resolution {resolution}"
+        )
+
+
+def validate_step_grid(
+    steps: np.ndarray,
+    resolution: np.timedelta64,
+    source: str,
+) -> None:
+    """Check that forecast steps are multiples of the configured resolution."""
+    aligned = ((steps % resolution) == np.timedelta64(0, "ns"))
+
+    if not aligned.all():
+        example = steps[~aligned][0]
+        raise ValueError(
+            f"{source}: step {example} is not a multiple "
+            f"of the configured resolution {resolution}"
+        )
