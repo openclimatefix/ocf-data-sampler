@@ -17,7 +17,7 @@ from ocf_data_sampler.datasets.cache import PickleCacheMixin
 from ocf_data_sampler.datasets.pvnet.loading import get_dataset_dict
 from ocf_data_sampler.datasets.pvnet.materialise import load_data_dict
 from ocf_data_sampler.datasets.pvnet.preprocess import (
-    config_normalization_values_to_dicts,
+    build_normalisation_arrays,
     preprocess_dataset_dict,
 )
 from ocf_data_sampler.datasets.pvnet.sample import (
@@ -332,13 +332,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             self.datasets_dict = xarray_to_lightarray_dict(datasets_dict)
 
         # Extract the normalisation values from the config for faster access
-        mean_dict, std_dict, clip_min_dict, clip_max_dict = (
-            config_normalization_values_to_dicts(config)
-        )
-        self.mean_dict = mean_dict
-        self.std_dict = std_dict
-        self.clip_min_dict = clip_min_dict
-        self.clip_max_dict = clip_max_dict
+        self.normalisation_arrays = build_normalisation_arrays(config)
 
     def _sanitise_index(self, idx: int) -> int:
         """Sanitise dataset indexing and raise IndexError for out-of-range indices."""
@@ -488,8 +482,7 @@ class PVNetDataset(AbstractPVNetDataset):
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
         sample_dict = load_data_dict(sample_dict)
         sample_dict = preprocess_dataset_dict(
-            sample_dict, t0, self.config,
-            self.mean_dict, self.std_dict, self.clip_min_dict, self.clip_max_dict,
+            sample_dict, t0, self.config, self.normalisation_arrays,
         )
         return build_numpy_sample(
             sample_dict, t0, location, self.config, self.include_extra_metadata,
@@ -590,8 +583,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
         sample_dict = load_data_dict(sample_dict)
         # Preprocessing is location-independent, so do it once before slicing per-location below
         sample_dict = preprocess_dataset_dict(
-            sample_dict, t0, self.config,
-            self.mean_dict, self.std_dict, self.clip_min_dict, self.clip_max_dict,
+            sample_dict, t0, self.config, self.normalisation_arrays,
         )
 
         samples = []

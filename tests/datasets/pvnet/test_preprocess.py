@@ -3,8 +3,10 @@ import pandas as pd
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration
+from ocf_data_sampler.config.model import NormalisationValues
 from ocf_data_sampler.datasets.pvnet.preprocess import (
     apply_dropout_to_datasets,
+    build_normalisation_arrays,
     fill_nans_in_dataset_dicts,
     normalise_dataset_dicts,
 )
@@ -70,7 +72,7 @@ def test_normalise_dataset_dicts_generation():
         "generation_target": generation.copy(deep=True),
     }
 
-    datasets_dict = normalise_dataset_dicts(datasets_dict, {}, {}, {}, {})
+    datasets_dict = normalise_dataset_dicts(datasets_dict, {})
 
     for key in ("generation_input", "generation_target"):
         result = datasets_dict[key]
@@ -128,4 +130,27 @@ def test_apply_dropout_to_datasets(pvnet_config_filename):
     _assert_dropout_applied(datasets_dict["sat"], t0 - np.timedelta64(60, "m"))
 
 
+def test_normalise_channels(config_filename):
+    config = load_yaml_configuration(config_filename)
+    config.satellite.channels = ["b", "a"]
+    config.satellite.normalisation_constants = {
+        "a": NormalisationValues(mean=10, std=2),
+        "b": NormalisationValues(mean=2, std=2, clip_min=0, clip_max=4),
+    }
+    config.nwp["ukv"].channels = ["b", "a"]
+    config.nwp["ukv"].accum_channels = ["b"]
+    config.nwp["ukv"].normalisation_constants = {
+        "a": NormalisationValues(mean=10, std=2),
+        "diff_b": NormalisationValues(mean=2, std=2, clip_min=0, clip_max=4),
+    }
+    sat = xr.DataArray(np.array([[-2, 2, 8], [6, 10, np.nan]], dtype=np.float32)[None, :, None, :])
+    nwp = sat.copy(deep=True)
+    datasets = {"sat": sat, "nwp": {"ukv": nwp}}
 
+    result = normalise_dataset_dicts(datasets, build_normalisation_arrays(config))
+
+    assert result is datasets
+    expected = np.array([[-1, 0, 1], [-2, 0, np.nan]])[None, :, None, :]
+    for da in (sat, nwp):
+        assert da.dtype == np.float32
+        np.testing.assert_allclose(da.values, expected)
