@@ -150,15 +150,11 @@ def test_get_locations_exclude_all_ids(locations_csv_path):
 
 
 def test_pvnet_dataset_incomplete_generation(pvnet_site_config_filename):
-    dataset = PVNetDataset(
-        pvnet_site_config_filename,
-        time_periods=[
-            ("2023-01-01 06:00", "2023-01-01 07:00"),
-            ("2023-01-01 12:00", "2023-01-01 13:00"),
-        ],
-    )
+    dataset = PVNetDataset(pvnet_site_config_filename)
 
-    expected_t0s = 4  # 2 half-open time periods each with 2 t0s at 30 minute intervals
+    # The generation data covers a full day at half-hour intervals
+    # The generation slice requires 1 hour of history only
+    expected_t0s = 48 - 2
     num_locs = _expected_num_locations(dataset, SITE_LOCATION_IDS)
 
     assert len(dataset.locations) == num_locs
@@ -401,13 +397,7 @@ def test_pvnet_dataset_pickle_missing_presaved_file(tmp_path, pvnet_config_filen
 
 
 def test_pvnet_dataset_sites_get_sample(pvnet_site_config_filename):
-    dataset = PVNetDataset(
-        pvnet_site_config_filename,
-        time_periods=[
-            ("2023-01-01 06:00", "2023-01-01 07:00"),
-            ("2023-01-01 12:00", "2023-01-01 13:00"),
-        ],
-    )
+    dataset = PVNetDataset(pvnet_site_config_filename,)
     # Test helper function get_sample to retrieve sample by t0 and location_id
     t0 = dataset.sample_index.t0[0]
     location_id = dataset.sample_index.location_id[0]
