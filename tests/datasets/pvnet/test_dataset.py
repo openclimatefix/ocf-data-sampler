@@ -211,7 +211,7 @@ def test_pvnet_concurrent_dataset(pvnet_config_filename, use_xarray):
         sample["location_id"].numpy(), [loc.id for loc in dataset.locations],
     )
     # Check that PVNetConcurrentDataset agrees with PVNetDataset for every location
-    single_sample_dataset = PVNetDataset(pvnet_config_filename, use_xarray=use_xarray)
+    single_sample_dataset = PVNetDataset(pvnet_config_filename, use_xarray=True)
     t0 = dataset.sample_index.t0[0]
     for i in (0, num_locations - 1):
         location_sample = single_sample_dataset.get_sample(t0, dataset.locations[i].id)
