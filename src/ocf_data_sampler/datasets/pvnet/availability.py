@@ -308,7 +308,7 @@ def build_concurrent_sample_index(
     t0_frequency = minutes(config.sampling_grid.t0_resolution_minutes)
 
     # Without sources, requested periods define the sampling range.
-    if config.generation is None and config.satellite is None and config.nwp is None: 
+    if config.generation is None and config.satellite is None and config.nwp is None:
         t0_times = _build_t0_times_from_requested_periods(requested_periods, t0_frequency)
         if len(t0_times) == 0:
             raise ValueError("No t0 times are available")

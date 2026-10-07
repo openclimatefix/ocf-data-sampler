@@ -170,9 +170,9 @@ def test_build_sample_index_no_shared_t0s(pvnet_config, locations, location_ids,
     expected_datetimes_2 = datetimes[4:5]
 
     # There is no intersection between the t0s expected for the two locations
-    assert len(np.intersect1d(expected_datetimes_1, expected_datetimes_2))==0 
+    assert len(np.intersect1d(expected_datetimes_1, expected_datetimes_2))==0
 
-    # This is fine for the regular PVNet sample index
+    # No t0 overlap between location is fine for the regular PVNet sample index
     sources = {"generation": make_generation(values, location_ids, datetimes)}
     index = build_sample_index(sources, locations, pvnet_config, None)
     _assert_sample_index(
@@ -214,7 +214,7 @@ def test_build_sample_index_without_sources(pvnet_config, locations, datetimes):
 
 @pytest.mark.parametrize("periods", [None, [(None, "2023-01-02")]])
 def test_build_sample_index_without_sources_requires_bounds(pvnet_config, locations, periods):
-    # If no data sources are used (i.e. only solar coords, datetimes, and other metadata) the the 
+    # If no data sources are used (i.e. only solar coords, datetimes, and other metadata) the the
     # requested_periods must be provided. Else the length of the dataset is unbounded
     pvnet_config.generation = None
     pvnet_config.satellite = None

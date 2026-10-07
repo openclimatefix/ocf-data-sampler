@@ -39,7 +39,6 @@ from ocf_data_sampler.features.time_encodings import encode_datetimes
 from ocf_data_sampler.load import open_locations
 from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
 
-
 TIndex = TypeVar("TIndex", SampleIndex, ConcurrentSampleIndex)
 
 
