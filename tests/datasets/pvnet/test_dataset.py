@@ -2,7 +2,6 @@ import os
 import pickle
 
 import numpy as np
-import pandas as pd
 import pytest
 import torch
 from torch.utils.data import DataLoader
@@ -13,7 +12,6 @@ from ocf_data_sampler.datasets.pvnet.dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
     get_locations,
-    get_time_periods_mask,
 )
 from tests.conftest import LOCATION_IDS, SITE_LOCATION_IDS
 
@@ -105,49 +103,6 @@ def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
     assert sample["t0_embedding"].shape == (*batch_dim, 6)
 
 
-
-def test_get_time_periods_mask():
-    # The periods are half-open - inclusive of the start time, exclusive of the end time
-    times = pd.to_datetime([
-        "2023-01-01 05:00",
-        "2023-01-01 06:00",
-        "2023-01-01 06:30",
-        "2023-01-01 07:00",
-        "2023-01-01 11:00",
-        "2023-01-01 12:00",
-        "2023-01-01 12:30",
-        "2023-01-01 13:00",
-    ]).values
-
-    mask = get_time_periods_mask(
-        times,
-        time_periods=[
-            ("2023-01-01 06:00", "2023-01-01 07:00"),
-            ("2023-01-01 12:00", "2023-01-01 13:00"),
-        ],
-    )
-    expected_mask = np.array([False, True, True, False, False, True, True, False])
-    assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
-
-    mask = get_time_periods_mask(
-        times,
-        time_periods=[(None, "2023-01-01 07:00")],
-    )
-    expected_mask = np.array([True, True, True, False, False, False, False, False])
-    assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
-
-    mask = get_time_periods_mask(
-        times,
-        time_periods=[("2023-01-01 12:30", None)],
-    )
-    expected_mask = np.array([False, False, False, False, False, False, True, True])
-    assert np.array_equal(mask, expected_mask), f"Expected {expected_mask} but got {mask}"
-
-    # Unbounded in both directions - no time is filtered out, including the last one
-    mask = get_time_periods_mask(times, time_periods=[(None, None)])
-    assert mask.all(), f"Expected all times to be kept but got {mask}"
-
-
 def _expected_num_locations(dataset, catalog_ids):
     """The catalogued locations which survive the config's exclusion list."""
     return len(catalog_ids) - len(dataset.config.sampling_grid.exclude_location_ids)
@@ -167,7 +122,7 @@ def test_pvnet_dataset(pvnet_config_filename):
 
     assert len(dataset.locations) == num_locs
 
-    assert len(dataset.valid_t0_times) == expected_t0s
+    assert len(np.unique(dataset.sample_index.t0)) == expected_t0s
     assert len(dataset) == num_locs * expected_t0s
 
     sample = dataset[0]
@@ -194,22 +149,18 @@ def test_get_locations_exclude_all_ids(locations_csv_path):
         get_locations(locations_csv_path, exclude_ids=list(LOCATION_IDS))
 
 
-def test_pvnet_dataset_sites(pvnet_site_config_filename):
-    dataset = PVNetDataset(
-        pvnet_site_config_filename,
-        time_periods=[
-            ("2023-01-01 06:00", "2023-01-01 07:00"),
-            ("2023-01-01 12:00", "2023-01-01 13:00"),
-        ],
-    )
+def test_pvnet_dataset_incomplete_generation(pvnet_site_config_filename):
+    dataset = PVNetDataset(pvnet_site_config_filename)
 
-    expected_t0s = 4  # 2 half-open time periods each with 2 t0s at 30 minute intervals
+    # The generation data covers a full day at half-hour intervals
+    # The generation slice requires 1 hour of history only
+    expected_t0s = 48 - 2
     num_locs = _expected_num_locations(dataset, SITE_LOCATION_IDS)
 
     assert len(dataset.locations) == num_locs
     # Should be less than num_locs * expected_t0s as not all locations have data for all t0s
     # in the time periods
-    assert len(dataset.valid_t0_and_location_ids) < num_locs * expected_t0s
+    assert len(dataset.sample_index) < num_locs * expected_t0s
 
     sample = dataset[0]
     _pvnet_dataset_sample_check(sample, dataset.config)
@@ -218,7 +169,6 @@ def test_pvnet_dataset_sites(pvnet_site_config_filename):
 def test_pvnet_dataset_sites_unbounded_time_periods(pvnet_site_config_filename):
     """Unbounded time periods on the per-location t0 path (NaN-bearing generation)."""
     dataset = PVNetDataset(pvnet_site_config_filename, time_periods=[(None, None)])
-    assert not dataset.complete_generation
     # An unbounded period should filter out nothing
     assert len(dataset) == len(PVNetDataset(pvnet_site_config_filename))
 
@@ -243,32 +193,30 @@ def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
     check_samples_equal(sample, sample_nox)
 
 
-def test_pvnet_concurrent_dataset(pvnet_config_filename):
+@pytest.mark.parametrize("use_xarray", [True, False])
+def test_pvnet_concurrent_dataset(pvnet_config_filename, use_xarray):
     # Create dataset object using limited set of GSPs
-    dataset = PVNetConcurrentDataset(pvnet_config_filename)
+    dataset = PVNetConcurrentDataset(pvnet_config_filename, use_xarray=use_xarray)
     num_locations = _expected_num_locations(dataset, LOCATION_IDS)
     assert len(dataset.locations) == num_locations
     # NB. I have not checked the value (39 below) is in fact correct
-    assert len(dataset.valid_t0_times) == 39
+    assert len(dataset.sample_index) == 39
     assert len(dataset) == 39
 
     sample = dataset[0]
     _pvnet_dataset_sample_check(sample, dataset.config, (num_locations,))
 
-
-def test_pvnet_dataset_getitem_bounds(pvnet_config_filename):
-    dataset = PVNetDataset(pvnet_config_filename)
-
-    sample_from_last = dataset[len(dataset) - 1]
-    sample_from_negative = dataset[-1]
-    assert sample_from_negative["t0"] == sample_from_last["t0"]
-    assert sample_from_negative["location_id"] == sample_from_last["location_id"]
-
-    with pytest.raises(IndexError):
-        _ = dataset[len(dataset)]
-
-    with pytest.raises(IndexError):
-        _ = dataset[-len(dataset) - 1]
+    # Check locations correctly ordered
+    np.testing.assert_array_equal(
+        sample["location_id"].numpy(), [loc.id for loc in dataset.locations],
+    )
+    # Check that PVNetConcurrentDataset agrees with PVNetDataset for every location
+    single_sample_dataset = PVNetDataset(pvnet_config_filename, use_xarray=True)
+    t0 = dataset.sample_index.t0[0]
+    for i in (0, num_locations - 1):
+        location_sample = single_sample_dataset.get_sample(t0, dataset.locations[i].id)
+        for key in ("generation_input", "generation_target"):
+            np.testing.assert_array_equal(sample[key][i].numpy(), location_sample[key])
 
 
 def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
@@ -319,7 +267,6 @@ def test_pvnet_dataset_without_generation(tmp_path, pvnet_config_filename):
     dataset = PVNetDataset(config_path)
 
     # With no generation data, there's nothing to be incomplete about
-    assert dataset.complete_generation
 
     # All locations from the locations catalog are available - none to filter out
     assert len(dataset.locations) == _expected_num_locations(dataset, LOCATION_IDS)
@@ -436,43 +383,11 @@ def test_pvnet_dataset_pickle_missing_presaved_file(tmp_path, pvnet_config_filen
         _ = pickle.loads(pickle_bytes)  # noqa: S301
 
 
-def test_pvnet_dataset_get_sample(pvnet_config_filename):
-    dataset = PVNetDataset(
-        pvnet_config_filename,
-        time_periods=[
-            ("2023-01-01 06:00", "2023-01-01 07:00"),
-            ("2023-01-01 12:00", "2023-01-01 13:00"),
-        ],
-    )
-    # Test helper function get_sample to retrieve sample by t0 and location_id
-    assert dataset.complete_generation
-    t0 = dataset.valid_t0_times[0]
-    location_id = next(iter(dataset.location_lookup))
-    sample = dataset.get_sample(t0=t0, location_id=location_id)
-    assert isinstance(sample, dict)
-
-    # Check error raised if loc_id does not exist
-    with pytest.raises(ValueError):
-        sample = dataset.get_sample(t0=t0, location_id=400)
-
-    # Check error raised if t0 does not exist
-    with pytest.raises(ValueError):
-        t0 = pd.Timestamp("2024-01-01 06:00")
-        sample = dataset.get_sample(t0=t0, location_id=location_id)
-
-
 def test_pvnet_dataset_sites_get_sample(pvnet_site_config_filename):
-    dataset = PVNetDataset(
-        pvnet_site_config_filename,
-        time_periods=[
-            ("2023-01-01 06:00", "2023-01-01 07:00"),
-            ("2023-01-01 12:00", "2023-01-01 13:00"),
-        ],
-    )
+    dataset = PVNetDataset(pvnet_site_config_filename)
     # Test helper function get_sample to retrieve sample by t0 and location_id
-    assert not dataset.complete_generation
-    t0 = dataset.valid_t0_and_location_ids["t0"].values[0]
-    location_id = dataset.valid_t0_and_location_ids["location_id"].values[0]
+    t0 = dataset.sample_index.t0[0]
+    location_id = dataset.sample_index.location_id[0]
     sample = dataset.get_sample(t0=t0, location_id=location_id)
     assert isinstance(sample, dict)
 

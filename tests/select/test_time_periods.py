@@ -56,6 +56,20 @@ def test_find_contiguous_t0_periods():
 
     assert periods.equals(expected_results)
 
+    # A window longer than the available history cannot produce a sample.
+    assert find_contiguous_t0_periods(
+        datetimes=datetimes,
+        interval_start=np.timedelta64(-24, "h"),
+        interval_end=np.timedelta64(24, "h"),
+        time_resolution=freq,
+    ).empty
+    assert find_contiguous_t0_periods(
+        datetimes=datetimes[:0],
+        interval_start=interval_start,
+        interval_end=interval_end,
+        time_resolution=freq,
+    ).empty
+
     # This is a stand in for where we just need a single satellite image from 5 minutes ago
     interval_start = pd.Timedelta(-5, "min")
     interval_end = pd.Timedelta(-5, "min")
@@ -263,6 +277,10 @@ def test_intersect_time_periods_with_2_inputs():
     exp_res = construct_time_periods_df([], [])  # no intersection
     assert_expected_result_with_reverse(a, b, expected_result=exp_res)
 
+    # An empty operand makes the intersection empty in either order.
+    b = construct_time_periods_df([], [])
+    assert_expected_result_with_reverse(a, b, expected_result=b)
+
 
 def test_intersect_time_periods_with_many_inputs():
     periods_1 = construct_time_periods_df(
@@ -330,3 +348,5 @@ def test_fill_time_periods():
 
     assert np.array_equal(filled, expected)
 
+    filled = fill_time_periods(construct_time_periods_df([], []), freq=np.timedelta64(30, "m"))
+    assert len(filled) == 0

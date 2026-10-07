@@ -1,11 +1,9 @@
 """Torch dataset for PVNet."""
 
-import logging
+from typing import Generic, TypeVar
 
 import numpy as np
-import pandas as pd
 import xarray as xr
-from numpy.typing import NDArray
 from torch.utils.data import Dataset, default_collate
 from typing_extensions import override
 
@@ -14,6 +12,11 @@ from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, 
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.cache import PickleCacheMixin
+from ocf_data_sampler.datasets.pvnet.availability import (
+    build_concurrent_sample_index,
+    build_sample_index,
+    validate_requested_periods,
+)
 from ocf_data_sampler.datasets.pvnet.loading import get_dataset_dict
 from ocf_data_sampler.datasets.pvnet.materialise import materialise_data
 from ocf_data_sampler.datasets.pvnet.preprocess import (
@@ -25,24 +28,18 @@ from ocf_data_sampler.datasets.pvnet.sample import (
     make_sun_position_numpy_sample,
     make_t0_encoding_numpy_sample,
 )
+from ocf_data_sampler.datasets.pvnet.sample_index import ConcurrentSampleIndex, SampleIndex
 from ocf_data_sampler.datasets.pvnet.slicing import (
     reduce_spatial_extent_of_datasets,
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
 from ocf_data_sampler.datasets.pvnet.types import NumpySample, SourceDict, TensorBatch
-from ocf_data_sampler.datasets.pvnet.valid_t0s import find_valid_time_periods
 from ocf_data_sampler.features.time_encodings import encode_datetimes
 from ocf_data_sampler.load import open_locations
-from ocf_data_sampler.select import (
-    fill_time_periods,
-    find_contiguous_t0_periods,
-    intersect_time_periods,
-)
 from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
 
-logger = logging.getLogger(__name__)
-
+TIndex = TypeVar("TIndex", SampleIndex, ConcurrentSampleIndex)
 
 
 def get_locations(csv_path: str, exclude_ids: list[int] | None = None) -> list[Location]:
@@ -90,38 +87,6 @@ def xarray_to_lightarray_dict(
         else:
             raise ValueError(f"Unexpected type ({type(v)})")
     return new_dataset_dict
-
-
-def get_time_periods_mask(
-    times: NDArray[np.datetime64],
-    time_periods: list[tuple[str | None, str | None]],
-) -> np.ndarray:
-    """Get a boolean mask showing which times fall within any of the specified time periods.
-
-    A `None` bound means the period is unbounded in that direction.
-
-    Args:
-        times: Array of times to filter
-        time_periods: List of tuples specifying the start and end times for each period
-    """
-    if len(time_periods)==0:
-        raise ValueError("At least one time period must be provided")
-
-    mask = np.full(len(times), False)
-
-    for start_time, end_time in time_periods:
-
-        this_period_mask = np.full(len(times), True)
-
-        # Inclusive of start_time, exclusive of end_time
-        if start_time is not None:
-            this_period_mask &= times >= np.datetime64(start_time)
-        if end_time is not None:
-            this_period_mask &= times < np.datetime64(end_time)
-
-        mask |= this_period_mask
-
-    return mask
 
 
 def add_alternate_coordinate_projections(
@@ -240,7 +205,7 @@ def build_numpy_sample(
     return sample
 
 
-class AbstractPVNetDataset(PickleCacheMixin, Dataset):
+class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
     """Abstract class for PVNet datasets."""
 
     def __init__(
@@ -258,7 +223,8 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
 
         Args:
             config_filename: Path to the configuration file
-            time_periods: List of tuples specifying the start and end times for each period
+            time_periods: Restrict sample t0 times to these (start, end) periods, with inclusive
+                starts and exclusive ends. None uses all available times.
             include_extra_metadata: Whether to include non-essential metadata for each sample in the
                 sample dict.
             use_xarray: Whether to use xarray.DataArray or LightDataArray as the underlying data
@@ -267,6 +233,10 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         """
         super().__init__()
 
+        # Validate requested periods before loading sources to fail fast on invalid input
+        if time_periods is not None:
+            validate_requested_periods(time_periods)
+
         config = load_yaml_configuration(config_filename)
 
         locations = get_locations(
@@ -274,54 +244,13 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
             config.sampling_grid.exclude_location_ids,
         )
 
-        datasets_dict = get_dataset_dict(config)
+        datasets_dict = get_dataset_dict(config, location_ids=[loc.id for loc in locations])
 
-        if "generation" in datasets_dict:
-            location_ids = [loc.id for loc in locations]
-            missing = np.setdiff1d(location_ids, datasets_dict["generation"]["location_id"].values)
-            if len(missing) > 0:
-                raise ValueError(f"Generation data is missing for location IDs: {missing}")
-
-            # Slice the generation data to only include the specified locations. This allows us to
-            # quality check the generation data for nans and find valid t0 times for each location.
-            datasets_dict["generation"] = datasets_dict["generation"].sel(location_id=location_ids)
-
-        # Check if generation data has nans. If generation isn't configured at all, there's no
-        # per-location data availability to consider, so a single global t0 grid still applies.
-        self.complete_generation = (
-            "generation" not in datasets_dict or not datasets_dict["generation"].isnull().any()
+        self.sample_index: TIndex = self._build_sample_index(
+            datasets_dict, locations, config, time_periods,
         )
-
-        if self.complete_generation:
-            valid_t0_times = self.find_valid_t0_times(datasets_dict, config)
-
-            # Filter t0 times to given range
-            if time_periods is not None:
-                mask = get_time_periods_mask(valid_t0_times, time_periods)
-                if not mask.any():
-                    raise ValueError(f"`time_periods` {time_periods} excluded all valid t0 times")
-                valid_t0_times = valid_t0_times[mask]
-
-            self.valid_t0_times = valid_t0_times
-        else:
-            logger.info(
-                "Generation data has nans so t0s are handled separately for each location_id.",
-            )
-            # If non-identical times per location, find valid t0s per location id
-            valid_t0_and_location_ids = self.find_valid_t0_and_location_ids(
-                datasets_dict, locations, config,
-            )
-
-            # Filter t0 times to given range
-            if time_periods is not None:
-                mask = get_time_periods_mask(valid_t0_and_location_ids["t0"].values, time_periods)
-                if not mask.any():
-                    raise ValueError(f"`time_periods` {time_periods} excluded all valid t0 times")
-                valid_t0_and_location_ids = valid_t0_and_location_ids.iloc[mask]
-
-            self.valid_t0_and_location_ids = valid_t0_and_location_ids
-
         self.locations = add_alternate_coordinate_projections(locations, datasets_dict)
+        self.normalisation_arrays = build_normalisation_arrays(config)
 
         self.config = config
         self.include_extra_metadata = include_extra_metadata
@@ -331,125 +260,23 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset):
         else:
             self.datasets_dict = xarray_to_lightarray_dict(datasets_dict)
 
-        # Extract the normalisation values from the config for faster access
-        self.normalisation_arrays = build_normalisation_arrays(config)
 
-    def _sanitise_index(self, idx: int) -> int:
-        """Sanitise dataset indexing and raise IndexError for out-of-range indices."""
-        if isinstance(idx, bool) or not isinstance(idx, (int, np.integer)):
-            raise TypeError(f"Dataset indices must be integers, got {type(idx)!r}")
-
-        index = int(idx)
-        n_samples = len(self)
-        if index < 0:
-            index += n_samples
-
-        if index < 0 or index >= n_samples:
-            raise IndexError(f"Index {idx} out of range for dataset of length {n_samples}")
-
-        return index
+    def __len__(self) -> int:
+        """Return the number of samples in the dataset index."""
+        return len(self.sample_index)
 
     @staticmethod
-    def find_valid_t0_times(
-        datasets_dict: SourceDict,
-        config: PVNetDataConfig,
-    ) -> NDArray[np.datetime64]:
-        """Find the t0 times where all of the requested input data is available.
-
-        Args:
-            datasets_dict: A dictionary of input datasets
-            config: PVNetDataConfig file
-        """
-        valid_time_periods = find_valid_time_periods(datasets_dict, config)
-
-        # Fill out the contiguous time periods to get the t0 times
-        valid_t0_times = fill_time_periods(
-            valid_time_periods,
-            freq=minutes(config.sampling_grid.t0_resolution_minutes),
-        )
-
-        if len(valid_t0_times) == 0:
-            raise ValueError(
-                f"The inputs overlap, but no period is long enough to contain a t0 on the "
-                f"{config.sampling_grid.t0_resolution_minutes}-minute grid:\n{valid_time_periods}",
-            )
-
-        return valid_t0_times
-
-    @staticmethod
-    def find_valid_t0_and_location_ids(
+    def _build_sample_index(
         datasets_dict: SourceDict,
         locations: list[Location],
         config: PVNetDataConfig,
-    ) -> pd.DataFrame:
-        """Find the t0 times where all of the requested input data is available for each location.
-
-        The idea is to
-        1. Get valid time period for nwp and satellite
-        2. For each location, find valid periods for that location
-
-        Args:
-            datasets_dict: A dictionary of input datasets
-            locations: The locations to find valid t0 times for
-            config: PVNetDataConfig file
-        """
-        # Get valid time periods for inputs other than generation
-        non_gen_time_periods = find_valid_time_periods(
-            datasets_dict={k: v for k, v in datasets_dict.items() if k != "generation"},
-            config=config,
-        )
-
-        # There are separate input and target generation slices
-        generation_windows = [
-            w for w in (config.generation.input, config.generation.target) if w is not None
-        ]
-
-        # Loop over each location in system id and obtain valid periods
-        valid_t0_and_location_ids: list[pd.DataFrame] = []
-        for location in locations:
-            # Drop NaN values for location
-            generation = (
-                datasets_dict["generation"]
-                .sel(location_id=location.id)
-                .dropna(dim="time_utc")
-            )
-
-            # Obtain valid time periods for this location for both input and target generation
-            gen_time_periods = [
-                find_contiguous_t0_periods(
-                    generation["time_utc"].values,
-                    time_resolution=minutes(config.generation.time_resolution_minutes),
-                    interval_start=minutes(window_config.interval_start_minutes),
-                    interval_end=minutes(window_config.interval_end_minutes),
-                )
-                for window_config in generation_windows
-            ]
-            valid_time_periods = intersect_time_periods(
-                [non_gen_time_periods, *gen_time_periods],
-            )
-
-            # Fill out contiguous time periods to get t0 times
-            valid_t0_times = fill_time_periods(
-                valid_time_periods,
-                freq=minutes(config.sampling_grid.t0_resolution_minutes),
-            )
-
-            if len(valid_t0_times) == 0:
-                logger.warning(f"No valid t0 times found for location {location.id}")
-
-            valid_t0_and_location_ids.append(
-                pd.DataFrame({"t0": valid_t0_times, "location_id": location.id})
-            )
-
-        all_valid_t0_and_location_ids = pd.concat(valid_t0_and_location_ids, ignore_index=True)
-
-        if len(all_valid_t0_and_location_ids) == 0:
-            raise ValueError("No valid t0 times found for any location")
-
-        return all_valid_t0_and_location_ids
+        time_periods: list[tuple[str | None, str | None]] | None,
+    ) -> TIndex:
+        """Build the index appropriate to the concrete dataset."""
+        raise NotImplementedError("Subclasses must implement sample index construction")
 
 
-class PVNetDataset(AbstractPVNetDataset):
+class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
     """A torch Dataset for creating PVNet samples."""
 
     @override
@@ -464,12 +291,16 @@ class PVNetDataset(AbstractPVNetDataset):
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
 
+    @staticmethod
     @override
-    def __len__(self) -> int:
-        if self.complete_generation:
-            return len(self.locations) * len(self.valid_t0_times)
-        # For non-identical generation time periods all t0 and location combinations already present
-        return len(self.valid_t0_and_location_ids)
+    def _build_sample_index(
+        datasets_dict: SourceDict,
+        locations: list[Location],
+        config: PVNetDataConfig,
+        time_periods: list[tuple[str | None, str | None]] | None,
+    ) -> SampleIndex:
+        """Build an index of available t0 and location pairs."""
+        return build_sample_index(datasets_dict, locations, config, time_periods)
 
     def _get_sample(self, t0: np.datetime64, location: Location) -> NumpySample:
         """Generate the PVNet sample for given coordinates.
@@ -490,25 +321,12 @@ class PVNetDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> NumpySample:
-        idx = self._sanitise_index(idx)
 
         # Get the coordinates of the sample
-        if self.complete_generation:
-            # t_index will be between 0 and len(self.valid_t0_times)-1
-            t_index = idx % len(self.valid_t0_times)
+        t0, location_id = self.sample_index[idx]
 
-            # For each location, there are len(self.valid_t0_times) possible samples
-            loc_index = idx // len(self.valid_t0_times)
-
-            location = self.locations[loc_index]
-            t0 = self.valid_t0_times[t_index]
-        else:
-            # Get the coordinates of the sample
-            t0 = self.valid_t0_and_location_ids["t0"].values[idx]
-            location_id = self.valid_t0_and_location_ids["location_id"].values[idx]
-
-            # Get location from location id
-            location = self.location_lookup[location_id]
+        # Get location from location id
+        location = self.location_lookup[location_id]
 
         return self._get_sample(t0, location)
 
@@ -521,30 +339,19 @@ class PVNetDataset(AbstractPVNetDataset):
             t0: init-time for sample
             location_id: id for location
         """
-        # Check the user has asked for a sample which we have the data for
-        self.validate_sample_request(t0, location_id)
+        # Check if the requested sample is available
+        if not self.sample_index.contains(t0, location_id):
+            raise ValueError(
+                f"Input t0 time '{t0!s}' and location id '{location_id}' "
+                f"pair not in valid t0 and location pairs",
+            )
 
         location = self.location_lookup[location_id]
 
         return self._get_sample(t0, location)
 
-    def validate_sample_request(self, t0: np.datetime64, location_id: int) -> None:
-        """Validate if a sample request for the given coordinates is valid."""
-        if self.complete_generation:
-            if t0 not in self.valid_t0_times:
-                raise ValueError(f"Input init time '{t0!s}' not in valid times")
-            if location_id not in self.location_lookup:
-                raise ValueError(f"Input location '{location_id}' not known")
-        else:
-            t0_idxs = self.valid_t0_and_location_ids["t0"]==t0
-            if location_id not in self.valid_t0_and_location_ids[t0_idxs]["location_id"].values:
-                raise ValueError(
-                    f"Input t0 time '{t0!s}' and location id '{location_id}' "
-                    f"pair not in valid t0 and location pairs",
-                )
 
-
-class PVNetConcurrentDataset(AbstractPVNetDataset):
+class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
     """A torch Dataset for creating concurrent PVNet location samples."""
 
     @override
@@ -557,20 +364,22 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
     ) -> None:
         super().__init__(config_filename, time_periods, include_extra_metadata, use_xarray)
 
-        if not self.complete_generation:
-            raise NotImplementedError(
-                "Concurrent PVNet dataset cannot be created when generation data is incomplete.",
-            )
-
         self.datasets_dict = reduce_spatial_extent_of_datasets(
             self.datasets_dict,
             self.locations,
             self.config,
         )
 
+    @staticmethod
     @override
-    def __len__(self) -> int:
-        return len(self.valid_t0_times)
+    def _build_sample_index(
+        datasets_dict: SourceDict,
+        locations: list[Location],
+        config: PVNetDataConfig,
+        time_periods: list[tuple[str | None, str | None]] | None,
+    ) -> ConcurrentSampleIndex:
+        """Build an index of t0 times available at every requested location."""
+        return build_concurrent_sample_index(datasets_dict, config, time_periods)
 
     def _get_sample(self, t0: np.datetime64) -> TensorBatch:
         """Generate a concurrent PVNet sample for given init-time.
@@ -601,8 +410,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
 
     @override
     def __getitem__(self, idx: int) -> TensorBatch:
-        idx = self._sanitise_index(idx)
-        return self._get_sample(self.valid_t0_times[idx])
+        return self._get_sample(self.sample_index[idx])
 
     def get_sample(self, t0: np.datetime64) -> TensorBatch:
         """Generate a sample for the given init-time.
@@ -612,7 +420,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset):
         Args:
             t0: init-time for sample
         """
-        # Check data is available for init-time t0
-        if t0 not in self.valid_t0_times:
+        # Check if the requested sample is available
+        if not self.sample_index.contains(t0):
             raise ValueError(f"Input init time '{t0!s}' not in valid times")
         return self._get_sample(t0)
