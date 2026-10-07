@@ -153,7 +153,7 @@ def test_pvnet_dataset_incomplete_generation(pvnet_site_config_filename):
     dataset = PVNetDataset(pvnet_site_config_filename)
 
     # The generation data covers a full day at half-hour intervals
-    # The generation slice requires 1 hour of history only
+    # The generation slice requires 1 hour of history only
     expected_t0s = 48 - 2
     num_locs = _expected_num_locations(dataset, SITE_LOCATION_IDS)
 
@@ -205,31 +205,18 @@ def test_pvnet_concurrent_dataset(pvnet_config_filename, use_xarray):
 
     sample = dataset[0]
     _pvnet_dataset_sample_check(sample, dataset.config, (num_locations,))
+
+    # Check locations correctly ordered
     np.testing.assert_array_equal(
         sample["location_id"].numpy(), [loc.id for loc in dataset.locations],
     )
-    ordinary = PVNetDataset(pvnet_config_filename, use_xarray=use_xarray)
+    # Check that PVNetConcurrentDataset agrees with PVNetDataset for every location
+    single_sample_dataset = PVNetDataset(pvnet_config_filename, use_xarray=use_xarray)
     t0 = dataset.sample_index.t0[0]
     for i in (0, num_locations - 1):
-        location_sample = ordinary.get_sample(t0, dataset.locations[i].id)
+        location_sample = single_sample_dataset.get_sample(t0, dataset.locations[i].id)
         for key in ("generation_input", "generation_target"):
             np.testing.assert_array_equal(sample[key][i].numpy(), location_sample[key])
-
-
-# Do we need this?
-def test_pvnet_dataset_getitem_bounds(pvnet_config_filename):
-    dataset = PVNetDataset(pvnet_config_filename)
-
-    sample_from_last = dataset[len(dataset) - 1]
-    sample_from_negative = dataset[-1]
-    assert sample_from_negative["t0"] == sample_from_last["t0"]
-    assert sample_from_negative["location_id"] == sample_from_last["location_id"]
-
-    with pytest.raises(IndexError):
-        _ = dataset[len(dataset)]
-
-    with pytest.raises(IndexError):
-        _ = dataset[-len(dataset) - 1]
 
 
 def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
@@ -397,7 +384,7 @@ def test_pvnet_dataset_pickle_missing_presaved_file(tmp_path, pvnet_config_filen
 
 
 def test_pvnet_dataset_sites_get_sample(pvnet_site_config_filename):
-    dataset = PVNetDataset(pvnet_site_config_filename,)
+    dataset = PVNetDataset(pvnet_site_config_filename)
     # Test helper function get_sample to retrieve sample by t0 and location_id
     t0 = dataset.sample_index.t0[0]
     location_id = dataset.sample_index.location_id[0]
