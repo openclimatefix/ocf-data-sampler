@@ -161,3 +161,29 @@ def test_select_spatial_slice_pixels_multiple_out_of_bounds(da):
     assert "Slice is unavailable for locations=" in msg
     assert "Location(id=1, coord_systems=['osgb'], coordinates={'osgb': (-90.1, -80.1)})" in msg
     assert "Location(id=2, coord_systems=['osgb'], coordinates={'osgb': (-89.9, -79.9)})" in msg
+
+
+@pytest.mark.parametrize(
+    "coordinate, window_size",
+    [
+        (0.1, 1),
+        (-0.1, 1),
+        (0, 2),
+        (0.1, 3),
+    ],
+)
+def test_select_spatial_slice_pixels_multiple_compatibility(da, coordinate, window_size):
+    """Make sure the function's slice is compatible with select_spatial_slice_pixels.
+
+    This is edge case especially for small window sizes.
+    """
+    locations = [
+        Location(x=coordinate, y=coordinate, coord_system="osgb"),
+        Location(x=coordinate + 10, y=coordinate - 10, coord_system="osgb"),
+    ]
+    reduced = select_spatial_slice_pixels_multiple(da, locations, window_size, window_size)
+
+    for location in locations:
+        ordinary = select_spatial_slice_pixels(da, location, window_size, window_size)
+        concurrent = select_spatial_slice_pixels(reduced, location, window_size, window_size)
+        xr.testing.assert_equal(concurrent, ordinary)
