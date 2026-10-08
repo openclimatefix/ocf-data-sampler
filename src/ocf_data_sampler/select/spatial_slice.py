@@ -205,4 +205,18 @@ def select_spatial_slice_pixels_multiple(
         locations=locations,
     )
 
+    # We add a conditional buffer so that this crop is compatible with select_spatial_slice_pixels
+    # for all of the locations. select_spatial_slice_pixels checks that the location centres are
+    # strictly within the spatial bounds of the data. If using a window size of 1, the locations at
+    # the edge of the crop calculated above could fail the check x_min < loc.x < x_max. There is a
+    # similar edge case for window size of 2 pixels if a location at the edge of the crop sits
+    # exactly on a boundary pixel i.e. x_min == loc.x
+    if width_pixels <= 2:
+        left_idx = max(0, left_idx - 1)
+        right_idx = min(data_width_pixels, right_idx + 1)
+
+    if height_pixels <= 2:
+        bottom_idx = max(0, bottom_idx - 1)
+        top_idx = min(data_height_pixels, top_idx + 1)
+
     return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
