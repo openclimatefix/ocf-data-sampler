@@ -29,13 +29,12 @@ def slice_datasets_by_space(
         A dictionary of the sliced input data sources.
     """
     sliced_datasets_dict = {}
-    source_coordinates = location.source_coordinates
 
     if "nwp" in datasets_dict:
         sliced_datasets_dict["nwp"] = {}
 
         for nwp_key, nwp_config in config.nwp.items():
-            coordinate = source_coordinates["nwp"][nwp_key]
+            coordinate = location.source_coordinates["nwp"][nwp_key]
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
                 datasets_dict["nwp"][nwp_key],
                 x=coordinate.x,
@@ -47,7 +46,7 @@ def slice_datasets_by_space(
             )
 
     if "sat" in datasets_dict:
-        coordinate = source_coordinates["sat"]
+        coordinate = location.source_coordinates["sat"]
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels(
             datasets_dict["sat"],
             x=coordinate.x,
