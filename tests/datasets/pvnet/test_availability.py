@@ -9,7 +9,6 @@ from ocf_data_sampler.datasets.pvnet.availability import (
     build_sample_index,
     validate_requested_periods,
 )
-from ocf_data_sampler.spatial import Location
 
 
 @pytest.mark.parametrize(
@@ -67,13 +66,8 @@ def pvnet_config():
 
 
 @pytest.fixture
-def locations():
-    return [Location(x=0, y=0, coord_system="lon_lat", id=i) for i in (1, 2)]
-
-
-@pytest.fixture
-def location_ids(locations):
-    return [loc.id for loc in locations]
+def location_ids():
+    return [1, 2]
 
 
 @pytest.fixture
@@ -99,11 +93,11 @@ def _assert_sample_index(index, expected_times, expected_ids):
     assert index.location_id.dtype == np.int64
 
 
-def test_build_sample_index_unusable_location(pvnet_config, locations, location_ids, datetimes):
+def test_build_sample_index_unusable_location(pvnet_config, location_ids, datetimes):
     pvnet_config.satellite = None
-    values = np.ones((len(datetimes), len(locations)))
+    values = np.ones((len(datetimes), len(location_ids)))
     sources = {"generation": make_generation(values, location_ids, datetimes)}
-    sample_index = build_sample_index(sources, locations, pvnet_config, None)
+    sample_index = build_sample_index(sources, location_ids, pvnet_config, None)
     # Samples use one hour (2 steps before t0) of history and two hours (4 steps after t0) of future
     expected_t0s = datetimes[2:-4]
     _assert_sample_index(sample_index, np.tile(expected_t0s, 2), [1, 1, 1, 2, 2, 2])
@@ -114,28 +108,28 @@ def test_build_sample_index_unusable_location(pvnet_config, locations, location_
     values[:, 1] = np.nan
     sources = {"generation": make_generation(values, location_ids, datetimes)}
     with pytest.raises(ValueError, match="No t0 times found for location 2"):
-        build_sample_index(sources, locations, pvnet_config, None)
+        build_sample_index(sources, location_ids, pvnet_config, None)
     with pytest.raises(ValueError, match="every requested location"):
         build_concurrent_sample_index(sources, pvnet_config, None)
 
 
 def test_build_sample_index_non_overlapping_sources(
-    pvnet_config, locations, location_ids, datetimes,
+    pvnet_config, location_ids, datetimes,
 ):
-    values = np.ones((len(datetimes), len(locations)))
+    values = np.ones((len(datetimes), len(location_ids)))
     sources = {
         "generation": make_generation(values, location_ids, datetimes),
         "sat": make_satellite(datetimes + np.timedelta64(1, "D")),
     }
     with pytest.raises(ValueError, match="No intersecting time periods found for location 1"):
-        build_sample_index(sources, locations, pvnet_config, None)
+        build_sample_index(sources, location_ids, pvnet_config, None)
     with pytest.raises(ValueError, match="every requested location"):
         build_concurrent_sample_index(sources, pvnet_config, None)
 
 
-def test_build_sample_index_generation_only(pvnet_config, locations, location_ids, datetimes):
+def test_build_sample_index_generation_only(pvnet_config, location_ids, datetimes):
     pvnet_config.satellite = None
-    values = np.ones((len(datetimes), len(locations)))
+    values = np.ones((len(datetimes), len(location_ids)))
 
     # Samples are configured to use 2 stamps before t0 and 4 timestamps after t0
     # Location 1 has NaN generation at first timestamp so t0s start from datetime[3]
@@ -147,7 +141,7 @@ def test_build_sample_index_generation_only(pvnet_config, locations, location_id
     expected_datetimes_2 = datetimes[2:-5]
 
     sources = {"generation": make_generation(values, location_ids, datetimes)}
-    index = build_sample_index(sources, locations, pvnet_config, None)
+    index = build_sample_index(sources, location_ids, pvnet_config, None)
     _assert_sample_index(
         index, np.concatenate([expected_datetimes_1, expected_datetimes_2]), [1, 1, 2, 2],
     )
@@ -157,9 +151,9 @@ def test_build_sample_index_generation_only(pvnet_config, locations, location_id
     np.testing.assert_array_equal(concurrent.t0, datetimes[3:-5])
 
 
-def test_build_sample_index_no_shared_t0s(pvnet_config, locations, location_ids, datetimes):
+def test_build_sample_index_no_shared_t0s(pvnet_config, location_ids, datetimes):
     pvnet_config.satellite = None
-    values = np.ones((len(datetimes), len(locations)))
+    values = np.ones((len(datetimes), len(location_ids)))
 
     # Samples are configured to use 2 stamps before t0 and 4 timestamps after t0
     # Note `datetimes` is regularly spaced with length 9
@@ -174,7 +168,7 @@ def test_build_sample_index_no_shared_t0s(pvnet_config, locations, location_ids,
 
     # No t0 overlap between location is fine for the regular PVNet sample index
     sources = {"generation": make_generation(values, location_ids, datetimes)}
-    index = build_sample_index(sources, locations, pvnet_config, None)
+    index = build_sample_index(sources, location_ids, pvnet_config, None)
     _assert_sample_index(
         index, np.concatenate([expected_datetimes_1, expected_datetimes_2]), [1, 2],
     )
@@ -185,22 +179,22 @@ def test_build_sample_index_no_shared_t0s(pvnet_config, locations, location_ids,
         build_concurrent_sample_index(sources, pvnet_config, None)
 
 
-def test_build_sample_index_without_generation(pvnet_config, locations, location_ids, datetimes):
+def test_build_sample_index_without_generation(pvnet_config, location_ids, datetimes):
     pvnet_config.generation = None
     sources = {"sat": make_satellite(datetimes)}
-    ordinary = build_sample_index(sources, locations, pvnet_config, None)
+    ordinary = build_sample_index(sources, location_ids, pvnet_config, None)
     concurrent = build_concurrent_sample_index(sources, pvnet_config, None)
     # Sample is congigured to use satellite between -30 minutes and 0. So every t0 after the first
     # datetime is available
     expected_t0s = datetimes[1:]
     _assert_sample_index(
-        ordinary, np.tile(expected_t0s, len(locations)),
+        ordinary, np.tile(expected_t0s, len(location_ids)),
         np.repeat(location_ids, len(expected_t0s)),
     )
     np.testing.assert_array_equal(concurrent.t0, expected_t0s)
 
 
-def test_build_sample_index_without_sources(pvnet_config, locations, datetimes):
+def test_build_sample_index_without_sources(pvnet_config, location_ids, datetimes):
     pvnet_config.generation = None
     pvnet_config.satellite = None
 
@@ -208,15 +202,15 @@ def test_build_sample_index_without_sources(pvnet_config, locations, datetimes):
         ("2023-01-01T00:10", "2023-01-01T01:00"),
         ("2023-01-01T01:00", "2023-01-01T01:30"),
     ]
-    index = build_sample_index({}, locations, pvnet_config, requested_periods)
+    index = build_sample_index({}, location_ids, pvnet_config, requested_periods)
     _assert_sample_index(index, np.tile(datetimes[1:3], 2), [1, 1, 2, 2])
 
 
 @pytest.mark.parametrize("periods", [None, [(None, "2023-01-02")]])
-def test_build_sample_index_without_sources_requires_bounds(pvnet_config, locations, periods):
+def test_build_sample_index_without_sources_requires_bounds(pvnet_config, location_ids, periods):
     # If no data sources are used (i.e. only solar coords, datetimes, and other metadata) the the
     # requested_periods must be provided. Else the length of the dataset is unbounded
     pvnet_config.generation = None
     pvnet_config.satellite = None
     with pytest.raises(ValueError, match="finite start and end"):
-        build_sample_index({}, locations, pvnet_config, requested_periods=periods)
+        build_sample_index({}, location_ids, pvnet_config, requested_periods=periods)

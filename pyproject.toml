@@ -25,11 +25,9 @@ dependencies = [
     "numpy",
     "pandas",
     "xarray",
-    "numcodecs",
     "pydantic>=2.11.8",
     "pyproj",
     "pyyaml",
-    "pyresample",
     "xarray-tensorstore==0.3.0",
     "zarr>=3",
 ]
@@ -76,7 +74,7 @@ python-version = "3.12"
 root = ["./src"]
 
 [tool.ty.analysis]
-allowed-unresolved-imports = ["tensorstore.**", "xarray_tensorstore.**", "pyresample.**"]
+allowed-unresolved-imports = ["tensorstore.**", "xarray_tensorstore.**"]
 
 # Ratchet: modules not yet conformant. Delete entries as they're fixed.
 [[tool.ty.overrides]]

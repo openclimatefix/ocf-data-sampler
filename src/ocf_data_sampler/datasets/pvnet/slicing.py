@@ -5,13 +5,12 @@ import numpy as np
 from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
 from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.config.model import PVNetDataConfig
-from ocf_data_sampler.datasets.pvnet.types import SourceDict
+from ocf_data_sampler.datasets.pvnet.types import Coordinate, Location, SourceDict
 from ocf_data_sampler.select.spatial_slice import (
     select_spatial_slice_pixels,
     select_spatial_slice_pixels_multiple,
 )
 from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
-from ocf_data_sampler.spatial import Location
 
 
 def slice_datasets_by_space(
@@ -35,17 +34,25 @@ def slice_datasets_by_space(
         sliced_datasets_dict["nwp"] = {}
 
         for nwp_key, nwp_config in config.nwp.items():
+            coordinate = location.source_coordinates["nwp"][nwp_key]
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
                 datasets_dict["nwp"][nwp_key],
-                location,
+                x=coordinate.x,
+                y=coordinate.y,
+                x_dim=coordinate.x_dim,
+                y_dim=coordinate.y_dim,
                 height_pixels=nwp_config.image_size_pixels_height,
                 width_pixels=nwp_config.image_size_pixels_width,
             )
 
     if "sat" in datasets_dict:
+        coordinate = location.source_coordinates["sat"]
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels(
             datasets_dict["sat"],
-            location,
+            x=coordinate.x,
+            y=coordinate.y,
+            x_dim=coordinate.x_dim,
+            y_dim=coordinate.y_dim,
             height_pixels=config.satellite.image_size_pixels_height,
             width_pixels=config.satellite.image_size_pixels_width,
         )
@@ -63,6 +70,22 @@ def slice_datasets_by_space(
         sliced_datasets_dict[key] = datasets_dict[key].isel(location_id=loc_index)
 
     return sliced_datasets_dict
+
+
+def _get_source_spatial_coordinates(
+    coordinates: list[Coordinate],
+) -> tuple[list[tuple[float, float]], str, str]:
+    """Extract paired centres and shared spatial dimensions from source coordinates."""
+    if len(coordinates) == 0:
+        raise ValueError("`coordinates` is empty - there is no region to cover")
+
+    x_dim = coordinates[0].x_dim
+    y_dim = coordinates[0].y_dim
+    all_dims = {(coordinate.x_dim, coordinate.y_dim) for coordinate in coordinates}
+    if all_dims != {(x_dim, y_dim)}:
+        raise ValueError(f"All coordinates must use the same spatial dimensions; found {all_dims}")
+
+    return [(coordinate.x, coordinate.y) for coordinate in coordinates], x_dim, y_dim
 
 
 def reduce_spatial_extent_of_datasets(
@@ -86,19 +109,25 @@ def reduce_spatial_extent_of_datasets(
         sliced_datasets_dict["nwp"] = {}
 
         for nwp_key, nwp_config in config.nwp.items():
+            source_coordinates = [loc.source_coordinates["nwp"][nwp_key] for loc in locations]
+            centres, x_dim, y_dim = _get_source_spatial_coordinates(source_coordinates)
             sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels_multiple(
                 datasets_dict["nwp"][nwp_key],
-                locations,
+                centres=centres,
+                x_dim=x_dim,
+                y_dim=y_dim,
                 height_pixels=nwp_config.image_size_pixels_height,
                 width_pixels=nwp_config.image_size_pixels_width,
             )
 
-
     if "sat" in datasets_dict:
-
+        source_coordinates = [loc.source_coordinates["sat"] for loc in locations]
+        centres, x_dim, y_dim = _get_source_spatial_coordinates(source_coordinates)
         sliced_datasets_dict["sat"] = select_spatial_slice_pixels_multiple(
             datasets_dict["sat"],
-            locations,
+            centres=centres,
+            x_dim=x_dim,
+            y_dim=y_dim,
             height_pixels=config.satellite.image_size_pixels_height,
             width_pixels=config.satellite.image_size_pixels_width,
         )

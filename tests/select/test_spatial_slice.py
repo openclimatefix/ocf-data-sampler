@@ -8,7 +8,6 @@ from ocf_data_sampler.select.spatial_slice import (
     select_spatial_slice_pixels,
     select_spatial_slice_pixels_multiple,
 )
-from ocf_data_sampler.spatial import Location
 
 
 @pytest.fixture(scope="module")
@@ -60,7 +59,10 @@ def test_select_spatial_slice_pixels(da):
     # Select odd sized window
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=10.1, y=-4.9, coord_system="osgb"),
+        x=10.1,
+        y=-4.9,
+        x_dim="x_osgb",
+        y_dim="y_osgb",
         width_pixels=3,
         height_pixels=3,
     )
@@ -73,7 +75,10 @@ def test_select_spatial_slice_pixels(da):
     # Select even sized window
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=10.1, y=-4.9, coord_system="osgb"),
+        x=10.1,
+        y=-4.9,
+        x_dim="x_osgb",
+        y_dim="y_osgb",
         width_pixels=4,
         height_pixels=4,
     )
@@ -86,7 +91,10 @@ def test_select_spatial_slice_pixels(da):
     # Select mixed odd and even sized window
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=10.1, y=-4.9, coord_system="osgb"),
+        x=10.1,
+        y=-4.9,
+        x_dim="x_osgb",
+        y_dim="y_osgb",
         width_pixels=3,
         height_pixels=4,
     )
@@ -98,7 +106,10 @@ def test_select_spatial_slice_pixels(da):
     # Select window where the edge of the window lies right on the edge of the data
     da_sliced = select_spatial_slice_pixels(
         da,
-        location=Location(x=-90.1, y=89.9, coord_system="osgb"),
+        x=-90.1,
+        y=89.9,
+        x_dim="x_osgb",
+        y_dim="y_osgb",
         width_pixels=20,
         height_pixels=20,
     )
@@ -111,53 +122,49 @@ def test_select_spatial_slice_pixels(da):
 
 def test_select_spatial_slice_pixels_out_of_bounds(da):
     """Test that ValueError is raised when the requested slice goes out of bounds."""
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError, match=r"Left index \(-5\) < 0"):
         select_spatial_slice_pixels(
             da,
-            location=Location(x=-90.1, y=-80.1, coord_system="osgb", id=123),
+            x=-90.1,
+            y=-80.1,
+            x_dim="x_osgb",
+            y_dim="y_osgb",
             width_pixels=30,
             height_pixels=30,
         )
-    msg = str(excinfo.value)
-    assert "Slice is unavailable for location=" in msg
-    assert "Location(id=123, coord_systems=['osgb'], coordinates={'osgb': (-90.1, -80.1)})" in msg
-
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError, match=r"Right index \(211\) > total_width \(200\)"):
         select_spatial_slice_pixels(
             da,
-            location=Location(x=90.1, y=90.1, coord_system="osgb", id=456),
+            x=90.1,
+            y=90.1,
+            x_dim="x_osgb",
+            y_dim="y_osgb",
             width_pixels=40,
             height_pixels=40,
         )
-    msg = str(excinfo.value)
-    assert "Slice is unavailable for location=" in msg
-    assert "Location(id=456, coord_systems=['osgb'], coordinates={'osgb': (90.1, 90.1)})" in msg
 
 
-def test_select_spatial_slice_pixels_multiple_empty_locations(da):
-    """Test that an empty locations list raises rather than returning an empty slice."""
-    with pytest.raises(ValueError, match="`locations` is empty"):
+def test_select_spatial_slice_pixels_multiple_empty_centres(da):
+    """Test that an empty centres list raises rather than returning an empty slice."""
+    with pytest.raises(ValueError, match="`centres` is empty"):
         select_spatial_slice_pixels_multiple(
             da,
-            locations=[],
+            centres=[],
+            x_dim="x_osgb",
+            y_dim="y_osgb",
             width_pixels=3,
             height_pixels=3,
         )
 
 
 def test_select_spatial_slice_pixels_multiple_out_of_bounds(da):
-    """Test error includes all location context for multi-location spatial slice requests."""
-    with pytest.raises(ValueError) as excinfo:
+    """Test that a multi-centre crop cannot extend beyond the source grid."""
+    with pytest.raises(ValueError, match=r"Left index \(-5\) < 0"):
         select_spatial_slice_pixels_multiple(
             da,
-            locations=[
-                Location(x=-90.1, y=-80.1, coord_system="osgb", id=1),
-                Location(x=-89.9, y=-79.9, coord_system="osgb", id=2),
-            ],
+            centres=[(-90.1, -80.1), (-89.9, -79.9)],
+            x_dim="x_osgb",
+            y_dim="y_osgb",
             width_pixels=30,
             height_pixels=30,
         )
-    msg = str(excinfo.value)
-    assert "Slice is unavailable for locations=" in msg
-    assert "Location(id=1, coord_systems=['osgb'], coordinates={'osgb': (-90.1, -80.1)})" in msg
-    assert "Location(id=2, coord_systems=['osgb'], coordinates={'osgb': (-89.9, -79.9)})" in msg

@@ -1,17 +1,17 @@
 """Select spatial slices."""
 
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ocf_data_sampler.common.types import TArray
-from ocf_data_sampler.spatial import Location, find_coord_system
 
 
 def _get_central_index(
-    values: np.ndarray,
+    values: NDArray[np.number[Any]],
     val: float,
-    method: Literal["nearest", "left"],
+    method: Literal["nearest", "left"]
 ) -> int:
     """Find pixel index location closest to given value.
 
@@ -32,9 +32,7 @@ def _get_central_index(
     """
     # Check that requested point lies within the data
     if not (values[0] < val < values[-1]):
-        raise ValueError(
-            f"{val} is not in the interval {values[0]}: {values[-1]}",
-        )
+        raise ValueError(f"{val} is not in the interval {values[0]}: {values[-1]}")
 
     if method == "left":
         # Get the index of the closest value that is less than or equal to val
@@ -50,10 +48,7 @@ def _get_central_index(
     return index
 
 
-def _get_window_bounds(
-    central_index: int,
-    window_size: int,
-) -> tuple[int, int]:
+def _get_window_bounds(central_index: int, window_size: int) -> tuple[int, int]:
     """Get the lower and upper bounds of a window around a central index."""
     low_pad = (window_size+1)//2 - 1
     high_pad = window_size//2 + 1
@@ -67,45 +62,28 @@ def _get_window_bounds(
 def _validate_window_slice(
     window_slice: tuple[int, int, int, int],
     total_size: tuple[int, int],
-    locations: Location | list[Location] | None = None,
 ) -> None:
     """Validate that the window slice is within the bounds of the data."""
     left_idx, right_idx, bottom_idx, top_idx = window_slice
     total_width, total_height = total_size
 
-    slice_unavailable = (
-        left_idx < 0
-        or right_idx > total_width
-        or bottom_idx < 0
-        or top_idx > total_height
-    )
-
-    if slice_unavailable:
-        issues = []
-        if left_idx < 0:
-            issues.append(f"left index ({left_idx}) < 0")
-        if right_idx > total_width:
-            issues.append(f"right index ({right_idx}) > total_width ({total_width})")
-        if bottom_idx < 0:
-            issues.append(f"bottom index ({bottom_idx}) < 0")
-        if top_idx > total_height:
-            issues.append(f"top index ({top_idx}) > total_height ({total_height})")
-        issue_details = "\n - ".join(issues)
-
-        if locations is None:
-            raise ValueError(f"Slice is unavailable:\n - {issue_details}")
-
-        if isinstance(locations, list):
-            location_context = f"locations={locations!r}"
-        else:
-            location_context = f"location={locations!r}"
-
-        raise ValueError(f"Slice is unavailable for {location_context}:\n - {issue_details}")
+    if left_idx < 0:
+        raise ValueError(f"Left index ({left_idx}) < 0")
+    if right_idx > total_width:
+        raise ValueError(f"Right index ({right_idx}) > total_width ({total_width})")
+    if bottom_idx < 0:
+        raise ValueError(f"Bottom index ({bottom_idx}) < 0")
+    if top_idx > total_height:
+        raise ValueError(f"Top index ({top_idx}) > total_height ({total_height})")
 
 
 def select_spatial_slice_pixels(
     da: TArray,
-    location: Location,
+    *,
+    x: float,
+    y: float,
+    x_dim: str,
+    y_dim: str,
     width_pixels: int,
     height_pixels: int,
 ) -> TArray:
@@ -113,17 +91,16 @@ def select_spatial_slice_pixels(
 
     Args:
         da: DataArray-like object to slice from
-        location: Location of interest that will be the center of the returned slice
+        x: X coordinate of the centre in the source's coordinate system
+        y: Y coordinate of the centre in the source's coordinate system
+        x_dim: Name of the source's X coordinate dimension
+        y_dim: Name of the source's Y coordinate dimension
         height_pixels: Height of the slice in pixels
         width_pixels: Width of the slice in pixels
 
     Returns:
         The selected DataArray-like slice.
     """
-    target_coords, x_dim, y_dim = find_coord_system(da)
-
-    x, y = location.in_coord_system(target_coords)
-
     x_values = da[x_dim].values
     y_values = da[y_dim].values
 
@@ -143,7 +120,6 @@ def select_spatial_slice_pixels(
     _validate_window_slice(
         window_slice=(left_idx, right_idx, bottom_idx, top_idx),
         total_size=(data_width_pixels, data_height_pixels),
-        locations=location,
     )
 
     return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
@@ -151,7 +127,10 @@ def select_spatial_slice_pixels(
 
 def select_spatial_slice_pixels_multiple(
     da: TArray,
-    locations: list[Location],
+    *,
+    centres: list[tuple[float, float]],
+    x_dim: str,
+    y_dim: str,
     width_pixels: int,
     height_pixels: int,
 ) -> TArray:
@@ -159,17 +138,17 @@ def select_spatial_slice_pixels_multiple(
 
     Args:
         da: DataArray-like object to slice from
-        locations: List of locations of interest that will be covered by the returned slice
+        centres: Paired (x, y) centres in the source's coordinate system
+        x_dim: Name of the source's X coordinate dimension
+        y_dim: Name of the source's Y coordinate dimension
         height_pixels: Height of the slice in pixels
         width_pixels: Width of the slice in pixels
 
     Returns:
         The selected DataArray-like slice.
     """
-    if len(locations) == 0:
-        raise ValueError("`locations` is empty - there is no region to cover")
-
-    target_coords, x_dim, y_dim = find_coord_system(da)
+    if len(centres) == 0:
+        raise ValueError("`centres` is empty - there is no region to cover")
 
     x_values = da[x_dim].values
     y_values = da[y_dim].values
@@ -185,8 +164,7 @@ def select_spatial_slice_pixels_multiple(
     idx_y_min: int = data_height_pixels
     idx_y_max: int = 0
 
-    for location in locations:
-        x, y = location.in_coord_system(target_coords)
+    for x, y in centres:
         x_index = _get_central_index(x_values, x, method=x_method)
         y_index = _get_central_index(y_values, y, method=y_method)
         idx_x_min = min(idx_x_min, x_index)
@@ -202,7 +180,6 @@ def select_spatial_slice_pixels_multiple(
     _validate_window_slice(
         window_slice=(left_idx, right_idx, bottom_idx, top_idx),
         total_size=(data_width_pixels, data_height_pixels),
-        locations=locations,
     )
 
     return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
