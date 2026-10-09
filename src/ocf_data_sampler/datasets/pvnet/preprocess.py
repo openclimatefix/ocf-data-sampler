@@ -10,7 +10,6 @@ from ocf_data_sampler.config.model import NormalisationValues, PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import (
     NormalisationArrays,
     SourceDict,
-    SourceNormalisationArrays,
 )
 from ocf_data_sampler.features.diff_channels import diff_channels
 from ocf_data_sampler.features.normalisation import clip_and_standardise
@@ -19,22 +18,22 @@ from ocf_data_sampler.select.dropout import apply_dropout
 
 def _build_source_normalisation_arrays(
     values: Sequence[NormalisationValues]
-) -> SourceNormalisationArrays:
-    """Build parameters broadcastable over (time, channel, y, x)."""
+) -> NormalisationArrays:
+    """Build parameters broadcastable over (time, channel, x, y)."""
     def channel_array(channel_values: list[float]) -> np.ndarray:
         return np.array(channel_values, dtype=np.float32)[None, :, None, None]
 
-    return {
-        "mean": channel_array([v.mean for v in values]),
-        "std": channel_array([v.std for v in values]),
-        "clip_min": channel_array([-np.inf if v.clip_min is None else v.clip_min for v in values]),
-        "clip_max": channel_array([np.inf if v.clip_max is None else v.clip_max for v in values]),
-    }
+    return NormalisationArrays(
+        mean=channel_array([v.mean for v in values]),
+        std=channel_array([v.std for v in values]),
+        clip_min=channel_array([-np.inf if v.clip_min is None else v.clip_min for v in values]),
+        clip_max=channel_array([np.inf if v.clip_max is None else v.clip_max for v in values]),
+    )
 
 
-def build_normalisation_arrays(config: PVNetDataConfig) -> NormalisationArrays:
+def build_normalisation_arrays(config: PVNetDataConfig) -> SourceDict[NormalisationArrays]:
     """Build normalisation arrays in configured channel order for each source."""
-    normalisation_arrays: NormalisationArrays = {}
+    normalisation_arrays: SourceDict[NormalisationArrays] = {}
     if config.nwp is not None:
         normalisation_arrays["nwp"] = {}
         for nwp_source, nwp_config in config.nwp.items():
@@ -55,16 +54,30 @@ def build_normalisation_arrays(config: PVNetDataConfig) -> NormalisationArrays:
 
 def normalise_dataset_dicts(
     dataset_dict: SourceDict,
-    normalisation_arrays: NormalisationArrays,
+    normalisation_arrays: SourceDict[NormalisationArrays],
 ) -> SourceDict:
     """Normalise NWP, satellite, and generation data in-place."""
     if "nwp" in dataset_dict:
         for nwp_source, da in dataset_dict["nwp"].items():
-            da.data = clip_and_standardise(da.data, **normalisation_arrays["nwp"][nwp_source])
+            params = normalisation_arrays["nwp"][nwp_source]
+            da.data = clip_and_standardise(
+                da.data,
+                clip_min=params.clip_min,
+                clip_max=params.clip_max,
+                mean=params.mean,
+                std=params.std,
+            )
 
     if "sat" in dataset_dict:
         da = dataset_dict["sat"]
-        da.data = clip_and_standardise(da.data, **normalisation_arrays["sat"])
+        params = normalisation_arrays["sat"]
+        da.data = clip_and_standardise(
+            da.data,
+            clip_min=params.clip_min,
+            clip_max=params.clip_max,
+            mean=params.mean,
+            std=params.std,
+        )
 
     for key in ("generation_input", "generation_target"):
         if key in dataset_dict:
@@ -200,7 +213,7 @@ def preprocess_dataset_dict(
     dataset_dict: SourceDict,
     t0: np.datetime64,
     config: PVNetDataConfig,
-    normalisation_arrays: NormalisationArrays,
+    normalisation_arrays: SourceDict[NormalisationArrays],
 ) -> SourceDict:
     """Diff, normalise, dropout, and fill NaNs in the dictionary of input data sources.
 

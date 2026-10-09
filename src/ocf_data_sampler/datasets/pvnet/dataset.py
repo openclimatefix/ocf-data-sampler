@@ -8,7 +8,6 @@ from torch.utils.data import Dataset, default_collate
 from typing_extensions import override
 
 from ocf_data_sampler.common.lightarray import LightDataArray
-from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.cache import PickleCacheMixin
@@ -17,61 +16,27 @@ from ocf_data_sampler.datasets.pvnet.availability import (
     build_sample_index,
     validate_requested_periods,
 )
-from ocf_data_sampler.datasets.pvnet.loading import get_dataset_dict
+from ocf_data_sampler.datasets.pvnet.loading import (
+    add_source_coordinates,
+    get_dataset_dict,
+    get_locations,
+)
 from ocf_data_sampler.datasets.pvnet.materialise import materialise_data
 from ocf_data_sampler.datasets.pvnet.preprocess import (
     build_normalisation_arrays,
     preprocess_dataset_dict,
 )
-from ocf_data_sampler.datasets.pvnet.sample import (
-    convert_to_numpy_sample,
-    make_sun_position_numpy_sample,
-    make_t0_encoding_numpy_sample,
-)
+from ocf_data_sampler.datasets.pvnet.sample import build_numpy_sample
 from ocf_data_sampler.datasets.pvnet.sample_index import ConcurrentSampleIndex, SampleIndex
 from ocf_data_sampler.datasets.pvnet.slicing import (
     reduce_spatial_extent_of_datasets,
     slice_datasets_by_space,
     slice_datasets_by_time,
 )
-from ocf_data_sampler.datasets.pvnet.types import NumpySample, SourceDict, TensorBatch
-from ocf_data_sampler.features.time_encodings import encode_datetimes
-from ocf_data_sampler.load import open_locations
-from ocf_data_sampler.spatial import Location, convert_coordinates, find_coord_system
+from ocf_data_sampler.datasets.pvnet.types import Location, NumpySample, SourceDict, TensorBatch
 
 TIndex = TypeVar("TIndex", SampleIndex, ConcurrentSampleIndex)
 
-
-def get_locations(csv_path: str, exclude_ids: list[int] | None = None) -> list[Location]:
-    """Load the locations metadata and build the list of all locations.
-
-    Args:
-        csv_path: Path to the locations CSV data
-        exclude_ids: Location IDs to drop from the returned locations
-    """
-    locations_data = open_locations(csv_path)
-
-    if exclude_ids:
-        missing_ids = np.setdiff1d(exclude_ids, locations_data["location_id"].values)
-        if len(missing_ids) > 0:
-            raise ValueError(
-                f"Cannot exclude location IDs which are not in the locations data: {missing_ids}",
-            )
-
-        locations_data = locations_data[~locations_data["location_id"].isin(exclude_ids)]
-
-        if len(locations_data) == 0:
-            raise ValueError("All location IDs in the locations data have been excluded")
-
-    return [
-        Location(
-            x=row.longitude,
-            y=row.latitude,
-            coord_system="lon_lat",
-            id=int(row.location_id),
-        )
-        for row in locations_data.itertuples()
-    ]
 
 
 def xarray_to_lightarray_dict(
@@ -87,122 +52,6 @@ def xarray_to_lightarray_dict(
         else:
             raise ValueError(f"Unexpected type ({type(v)})")
     return new_dataset_dict
-
-
-def add_alternate_coordinate_projections(
-    locations: list[Location],
-    datasets_dict: SourceDict,
-) -> list[Location]:
-    """Add (in-place) coordinate projections for all dataset to a set of locations.
-
-    Args:
-        locations: A list of locations
-        datasets_dict: The dataset dict to add projections for
-
-    Returns:
-        List of locations with all coordinate projections added
-    """
-    xs, ys = np.array([loc.in_coord_system("lon_lat") for loc in locations]).T
-
-    datasets_list = []
-    if "nwp" in datasets_dict:
-        datasets_list.extend(datasets_dict["nwp"].values())
-    if "sat" in datasets_dict:
-        datasets_list.append(datasets_dict["sat"])
-
-    computed_coord_systems = {"lon_lat"}
-
-    # Find all the coord systems required by all datasets
-    for da in datasets_list:
-
-        # Find the coordinate system required by this dataset
-        coord_system, *_ = find_coord_system(da)
-
-        # Skip if the projections in this coord system have already been computed
-        if coord_system not in computed_coord_systems:
-
-            # If using geostationary coords we need to extract the area spec
-            area_spec = da.attrs["area"] if coord_system=="geostationary" else None
-
-            new_xs, new_ys = convert_coordinates(
-                x=xs,
-                y=ys,
-                from_coords="lon_lat",
-                target_coords=coord_system,
-                area_spec=area_spec,
-            )
-
-            # Add the projection to the locations objects
-            for x, y, loc in zip(new_xs, new_ys, locations, strict=True):
-                loc.add_coord_system(x, y, coord_system)
-
-            computed_coord_systems.add(coord_system)
-
-    return locations
-
-
-def build_numpy_sample(
-    dataset_dict: SourceDict,
-    t0: np.datetime64,
-    location: Location,
-    config: PVNetDataConfig,
-    include_extra_metadata: bool = False,
-) -> NumpySample:
-    """Convert data to numpy arrays and add auxiliary features.
-
-    Note: the data in `dataset_dict` is expected to already be preprocessed - see
-    `preprocess_dataset_dict`.
-
-    Args:
-        dataset_dict: Dictionary of xarray datasets
-        t0: init-time for sample
-        location: location of the sample
-        config: PVNetDataConfig object
-        include_extra_metadata: Whether to add additional non-essential metadata to the sample
-    """
-    # Convert all xarray modalities to a single NumpySample
-    sample = convert_to_numpy_sample(dataset_dict, include_extra_metadata)
-
-    sample["location_id"] = location.id
-    lon, lat = location.in_coord_system("lon_lat")
-
-    if include_extra_metadata:
-        sample["location_longitude"] = lon
-        sample["location_latitude"] = lat
-
-    # Add t0 embedding if configured
-    if config.t0_embedding is not None:
-        sample.update(
-            make_t0_encoding_numpy_sample(t0, config.t0_embedding.embeddings),
-        )
-
-    # Add datetime encodings if configured
-    if config.datetime_encoding is not None:
-        dt_config = config.datetime_encoding
-
-        datetimes = date_range(
-            t0 + minutes(dt_config.interval_start_minutes),
-            t0 + minutes(dt_config.interval_end_minutes),
-            freq=minutes(dt_config.time_resolution_minutes),
-        )
-        sample.update(encode_datetimes(datetimes=datetimes))
-
-    # Add solar position if configured
-    if config.solar_position is not None:
-        solar_config = config.solar_position
-
-        # Create datetime range for solar position calculation
-        datetimes = date_range(
-            t0 + minutes(solar_config.interval_start_minutes),
-            t0 + minutes(solar_config.interval_end_minutes),
-            freq=minutes(solar_config.time_resolution_minutes),
-        )
-
-        sample.update(make_sun_position_numpy_sample(datetimes, lon=lon, lat=lat))
-
-    sample["t0"] = get_posix_timestamp(t0)
-
-    return sample
 
 
 class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
@@ -239,17 +88,18 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
 
         config = load_yaml_configuration(config_filename)
 
-        locations = get_locations(
+        self.locations = get_locations(
             config.sampling_grid.locations_csv_path,
             config.sampling_grid.exclude_location_ids,
         )
 
-        datasets_dict = get_dataset_dict(config, location_ids=[loc.id for loc in locations])
+        location_ids = [loc.id for loc in self.locations]
+        datasets_dict = get_dataset_dict(config, location_ids=location_ids)
 
         self.sample_index: TIndex = self._build_sample_index(
-            datasets_dict, locations, config, time_periods,
+            datasets_dict, location_ids, config, time_periods,
         )
-        self.locations = add_alternate_coordinate_projections(locations, datasets_dict)
+        add_source_coordinates(self.locations, datasets_dict)
         self.normalisation_arrays = build_normalisation_arrays(config)
 
         self.config = config
@@ -268,7 +118,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
     @staticmethod
     def _build_sample_index(
         datasets_dict: SourceDict,
-        locations: list[Location],
+        location_ids: list[int],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> TIndex:
@@ -295,12 +145,12 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
     @override
     def _build_sample_index(
         datasets_dict: SourceDict,
-        locations: list[Location],
+        location_ids: list[int],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> SampleIndex:
         """Build an index of available t0 and location pairs."""
-        return build_sample_index(datasets_dict, locations, config, time_periods)
+        return build_sample_index(datasets_dict, location_ids, config, time_periods)
 
     def _get_sample(self, t0: np.datetime64, location: Location) -> NumpySample:
         """Generate the PVNet sample for given coordinates.
@@ -374,7 +224,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
     @override
     def _build_sample_index(
         datasets_dict: SourceDict,
-        locations: list[Location],
+        location_ids: list[int],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> ConcurrentSampleIndex:
