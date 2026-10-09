@@ -122,12 +122,7 @@ def select_spatial_slice_pixels(
         total_size=(data_width_pixels, data_height_pixels),
     )
 
-    return da.isel(
-        {
-            x_dim: slice(left_idx, right_idx),
-            y_dim: slice(bottom_idx, top_idx),
-        }
-    )
+    return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
 
 
 def select_spatial_slice_pixels_multiple(
