@@ -219,8 +219,8 @@ def build_sample_index(
 
     Args:
         datasets_dict: Validated input datasets matching the configured sources.
-        location_ids: Non-empty list of validated sampling location IDs,
-            present in generation data when generation is configured.
+        location_ids: Non-empty list of validated sampling location IDs, present in generation
+            data when generation is configured.
         config: PVNet data configuration
         requested_periods: Validated periods with inclusive starts and exclusive ends.
             Bounds may be None only when data sources are available.

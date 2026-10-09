@@ -20,26 +20,21 @@ LOCATION_IDS = tuple(range(318))
 # The SITE_LOCATION_IDS catalog has no national aggregate since they mirror different sites
 SITE_LOCATION_IDS = tuple(range(1, 11))
 
-UK_SAT_AREA = """msg_seviri_rss_3km:
-    description: MSG SEVIRI Rapid Scanning Service area definition with 3 km resolution
-    projection:
-        proj: geos
-        lon_0: 9.5
-        h: 35785831
-        x_0: 0
-        y_0: 0
-        a: 6378169
-        rf: 295.488065897014
-        no_defs: null
-        type: crs
-    shape:
-        height: 298
-        width: 615
-    area_extent:
-        lower_left_xy: [28503.830075263977, 5090183.970808983]
-        upper_right_xy: [-1816744.1169023514, 4196063.827395439]
-        units: m
-    """
+UK_SAT_AREA = {
+    "msg_seviri_rss_3km": {
+        "projection": {
+            "proj": "geos",
+            "lon_0": 9.5,
+            "h": 35785831,
+            "x_0": 0,
+            "y_0": 0,
+            "a": 6378169,
+            "rf": 295.488065897014,
+            "no_defs": None,
+            "type": "crs",
+        },
+    },
+}
 
 
 # Core fixtures
