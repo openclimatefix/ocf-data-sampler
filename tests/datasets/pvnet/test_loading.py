@@ -18,11 +18,11 @@ def test_add_source_coordinates_different_geostationary_sources():
     da_sat = xr.DataArray(
         np.zeros((len(coord_values), len(coord_values))),
         coords={"x_geostationary": coord_values, "y_geostationary": coord_values},
-        dims=("x_geostationary", "y_geostationary"), 
+        dims=("x_geostationary", "y_geostationary"),
         attrs={"area": UK_SAT_AREA},
     )
 
-    # Make cloudcasting data that has a different satellite projection position. In this case set 
+    # Make cloudcasting data that has a different satellite projection position. In this case set
     # the longitude to 0-degrees (the RSS (as in UK_SAT_AREA) is at 9.5 degrees)
     zero_degree_area = deepcopy(UK_SAT_AREA)
     zero_degree_area["msg_seviri_rss_3km"]["projection"]["lon_0"] = 0
@@ -32,7 +32,7 @@ def test_add_source_coordinates_different_geostationary_sources():
     lon, lat = 0.0, 50.0
     location = Location(id=1, longitude=lon, latitude=lat)
     add_source_coordinates(
-        locations=[location], 
+        locations=[location],
         datasets_dict={"sat": da_sat, "nwp": {"cloudcasting": da_cloud}}
     )
 
