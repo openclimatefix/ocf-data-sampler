@@ -9,7 +9,7 @@ from ocf_data_sampler.load.generation import open_generation
 from tests.conftest import LOCATION_IDS
 
 
-def test_open_generation(generation_zarr_path):
+def test_open_generation(generation_zarr_path, ds_generation):
     """Test the generation data loader with valid data."""
     da = open_generation(generation_zarr_path)
 
@@ -20,6 +20,9 @@ def test_open_generation(generation_zarr_path):
     # 24 hours of 30 minute data (inclusive), every catalogued location, capacity + generation
     assert da.shape == (49, len(LOCATION_IDS), 2)
     assert len(np.unique(da.coords["location_id"])) == da.shape[1]
+    assert da.dtype == np.float32
+    for name in ("capacity_mwp", "generation_mw"):
+        np.testing.assert_array_equal(da.sel(gen_param=name).values, ds_generation[name].values)
 
 
 def test_open_generation_bad_dtype(tmp_path: Path):

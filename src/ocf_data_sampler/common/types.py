@@ -39,6 +39,10 @@ class DataArrayLike(Protocol):
         """Dimension names in data order (``Hashable`` to match xarray's typing)."""
 
     @property
+    def coords(self) -> Any:  # noqa: ANN401 - coordinate containers differ between backends
+        """Coordinates supporting replacement by name."""
+
+    @property
     def data(self) -> Any:  # noqa: ANN401 - the backend is intentionally open: numpy, TensorStore, dask, ...
         """The backing array: numpy, TensorStore, or any duck array."""
 

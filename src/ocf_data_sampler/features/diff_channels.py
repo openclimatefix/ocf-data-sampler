@@ -8,6 +8,9 @@ from ocf_data_sampler.common.types import TArray
 def diff_channels(da: TArray, accum_channels: list[str]) -> TArray:
     """Perform in-place diff of the given channels of the DataArray in the steps dimension.
 
+    The returned array is sliced to one step shorter to allow for differencing the
+    configured channels. Differenced channel names are prefixed with ``diff_``.
+
     Args:
         da: The DataArray to slice from
         accum_channels: Channels which are accumulated and need to be differenced
@@ -22,5 +25,11 @@ def diff_channels(da: TArray, accum_channels: list[str]) -> TArray:
     vals = da.values.copy()
     vals[:-1, accum_channel_inds] = np.diff(vals[:, accum_channel_inds], axis=0)
     da.data = vals
+
+    new_channels = np.array([
+        f"diff_{channel}" if channel in accum_channels else channel
+        for channel in all_channels
+    ])
+    da.coords["channel"] = (("channel",), new_channels)
 
     return da.isel(step=slice(0, -1))
