@@ -1,70 +1,95 @@
-# Torch Datasets
+# PVNet datasets
 
-The aim of this folder is to create torch datasets which can easily be used in our ML models and ML deployment that use pvnet.
+This module provides PyTorch datasets that construct input and target samples for PVNet
+training and inference from configured generation, NWP and satellite sources.
 
+## Sample construction
 
-## Note on t0 time (prediction time)
-t0 represents the time the forecast is made and relates to a time of one of the generation values.   
-This time is important because the available NWP/weather data changes depending on t0. Also to account for live delays in data, t0 is used to assume the correct amount of data that would be available at inference time.
-
-Note that t0 is considered as past of the history we pass to the model and the first forecasted value will be for t0 + time_resolution_minutes of the generation data (e.g. 15 mins or 30 mins). 
-
-## PVNet Dataset
-
-This dataset is for creating samples for PVNet for renewable energy forecasting.
-
-### Init
-
-Starting up this up, we get
-- Time and locations Pairs: A list of all valid time and locations for the data. How this is created differs slightly depending on whether there are non overlapping periods.
-- Data: The Data is lazily loaded in, and ready to be selected. 
+Initialisation reads the configuration and locations, opens the configured sources, and builds
+an index of valid samples. Generation data is loaded into memory at this stage; NWP and satellite
+data are loaded when samples are retrieved. Source coordinates and normalisation arrays are
+prepared once for reuse.
 
 ```mermaid
 graph TD
-    A1([Load Generation data])
-    A2([Load NWP])
-    A3([Load Satellite])
-    A1 --> D1
-    A2 --> D1
-    A3 --> D1
-    A1 --> D2
-    A1 --> D3
-    A2 --> D3
-    A3 --> D3
-    D1[Valid Time Periods] --> D2[T0 and Location Pairs]
-    D3[Data]
+    Config[Configuration and requested locations] --> Sources[Open configured sources]
+    Sources --> Generation[Load generation into memory]
+    Sources --> Lazy[Keep NWP and satellite data lazy]
+    Generation --> Availability[Find valid times for the requested windows]
+    Lazy --> Availability
+    Periods[Requested time periods] --> Availability
+    Availability --> Index[Build sample index]
+    Sources --> Prepared[Prepare source coordinates and normalisation arrays]
 ```
 
-### Get a Sample
+- `PVNetDataset`: each index selects one forecast reference time (`t0`) and location and
+  returns a dictionary of NumPy arrays and metadata.
+- `PVNetConcurrentDataset`: each index selects one `t0` that is valid at every requested
+  location and returns a batch of tensors containing all locations.
+
+The retrieval paths differ so that concurrent samples share loading and preprocessing:
+
+### PVNetDataset
 
 ```mermaid
 graph TD
-    A0([Index])
-    A1([Time and Locations Pairs])
-    A0 --> B0
-    A1 --> B0
-    B0[T0 and Location]
-    B1([Data])
-    B0 --> D0
-    B1 --> D0
-    D0[Slice by space, <br> using location, Satellite and NWP] --> D1
-    D1[Slice by time <br> using location, Satellite and NWP] --> D2
-    D2[Load into Memory] --> E0
-    E0[Extra processing and add features like sun/time encodings]
-    E0 --> F[Sample]
+    Pair[Index selects t0 and location] --> Space[Slice by space]
+    Space --> Time[Slice by time]
+    Time --> Load[Load selected data and preprocess]
+    Load --> Sample[Build sample with configured features]
 ```
 
-### DataLoader workers
+### PVNetConcurrentDataset
+
+```mermaid
+graph TD
+    T0[Index selects t0] --> SharedTime[Slice by time]
+    SharedTime --> SharedLoad[Load selected data and preprocess once]
+    SharedLoad --> Locations[Slice by space for each location]
+    Locations --> Samples[Build samples with configured features]
+    Samples --> Batch[Collate into tensor batch]
+```
+
+### Shared processing and availability
+
+Preprocessing includes NWP accumulation differencing, normalisation, input dropout and NaN
+filling. Sample construction adds the configured solar position and time features.
+
+Every requested location must have valid samples. Use `sampling_grid.exclude_location_ids` to
+exclude locations intentionally. For concurrent samples, times that are unavailable at any
+requested location are excluded from the index.
+
+## Time conventions
+
+`t0` is the forecast reference time. Each source's `interval_start_minutes` and
+`interval_end_minutes` define its time window relative to `t0`.
+
+Generation and satellite windows include both endpoints. For example, a generation input
+window from `-60` to `0` at a 30-minute resolution contains values at `t0 - 60 minutes`,
+`t0 - 30 minutes` and `t0`. Setting `interval_end_minutes=0` therefore includes the value at
+`t0` before any configured dropout is applied.
+
+Generation input and target windows are configured separately. A target window starting at
+`0` includes `t0`; to start with the next time step, set its start offset to the generation
+time resolution.
+
+NWP windows refer to forecast valid times. Their bounds are rounded up to the configured NWP
+time resolution. Sampling selects the most recent eligible NWP initialisation, accounting for
+the requested window and any configured dropout that simulates an older available forecast.
+
+The dataset's `time_periods` argument restricts which **`t0` values** are sampled. These periods
+include their start and exclude their end, independently of the source-window conventions above.
+
+## DataLoader workers and randomness
 
 When using multiple `DataLoader` workers, set `multiprocessing_context="forkserver"`.
 The `fork` context is unsupported for TensorStore-backed datasets.
 
-### Randomness
+Dropout choices use NumPy's global random state (`np.random`). Repeated access to the same
+sample index can therefore choose different dropout; the choice depends on the random state
+at the time of sampling.
 
-Dropout time-slice choices draw from **global** NumPy state (`np.random`). Under a PyTorch
-`DataLoader` this is seeded per worker automatically, so a run is reproducible from a single
-global seed — with Lightning, use `seed_everything(seed, workers=True)`. 
-
-If you use the dataset outside a `DataLoader`, you should seed `np.random` yourself. Note that 
-a given index (i.e. t0 and location pair) does always choose the same dropout. The dropout is
-chosen base don the global random state at the time of sampling.
+PyTorch seeds NumPy in each `DataLoader` worker. Seed PyTorch before creating the loader's
+iterator, or supply a seeded `torch.Generator` to the loader, to control its worker seeds.
+When accessing the dataset directly or using `num_workers=0`, seed `np.random` yourself.
+Reproducing dropout choices also depends on keeping the worker setup and sampling order the same.
