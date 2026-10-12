@@ -54,6 +54,11 @@ graph TD
     E0 --> F[Sample]
 ```
 
+### DataLoader workers
+
+When using multiple `DataLoader` workers, set `multiprocessing_context="forkserver"`.
+The `fork` context is unsupported for TensorStore-backed datasets.
+
 ### Randomness
 
 Dropout time-slice choices draw from **global** NumPy state (`np.random`). Under a PyTorch

@@ -5,7 +5,6 @@
 
 **ocf-data-sampler** contains all the tools needed to create samples and feed them to our models, such as [PVNet](https://github.com/openclimatefix/PVNet/). The data we work with—typically energy data, satellite imagery, and numerical weather predictions (NWPs)—is usually too heavy to do this on the fly, so that's where this repo comes in: handling steps like opening the data, selecting the right samples, normalising and reshaping, and saving to and reading from disk.
 
-We are currently migrating to this repo from [ocf_datapipes](https://github.com/openclimatefix/ocf_datapipes/), which performs the same functions but is built around `PyTorch DataPipes`, which are quite cumbersome to work with and are no longer maintained by PyTorch. **ocf-data-sampler** uses `PyTorch Datasets`, and we've taken the opportunity to make the code much cleaner and more manageable.
 
 > [!Note]
 > This repository is still in early development development and large changes to the user facing functions may still occur.
