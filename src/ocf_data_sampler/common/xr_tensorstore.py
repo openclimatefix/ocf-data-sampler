@@ -136,14 +136,14 @@ def open_zarr_paths(
     """
     paths = resolve_zarr_paths(zarr_path)
 
-    if len(paths) > 1 and concat_dim is None:
-        raise ValueError("`concat_dim` must be specified when opening multiple Zarr stores")
-
     datasets = [xrt.open_zarr(p) for p in paths]
     if validator is not None:
         validator(datasets)
 
     if len(datasets) == 1:
         return datasets[0]
+
+    if concat_dim is None:
+        raise ValueError("`concat_dim` must be specified when opening multiple Zarr stores")
 
     return concat_tensorstore(datasets, concat_dim)
