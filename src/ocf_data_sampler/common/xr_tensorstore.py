@@ -5,7 +5,7 @@ the underlying TensorStore without materialising data. The dependency is pinned 
 pyproject.toml; upgrades need checking against this.
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from glob import glob, has_magic
 from typing import TypeAlias
 
@@ -107,28 +107,43 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
     return ds_out
 
 
-def open_zarr_paths(zarr_path: ZarrSource, concat_dim: str | None = None) -> xr.Dataset:
-    """Open one or more Zarr stores using TensorStore.
 
-    Args:
-        zarr_path: A path, local glob pattern, or sequence of paths.
-        concat_dim: Dimension along which multiple stores are concatenated.
-    """
+def resolve_zarr_paths(zarr_path: ZarrSource) -> list[str]:
+    """Resolve a path, local glob, or sequence into a non-empty list of paths."""
     if isinstance(zarr_path, str):
-        path = zarr_path
-        if not has_magic(path):
-            return xrt.open_zarr(path)
-        paths = sorted(glob(path))
+        paths = sorted(glob(zarr_path)) if has_magic(zarr_path) else [zarr_path]
     else:
         paths = list(zarr_path)
 
     if not paths:
         raise ValueError(f"No Zarr stores found for {zarr_path!r}")
 
-    if len(paths) == 1:
-        return xrt.open_zarr(paths[0])
+    return paths
 
-    if concat_dim is None:
+
+def open_zarr_paths(
+    zarr_path: ZarrSource,
+    concat_dim: str | None = None,
+    *,
+    validator: Callable[[Sequence[xr.Dataset]], None] | None = None,
+) -> xr.Dataset:
+    """Open one or more Zarr stores using TensorStore.
+
+    Args:
+        zarr_path: A path, local glob pattern, or sequence of paths.
+        concat_dim: Dimension along which multiple stores are concatenated.
+        validator: Optional callback called with opened datasets before returning or concatenating.
+    """
+    paths = resolve_zarr_paths(zarr_path)
+
+    if len(paths) > 1 and concat_dim is None:
         raise ValueError("`concat_dim` must be specified when opening multiple Zarr stores")
 
-    return concat_tensorstore([xrt.open_zarr(p) for p in paths], concat_dim)
+    datasets = [xrt.open_zarr(p) for p in paths]
+    if validator is not None:
+        validator(datasets)
+
+    if len(datasets) == 1:
+        return datasets[0]
+
+    return concat_tensorstore(datasets, concat_dim)

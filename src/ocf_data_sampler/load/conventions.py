@@ -1,12 +1,27 @@
 """Helpers that conform freshly opened data to package conventions."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 import numpy as np
 import xarray as xr
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 from ocf_data_sampler.common.time_utils import datetime_ceil
+
+
+def validate_matching_projections(datasets: Sequence[xr.Dataset]) -> None:
+    """Require identical geostationary projection dictionaries across opened stores.
+
+    Args:
+        datasets: Non-empty sequence of datasets with dataset-level area metadata.
+    """
+    def _get_projection(ds: xr.Dataset) -> dict:
+        area, = ds.attrs["area"].values()
+        return area["projection"]
+
+    projections = [_get_projection(ds) for ds in datasets]
+    if any(projection != projections[0] for projection in projections[1:]):
+        raise ValueError(f"Multiple geostationary projections found: {projections}")
 
 
 def _is_expected_dtype(actual_dtype: np.dtype, expected_dtype: type[np.generic]) -> bool:
@@ -75,14 +90,13 @@ def make_spatial_coords_increasing(
     return ds
 
 
-def extract_single_data_array(ds: xr.Dataset, promote_attrs: bool = True) -> xr.DataArray:
+def extract_only_data_array(ds: xr.Dataset) -> xr.DataArray:
     """Return underlying xr.DataArray from passed xr.Dataset.
 
-    Checks only one variable is present and returns it as an xr.DataArray.
+    Checks only one variable is present and promotes dataset attributes to the data array.
 
     Args:
         ds: xr.Dataset to extract xr.DataArray from
-        promote_attrs: Whether to promote dataset attributes to the data array
     """
     datavars = list(ds.data_vars)
     if len(datavars) != 1:
@@ -90,8 +104,7 @@ def extract_single_data_array(ds: xr.Dataset, promote_attrs: bool = True) -> xr.
             f"Cannot extract a single DataArray: dataset contains variables {datavars}",
         )
     da = ds[datavars[0]]
-    if promote_attrs:
-        da.attrs.update(ds.attrs)
+    da.attrs.update(ds.attrs)
     return da
 
 

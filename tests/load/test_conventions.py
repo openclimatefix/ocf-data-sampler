@@ -5,6 +5,7 @@ import xarray as xr
 from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.load.conventions import (
     validate_coords,
+    validate_matching_projections,
     validate_step_grid,
     validate_time_grid,
 )
@@ -74,3 +75,15 @@ def test_validate_step_grid_rejects_invalid_grid(steps):
         ),
     ):
         validate_step_grid(minutes(steps), minutes(60), source="nwp/test")
+
+
+def test_validate_matching_projections_rejects_different_projections():
+    datasets = [
+        xr.Dataset(attrs={"area": {"satellite": {"projection": {"lon_0": longitude}}}})
+        for longitude in [9.5, 0.0]
+    ]
+    with pytest.raises(
+        ValueError,
+        match=r"Multiple geostationary projections found: \[\{'lon_0': 9.5\}, \{'lon_0': 0.0\}\]",
+    ):
+        validate_matching_projections(datasets)
