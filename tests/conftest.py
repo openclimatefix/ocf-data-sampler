@@ -56,11 +56,9 @@ def config_filename():
 
 # Helpers
 def create_xr_dataset(coords, data, name, attrs=None):
-    """Create xarray dataset from coords and data"""
+    """Create an xarray dataset with dataset-level attributes."""
     da = xr.DataArray(data, coords=tuple(coords.items()))
-    if attrs:
-        da.attrs.update(attrs)
-    return da.to_dataset(name=name)
+    return da.to_dataset(name=name).assign_attrs(attrs or {})
 
 
 def save_csv(df, path, filename):
