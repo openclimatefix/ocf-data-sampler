@@ -58,17 +58,19 @@ def test_validate_time_grid_rejects_misaligned_time():
 
 def test_validate_step_grid_accepts_aligned_steps():
     validate_step_grid(
-        minutes([0, 60, 180]),
+        minutes([0, 60, 120]),
         minutes(60),
         source="nwp/test",
     )
 
 
-def test_validate_step_grid_rejects_misaligned_step():
-    steps = minutes([0, 60, 90])
-
+@pytest.mark.parametrize("steps", [[0, 60, 90], [0, 180, 360]])
+def test_validate_step_grid_rejects_invalid_grid(steps):
     with pytest.raises(
         ValueError,
-        match="nwp/test: step 90 minutes is not a multiple of the configured resolution 60 minutes",
+        match=(
+            r"nwp/test: steps .* must be consecutive multiples "
+            "of the configured resolution 60 minutes"
+        ),
     ):
-        validate_step_grid(steps, minutes(60), source="nwp/test")
+        validate_step_grid(minutes(steps), minutes(60), source="nwp/test")

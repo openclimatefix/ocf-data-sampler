@@ -64,7 +64,8 @@ def get_dataset_dict(
             _warn_if_not_float32(f"nwp/{nwp_source}", da_nwp)
 
             # The NWP init times and steps must be multiples of the configured resolution so that
-            # the valid times are aligned to the configured resolution
+            # the valid times are aligned to the configured resolution. Additionally, steps must
+            # be consecutive
             validate_time_grid(
                 times=da_nwp["init_time_utc"].values,
                 resolution=minutes(nwp_config.time_resolution_minutes),

@@ -120,12 +120,12 @@ def validate_step_grid(
     resolution: np.timedelta64,
     source: str,
 ) -> None:
-    """Check that forecast steps are multiples of the configured resolution."""
-    aligned = ((steps % resolution) == np.timedelta64(0, "ns"))
+    """Check that forecast steps are consecutive multiples of the configured resolution."""
+    aligned = ((steps % resolution) == np.timedelta64(0, "ns")).all()
+    consecutive = (np.diff(steps) == resolution).all()
 
-    if not aligned.all():
-        example = steps[~aligned][0]
+    if not (aligned and consecutive):
         raise ValueError(
-            f"{source}: step {example} is not a multiple "
-            f"of the configured resolution {resolution}"
+            f"{source}: steps ({steps}) must be consecutive multiples of the configured resolution "
+            f"{resolution}"
         )
