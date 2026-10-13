@@ -59,6 +59,13 @@ Every requested location must have valid samples. Use `sampling_grid.exclude_loc
 exclude locations intentionally. For concurrent samples, times that are unavailable at any
 requested location are excluded from the index.
 
+## Sample fields
+
+See `NumpySample` and `TensorBatch` in [types.py](types.py) for fields, shapes and units.
+NWP arrays are accessed as `sample["nwp"][provider]`. Optional diagnostics are grouped
+under `sample["metadata"]`, including `sample["metadata"]["nwp"][provider]` for forecast
+metadata. Generation capacities and timestamps remain alongside the generation arrays.
+
 ## Time conventions
 
 `t0` is the forecast reference time. Each source's `interval_start_minutes` and

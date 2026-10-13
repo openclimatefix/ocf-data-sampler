@@ -98,11 +98,12 @@ def test_datetime_floor(random_datetimes, freq):
     )
 
 
-def test_get_posix_timestamp(random_datetimes):
-    expected = np.array([t.timestamp() for t in pd.to_datetime(random_datetimes)])
-    assert np.isclose(
-        get_posix_timestamp(random_datetimes),
-        expected,
-        rtol=0,
-        atol=1e-3,
-    ).all()
+@pytest.mark.parametrize("unit", ["ns", "us"])
+def test_get_posix_timestamp(unit):
+    datetimes = np.array(
+        ["2024-01-01T00:00", "2024-01-01T01:00"], dtype=f"datetime64[{unit}]",
+    )
+    np.testing.assert_array_equal(
+        get_posix_timestamp(datetimes), [1704067200.0, 1704070800.0],
+    )
+    assert get_posix_timestamp(datetimes[0]) == 1704067200.0
