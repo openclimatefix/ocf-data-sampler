@@ -173,12 +173,12 @@ def test_find_contiguous_t0_periods_nwp():
     # Choose some history durations and max stalenesses
     history_durations_hr = [0, 2, 2, 2, 2]
     max_stalenesses_hr = [9, 9, 6, 3, 6]
-    max_dropouts_hr = [0, 0, 0, 0, 3]
+    max_delays_hr = [0, 0, 0, 0, 3]
 
     for i, expected in enumerate(expected_results):
         interval_start = np.timedelta64(-history_durations_hr[i], "h")
         max_staleness = np.timedelta64(max_stalenesses_hr[i], "h")
-        max_dropout = np.timedelta64(max_dropouts_hr[i], "h")
+        max_delay = np.timedelta64(max_delays_hr[i], "h")
 
         time_periods = find_contiguous_t0_periods_nwp(
             init_times=init_times,
@@ -187,7 +187,7 @@ def test_find_contiguous_t0_periods_nwp():
             first_forecast_step=first_forecast_step,
             last_forecast_step=last_forecast_step,
             max_staleness=max_staleness,
-            max_dropout=max_dropout,
+            max_delay=max_delay,
         )
 
         # Check if results are as expected

@@ -1,4 +1,4 @@
-"""The array contract shared by ``xarray.DataArray`` and ``LightDataArray``.
+"""Shared source types and the array contract used by the sampling pipeline.
 
 ``DataArrayLike`` defines the duck-typed surface the sampling pipeline is
 allowed to use on array objects. It is deliberately minimal: every member is
@@ -13,6 +13,9 @@ from typing import Any, Protocol, Self, TypeAlias, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
+
+# A single path, a local glob, or an explicit sequence of Zarr store paths
+ZarrSource: TypeAlias = str | list[str] | tuple[str, ...]
 
 # Types accepted as a single-dimension indexer in `.isel()` method below.
 Indexer: TypeAlias = (

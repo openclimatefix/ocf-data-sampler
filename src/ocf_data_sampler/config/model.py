@@ -1,43 +1,87 @@
 """Configuration model for the PVNet dataset."""
 
-from collections.abc import ItemsView, Iterator, KeysView
-from typing import Literal
+from collections.abc import ItemsView, KeysView
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
-from typing_extensions import override
+from pydantic import AfterValidator, BaseModel, Field, RootModel, field_validator, model_validator
 
-from ocf_data_sampler.common.xr_tensorstore import ZarrSource
+from ocf_data_sampler.common.types import ZarrSource
 from ocf_data_sampler.load.nwp import PROVIDER_REGISTRY
 
 
-class Base(BaseModel):
-    """Pydantic Base model where no extras can be added."""
+def _validate_grid_resolution_minutes(resolution: int) -> int:
+    """Validate a positive cadence against the datetime floor/ceil restrictions.
 
-    model_config = ConfigDict(extra="forbid")
+    Cadences must be a factor or multiple of one hour and a factor of one day. Other cadences are
+    currently unsupported by the shared floor/ceil helpers.
+    """
+    if 60 % resolution != 0 and resolution % 60 != 0:
+        raise ValueError("Resolution in minutes must be a factor or multiple of 60")
+    if 1440 % resolution != 0:
+        raise ValueError("Resolution in minutes must be a factor of 1440 (one day)")
+    return resolution
+
+
+def _validate_dropout_interval_end(
+    dropout_minute_probabilities: dict[int, float] | None,
+    interval_end_minutes: int,
+) -> None:
+    """Reject choices that would leave every observation in the window untouched."""
+    if dropout_minute_probabilities is None:
+        return
+    for delay_minutes in dropout_minute_probabilities:
+        if delay_minutes <= -interval_end_minutes:
+            raise ValueError(
+                f"Dropout minutes ({delay_minutes}) must mask at least one value in the "
+                f"selected interval ending at {interval_end_minutes} minutes relative to t0",
+            )
+
+
+def _validate_probability_sum(probabilities: dict[int, float]) -> dict[int, float]:
+    """Require a valid total probability for dropout cutoffs or NWP delays."""
+    if sum(probabilities.values()) > 1:
+        raise ValueError("Probabilities must sum to at most 1")
+    return probabilities
+
+
+_MinuteProbabilities = Annotated[
+    dict[Annotated[int, Field(ge=0)], Annotated[float, Field(gt=0, le=1)]],
+    Field(min_length=1),
+    AfterValidator(_validate_probability_sum),
+]
+
+_Embedding = tuple[
+    Annotated[str, Field(pattern=r"^[0-9]+[hy]$")],
+    Literal["cyclic", "linear"],
+]
+
+
+class Base(BaseModel, extra="forbid"):
+    """Base configuration model that rejects unknown fields."""
 
 
 class TimeWindowMixin(Base):
-    """Mixin class, to add interval start, end and resolution minutes."""
+    """Time window bounds and temporal resolution in minutes."""
 
     time_resolution_minutes: int = Field(
         ...,
         gt=0,
-        description="The temporal resolution of the data in minutes",
+        description="Temporal resolution of the data",
     )
 
     interval_start_minutes: int = Field(
         ...,
-        description="Data interval starts at `t0 + interval_start_minutes`",
+        description="Interval starts at `t0 + interval_start_minutes` inclusive",
     )
 
     interval_end_minutes: int = Field(
         ...,
-        description="Data interval ends at `t0 + interval_end_minutes`",
+        description="Interval ends at `t0 + interval_end_minutes` inclusive",
     )
 
     @model_validator(mode="after")
     def validate_intervals(self) -> "TimeWindowMixin":
-        """Validator for time interval fields."""
+        """Require ordered interval bounds aligned to the temporal resolution."""
         start = self.interval_start_minutes
         end = self.interval_end_minutes
         resolution = self.time_resolution_minutes
@@ -59,114 +103,68 @@ class TimeWindowMixin(Base):
 
 
 class FillValueMixin(Base):
-    """Mixin class, to add a value used for filling missing data."""
+    """Optional replacement value for missing data."""
 
-    dropout_fill_value: float = Field(
-        default=0.0,
-        description="The value used to fill in dropped out data or any missing values. This is "
-        "applied after normalisation, so it is in normalised units."
+    fill_value: float | None = Field(
+        default=None,
+        description="The value used to fill dropped observations and missing data. This is "
+        "applied after normalisation, so it is in normalised units. None leaves NaNs unfilled.",
     )
 
 
 class DropoutMixin(FillValueMixin):
-    """Mixin class, to add dropout minutes."""
+    """Optional observation masking with a required fill value when enabled."""
 
-    dropout_timedeltas_minutes: list[int] = Field(
-        default=[],
-        description="List of possible minutes before t0 where data availability may start. Must be "
-        "negative or zero.",
+    dropout_minute_probabilities: _MinuteProbabilities | None = Field(
+        default=None,
+        description="Minutes before t0 mapped to dropout probabilities. Values after the chosen "
+        "cutoff are masked and filled using fill_value. Each cutoff must precede the "
+        "interval end. Remaining probability means no dropout; None disables dropout.",
     )
-
-    dropout_fraction: float | list[float] = Field(
-        default=0.0,
-        description="Either a float(Chance of dropout being applied to each sample) or a list of "
-        "floats (probability that dropout of the corresponding timedelta is applied)",
-    )
-
-    @field_validator("dropout_timedeltas_minutes")
-    def dropout_timedeltas_minutes_negative(cls, v: list[int]) -> list[int]:
-        """Validate 'dropout_timedeltas_minutes'."""
-        for m in v:
-            if m > 0:
-                raise ValueError("Dropout timedeltas must be negative")
-        return v
-
-
-    @field_validator("dropout_fraction")
-    def dropout_fractions(cls, dropout_frac: float | list[float]) -> float | list[float]:
-        """Validate 'dropout_frac'."""
-        if isinstance(dropout_frac, float | int):
-            if not (0<= dropout_frac <= 1):
-                raise ValueError("Dropout fractions must be in range [0, 1]")
-
-        elif isinstance(dropout_frac, list):
-            if not dropout_frac:
-                raise ValueError("List cannot be empty")
-
-            if not all(0 <= i <= 1 for i in dropout_frac):
-                raise ValueError("All dropout fractions must be in range [0, 1]")
-
-            if not (0 <= sum(dropout_frac) <= 1):
-                raise ValueError("The sum of dropout fractions must be in range [0, 1]")
-
-        return dropout_frac
-
 
     @model_validator(mode="after")
-    def dropout_instructions_consistent(self) -> "DropoutMixin":
-        """Validator for dropout instructions."""
-        if (
-            isinstance(self.dropout_fraction, list)
-            and len(self.dropout_fraction) != len(self.dropout_timedeltas_minutes)
-        ):
+    def validate_fill_value(self) -> "DropoutMixin":
+        """Require a replacement value when observations can be dropped out."""
+        if self.dropout_minute_probabilities is not None and self.fill_value is None:
             raise ValueError(
-                "When `dropout_fraction` is a list, it must have the same length as "
-                "`dropout_timedeltas_minutes`"
+                "fill_value must be set when dropout_minute_probabilities is configured",
             )
-
-        if self.dropout_fraction == 0:
-            if self.dropout_timedeltas_minutes != []:
-                raise ValueError("To use dropout timedeltas dropout fraction should be > 0")
-        else:
-            if self.dropout_timedeltas_minutes == []:
-                raise ValueError("To dropout fraction > 0 requires a list of dropout timedeltas")
         return self
 
 
 class SpatialWindowMixin(Base):
-    """Mixin class, to add path and image size."""
+    """Spatial window dimensions in pixels."""
 
     image_size_pixels_height: int = Field(
         ...,
         gt=0,
-        description="The number of pixels of the height of the region of interest",
+        description="Height of the region of interest in pixels",
     )
 
     image_size_pixels_width: int = Field(
         ...,
         gt=0,
-        description="The number of pixels of the width of the region of interest",
+        description="Width of the region of interest in pixels",
     )
 
 
 class NormalisationValues(Base):
     """Normalisation parameters."""
-    mean: float = Field(..., description="Mean value for normalization")
-    std: float = Field(..., gt=0, description="Standard deviation (must be positive)")
+
+    mean: float = Field(..., description="Mean used for normalisation")
+    std: float = Field(..., gt=0, description="Standard deviation used for normalisation")
     clip_min: float | None = Field(
         None,
-        description="Minimum value to clip to before normalisation. If None, no clipping is "
-        "applied",
+        description="Lower clipping bound before normalisation. None disables this bound.",
     )
     clip_max: float | None = Field(
         None,
-        description="Maximum value to clip to before normalisation. If None, no clipping is "
-        "applied",
+        description="Upper clipping bound before normalisation. None disables this bound.",
     )
 
     @model_validator(mode="after")
     def validate_clip_range(self) -> "NormalisationValues":
-        """"Validate that if both clip_min and clip_max are provided, then clip_min < clip_max."""
+        """Require the minimum clipping bound to be below the maximum when both are set."""
         if (
             self.clip_min is not None
             and self.clip_max is not None
@@ -180,6 +178,7 @@ class NormalisationValues(Base):
 
 class NormalisationConstantsMixin(Base):
     """Normalisation constants for multiple channels."""
+
     normalisation_constants: dict[str, NormalisationValues]
 
 
@@ -194,23 +193,35 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
 
     channels: list[str] = Field(
         ...,
-        description="the satellite channels that are used",
+        min_length=1,
+        description="Channels to include, in output order",
     )
 
+    @field_validator("time_resolution_minutes")
+    def validate_resolution(cls, resolution: int) -> int:
+        """Validate the supported temporal resolution."""
+        return _validate_grid_resolution_minutes(resolution)
+
     @model_validator(mode="after")
-    def check_all_channel_have_normalisation_constants(self) -> "Satellite":
+    def validate_dropout_interval_end(self) -> "Satellite":
+        """Require each dropout choice to mask observations in the satellite window."""
+        _validate_dropout_interval_end(self.dropout_minute_probabilities, self.interval_end_minutes)
+        return self
+
+    @model_validator(mode="after")
+    def check_all_channels_have_normalisation_constants(self) -> "Satellite":
         """Check that all the channels have normalisation constants."""
-        normalisation_channels = set(self.normalisation_constants.keys())
-        missing_norm_values = set(self.channels) - set(normalisation_channels)
-        if len(missing_norm_values)>0:
+        normalisation_channels = set(self.normalisation_constants)
+        missing_channels = set(self.channels) - normalisation_channels
+        if missing_channels:
             raise ValueError(
                 "Normalisation constants must be provided for all channels. Missing values for "
-                f"channels: {missing_norm_values}",
+                f"channels: {missing_channels}",
             )
         return self
 
 
-class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
+class NWP(TimeWindowMixin, FillValueMixin, SpatialWindowMixin, NormalisationConstantsMixin):
     """NWP configuration model."""
 
     zarr_path: ZarrSource = Field(
@@ -221,19 +232,32 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
 
     channels: list[str] = Field(
         ...,
-        description="the channels used in the nwp data",
+        min_length=1,
+        description="Channels to include, in output order",
+    )
+
+    delay_minute_probabilities: _MinuteProbabilities | None = Field(
+        default=None,
+        description="Minutes before t0 mapped to probabilities. Selects a forecast initialised "
+        "at or before t0 minus the chosen delay. Remaining probability means no added delay; "
+        "None disables delays.",
     )
 
     provider: str = Field(..., description="The provider of the NWP data")
 
-    accum_channels: list[str] = Field([], description="The NWP channels which need to be diffed")
+    accum_channels: list[str] = Field([], description="The channels which need to be diffed")
 
     max_staleness_minutes: int | None = Field(
         None,
-        description="Sets a limit on how stale an NWP init time is allowed to be whilst still being"
-        " used to construct an example. If set to None, then the max staleness is set according to"
-        " the maximum forecast horizon of the NWP and the requested forecast length.",
+        description="Sets a limit on how stale an NWP init-time is allowed to be whilst still "
+        "being used to construct an example. If set to None, then no additional limit is applied "
+        "except that the forecast must cover the requested time interval.",
     )
+
+    @field_validator("time_resolution_minutes")
+    def validate_resolution(cls, resolution: int) -> int:
+        """Validate the supported temporal resolution."""
+        return _validate_grid_resolution_minutes(resolution)
 
     @model_validator(mode="after")
     def validate_accum_channels_subset(self) -> "NWP":
@@ -247,58 +271,50 @@ class NWP(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConsta
         return self
 
     @field_validator("provider")
-    def validate_provider(cls, v: str) -> str:
-        """Validator for 'provider'."""
-        provider = v.lower()
+    def validate_provider(cls, provider: str) -> str:
+        """Require a registered provider name."""
         if provider not in PROVIDER_REGISTRY:
             supported = ", ".join(sorted(PROVIDER_REGISTRY))
-            raise ValueError(f"Unknown NWP provider {v!r}. Supported: {supported}")
+            raise ValueError(f"Unknown NWP provider {provider!r}. Supported: {supported}")
         return provider
 
     @model_validator(mode="after")
-    def check_all_channel_have_normalisation_constants(self) -> "NWP":
+    def check_all_channels_have_normalisation_constants(self) -> "NWP":
         """Check that all the channels have normalisation constants."""
-        normalisation_channels = set(self.normalisation_constants.keys())
+        normalisation_channels = set(self.normalisation_constants)
         non_accum_channels = [c for c in self.channels if c not in self.accum_channels]
         accum_channel_names = [f"diff_{c}" for c in self.accum_channels]
 
-        missing_norm_values = set(non_accum_channels) - set(normalisation_channels)
-        if len(missing_norm_values)>0:
+        missing_channels = set(non_accum_channels) - normalisation_channels
+        if missing_channels:
             raise ValueError(
                 "Normalisation constants must be provided for all channels. Missing values for "
-                f"channels: {missing_norm_values}",
+                f"channels: {missing_channels}",
             )
 
-        missing_norm_values = set(accum_channel_names) - set(normalisation_channels)
-        if len(missing_norm_values)>0:
+        missing_channels = set(accum_channel_names) - normalisation_channels
+        if missing_channels:
             raise ValueError(
                 "Normalisation constants must be provided for all channels. Accumulated "
                 "channels which will be diffed require normalisation constant names which "
                 "start with the prefix 'diff_'. The following channels were missing: "
-                f"{missing_norm_values}.",
+                f"{missing_channels}.",
             )
         return self
 
 
 class MultiNWP(RootModel):
-    """Configuration for multiple NWPs.
+    """NWP source configurations, accessed by name: config.nwp["ukv"]."""
 
-    The NWP sources are accessed dict-style - `config.nwp["ukv"]`, not `config.nwp.ukv`.
-    """
+    root: dict[str, NWP] = Field(..., min_length=1)
 
-    root: dict[str, NWP]
-
-    @override
     def __getitem__(self, item: str) -> NWP:
+        """Return the NWP configuration for a source name."""
         return self.root[item]
 
-    @override
     def __len__(self) -> int:
+        """Return the number of configured NWP sources."""
         return len(self.root)
-
-    @override
-    def __iter__(self) -> Iterator:
-        return iter(self.root)
 
     def keys(self) -> KeysView[str]:
         """Returns dictionary-like keys."""
@@ -318,17 +334,17 @@ class GenerationWindow(Base):
 
     interval_start_minutes: int = Field(
         ...,
-        description="Data interval starts at `t0 + interval_start_minutes`",
+        description="Interval starts at `t0 + interval_start_minutes` inclusive",
     )
 
     interval_end_minutes: int = Field(
         ...,
-        description="Data interval ends at `t0 + interval_end_minutes`",
+        description="Interval ends at `t0 + interval_end_minutes` inclusive",
     )
 
     @model_validator(mode="after")
     def validate_interval_order(self) -> "GenerationWindow":
-        """Validator for time interval fields."""
+        """Require the interval start to be at or before its end."""
         start = self.interval_start_minutes
         end = self.interval_end_minutes
         if start > end:
@@ -345,8 +361,14 @@ class GenerationInputWindow(GenerationWindow, DropoutMixin):
     should ever be randomly masked out.
     """
 
+    @model_validator(mode="after")
+    def validate_dropout_interval_end(self) -> "GenerationInputWindow":
+        """Require each dropout choice to mask observations in the generation input window."""
+        _validate_dropout_interval_end(self.dropout_minute_probabilities, self.interval_end_minutes)
+        return self
 
-class GenerationTargetWindow(GenerationWindow, FillValueMixin):
+
+class GenerationTargetWindow(GenerationWindow):
     """Generation target window configuration model."""
 
 
@@ -362,11 +384,17 @@ class Generation(Base):
     time_resolution_minutes: int = Field(
         ...,
         gt=0,
-        description="The temporal resolution of the generation data in minutes",
+        description="The temporal resolution of the generation data in minutes. Must be a "
+        "factor or multiple of 60 and a factor of 1440 (one day).",
     )
 
     input: GenerationInputWindow | None = None
     target: GenerationTargetWindow | None = None
+
+    @field_validator("time_resolution_minutes")
+    def validate_resolution(cls, resolution: int) -> int:
+        """Validate the supported temporal resolution."""
+        return _validate_grid_resolution_minutes(resolution)
 
     @model_validator(mode="after")
     def validate_windows(self) -> "Generation":
@@ -409,14 +437,18 @@ class SamplingGrid(Base):
     t0_resolution_minutes: int = Field(
         ...,
         gt=0,
-        description="The cadence t0 candidates are enumerated at, needed to compute valid t0 "
-        "times regardless of which other input sources are configured. Must be a multiple of "
-        "each configured satellite and generation temporal resolution.",
+        description="Spacing between candidate t0 times. Must be a multiple of the satellite and "
+        "generation resolutions, a factor or multiple of 60, and a factor of 1440 (one day).",
     )
+
+    @field_validator("t0_resolution_minutes")
+    def validate_resolution(cls, resolution: int) -> int:
+        """Validate the supported temporal resolution."""
+        return _validate_grid_resolution_minutes(resolution)
 
     @field_validator("exclude_location_ids")
     def validate_exclude_location_ids_unique(cls, v: list[int]) -> list[int]:
-        """Validate 'exclude_location_ids'."""
+        """Reject repeated excluded location IDs."""
         duplicates = {i for i in v if v.count(i) > 1}
         if duplicates:
             raise ValueError(f"exclude_location_ids contains duplicates: {sorted(duplicates)}")
@@ -431,49 +463,32 @@ class DatetimeEncoding(TimeWindowMixin):
     """Datetime encoding configuration model."""
 
 
-_embedding_type = list[tuple[str, Literal["cyclic", "linear"]]]
 class T0Embedding(Base):
     """Configuration for the t0 time embedding."""
 
-    embeddings: _embedding_type = Field(
+    embeddings: list[_Embedding] = Field(
         ...,
-        description="""The periods to encode (e.g., "1h", "Nh", "1y", "Ny") and their representation
-            (either "cyclic" or "linear"). When cyclic, the period is sin-cos embedded, else it is
-            0-1 scaled as fraction through the period. Note that using "cyclic" adds 2 elements to
-            the output vector to embed a period whilst "linear" adds only 1 element.""",
+        description="Period and representation pairs, e.g. ('6h', 'cyclic') or ('1y', 'linear'). "
+        "Periods support 1-24 hours or positive integer years. Each cyclic period adds two "
+        "elements (sine and cosine) to the output vector; each linear period adds one "
+        "element (fraction through the period).",
     )
 
     @field_validator("embeddings")
-    def validate_embeddings(cls, embeddings: _embedding_type) -> _embedding_type:
-        """Validate 'periods'."""
-        for period, embedding_type in embeddings:
-
-            if not isinstance(period, str):
-                raise ValueError(f"Each period must be a string, found {type(period)}")
-
-            unit = period[-1]
-            if unit not in ["h", "y"]:
-                raise ValueError(f"""Unit {unit} needs to in ["h","y"]""")
-
-            if not period[:-1].isdigit():
-                raise ValueError(f"{period[:-1]} not recognised as an integer")
-
-            if unit=="y" and not int(period[:-1])>0:
-                raise ValueError(f"When using unit y the period (={period[:-1]}) must be > 0")
-
-            if unit=="h" and not (1<=int(period[:-1])<=24):
-                raise ValueError(
-                    f"When using unit h the period (={period[:-1]}) must be in interval [1, 24]",
-                )
-
-            if embedding_type not in ["cyclic", "linear"]:
-                raise ValueError(f"Embedding ({embedding_type}) must be cyclic or linear")
+    def validate_embeddings(cls, embeddings: list[_Embedding]) -> list[_Embedding]:
+        """Require positive embedding periods, with hours limited to 24."""
+        for period, _ in embeddings:
+            value = int(period[:-1])
+            if value <= 0:
+                raise ValueError("Embedding period must be > 0")
+            if period[-1] == "h" and value > 24:
+                raise ValueError("Embedding period in hours must be <= 24")
 
         return embeddings
 
 
 class PVNetDataConfig(Base):
-    """Configuration model for the PVNet dataset."""
+    """Sources, sampling grid, and features used to construct PVNet samples."""
 
     sampling_grid: SamplingGrid
     satellite: Satellite | None = None

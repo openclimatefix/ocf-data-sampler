@@ -64,10 +64,10 @@ def _find_non_generation_t0_periods(
             first_forecast_step = da["step"].values[0]
             last_forecast_step = da["step"].values[-1]
 
-            if nwp_config.dropout_timedeltas_minutes==[]:
-                max_dropout = minutes(0)
+            if nwp_config.delay_minute_probabilities is None:
+                max_delay = minutes(0)
             else:
-                max_dropout = minutes(np.max(np.abs(nwp_config.dropout_timedeltas_minutes)))
+                max_delay = minutes(max(nwp_config.delay_minute_probabilities))
 
             # The last step of the forecast is lost if we have to diff channels
             if len(nwp_config.accum_channels) > 0:
@@ -87,7 +87,7 @@ def _find_non_generation_t0_periods(
                 interval_end=minutes(nwp_config.interval_end_minutes)+end_buffer,
                 first_forecast_step=first_forecast_step,
                 last_forecast_step=last_forecast_step,
-                max_dropout=max_dropout,
+                max_delay=max_delay,
                 max_staleness=max_staleness,
             )
 

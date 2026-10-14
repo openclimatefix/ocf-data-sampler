@@ -7,13 +7,12 @@ pyproject.toml; upgrades need checking against this.
 
 from collections.abc import Callable, Sequence
 from glob import glob, has_magic
-from typing import TypeAlias
 
 import tensorstore as ts
 import xarray as xr
 import xarray_tensorstore as xrt
 
-ZarrSource: TypeAlias = str | list[str] | tuple[str, ...]
+from ocf_data_sampler.common.types import ZarrSource
 
 
 def _extract_tensorstore(da: xr.DataArray) -> ts.TensorStore:
