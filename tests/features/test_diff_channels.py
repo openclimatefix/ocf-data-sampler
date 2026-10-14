@@ -31,5 +31,5 @@ def test_diff_channels(ds_nwp_ukv_time_sliced, array_factory):
     assert da_diffed.isel(channel=slice(1, None)).equals(expected_unchanged)
 
     # The diff function should agree with xarray's diff method for the diffed channels
-    expected_diffed = da_input.diff(dim="step", label="lower").isel(channel=slice(None, 1))
-    assert (da_diffed.isel(channel=slice(None, 1)).values == expected_diffed.values).all()
+    expected_diffed = da_input.diff(dim="step", label="lower").sel(channel="diff_dswrf")
+    assert (da_diffed.sel(channel="diff_dswrf").values == expected_diffed.values).all()
