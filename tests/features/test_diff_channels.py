@@ -7,18 +7,21 @@ from ocf_data_sampler.features.diff_channels import diff_channels
 
 @pytest.mark.parametrize("array_factory", [xr.DataArray, LightDataArray.from_xarray])
 def test_diff_channels(ds_nwp_ukv_time_sliced, array_factory):
+
     # Construct copy as function edits inputs in-place
-    # Assert more than one channel in fixture
-    da = array_factory(ds_nwp_ukv_time_sliced.copy(deep=True))
-    channels = list(da["channel"].values)
-    assert len(channels) > 1
+    # Use explicit channel names for cleaer testing
+    channels = ["dswrf", "t"]
+    da = array_factory(
+        ds_nwp_ukv_time_sliced.copy(deep=True)
+        .assign_coords(channel=channels)
+    )
 
     # Assert diff function reduces the steps by one
-    da_diffed = diff_channels(da, accum_channels=channels[:1])
+    da_diffed = diff_channels(da, accum_channels=["dswrf"])
     if isinstance(da_diffed, LightDataArray):
         da_diffed = da_diffed.to_xarray()
 
-    assert list(da_diffed["channel"].values) == ["diff_t", "dswrf"]
+    assert list(da_diffed["channel"].values) == ["diff_dswrf", "t"]
     assert (da_diffed["step"].values == ds_nwp_ukv_time_sliced["step"].values[:-1]).all()
 
     # Check these channels have not been changed

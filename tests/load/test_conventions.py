@@ -57,7 +57,7 @@ def test_validate_time_grid_rejects_misaligned_time():
         validate_time_grid(times, minutes(5), source="test data")
 
 
-def test_validate_step_grid_accepts_aligned_steps():
+def test_validate_step_grid_accepts_valid_steps():
     validate_step_grid(
         minutes([0, 60, 120]),
         minutes(60),
@@ -66,7 +66,7 @@ def test_validate_step_grid_accepts_aligned_steps():
 
 
 @pytest.mark.parametrize("steps", [[0, 60, 90], [0, 180, 360]])
-def test_validate_step_grid_rejects_invalid_grid(steps):
+def test_validate_step_grid_rejects_invalid_steps(steps):
     with pytest.raises(
         ValueError,
         match=(
