@@ -209,35 +209,49 @@ def _build_t0_times_from_requested_periods(
     return fill_time_periods(requested_periods_df, freq=t0_frequency)
 
 
-def build_sample_index(
+def _build_sample_index_no_inputs(
+    t0_frequency: np.timedelta64,
+    location_ids: list[int],
+    requested_periods: list[tuple[str | None, str | None]] | None,
+) -> SampleIndex:
+    """Build location/time pairs from bounded requested periods without sources."""
+    t0_times = _build_t0_times_from_requested_periods(requested_periods, t0_frequency)
+    if len(t0_times) == 0:
+        raise ValueError("No t0 times found for locations")
+
+    return SampleIndex(
+        t0=np.tile(t0_times, len(location_ids)),
+        location_id=np.repeat(location_ids, len(t0_times)),
+    )
+
+
+def _build_sample_index_no_generation(
+    t0_frequency: np.timedelta64,
     datasets_dict: SourceDict,
     location_ids: list[int],
     config: PVNetDataConfig,
     requested_periods: list[tuple[str | None, str | None]] | None,
 ) -> SampleIndex:
-    """Construct a SampleIndex containing all valid t0 and location_id pairs.
+    """Build location/time pairs using availability shared by all locations."""
+    periods = _find_non_generation_t0_periods(datasets_dict, config)
+    t0_times = _build_t0_times(periods, t0_frequency, requested_periods)
+    if len(t0_times) == 0:
+        raise ValueError("No t0 times found for locations")
 
-    Args:
-        datasets_dict: Validated input datasets matching the configured sources.
-        location_ids: Non-empty list of validated sampling location IDs,
-            present in generation data when generation is configured.
-        config: PVNet data configuration
-        requested_periods: Validated periods with inclusive starts and exclusive ends.
-            Bounds may be None only when data sources are available.
-    """
-    t0_frequency = minutes(config.sampling_grid.t0_resolution_minutes)
+    return SampleIndex(
+        t0=np.tile(t0_times, len(location_ids)),
+        location_id=np.repeat(location_ids, len(t0_times)),
+    )
 
-    # Without sources, requested periods define the sampling range.
-    if config.satellite is None and config.nwp is None and config.generation is None:
-        t0_times = _build_t0_times_from_requested_periods(requested_periods, t0_frequency)
-        if len(t0_times) == 0:
-            raise ValueError("No t0 times found for locations")
 
-        return SampleIndex(
-            t0=np.tile(t0_times, len(location_ids)),
-            location_id=np.repeat(location_ids, len(t0_times)),
-        )
-
+def _build_sample_index_with_generation(
+    t0_frequency: np.timedelta64,
+    datasets_dict: SourceDict,
+    location_ids: list[int],
+    config: PVNetDataConfig,
+    requested_periods: list[tuple[str | None, str | None]] | None,
+) -> SampleIndex:
+    """Build location/time pairs using each location's generation availability."""
     # Shared source periods apply to every location, so calculate them once.
     non_generation_sources = {
         key: source for key, source in datasets_dict.items() if key != "generation"
@@ -246,18 +260,6 @@ def build_sample_index(
         _find_non_generation_t0_periods(non_generation_sources, config)
         if non_generation_sources else None
     )
-
-    # Without generation, all locations share the same t0 times.
-    if config.generation is None:
-        t0_times = _build_t0_times(
-            non_generation_periods, t0_frequency, requested_periods
-        )
-        if len(t0_times) == 0:
-            raise ValueError("No t0 times found for locations")
-        return SampleIndex(
-            t0=np.tile(t0_times, len(location_ids)),
-            location_id=np.repeat(location_ids, len(t0_times)),
-        )
 
     # Generation availability can differ by location.
     t0_arrays: list[NDArray[np.datetime64]] = []
@@ -289,6 +291,105 @@ def build_sample_index(
     )
 
 
+def build_sample_index(
+    datasets_dict: SourceDict,
+    location_ids: list[int],
+    config: PVNetDataConfig,
+    requested_periods: list[tuple[str | None, str | None]] | None,
+) -> SampleIndex:
+    """Construct a SampleIndex containing all valid t0 and location_id pairs.
+
+    Args:
+        datasets_dict: Validated input datasets matching the configured sources.
+        location_ids: Non-empty list of validated sampling location IDs,
+            present in generation data when generation is configured.
+        config: PVNet data configuration
+        requested_periods: Validated periods with inclusive starts and exclusive ends.
+            Bounds may be None only when data sources are available.
+    """
+    t0_frequency = minutes(config.sampling_grid.t0_resolution_minutes)
+
+    # Without sources, requested periods define the sampling range.
+    if config.satellite is None and config.nwp is None and config.generation is None:
+        return _build_sample_index_no_inputs(t0_frequency, location_ids, requested_periods)
+
+    elif config.generation is None:
+        return _build_sample_index_no_generation(
+            t0_frequency,
+            datasets_dict,
+            location_ids,
+            config,
+            requested_periods,
+        )
+
+    else:
+        return _build_sample_index_with_generation(
+            t0_frequency,
+            datasets_dict,
+            location_ids,
+            config,
+            requested_periods,
+        )
+
+
+def _build_concurrent_sample_index_no_inputs(
+    t0_frequency: np.timedelta64,
+    requested_periods: list[tuple[str | None, str | None]] | None,
+) -> ConcurrentSampleIndex:
+    """Build concurrent times from bounded requested periods without sources."""
+    t0_times = _build_t0_times_from_requested_periods(requested_periods, t0_frequency)
+    if len(t0_times) == 0:
+        raise ValueError("No t0 times are available")
+    return ConcurrentSampleIndex(t0=t0_times)
+
+
+def _build_concurrent_sample_index_no_generation(
+    t0_frequency: np.timedelta64,
+    datasets_dict: SourceDict,
+    config: PVNetDataConfig,
+    requested_periods: list[tuple[str | None, str | None]] | None,
+) -> ConcurrentSampleIndex:
+    """Build concurrent times using availability shared by all locations."""
+    periods = _find_non_generation_t0_periods(datasets_dict, config)
+    t0_times = _build_t0_times(periods, t0_frequency, requested_periods)
+    if len(t0_times) == 0:
+        raise ValueError("No t0 times found")
+    return ConcurrentSampleIndex(t0=t0_times)
+
+
+def _build_concurrent_sample_index_with_generation(
+    t0_frequency: np.timedelta64,
+    datasets_dict: SourceDict,
+    config: PVNetDataConfig,
+    requested_periods: list[tuple[str | None, str | None]] | None,
+) -> ConcurrentSampleIndex:
+    """Build concurrent times requiring generation at every requested location."""
+    # Shared source periods apply to every location, so calculate them once.
+    non_generation_sources = {
+        key: source for key, source in datasets_dict.items() if key != "generation"
+    }
+    non_generation_periods = (
+        _find_non_generation_t0_periods(non_generation_sources, config)
+        if non_generation_sources else None
+    )
+
+    # All locations must have non-NaN generation data for each t0
+    da_gen = datasets_dict["generation"].dropna(dim="time_utc", how="any")
+
+    generation_periods = _find_generation_t0_periods(da_gen["time_utc"].values, config.generation)
+    if non_generation_periods is not None:
+        available_periods = intersect_time_periods([non_generation_periods, generation_periods])
+    else:
+        available_periods = generation_periods
+
+    t0_times = _build_t0_times(available_periods, t0_frequency, requested_periods)
+
+    if len(t0_times) == 0:
+        raise ValueError("No t0 times are available at every requested location")
+
+    return ConcurrentSampleIndex(t0=t0_times)
+
+
 def build_concurrent_sample_index(
     datasets_dict: SourceDict,
     config: PVNetDataConfig,
@@ -306,42 +407,21 @@ def build_concurrent_sample_index(
     t0_frequency = minutes(config.sampling_grid.t0_resolution_minutes)
 
     # Without sources, requested periods define the sampling range.
-    if config.generation is None and config.satellite is None and config.nwp is None:
-        t0_times = _build_t0_times_from_requested_periods(requested_periods, t0_frequency)
-        if len(t0_times) == 0:
-            raise ValueError("No t0 times are available")
-        return ConcurrentSampleIndex(t0=t0_times)
+    if config.satellite is None and config.nwp is None and config.generation is None:
+        return _build_concurrent_sample_index_no_inputs(t0_frequency, requested_periods)
 
-    # Shared source periods apply to every location, so calculate them once.
-    non_generation_sources = {
-        key: source for key, source in datasets_dict.items() if key != "generation"
-    }
-    non_generation_periods = (
-        _find_non_generation_t0_periods(non_generation_sources, config)
-        if non_generation_sources else None
-    )
-
-    # Without generation, all locations share the same t0 times.
-    if config.generation is None:
-        t0_times = _build_t0_times(
-            non_generation_periods, t0_frequency, requested_periods
+    elif config.generation is None:
+        return _build_concurrent_sample_index_no_generation(
+            t0_frequency,
+            datasets_dict,
+            config,
+            requested_periods,
         )
-        if len(t0_times) == 0:
-            raise ValueError("No t0 times found")
-        return ConcurrentSampleIndex(t0=t0_times)
 
-    # All locations must have non-NaN generation data for each t0
-    da_gen = datasets_dict["generation"].dropna(dim="time_utc", how="any")
-
-    generation_periods = _find_generation_t0_periods(da_gen["time_utc"].values, config.generation)
-    if non_generation_periods is not None:
-        available_periods = intersect_time_periods([non_generation_periods, generation_periods])
     else:
-        available_periods = generation_periods
-
-    t0_times = _build_t0_times(available_periods, t0_frequency, requested_periods)
-
-    if len(t0_times) == 0:
-        raise ValueError("No t0 times are available at every requested location")
-
-    return ConcurrentSampleIndex(t0=t0_times)
+        return _build_concurrent_sample_index_with_generation(
+            t0_frequency,
+            datasets_dict,
+            config,
+            requested_periods,
+        )
