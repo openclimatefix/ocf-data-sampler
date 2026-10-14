@@ -244,10 +244,11 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
             config.sampling_grid.exclude_location_ids,
         )
 
-        datasets_dict = get_dataset_dict(config, location_ids=[loc.id for loc in locations])
+        location_ids = [loc.id for loc in locations]
+        datasets_dict = get_dataset_dict(config, location_ids=location_ids)
 
         self.sample_index: TIndex = self._build_sample_index(
-            datasets_dict, locations, config, time_periods,
+            datasets_dict, location_ids, config, time_periods,
         )
         self.locations = add_alternate_coordinate_projections(locations, datasets_dict)
         self.normalisation_arrays = build_normalisation_arrays(config)
@@ -268,11 +269,11 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
     @staticmethod
     def _build_sample_index(
         datasets_dict: SourceDict,
-        locations: list[Location],
+        location_ids: list[int],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> TIndex:
-        """Build the index appropriate to the concrete dataset."""
+        """Build the sample index for this dataset subclass."""
         raise NotImplementedError("Subclasses must implement sample index construction")
 
 
@@ -295,12 +296,12 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
     @override
     def _build_sample_index(
         datasets_dict: SourceDict,
-        locations: list[Location],
+        location_ids: list[int],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> SampleIndex:
         """Build an index of available t0 and location pairs."""
-        return build_sample_index(datasets_dict, locations, config, time_periods)
+        return build_sample_index(datasets_dict, location_ids, config, time_periods)
 
     def _get_sample(self, t0: np.datetime64, location: Location) -> NumpySample:
         """Generate the PVNet sample for given coordinates.
@@ -374,7 +375,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
     @override
     def _build_sample_index(
         datasets_dict: SourceDict,
-        locations: list[Location],
+        location_ids: list[int],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> ConcurrentSampleIndex:

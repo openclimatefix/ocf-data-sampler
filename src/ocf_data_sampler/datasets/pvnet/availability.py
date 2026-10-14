@@ -16,7 +16,6 @@ from ocf_data_sampler.select.time_periods import (
     find_contiguous_t0_periods_nwp,
     intersect_time_periods,
 )
-from ocf_data_sampler.spatial import Location
 
 
 def validate_requested_periods(requested_periods: list[tuple[str | None, str | None]]) -> None:
@@ -24,7 +23,7 @@ def validate_requested_periods(requested_periods: list[tuple[str | None, str | N
     if len(requested_periods) == 0:
         raise ValueError("At least one time period must be provided")
 
-    parsed_periods = []
+    parsed_periods: list[tuple[np.datetime64 | None, np.datetime64 | None]] = []
     for start, end in requested_periods:
         start_dt = np.datetime64(start, "ns") if start is not None else None
         end_dt = np.datetime64(end, "ns") if end is not None else None
@@ -212,7 +211,7 @@ def _build_t0_times_from_requested_periods(
 
 def build_sample_index(
     datasets_dict: SourceDict,
-    locations: list[Location],
+    location_ids: list[int],
     config: PVNetDataConfig,
     requested_periods: list[tuple[str | None, str | None]] | None,
 ) -> SampleIndex:
@@ -220,14 +219,13 @@ def build_sample_index(
 
     Args:
         datasets_dict: Validated input datasets matching the configured sources.
-        locations: Non-empty list of validated sampling locations, present in generation
-            data when generation is configured.
+        location_ids: Non-empty list of validated sampling location IDs,
+            present in generation data when generation is configured.
         config: PVNet data configuration
         requested_periods: Validated periods with inclusive starts and exclusive ends.
             Bounds may be None only when data sources are available.
     """
     t0_frequency = minutes(config.sampling_grid.t0_resolution_minutes)
-    location_ids = np.array([location.id for location in locations], dtype=np.int64)
 
     # Without sources, requested periods define the sampling range.
     if config.satellite is None and config.nwp is None and config.generation is None:
