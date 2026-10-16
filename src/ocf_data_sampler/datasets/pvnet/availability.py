@@ -262,6 +262,7 @@ def build_sample_index(
     # Generation availability can differ by location.
     t0_arrays: list[NDArray[np.datetime64]] = []
     location_id_arrays: list[NDArray[np.int64]] = []
+    unavailable_location_ids: list[int] = []
     for location_id in location_ids:
         da_gen_loc = (
             datasets_dict["generation"].sel(location_id=location_id).dropna(dim="time_utc")
@@ -271,17 +272,18 @@ def build_sample_index(
         )
         if non_generation_periods is not None:
             available_periods = intersect_time_periods([non_generation_periods, generation_periods])
-            if len(available_periods) == 0:
-                raise ValueError(f"No intersecting time periods found for location {location_id}")
         else:
             available_periods = generation_periods
 
         t0_times = _build_t0_times(available_periods, t0_frequency, requested_periods)
         if len(t0_times) == 0:
-            raise ValueError(f"No t0 times found for location {location_id}.")
+            unavailable_location_ids.append(location_id)
+        else:
+            t0_arrays.append(t0_times.astype("datetime64[ns]"))
+            location_id_arrays.append(np.full(len(t0_times), location_id, dtype=np.int64))
 
-        t0_arrays.append(t0_times.astype("datetime64[ns]"))
-        location_id_arrays.append(np.full(len(t0_times), location_id, dtype=np.int64))
+    if len(unavailable_location_ids) > 0:
+        raise ValueError(f"No valid t0 times found for locations: {unavailable_location_ids}")
 
     return SampleIndex(
         t0=np.concatenate(t0_arrays),

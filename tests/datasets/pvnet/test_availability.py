@@ -107,7 +107,7 @@ def test_build_sample_index_unusable_location(pvnet_config, location_ids, dateti
 
     values[:, 1] = np.nan
     sources = {"generation": make_generation(values, location_ids, datetimes)}
-    with pytest.raises(ValueError, match="No t0 times found for location 2"):
+    with pytest.raises(ValueError, match=r"No valid t0 times found for locations: \[2\]"):
         build_sample_index(sources, location_ids, pvnet_config, None)
     with pytest.raises(ValueError, match="every requested location"):
         build_concurrent_sample_index(sources, pvnet_config, None)
@@ -121,7 +121,7 @@ def test_build_sample_index_non_overlapping_sources(
         "generation": make_generation(values, location_ids, datetimes),
         "sat": make_satellite(datetimes + np.timedelta64(1, "D")),
     }
-    with pytest.raises(ValueError, match="No intersecting time periods found for location 1"):
+    with pytest.raises(ValueError, match=r"No valid t0 times found for locations: \[1, 2\]"):
         build_sample_index(sources, location_ids, pvnet_config, None)
     with pytest.raises(ValueError, match="every requested location"):
         build_concurrent_sample_index(sources, pvnet_config, None)
