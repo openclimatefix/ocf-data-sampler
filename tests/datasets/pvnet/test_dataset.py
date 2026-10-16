@@ -24,14 +24,16 @@ def _assert_sample_features_float32(sample):
         "solar_azimuth", "solar_elevation",
         "date_sin", "date_cos", "time_sin", "time_cos", "t0_embedding",
     }
-    nwp_metadata_suffixes = ("_init_time_utc", "_step_hours", "_target_time_utc")
     for key, value in sample.items():
-        is_nwp_payload = key.startswith("nwp_") and not key.endswith(nwp_metadata_suffixes)
-        if key not in feature_keys and not is_nwp_payload:
+        if key not in feature_keys:
             continue
         assert isinstance(value, np.ndarray | torch.Tensor), key
         expected_dtype = np.float32 if isinstance(value, np.ndarray) else torch.float32
         assert value.dtype == expected_dtype, f"{key}: {value.dtype}"
+
+    for value in sample.get("nwp", {}).values():
+        assert isinstance(value, np.ndarray | torch.Tensor)
+        assert value.dtype == (np.float32 if isinstance(value, np.ndarray) else torch.float32)
 
 
 def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
@@ -45,7 +47,7 @@ def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
 
     # Specific keys should always be present
     required_keys = [
-        "nwp_ukv", "satellite", "generation_input", "generation_target", "t0", "t0_embedding",
+        "nwp", "satellite", "generation_input", "generation_target", "t0", "t0_embedding",
     ]
     for key in required_keys:
         assert key in sample
@@ -94,7 +96,7 @@ def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
     # 30 minutes of 5 minute data (inclusive), one channel, 2x2 pixels
     assert sample["satellite"].shape == (*batch_dim, 7, 1, 2, 2)
     # 3 hours of 60 minute data (inclusive), one channel, 2x2 pixels
-    assert sample["nwp_ukv"].shape == (*batch_dim, 4, 1, 2, 2)
+    assert sample["nwp"]["ukv"].shape == (*batch_dim, 4, 1, 2, 2)
     # generation_input: 1 hour of 30 minute data (inclusive) = 3 steps
     # generation_target: 2 hours of 30 minute data (inclusive) = 5 steps
     assert sample["generation_input"].shape == (*batch_dim, 3)
@@ -174,10 +176,12 @@ def test_pvnet_dataset_sites_unbounded_time_periods(pvnet_site_config_filename):
 
 
 def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
-    dataset = PVNetDataset(pvnet_config_filename, use_xarray=True)
+    dataset = PVNetDataset(pvnet_config_filename, use_xarray=True, include_extra_metadata=True)
     sample = dataset[0]
 
-    dataset_nox = PVNetDataset(pvnet_config_filename, use_xarray=False)
+    dataset_nox = PVNetDataset(
+        pvnet_config_filename, use_xarray=False, include_extra_metadata=True,
+    )
     sample_nox = dataset_nox[0]
     _assert_sample_features_float32(sample)
     _assert_sample_features_float32(sample_nox)
@@ -187,6 +191,8 @@ def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
         for k in sample0:
             if isinstance(sample0[k], np.ndarray):
                 assert (sample0[k] == sample1[k]).all()
+            elif isinstance(sample0[k], dict):
+                check_samples_equal(sample0[k], sample1[k])
             else:
                 assert sample0[k] == sample1[k]
 
@@ -196,7 +202,9 @@ def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
 @pytest.mark.parametrize("use_xarray", [True, False])
 def test_pvnet_concurrent_dataset(pvnet_config_filename, use_xarray):
     # Create dataset object using limited set of GSPs
-    dataset = PVNetConcurrentDataset(pvnet_config_filename, use_xarray=use_xarray)
+    dataset = PVNetConcurrentDataset(
+        pvnet_config_filename, use_xarray=use_xarray, include_extra_metadata=True,
+    )
     num_locations = _expected_num_locations(dataset, LOCATION_IDS)
     assert len(dataset.locations) == num_locations
     # NB. I have not checked the value (39 below) is in fact correct
@@ -209,6 +217,11 @@ def test_pvnet_concurrent_dataset(pvnet_config_filename, use_xarray):
     # Check locations correctly ordered
     np.testing.assert_array_equal(
         sample["location_id"].numpy(), [loc.id for loc in dataset.locations],
+    )
+    # Make sure the metadata is correctly ordered
+    np.testing.assert_array_equal(
+        sample["metadata"]["location_longitude"].numpy(),
+        [loc.longitude for loc in dataset.locations],
     )
     # Check that PVNetConcurrentDataset agrees with PVNetDataset for every location
     single_sample_dataset = PVNetDataset(pvnet_config_filename, use_xarray=True)
@@ -274,7 +287,7 @@ def test_pvnet_dataset_without_generation(tmp_path, pvnet_config_filename):
     sample = dataset[0]
     assert "generation_input" not in sample
     assert "generation_target" not in sample
-    assert "nwp_ukv" in sample
+    assert "nwp" in sample
     assert "satellite" in sample
     _assert_sample_features_float32(sample)
 
@@ -299,7 +312,7 @@ def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
     ), "Sample yielded by DataLoader with batch_size=None should be a dict"
 
     required_keys = [
-        "nwp_ukv",
+        "nwp",
         "satellite",
         "generation_input",
         "generation_target",
@@ -325,11 +338,11 @@ def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
     assert isinstance(raw_sample["generation_target"], torch.Tensor)
     assert isinstance(raw_sample["solar_azimuth"], torch.Tensor)
     assert isinstance(raw_sample["solar_elevation"], torch.Tensor)
-    assert isinstance(raw_sample["nwp_ukv"], torch.Tensor)
+    assert isinstance(raw_sample["nwp"]["ukv"], torch.Tensor)
 
     # Shape assertions
     assert raw_sample["satellite"].shape == (7, 1, 2, 2)
-    assert raw_sample["nwp_ukv"].shape == (4, 1, 2, 2)
+    assert raw_sample["nwp"]["ukv"].shape == (4, 1, 2, 2)
     assert raw_sample["generation_input"].shape == (3,)
     assert raw_sample["generation_target"].shape == (5,)
 

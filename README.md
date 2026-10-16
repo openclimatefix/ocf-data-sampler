@@ -3,12 +3,11 @@
 [![tags badge](https://img.shields.io/github/v/tag/openclimatefix/ocf-data-sampler?include_prereleases&sort=semver&color=FFAC5F)](https://github.com/openclimatefix/ocf-data-sampler/tags)
 [![ease of contribution: easy](https://img.shields.io/badge/ease%20of%20contribution:%20easy-32bd50)](https://github.com/openclimatefix#how-easy-is-it-to-get-involved) 
 
-**ocf-data-sampler** contains all the tools needed to create samples and feed them to our models, such as [PVNet](https://github.com/openclimatefix/PVNet/). The data we work with—typically energy data, satellite imagery, and numerical weather predictions (NWPs)—is usually too heavy to do this on the fly, so that's where this repo comes in: handling steps like opening the data, selecting the right samples, normalising and reshaping, and saving to and reading from disk.
+**ocf-data-sampler** prepares samples to feed training and inference of OCF's renewable energy forecasting models such as [PVNet](https://github.com/openclimatefix/PVNet). It handles generation data, satellite imagery, and numerical weather predictions. For a given forecast init-time (t0) and geographical location the sampler selects the time periods and spatial crops needed for each sample, and applies normalisation and feature transformations. These datasets are often very large so loading data for these samples is done lazily and on-the-fly.
 
-We are currently migrating to this repo from [ocf_datapipes](https://github.com/openclimatefix/ocf_datapipes/), which performs the same functions but is built around `PyTorch DataPipes`, which are quite cumbersome to work with and are no longer maintained by PyTorch. **ocf-data-sampler** uses `PyTorch Datasets`, and we've taken the opportunity to make the code much cleaner and more manageable.
 
 > [!Note]
-> This repository is still in early development development and large changes to the user facing functions may still occur.
+> This repository is still in early development and large changes to the user facing functions may still occur.
 
 ## Licence 
 
@@ -18,7 +17,7 @@ It includes and adapts the `ephemeris()` function from the [pvlib-python](https:
 
 ## Documentation
 
-**ocf-data-sampler** doesn't have external documentation _yet_; you can read a bit about how our torch datasets work in the README [here](src/ocf_data_sampler/datasets/pvnet/README.md).
+See the [PVNet dataset guide](src/ocf_data_sampler/datasets/pvnet/README.md) for sample construction, time conventions, and DataLoader configuration.
 
 ## FAQ
 
@@ -26,26 +25,29 @@ If you have any questions about this or any other of our repos, don't hesitate t
 
 ### How does ocf-data-sampler deal with data sources that use different projections (e.g. some are in latitude-longitude, and some in OSGB)?
 
-When creating samples, we make a spatial crop of a preset size centred around a point of interest (POI, usually a solar or wind farm). The size of the crop is set not in miles or kilometres, but in 'pixels', which would be different for different data sources, depending on their spatial resolution, projections they use, and where the POI is. For example, a latitude-longitude source with a 1° resolution will have pixel sizes corresponding to very different 'surface' distances (that you might measure in, e.g., kilometres) from a source with 0.1° resolution. The pixel size will even be different for the same source depending on how close the POI is to the equator!
+When creating samples, we select a spatial crop of each data source around a given geographical location. This location might be an individual solar farm or wind turbine, or a representative point for a region or country. Each data source is configured with a spatial crop size in pixels rather than kilometres. The physical area sliced out depends on the data source’s resolution and coordinate system. For example, on a regular longitude–latitude grid the physical size in kilometres depends on whether the grid is say 0.1° or 1°. The physical size also varies with latitude because the distance between lines of longitude decreases towards the poles.
 
-Instead of trying to accommodate for all these differences and make all the sources use the same spatial grid, we translate the POI's position into the corresponding coordinate system and select the crop using the source's original grid. This 'snapshot' is then passed to the model with no additional information on what specific coordinates it represents; instead, since the size is always the same and the POI is always in the centre, the model gets consistent information on the measurements at a location near the POI and how it affects the target, without any explicit knowledge of where that location is in coordinate system terms.
+Each data source is kept on its original grid. We transform the sampling location into the source’s coordinate system and select a crop approximately centred on that location, without reprojecting or resampling the data onto a shared grid. This gives the model a fixed number of pixels from each source, although those crops may cover different physical areas.
 
 ## Development
 
-You can install **ocf-data-sampler** for development as follows:
+With [uv](https://docs.astral.sh/uv/getting-started/installation/) installed, clone the
+repository and install the package and development dependencies into `.venv`:
 
-``` 
-pip install git+https://github.com/openclimatefix/ocf-data-sampler.git
+```bash
+git clone https://github.com/openclimatefix/ocf-data-sampler.git
+cd ocf-data-sampler
+uv sync --group dev
 ```
 
 ### Running the test suite
 
-The tests in this project use `pytest`. Once you have it installed, you can run it from the project's directory:
+The development dependencies include `pytest`, `pvlib`, and `dask`, which the tests
+require. After completing the setup above, run the suite from the repository directory:
 
+```bash
+uv run python -m pytest
 ```
-cd ocf-data-sampler
-pytest
-``` 
 
 ## Contributing and community
 
