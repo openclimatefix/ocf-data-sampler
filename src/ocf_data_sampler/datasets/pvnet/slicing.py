@@ -28,46 +28,50 @@ def slice_datasets_by_space(
     Returns:
         A dictionary of the sliced input data sources.
     """
-    sliced_datasets_dict = {}
+    try:
+        sliced_datasets_dict = {}
 
-    if "nwp" in datasets_dict:
-        sliced_datasets_dict["nwp"] = {}
+        if "nwp" in datasets_dict:
+            sliced_datasets_dict["nwp"] = {}
 
-        for nwp_key, nwp_config in config.nwp.items():
-            coordinate = location.source_coordinates["nwp"][nwp_key]
-            sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
-                datasets_dict["nwp"][nwp_key],
+            for nwp_key, nwp_config in config.nwp.items():
+                coordinate = location.source_coordinates["nwp"][nwp_key]
+                sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels(
+                    datasets_dict["nwp"][nwp_key],
+                    x=coordinate.x,
+                    y=coordinate.y,
+                    x_dim=coordinate.x_dim,
+                    y_dim=coordinate.y_dim,
+                    height_pixels=nwp_config.image_size_pixels_height,
+                    width_pixels=nwp_config.image_size_pixels_width,
+                )
+
+        if "sat" in datasets_dict:
+            coordinate = location.source_coordinates["sat"]
+            sliced_datasets_dict["sat"] = select_spatial_slice_pixels(
+                datasets_dict["sat"],
                 x=coordinate.x,
                 y=coordinate.y,
                 x_dim=coordinate.x_dim,
                 y_dim=coordinate.y_dim,
-                height_pixels=nwp_config.image_size_pixels_height,
-                width_pixels=nwp_config.image_size_pixels_width,
+                height_pixels=config.satellite.image_size_pixels_height,
+                width_pixels=config.satellite.image_size_pixels_width,
             )
 
-    if "sat" in datasets_dict:
-        coordinate = location.source_coordinates["sat"]
-        sliced_datasets_dict["sat"] = select_spatial_slice_pixels(
-            datasets_dict["sat"],
-            x=coordinate.x,
-            y=coordinate.y,
-            x_dim=coordinate.x_dim,
-            y_dim=coordinate.y_dim,
-            height_pixels=config.satellite.image_size_pixels_height,
-            width_pixels=config.satellite.image_size_pixels_width,
-        )
+        # Depending on whether this is called before or after time-slicing, the generation data is
+        # under a single "generation" key (raw, pre-split) or "generation_input"/"generation_target"
+        # (post-split) - slice whichever of these are present by location.
+        for key in ("generation", "generation_input", "generation_target"):
+            if key not in datasets_dict:
+                continue
 
-    # Depending on whether this is called before or after time-slicing, the generation data is
-    # under a single "generation" key (raw, pre-split) or "generation_input"/"generation_target"
-    # (post-split) - slice whichever of these are present by location.
-    for key in ("generation", "generation_input", "generation_target"):
-        if key not in datasets_dict:
-            continue
+            location_ids = datasets_dict[key]["location_id"].values
+            loc_index = get_indices_in_sorted_unique(location_ids, location.id)
 
-        location_ids = datasets_dict[key]["location_id"].values
-        loc_index = get_indices_in_sorted_unique(location_ids, location.id)
+            sliced_datasets_dict[key] = datasets_dict[key].isel(location_id=loc_index)
 
-        sliced_datasets_dict[key] = datasets_dict[key].isel(location_id=loc_index)
+    except ValueError as error:
+        raise ValueError(f"Cannot slice location {location.id!r}: {error}") from error
 
     return sliced_datasets_dict
 
@@ -103,37 +107,41 @@ def reduce_spatial_extent_of_datasets(
     Returns:
         A dictionary of the reduced input data sources.
     """
-    sliced_datasets_dict = {}
+    try:
+        sliced_datasets_dict = {}
 
-    if "nwp" in datasets_dict:
-        sliced_datasets_dict["nwp"] = {}
+        if "nwp" in datasets_dict:
+            sliced_datasets_dict["nwp"] = {}
 
-        for nwp_key, nwp_config in config.nwp.items():
-            source_coordinates = [loc.source_coordinates["nwp"][nwp_key] for loc in locations]
+            for nwp_key, nwp_config in config.nwp.items():
+                source_coordinates = [loc.source_coordinates["nwp"][nwp_key] for loc in locations]
+                centres, x_dim, y_dim = _get_source_spatial_coordinates(source_coordinates)
+                sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels_multiple(
+                    datasets_dict["nwp"][nwp_key],
+                    centres=centres,
+                    x_dim=x_dim,
+                    y_dim=y_dim,
+                    height_pixels=nwp_config.image_size_pixels_height,
+                    width_pixels=nwp_config.image_size_pixels_width,
+                )
+
+        if "sat" in datasets_dict:
+            source_coordinates = [loc.source_coordinates["sat"] for loc in locations]
             centres, x_dim, y_dim = _get_source_spatial_coordinates(source_coordinates)
-            sliced_datasets_dict["nwp"][nwp_key] = select_spatial_slice_pixels_multiple(
-                datasets_dict["nwp"][nwp_key],
+            sliced_datasets_dict["sat"] = select_spatial_slice_pixels_multiple(
+                datasets_dict["sat"],
                 centres=centres,
                 x_dim=x_dim,
                 y_dim=y_dim,
-                height_pixels=nwp_config.image_size_pixels_height,
-                width_pixels=nwp_config.image_size_pixels_width,
+                height_pixels=config.satellite.image_size_pixels_height,
+                width_pixels=config.satellite.image_size_pixels_width,
             )
 
-    if "sat" in datasets_dict:
-        source_coordinates = [loc.source_coordinates["sat"] for loc in locations]
-        centres, x_dim, y_dim = _get_source_spatial_coordinates(source_coordinates)
-        sliced_datasets_dict["sat"] = select_spatial_slice_pixels_multiple(
-            datasets_dict["sat"],
-            centres=centres,
-            x_dim=x_dim,
-            y_dim=y_dim,
-            height_pixels=config.satellite.image_size_pixels_height,
-            width_pixels=config.satellite.image_size_pixels_width,
-        )
+        if "generation" in datasets_dict:
+            sliced_datasets_dict["generation"] = datasets_dict["generation"]
 
-    if "generation" in datasets_dict:
-        sliced_datasets_dict["generation"] = datasets_dict["generation"]
+    except ValueError as error:
+        raise ValueError(f"Cannot slice all locations: {error}") from error
 
     return sliced_datasets_dict
 
