@@ -66,6 +66,9 @@ def find_contiguous_t0_periods(
         pd.DataFrame where each row represents a single time period.  The pd.DataFrame
             has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
     """
+    if len(datetimes) == 0:
+        return pd.DataFrame(columns=["start_dt", "end_dt"], dtype=datetimes.dtype)
+
     period_starts, period_ends = find_contiguous_time_periods(
         datetimes=datetimes,
         time_resolution=time_resolution,
@@ -77,12 +80,6 @@ def find_contiguous_t0_periods(
     # Shift the boundaries to give the range of valid t0 values in each period
     t0_period_starts = period_starts[mask] - interval_start
     t0_period_ends = period_ends[mask] - interval_end
-
-    if len(t0_period_starts) == 0:
-        raise ValueError(
-            f"No contiguous time periods found for {datetimes}. "
-            f"{interval_start=} {interval_end=} {time_resolution=}",
-        )
 
     return pd.DataFrame({"start_dt": t0_period_starts, "end_dt": t0_period_ends})
 
@@ -188,9 +185,8 @@ def intersect_time_periods(time_periods: list[pd.DataFrame]) -> pd.DataFrame:
     if len(time_periods) == 0:
         raise ValueError("No time periods to intersect")
 
-    for i, periods in enumerate(time_periods):
-        if periods.empty:
-            raise ValueError(f"Time period frame {i} contains no periods")
+    if any(periods.empty for periods in time_periods):
+        return pd.DataFrame(columns=["start_dt", "end_dt"], dtype="datetime64[ns]")
 
     intersection = time_periods[0]
     for periods in time_periods[1:]:
@@ -224,10 +220,8 @@ def _intersect_2_time_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
         The intersecting time periods, sorted by start time, as a pd.DataFrame with two
         columns: start_dt and end_dt. Empty if no periods overlap.
     """
-    if a.empty:
-        raise ValueError("Input `a` contains no periods")
-    if b.empty:
-        raise ValueError("Input `b` contains no periods")
+    if a.empty or b.empty:
+        return pd.DataFrame(columns=["start_dt", "end_dt"], dtype="datetime64[ns]")
 
     # Maybe switch these for efficiency in the next section. We will do the native python loop over
     # the shorter dataframe
@@ -276,6 +270,9 @@ def fill_time_periods(time_periods: pd.DataFrame, freq: np.timedelta64) -> NDArr
         time_periods: DataFrame with columns 'start_dt' and 'end_dt'
         freq: Frequency to fill time periods with
     """
+    if time_periods.empty:
+        return np.array([], dtype="datetime64[ns]")
+
     start_dts = datetime_ceil(time_periods["start_dt"].values, freq)
     end_dts = time_periods["end_dt"].values
     date_ranges = [

@@ -22,7 +22,10 @@ def _warn_if_not_float32(source: str, data: xr.DataArray) -> None:
         )
 
 
-def get_dataset_dict(config: PVNetDataConfig) -> SourceDict[xr.DataArray]:
+def get_dataset_dict(
+    config: PVNetDataConfig,
+    location_ids: list[int],
+) -> SourceDict[xr.DataArray]:
     """Construct dictionary of all of the per-sample input data sources.
 
     Locations metadata is deliberately excluded - it isn't a per-sample source, so the caller
@@ -30,6 +33,7 @@ def get_dataset_dict(config: PVNetDataConfig) -> SourceDict[xr.DataArray]:
 
     Args:
         config: PVNetDataConfig configuration object
+        location_ids: Requested generation location IDs, in selection order.
     """
     datasets_dict = {}
 
@@ -44,7 +48,11 @@ def get_dataset_dict(config: PVNetDataConfig) -> SourceDict[xr.DataArray]:
             source="generation",
         )
 
-        datasets_dict["generation"] = da_gen
+        missing = np.setdiff1d(location_ids, da_gen["location_id"].values)
+        if len(missing) > 0:
+            raise ValueError(f"Generation data is missing for location IDs: {missing}")
+
+        datasets_dict["generation"] = da_gen.sel(location_id=location_ids)
 
     # Load NWP data if in config
     if config.nwp:

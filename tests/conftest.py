@@ -273,15 +273,12 @@ def ds_site_generation(session_rng, df_site_locations):
     min_length = 10
     for i, _ in enumerate(location_ids):
         start_idx = session_rng.integers(0, n_times - min_length)
-        max_possible_end = n_times
-        end_idx = session_rng.integers(start_idx + min_length, max_possible_end)
+        end_idx = session_rng.integers(start_idx + min_length, n_times)
         active_slice = slice(start_idx, end_idx)
 
         # Fill only active period with random data
         capacity[active_slice, i] = 1.0
-        generation[active_slice, i] = session_rng.uniform(0, 200, end_idx - start_idx).astype(
-            "float32",
-        )
+        generation[active_slice, i] = session_rng.uniform(0, 200, end_idx - start_idx)
 
     return xr.Dataset(
         data_vars={
