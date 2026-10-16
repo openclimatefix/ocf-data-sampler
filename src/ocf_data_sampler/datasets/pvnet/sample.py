@@ -3,9 +3,76 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from ocf_data_sampler.datasets.pvnet.types import NumpySample, SourceDict
+from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
+from ocf_data_sampler.config.model import PVNetDataConfig
+from ocf_data_sampler.datasets.pvnet.types import Location, NumpySample, SourceDict
 from ocf_data_sampler.features.solar import calculate_azimuth_and_elevation
-from ocf_data_sampler.features.time_encodings import encode_t0
+from ocf_data_sampler.features.time_encodings import encode_datetimes, encode_t0
+
+
+def build_numpy_sample(
+    dataset_dict: SourceDict,
+    t0: np.datetime64,
+    location: Location,
+    config: PVNetDataConfig,
+    include_extra_metadata: bool = False,
+) -> NumpySample:
+    """Convert data to numpy arrays and add auxiliary features.
+
+    Note: the data in `dataset_dict` is expected to already be preprocessed - see
+    `preprocess_dataset_dict`.
+
+    Args:
+        dataset_dict: Dictionary of xarray datasets
+        t0: init-time for sample
+        location: location of the sample
+        config: PVNetDataConfig object
+        include_extra_metadata: Whether to add additional non-essential metadata to the sample
+    """
+    # Convert all xarray modalities to a single NumpySample
+    sample = convert_to_numpy_sample(dataset_dict, include_extra_metadata)
+
+    sample["location_id"] = location.id
+
+    if include_extra_metadata:
+        sample["location_longitude"] = location.longitude
+        sample["location_latitude"] = location.latitude
+
+    # Add t0 embedding if configured
+    if config.t0_embedding is not None:
+        sample.update(
+            make_t0_encoding_numpy_sample(t0, config.t0_embedding.embeddings),
+        )
+
+    # Add datetime encodings if configured
+    if config.datetime_encoding is not None:
+        dt_config = config.datetime_encoding
+
+        datetimes = date_range(
+            t0 + minutes(dt_config.interval_start_minutes),
+            t0 + minutes(dt_config.interval_end_minutes),
+            freq=minutes(dt_config.time_resolution_minutes),
+        )
+        sample.update(encode_datetimes(datetimes=datetimes))
+
+    # Add solar position if configured
+    if config.solar_position is not None:
+        solar_config = config.solar_position
+
+        # Create datetime range for solar position calculation
+        datetimes = date_range(
+            t0 + minutes(solar_config.interval_start_minutes),
+            t0 + minutes(solar_config.interval_end_minutes),
+            freq=minutes(solar_config.time_resolution_minutes),
+        )
+
+        sample.update(
+            make_sun_position_numpy_sample(datetimes, lon=location.longitude, lat=location.latitude)
+        )
+
+    sample["t0"] = get_posix_timestamp(t0)
+
+    return sample
 
 
 def convert_to_numpy_sample(

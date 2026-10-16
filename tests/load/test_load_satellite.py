@@ -6,6 +6,7 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.load.satellite import open_satellite
+from tests.conftest import UK_SAT_AREA
 
 
 def test_open_satellite(sat_zarr_path):
@@ -39,7 +40,7 @@ def test_open_satellite_bad_dtype(tmp_path: Path):
             "y_geostationary": np.arange(4),
             "x_geostationary": np.arange(4),
         },
-        attrs={"area": "area_info"},
+        attrs={"area": UK_SAT_AREA},
     )
     bad_ds.to_zarr(zarr_path)
 
