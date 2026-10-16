@@ -1,3 +1,5 @@
+from unittest.mock import Mock, patch
+
 import pandas as pd
 import pytest
 import xarray as xr
@@ -108,3 +110,17 @@ def test_concat_rejects_non_tensorstore_datasets(zarr_paths):
     datasets = [xr.open_zarr(path) for path in zarr_paths[2]]
     with pytest.raises(TypeError, match="expected TensorStore"):
         concat_tensorstore(datasets, concat_dim="init_time_utc")
+
+
+@pytest.mark.parametrize("paths", [["first.zarr"], ["first.zarr", "second.zarr"]])
+def test_open_zarr_paths_validates_before_returning_or_concatenating(paths):
+    datasets = [xr.Dataset() for _ in paths]
+    validator = Mock(side_effect=ValueError("invalid metadata"))
+    with (
+        patch("ocf_data_sampler.common.xr_tensorstore.xrt.open_zarr", side_effect=datasets),
+        patch("ocf_data_sampler.common.xr_tensorstore.concat_tensorstore") as concat,
+        pytest.raises(ValueError, match="invalid metadata"),
+    ):
+        open_zarr_paths(paths, concat_dim="time", validator=validator)
+    validator.assert_called_once_with(datasets)
+    concat.assert_not_called()

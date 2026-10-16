@@ -13,6 +13,7 @@ Coordinates:
 
 import numpy as np
 import xarray as xr
+import xarray_tensorstore as xrt
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 from ocf_data_sampler.load.conventions import validate_coords
@@ -27,9 +28,7 @@ def open_generation(zarr_path: str) -> xr.DataArray:
     Returns:
         xr.DataArray: The opened generation data
     """
-    # Open generation without xarray-tensorstore since it has multiple data-variables
-    # TODO: establish if xarray tensorstore could be used here
-    ds = xr.open_dataset(zarr_path, engine="zarr", chunks=None)
+    ds = xrt.open_zarr(zarr_path)
 
     if set(ds.data_vars) != {"generation_mw", "capacity_mwp"}:
         raise ValueError(

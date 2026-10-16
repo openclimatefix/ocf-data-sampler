@@ -1,7 +1,8 @@
 """Module for opening NWP data."""
 
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 
 import numpy as np
 import xarray as xr
@@ -10,22 +11,32 @@ from numpy.typing import NDArray
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 from ocf_data_sampler.common.xr_tensorstore import ZarrSource, open_zarr_paths
 from ocf_data_sampler.load.conventions import (
-    extract_single_data_array,
+    extract_only_data_array,
     make_spatial_coords_increasing,
     validate_coords,
+    validate_matching_projections,
 )
 
-SpatialCoords = tuple[str, str]
 
-# This is our central registry of NWP providers and their spatial coordinate names, which allows us
-# to handle different providers in a consistent way.
-PROVIDER_REGISTRY: dict[str, SpatialCoords] = {
-    "ukv": ("x_osgb", "y_osgb"),
-    "ecmwf": ("longitude", "latitude"),
-    "mo_global": ("longitude", "latitude"),
-    "gencast": ("longitude", "latitude"),
-    "fgn": ("longitude", "latitude"),
-    "cloudcasting": ("x_geostationary", "y_geostationary"),
+@dataclass(frozen=True)
+class ProviderSpec:
+    """Spatial coordinate names and optional validation for an NWP provider."""
+
+    x_coord: str
+    y_coord: str
+    validator: Callable[[Sequence[xr.Dataset]], None] | None = None
+
+
+# Provider-specific coordinates and validation share one loading path.
+PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
+    "ukv": ProviderSpec("x_osgb", "y_osgb"),
+    "ecmwf": ProviderSpec("longitude", "latitude"),
+    "mo_global": ProviderSpec("longitude", "latitude"),
+    "gencast": ProviderSpec("longitude", "latitude"),
+    "fgn": ProviderSpec("longitude", "latitude"),
+    "cloudcasting": ProviderSpec(
+        "x_geostationary", "y_geostationary", validate_matching_projections,
+    ),
 }
 
 
@@ -37,17 +48,17 @@ def open_nwp(zarr_path: ZarrSource, provider: str) -> xr.DataArray:
         supported = ", ".join(sorted(PROVIDER_REGISTRY))
         raise ValueError(f"Unknown provider: {provider!r}. Supported: {supported}")
 
-    x_coord, y_coord = PROVIDER_REGISTRY[provider]
+    spec = PROVIDER_REGISTRY[provider]
 
-    ds = open_zarr_paths(zarr_path, concat_dim="init_time_utc")
+    ds = open_zarr_paths(zarr_path, concat_dim="init_time_utc", validator=spec.validator)
     ds = _rename(ds, name_mapping={"variable": "channel"})
 
     expected_coord_dtypes = {
         "init_time_utc": np.datetime64,
         "step": np.timedelta64,
         "channel": np.str_,
-        x_coord: np.number,
-        y_coord: np.number,
+        spec.x_coord: np.number,
+        spec.y_coord: np.number,
     }
     validate_coords(
         ds,
@@ -55,14 +66,14 @@ def open_nwp(zarr_path: ZarrSource, provider: str) -> xr.DataArray:
         source=f"NWP provider {provider!r}",
     )
 
-    ds = make_spatial_coords_increasing(ds, x_coord=x_coord, y_coord=y_coord)
+    ds = make_spatial_coords_increasing(ds, x_coord=spec.x_coord, y_coord=spec.y_coord)
 
     assert_values_unique_increasing(ds["init_time_utc"].values, "init_time_utc")
     assert_values_unique_increasing(ds["step"].values, "step")
     _assert_steps_uniformly_spaced(ds["step"].values, provider)
 
-    da = extract_single_data_array(ds)
-    da = da.transpose("init_time_utc", "step", "channel", x_coord, y_coord)
+    da = extract_only_data_array(ds)
+    da = da.transpose("init_time_utc", "step", "channel", spec.x_coord, spec.y_coord)
 
     if not np.issubdtype(da.dtype, np.floating):
         raise TypeError(f"NWP data for {provider} should be floating, not {da.dtype}")

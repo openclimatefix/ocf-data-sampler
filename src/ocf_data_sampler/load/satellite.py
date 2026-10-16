@@ -6,9 +6,10 @@ import xarray as xr
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 from ocf_data_sampler.common.xr_tensorstore import ZarrSource, open_zarr_paths
 from ocf_data_sampler.load.conventions import (
-    extract_single_data_array,
+    extract_only_data_array,
     make_spatial_coords_increasing,
     validate_coords,
+    validate_matching_projections,
 )
 
 
@@ -18,7 +19,11 @@ def open_satellite(zarr_path: ZarrSource) -> xr.DataArray:
     Args:
         zarr_path: Path(s) to the zarr file(s)
     """
-    ds = open_zarr_paths(zarr_path, concat_dim="time_utc")
+    ds = open_zarr_paths(
+        zarr_path,
+        concat_dim="time_utc",
+        validator=validate_matching_projections,
+    )
 
     coord_dtypes = {
         "time_utc": np.datetime64,
@@ -35,7 +40,7 @@ def open_satellite(zarr_path: ZarrSource) -> xr.DataArray:
     ds = make_spatial_coords_increasing(ds, x_coord="x_geostationary", y_coord="y_geostationary")
     assert_values_unique_increasing(ds["time_utc"].values, "time_utc")
 
-    da = extract_single_data_array(ds)
+    da = extract_only_data_array(ds)
     da = da.transpose("time_utc", "channel", "x_geostationary", "y_geostationary")
 
     if not np.issubdtype(da.dtype, np.floating):
