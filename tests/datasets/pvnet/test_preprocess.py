@@ -8,7 +8,6 @@ from ocf_data_sampler.config.model import Channel, NWPChannel
 from ocf_data_sampler.datasets.pvnet.preprocess import (
     apply_dropout_to_datasets,
     build_normalisation_arrays,
-    diff_nwp_data,
     fill_nans_in_dataset_dicts,
     normalise_dataset_dicts,
 )
