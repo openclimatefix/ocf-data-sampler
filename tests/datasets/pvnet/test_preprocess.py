@@ -60,7 +60,7 @@ def test_fill_nans_in_dataset_dicts(config_filename, fill_value, expected):
         "nwp": {"ukv": xr.DataArray(gen.copy())},
     }
 
-    datasets_dict = fill_nans_in_dataset_dicts(datasets_dict, config=configuration)
+    fill_nans_in_dataset_dicts(datasets_dict, config=configuration)
 
     np.testing.assert_array_equal(datasets_dict["generation_input"].values, expected)
     np.testing.assert_array_equal(datasets_dict["nwp"]["ukv"].values, expected)
@@ -77,7 +77,7 @@ def test_normalise_dataset_dicts_generation():
         "generation_target": generation.copy(deep=True),
     }
 
-    datasets_dict = normalise_dataset_dicts(datasets_dict, {})
+    normalise_dataset_dicts(datasets_dict, {})
 
     for key in ("generation_input", "generation_target"):
         result = datasets_dict[key]
@@ -157,9 +157,8 @@ def test_normalise_channels(config_filename):
     nwp = sat.copy(deep=True)
     datasets = {"sat": sat, "nwp": {"ukv": nwp}}
 
-    result = normalise_dataset_dicts(datasets, build_normalisation_arrays(config))
+    normalise_dataset_dicts(datasets, build_normalisation_arrays(config))
 
-    assert result is datasets
     expected = np.array([[-1, 0, 1], [-2, 0, np.nan]])[None, :, None, :]
     for da in (sat, nwp):
         assert da.dtype == np.float32

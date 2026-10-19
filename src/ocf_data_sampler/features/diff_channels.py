@@ -6,10 +6,11 @@ from ocf_data_sampler.common.types import TArray
 
 
 def diff_channels(da: TArray, accum_channels: list[str]) -> TArray:
-    """Perform in-place diff of the given channels of the DataArray in the steps dimension.
+    """Difference selected channels along step without modifying the input.
 
     The returned array is sliced to one step shorter to allow for differencing the
     configured channels. Differenced channel names are prefixed with ``diff_``.
+    Differences retain the earlier step's label.
 
     Args:
         da: The DataArray to slice from
@@ -21,15 +22,17 @@ def diff_channels(da: TArray, accum_channels: list[str]) -> TArray:
     all_channels = da["channel"].values
     accum_channel_inds = [i for i, c in enumerate(all_channels) if c in accum_channels]
 
-    # Make a copy of the values to avoid changing the underlying numpy array
-    vals = da.values.copy()
-    vals[:-1, accum_channel_inds] = np.diff(vals[:, accum_channel_inds], axis=0)
-    da.data = vals
+    da_out = da.isel(step=slice(0, -1))
+    all_values = da.values
+
+    out_values = all_values[:-1].copy()
+    out_values[:, accum_channel_inds] = np.diff(all_values[:, accum_channel_inds], axis=0)
+    da_out.data = out_values
 
     new_channels = np.array([
         f"diff_{channel}" if channel in accum_channels else channel
         for channel in all_channels
     ])
-    da.coords["channel"] = (("channel",), new_channels)
+    da_out.coords["channel"] = (("channel",), new_channels)
 
-    return da.isel(step=slice(0, -1))
+    return da_out

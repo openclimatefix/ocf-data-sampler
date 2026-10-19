@@ -12,17 +12,17 @@ def test_block_until_loaded():
     """Test load function with dask array"""
     da_dask = xr.DataArray(dask.array.random.random((5, 5)))
 
-    # Create a nested dictionary with dask array
-    lazy_data_dict = {
+    # Create a nested dictionary with dask arrays
+    source_dict = {
         "array1": da_dask,
-        "nested": {"array2": da_dask},
+        "nested": {"array2": da_dask.copy()},
     }
 
-    loaded_data_dict = block_until_loaded(lazy_data_dict)
+    block_until_loaded(source_dict)
 
     # Assert that the result is no longer lazy
-    assert isinstance(loaded_data_dict["array1"].data, np.ndarray)
-    assert isinstance(loaded_data_dict["nested"]["array2"].data, np.ndarray)
+    assert isinstance(source_dict["array1"].data, np.ndarray)
+    assert isinstance(source_dict["nested"]["array2"].data, np.ndarray)
 
 
 @pytest.mark.parametrize("use_lightarray", [False, True])
@@ -42,18 +42,18 @@ def test_materialise_data(tmp_path, use_lightarray, dtype):
         nested_da_ts = LightDataArray.from_xarray(nested_da_ts)
 
     # Create a nested dictionary with tensorstore arrays
-    lazy_data_dict = {
+    source_dict = {
         "array1": da_ts,
         "nested": {"array2": nested_da_ts},
     }
 
-    loaded_data_dict = materialise_data(lazy_data_dict)
+    materialise_data(source_dict)
 
     # Assert that the result is no longer lazy
-    assert isinstance(loaded_data_dict["array1"].data, np.ndarray)
-    assert isinstance(loaded_data_dict["nested"]["array2"].data, np.ndarray)
+    assert isinstance(source_dict["array1"].data, np.ndarray)
+    assert isinstance(source_dict["nested"]["array2"].data, np.ndarray)
 
-    for da in (loaded_data_dict["array1"], loaded_data_dict["nested"]["array2"]):
+    for da in (source_dict["array1"], source_dict["nested"]["array2"]):
         assert da.data.dtype == np.float32
         np.testing.assert_array_equal(da.values, values.astype(np.float32))
         assert da["x"].values.dtype == np.float64

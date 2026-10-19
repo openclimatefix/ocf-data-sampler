@@ -47,8 +47,8 @@ def open_generation(zarr_path: str) -> xr.DataArray:
     )
 
     # Load the data eagerly into memory - this makes the dataset faster to sample from, but
-    # at the cost of a little extra memory usage
-    ds = ds.load()
+    # at the cost of a little extra memory usage. This is an in-place operation.
+    ds.load()
 
     da = ds.to_dataarray("gen_param").transpose("time_utc", "location_id", "gen_param")
 
