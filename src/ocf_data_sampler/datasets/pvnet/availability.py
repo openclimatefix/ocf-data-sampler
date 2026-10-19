@@ -70,7 +70,7 @@ def _find_non_generation_t0_periods(
                 max_delay = minutes(max(nwp_config.delay_minute_probabilities))
 
             # The last step of the forecast is lost if we have to diff channels
-            if len(nwp_config.accum_channels) > 0:
+            if any(channel.accumulated for channel in nwp_config.channels):
                 end_buffer = minutes(nwp_config.time_resolution_minutes)
             else:
                 end_buffer = minutes(0)

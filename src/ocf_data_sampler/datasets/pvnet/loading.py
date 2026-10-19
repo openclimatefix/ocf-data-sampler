@@ -78,7 +78,7 @@ def get_dataset_dict(
                 source=f"nwp/{nwp_source}",
             )
 
-            da_nwp = da_nwp.sel(channel=list(nwp_config.channels))
+            da_nwp = da_nwp.sel(channel=[channel.name for channel in nwp_config.channels])
 
             datasets_dict["nwp"][nwp_source] = da_nwp
 
@@ -94,7 +94,7 @@ def get_dataset_dict(
             source="satellite",
         )
 
-        da_sat = da_sat.sel(channel=list(config.satellite.channels))
+        da_sat = da_sat.sel(channel=[channel.name for channel in config.satellite.channels])
 
         datasets_dict["sat"] = da_sat
 

@@ -4,10 +4,11 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration
-from ocf_data_sampler.config.model import NormalisationValues
+from ocf_data_sampler.config.model import Channel, NWPChannel
 from ocf_data_sampler.datasets.pvnet.preprocess import (
     apply_dropout_to_datasets,
     build_normalisation_arrays,
+    diff_nwp_data,
     fill_nans_in_dataset_dicts,
     normalise_dataset_dicts,
 )
@@ -145,17 +146,14 @@ def test_apply_dropout_to_datasets(config_filename):
 
 def test_normalise_channels(config_filename):
     config = load_yaml_configuration(config_filename)
-    config.satellite.channels = ["b", "a"]
-    config.satellite.normalisation_constants = {
-        "a": NormalisationValues(mean=10, std=2),
-        "b": NormalisationValues(mean=2, std=2, clip_min=0, clip_max=4),
-    }
-    config.nwp["ukv"].channels = ["b", "a"]
-    config.nwp["ukv"].accum_channels = ["b"]
-    config.nwp["ukv"].normalisation_constants = {
-        "a": NormalisationValues(mean=10, std=2),
-        "diff_b": NormalisationValues(mean=2, std=2, clip_min=0, clip_max=4),
-    }
+    config.satellite.channels = [
+        Channel(name="b", mean=2, std=2, clip_min=0, clip_max=4),
+        Channel(name="a", mean=10, std=2),
+    ]
+    config.nwp["ukv"].channels = [
+        NWPChannel(name="b", accumulated=True, mean=2, std=2, clip_min=0, clip_max=4),
+        NWPChannel(name="a", mean=10, std=2),
+    ]
     sat = xr.DataArray(np.array([[-2, 2, 8], [6, 10, np.nan]], dtype=np.float32)[None, :, None, :])
     nwp = sat.copy(deep=True)
     datasets = {"sat": sat, "nwp": {"ukv": nwp}}
@@ -167,3 +165,4 @@ def test_normalise_channels(config_filename):
     for da in (sat, nwp):
         assert da.dtype == np.float32
         np.testing.assert_allclose(da.values, expected)
+
