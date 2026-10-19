@@ -20,8 +20,8 @@ def test_sample_delay(monkeypatch, draw, expected):
 
 def test_apply_dropout_none(da_sample):
     original = da_sample.copy(deep=True)
-    result = apply_dropout(da_sample, da_sample["time_utc"].values[-1], None)
-    xr.testing.assert_equal(result, original)
+    apply_dropout(da_sample, da_sample["time_utc"].values[-1], None)
+    xr.testing.assert_equal(da_sample, original)
 
 
 @pytest.mark.parametrize("delay_minutes", [0, 30])
@@ -31,11 +31,11 @@ def test_apply_dropout(da_sample, delay_minutes):
     cutoff = pd.Timestamp(t0 - minutes(delay_minutes))
     original = da_sample.copy(deep=True)
 
-    result = apply_dropout(da_sample, t0, minutes(delay_minutes))
+    apply_dropout(da_sample, t0, minutes(delay_minutes))
 
     # Keep the cutoff itself; mask every later observation, including any beyond t0.
     xr.testing.assert_equal(
-        result.sel(time_utc=slice(None, cutoff)), original.sel(time_utc=slice(None, cutoff)),
+        da_sample.sel(time_utc=slice(None, cutoff)), original.sel(time_utc=slice(None, cutoff)),
     )
-    assert result.sel(time_utc=slice(cutoff + minutes(5), None)).isnull().all()
-    assert result.dtype == original.dtype
+    assert da_sample.sel(time_utc=slice(cutoff + minutes(5), None)).isnull().all()
+    assert da_sample.dtype == original.dtype

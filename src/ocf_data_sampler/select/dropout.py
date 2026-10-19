@@ -36,7 +36,7 @@ def apply_dropout(
     da: TArray,
     t0: np.datetime64,
     dropout_delay: np.timedelta64 | None,
-) -> TArray:
+) -> None:
     """Replace observations strictly after t0 minus the selected delay with NaNs in-place.
 
     Requires materialised NumPy data. A None delay leaves observations unchanged;
@@ -48,7 +48,7 @@ def apply_dropout(
         dropout_delay: Non-negative availability delay, or None for no dropout.
     """
     if dropout_delay is None:
-        return da
+        return
     if not isinstance(da.data, np.ndarray):
         raise ValueError(
             f"Dropout can only be applied to DataArrays with numpy data. Got: {type(da.data)}"
@@ -59,4 +59,3 @@ def apply_dropout(
     axis = da.dims.index("time_utc")
     mask = np.expand_dims(keep, tuple(i for i in range(da.data.ndim) if i != axis))
     da.data = np.where(mask, da.data, np.asarray(np.nan, dtype=da.data.dtype))
-    return da
