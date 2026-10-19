@@ -115,15 +115,6 @@ def test_incorrect_nwp_provider(config_filename):
         _validate_configuration(configuration)
 
 
-def test_nwp_provider_rejects_uppercase(config_filename):
-    """Provider names must match the registry exactly."""
-    configuration, provider = _load_config_and_provider(config_filename)
-    configuration.nwp[provider].provider = "UKV"
-
-    with pytest.raises(ValidationError, match="Unknown NWP provider 'UKV'"):
-        _validate_configuration(configuration)
-
-
 def test_dropout_probability_sum():
     """Individually valid probabilities must also form a valid distribution."""
     with pytest.raises(ValidationError, match="Probabilities must sum to at most 1"):

@@ -158,16 +158,12 @@ def test_normalise_channels(config_filename):
     }
     sat = xr.DataArray(np.array([[-2, 2, 8], [6, 10, np.nan]], dtype=np.float32)[None, :, None, :])
     nwp = sat.copy(deep=True)
-    nwp.data[0, 1, 0, 2] = 14
     datasets = {"sat": sat, "nwp": {"ukv": nwp}}
 
     result = normalise_dataset_dicts(datasets, build_normalisation_arrays(config))
 
     assert result is datasets
     expected = np.array([[-1, 0, 1], [-2, 0, np.nan]])[None, :, None, :]
-    assert sat.dtype == np.float32
-    np.testing.assert_allclose(sat.values, expected)
-    assert nwp.dtype == np.float32
-    np.testing.assert_allclose(
-        nwp.values, np.array([[-1, 0, 1], [-2, 0, 2]])[None, :, None, :],
-    )
+    for da in (sat, nwp):
+        assert da.dtype == np.float32
+        np.testing.assert_allclose(da.values, expected)

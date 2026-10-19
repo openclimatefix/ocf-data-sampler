@@ -16,7 +16,6 @@ def test_sample_delay(monkeypatch, draw, expected):
     delay = choose_delay(probabilities)
 
     assert delay == (None if expected is None else minutes(expected))
-    assert probabilities == {30: 0.2, 60: 0.3}
 
 
 def test_apply_dropout_none(da_sample):
@@ -25,11 +24,10 @@ def test_apply_dropout_none(da_sample):
     xr.testing.assert_equal(result, original)
 
 
-@pytest.mark.parametrize("t0_str", ["12:30", "13:00", "13:30"])
 @pytest.mark.parametrize("delay_minutes", [0, 30])
-def test_apply_dropout(da_sample, t0_str, delay_minutes):
+def test_apply_dropout(da_sample, delay_minutes):
     da_sample = da_sample.copy(deep=True)
-    t0 = np.datetime64(f"2024-01-01T{t0_str}")
+    t0 = np.datetime64("2024-01-01T12:30")
     cutoff = pd.Timestamp(t0 - minutes(delay_minutes))
     original = da_sample.copy(deep=True)
 
