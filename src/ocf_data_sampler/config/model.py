@@ -56,11 +56,10 @@ _Embedding = tuple[
 
 
 def _validate_unique_channel_names(channels: Sequence["Channel"]) -> None:
-    """Require distinct source channel names while preserving their configured order."""
+    """Reject duplicate source channel names."""
     names = [channel.name for channel in channels]
-    duplicates = {name for name in names if names.count(name) > 1}
-    if duplicates:
-        raise ValueError(f"Channel names must be unique. Duplicates: {sorted(duplicates)}")
+    if len(names) != len(set(names)):
+        raise ValueError("Channel names must be unique")
 
 
 class Base(BaseModel, extra="forbid"):
@@ -193,7 +192,7 @@ class NWPChannel(Channel):
 
     accumulated: bool = Field(
         default=False,
-        description="Subtract each forecast step from the following step before normalisation. "
+        description="Whether to difference the channel before normalisation. "
         "Each difference is labelled with the earlier step's timestamp, and the output channel "
         "name is prefixed with diff_.",
     )
