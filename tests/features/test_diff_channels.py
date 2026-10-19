@@ -21,6 +21,7 @@ def test_diff_channels(ds_nwp_ukv_time_sliced, array_factory):
         da_diffed = da_diffed.to_xarray()
         da = da.to_xarray()
 
+    # Differencing should leave the input data and coordinates unchanged
     xr.testing.assert_identical(da, da_input)
 
     assert list(da_diffed["channel"].values) == ["diff_dswrf", "t"]
