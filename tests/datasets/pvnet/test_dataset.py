@@ -132,6 +132,22 @@ def test_pvnet_dataset(pvnet_config_filename):
     _pvnet_dataset_sample_check(sample, dataset.config)
 
 
+@pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
+@pytest.mark.parametrize("source", ["satellite", "ukv"])
+def test_pvnet_dataset_rejects_oversized_crops(
+    tmp_path, pvnet_config_filename, dataset_class, source,
+):
+    config = load_yaml_configuration(pvnet_config_filename)
+    source_config = {"satellite": config.satellite, "ukv": config.nwp["ukv"]}[source]
+    # Both fixture grids are narrower than 201 pixels.
+    source_config.image_size_pixels_width = 201
+    config_path = tmp_path / "oversized_crop.yaml"
+    save_yaml_configuration(config, config_path)
+
+    with pytest.raises(ValueError, match="Cannot slice all locations"):
+        dataset_class(config_path)
+
+
 def test_get_locations_exclude_ids(locations_csv_path):
     excluded_ids = [LOCATION_IDS[0], LOCATION_IDS[5], LOCATION_IDS[-1]]
     locations = get_locations(locations_csv_path, exclude_ids=excluded_ids)

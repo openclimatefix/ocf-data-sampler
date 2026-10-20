@@ -100,6 +100,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
             datasets_dict, location_ids, config, time_periods,
         )
         add_source_coordinates(self.locations, datasets_dict)
+        datasets_dict = reduce_spatial_extent_of_datasets(datasets_dict, self.locations, config)
         self.normalisation_arrays = build_normalisation_arrays(config)
 
         self.config = config
@@ -201,22 +202,6 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
 
 class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
     """A torch Dataset for creating concurrent PVNet location samples."""
-
-    @override
-    def __init__(
-        self,
-        config_filename: str,
-        time_periods: list[tuple[str | None, str | None]] | None = None,
-        include_extra_metadata: bool = False,
-        use_xarray: bool = True,
-    ) -> None:
-        super().__init__(config_filename, time_periods, include_extra_metadata, use_xarray)
-
-        self.datasets_dict = reduce_spatial_extent_of_datasets(
-            self.datasets_dict,
-            self.locations,
-            self.config,
-        )
 
     @staticmethod
     @override
