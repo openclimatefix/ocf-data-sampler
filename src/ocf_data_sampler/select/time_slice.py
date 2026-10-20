@@ -3,7 +3,7 @@
 import numpy as np
 
 from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
-from ocf_data_sampler.common.time_utils import date_range, datetime_ceil
+from ocf_data_sampler.common.time_utils import date_range, datetime_floor
 from ocf_data_sampler.common.types import TArray
 
 
@@ -16,6 +16,8 @@ def select_time_slice(
 ) -> TArray:
     """Select a time slice from a DataArray.
 
+    The requested period is floored onto the available time grid.
+
     Args:
         da: The DataArray to slice from
         t0: The init-time
@@ -23,7 +25,10 @@ def select_time_slice(
         interval_end: The end of the interval with respect to t0
         time_resolution: Distance between neighbouring timestamps
     """
-    interval_bounds = np.array([t0 + interval_start, t0 + interval_end], dtype="datetime64[ns]")
+    interval_bounds = datetime_floor(
+        datetimes=np.array([t0 + interval_start, t0 + interval_end], dtype="datetime64[ns]"),
+        freq=time_resolution,
+    )
     start_ind, end_ind = get_indices_in_sorted_unique(da["time_utc"].values, interval_bounds)
 
     requested_times = date_range(interval_bounds[0], interval_bounds[1], freq=time_resolution)
@@ -49,6 +54,8 @@ def select_time_slice_nwp(
 ) -> TArray:
     """Select a time slice from an NWP DataArray.
 
+    The requested period is floored onto the available NWP step grid.
+
     Args:
         da: The DataArray to slice from
         t0: The init-time
@@ -59,7 +66,7 @@ def select_time_slice_nwp(
     """
     start_dt = t0 + interval_start
     end_dt = t0 + interval_end
-    start_dt, end_dt = datetime_ceil(np.array([start_dt, end_dt]), time_resolution)
+    start_dt, end_dt = datetime_floor(np.array([start_dt, end_dt]), time_resolution)
     target_times = date_range(start_dt, end_dt, freq=time_resolution)
 
     # Unpack for convenience and so we don't need to unpack multiple times
