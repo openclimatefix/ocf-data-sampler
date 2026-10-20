@@ -170,14 +170,14 @@ def test_find_contiguous_t0_periods_nwp():
 
     interval_end = np.timedelta64(3, "h")
 
-    # Choose some history durations and max stalenesses
+    # Choose some history durations and staleness limits
     history_durations_hr = [0, 2, 2, 2, 2]
-    max_stalenesses_hr = [9, 9, 6, 3, 6]
+    staleness_limits_hr = [9, 9, 6, 3, 6]
     max_delays_hr = [0, 0, 0, 0, 3]
 
     for i, expected in enumerate(expected_results):
         interval_start = np.timedelta64(-history_durations_hr[i], "h")
-        max_staleness = np.timedelta64(max_stalenesses_hr[i], "h")
+        staleness_limit = np.timedelta64(staleness_limits_hr[i], "h")
         max_delay = np.timedelta64(max_delays_hr[i], "h")
 
         time_periods = find_contiguous_t0_periods_nwp(
@@ -186,7 +186,8 @@ def test_find_contiguous_t0_periods_nwp():
             interval_end=interval_end,
             first_forecast_step=first_forecast_step,
             last_forecast_step=last_forecast_step,
-            max_staleness=max_staleness,
+            time_resolution=np.timedelta64(1, "h"),
+            staleness_limit=staleness_limit,
             max_delay=max_delay,
         )
 
@@ -206,9 +207,10 @@ def test_find_contiguous_t0_periods_nwp_forecast_too_short():
             interval_end=np.timedelta64(3, "h"),
             first_forecast_step=np.timedelta64(0, "h"),
             last_forecast_step=np.timedelta64(2, "h"),
+            time_resolution=np.timedelta64(1, "h"),
         )
 
-    # The same failure via a max_staleness shorter than the wait imposed by first_forecast_step
+    # The same failure via a staleness_limit shorter than the wait imposed by first_forecast_step
     with pytest.raises(ValueError, match="no t0s are available"):
         find_contiguous_t0_periods_nwp(
             init_times=init_times,
@@ -216,7 +218,8 @@ def test_find_contiguous_t0_periods_nwp_forecast_too_short():
             interval_end=np.timedelta64(3, "h"),
             first_forecast_step=np.timedelta64(6, "h"),
             last_forecast_step=np.timedelta64(36, "h"),
-            max_staleness=np.timedelta64(3, "h"),
+            time_resolution=np.timedelta64(1, "h"),
+            staleness_limit=np.timedelta64(3, "h"),
         )
 
 

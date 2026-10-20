@@ -30,7 +30,7 @@ nwp:
     image_size_pixels_width: 2
     delay_minute_probabilities:
       180: 1.0
-    max_staleness_minutes: null
+    staleness_limit_minutes: null
 
 satellite:
   zarr_path: set_in_temp_file

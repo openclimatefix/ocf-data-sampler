@@ -272,10 +272,11 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
 
     provider: str = Field(..., description="The provider of the NWP data")
 
-    max_staleness_minutes: int | None = Field(
+    staleness_limit_minutes: int | None = Field(
         None,
         description="Sets a limit on how stale an NWP init-time is allowed to be whilst still "
-        "being used to construct an example. If set to None, then no additional limit is applied "
+        "being used to construct an example. The limit is exclusive: forecasts this stale or "
+        "staler at t0 are not used. If set to None, then no additional limit is applied "
         "except that the forecast must cover the requested time interval.",
     )
 

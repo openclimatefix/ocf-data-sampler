@@ -76,10 +76,10 @@ def _find_non_generation_t0_periods(
                 end_buffer = minutes(0)
 
             # Default to use max possible staleness unless specified in config
-            if nwp_config.max_staleness_minutes is None:
-                max_staleness = None
+            if nwp_config.staleness_limit_minutes is None:
+                staleness_limit = None
             else:
-                max_staleness = minutes(nwp_config.max_staleness_minutes)
+                staleness_limit = minutes(nwp_config.staleness_limit_minutes)
 
             nwp_periods = find_contiguous_t0_periods_nwp(
                 init_times=da["init_time_utc"].values,
@@ -87,8 +87,9 @@ def _find_non_generation_t0_periods(
                 interval_end=minutes(nwp_config.interval_end_minutes)+end_buffer,
                 first_forecast_step=first_forecast_step,
                 last_forecast_step=last_forecast_step,
+                time_resolution=minutes(nwp_config.time_resolution_minutes),
                 max_delay=max_delay,
-                max_staleness=max_staleness,
+                staleness_limit=staleness_limit,
             )
 
             if len(nwp_periods) == 0:
@@ -132,8 +133,8 @@ def _find_generation_t0_periods(
         generation_config: Generation configuration specifying the time resolution and windows.
 
     Returns:
-        A DataFrame of periods valid for every configured window, with inclusive
-        bounds in the start_dt and end_dt columns. Empty if no periods are valid.
+        A DataFrame of periods valid for every configured window, with inclusive start_dt and 
+        exclusive end_dt bounds. Empty if no periods are valid.
     """
     window_periods = [
         find_contiguous_t0_periods(
@@ -204,8 +205,7 @@ def _build_t0_times_from_requested_periods(
     requested_periods_df = pd.DataFrame(
         requested_periods, columns=["start_dt", "end_dt"], dtype="datetime64[ns]"
     )
-    # Filling includes endpoints; keep adjacent half-open periods from sharing a timestamp.
-    requested_periods_df["end_dt"] -= np.timedelta64(1, "ns")
+
     return fill_time_periods(requested_periods_df, freq=t0_frequency)
 
 
