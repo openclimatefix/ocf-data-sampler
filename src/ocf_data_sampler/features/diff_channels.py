@@ -19,8 +19,11 @@ def diff_channels(da: TArray, accum_channels: list[str]) -> TArray:
     if da.dims[:2] != ("step", "channel"):
         raise ValueError("This function assumes the first two dimensions are step then channel")
 
-    all_channels = da["channel"].values
-    accum_channel_inds = [i for i, c in enumerate(all_channels) if c in accum_channels]
+    if len(accum_channels)==0:
+        raise ValueError("At least one accumulated channel must be requested")
+
+    all_channels = da["channel"].values.tolist()
+    accum_channel_inds = [all_channels.index(c) for c in accum_channels]
 
     da_out = da.isel(step=slice(0, -1))
     all_values = da.values

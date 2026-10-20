@@ -36,3 +36,10 @@ def test_diff_channels(ds_nwp_ukv_time_sliced, array_factory):
     # The diff function should agree with xarray's diff method for the diffed channels
     expected_diffed = da_input.sel(channel="dswrf").diff(dim="step", label="lower")
     assert (da_diffed.sel(channel="diff_dswrf").values == expected_diffed.values).all()
+
+
+def test_diff_channels_missing_channel(ds_nwp_ukv_time_sliced):
+    da = ds_nwp_ukv_time_sliced.assign_coords(channel=["dswrf", "t"])
+
+    with pytest.raises(ValueError, match="'missing' is not in list"):
+        diff_channels(da, accum_channels=["dswrf", "missing"])
