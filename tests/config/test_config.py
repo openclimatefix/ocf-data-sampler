@@ -11,7 +11,7 @@ _MINIMAL_SAMPLING_GRID = {"locations_csv_path": "locations.csv", "t0_resolution_
 
 def _load_config_and_provider(config_path):
     config = load_yaml_configuration(config_path)
-    provider = next(iter(config.nwp.root.keys()))
+    provider = next(iter(config.nwp.keys()))
     return config, provider
 
 
@@ -155,7 +155,7 @@ def test_accum_channels_validation(config_filename):
 
     # Test invalid channel scenario
     invalid_config = config.model_copy(deep=True)
-    invalid_nwp = invalid_config.nwp.root[nwp_name]
+    invalid_nwp = invalid_config.nwp[nwp_name]
     invalid_nwp.accum_channels = ["invalid_channel"]
 
     # Verify exact error message

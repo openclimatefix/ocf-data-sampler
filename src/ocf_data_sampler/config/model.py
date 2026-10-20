@@ -1,9 +1,8 @@
 """Configuration model for the PVNet dataset."""
 
-from collections.abc import ItemsView, KeysView
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, Field, RootModel, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, Field, field_validator, model_validator
 
 from ocf_data_sampler.common.types import ZarrSource
 from ocf_data_sampler.load.nwp import PROVIDER_REGISTRY
@@ -303,28 +302,6 @@ class NWP(TimeWindowMixin, FillValueMixin, SpatialWindowMixin, NormalisationCons
         return self
 
 
-class MultiNWP(RootModel):
-    """NWP source configurations, accessed by name: config.nwp["ukv"]."""
-
-    root: dict[str, NWP] = Field(..., min_length=1)
-
-    def __getitem__(self, item: str) -> NWP:
-        """Return the NWP configuration for a source name."""
-        return self.root[item]
-
-    def __len__(self) -> int:
-        """Return the number of configured NWP sources."""
-        return len(self.root)
-
-    def keys(self) -> KeysView[str]:
-        """Returns dictionary-like keys."""
-        return self.root.keys()
-
-    def items(self) -> ItemsView[str, NWP]:
-        """Returns dictionary-like items."""
-        return self.root.items()
-
-
 class GenerationWindow(Base):
     """Interval bounds for a generation window.
 
@@ -492,7 +469,7 @@ class PVNetDataConfig(Base):
 
     sampling_grid: SamplingGrid
     satellite: Satellite | None = None
-    nwp: MultiNWP | None = None
+    nwp: dict[str, NWP] | None = Field(default=None, min_length=1)
     generation: Generation | None = None
     solar_position: SolarPosition | None = None
     datetime_encoding: DatetimeEncoding | None = None
