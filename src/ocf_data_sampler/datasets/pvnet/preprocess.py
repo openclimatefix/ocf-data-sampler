@@ -208,7 +208,8 @@ def preprocess_dataset_dict(
       units
     - NaN filling must be done after dropout, since dropout introduces NaNs in the data
 
-    Mutates the supplied dictionary without modifying the original NumPy arrays.
+    Updates the dictionary and its DataArray-like objects in-place, replacing entries or their
+    `.data` as needed. The original NumPy arrays remain unchanged.
 
     Note: `dataset_dict` is expected to already be loaded - see `materialise_data`.
 

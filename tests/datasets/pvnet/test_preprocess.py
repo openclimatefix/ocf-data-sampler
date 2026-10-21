@@ -10,6 +10,7 @@ from ocf_data_sampler.datasets.pvnet.preprocess import (
     build_normalisation_arrays,
     fill_nans_in_dataset_dicts,
     normalise_dataset_dicts,
+    preprocess_dataset_dict,
 )
 
 
@@ -163,4 +164,66 @@ def test_normalise_channels(config_filename):
     for da in (sat, nwp):
         assert da.dtype == np.float32
         np.testing.assert_allclose(da.values, expected)
+
+
+def test_preprocess_dataset_dict_preserves_original_arrays(config_filename):
+    """Preprocessing updates the supplied dictionary but preserves its original NumPy data."""
+    config = load_yaml_configuration(config_filename)
+    config.generation.input.dropout_minute_probabilities = {30: 1.0}
+    config.generation.input.fill_value = -4.0
+    config.satellite.channels = [Channel(name="a", mean=2, std=2, clip_min=0, clip_max=6)]
+    config.satellite.dropout_minute_probabilities = {30: 1.0}
+    config.satellite.fill_value = -3.0
+    config.nwp["ukv"].channels = [
+        NWPChannel(name="a", accumulated=True, mean=2, std=2, clip_min=0, clip_max=6),
+    ]
+
+    generation = _generation_da(
+        np.array([[5], [8], [2]], dtype=np.float32),
+        np.full((3, 1), 10, dtype=np.float32),
+    )
+    times = generation.time_utc.values
+    sat = xr.DataArray(
+        np.array([-2, np.nan, 8], dtype=np.float32)[:, None, None, None],
+        coords={"time_utc": times, "channel": ["a"], "x": [0], "y": [0]},
+        dims=("time_utc", "channel", "x", "y"),
+    )
+    nwp = xr.DataArray(
+        np.array([2, 6, 14], dtype=np.float32)[:, None, None, None],
+        coords={"step": times - times[0], "channel": ["a"], "x": [0], "y": [0]},
+        dims=("step", "channel", "x", "y"),
+    )
+    datasets_dict = {
+        "generation_input": generation,
+        "generation_target": generation.copy(deep=True),
+        "sat": sat,
+        "nwp": {"ukv": nwp},
+    }
+    # Keep references to the actual input arrays, since preprocessing replaces .data.
+    original_array_references = [
+        datasets_dict["generation_input"].data,
+        datasets_dict["generation_target"].data,
+        datasets_dict["sat"].data,
+        datasets_dict["nwp"]["ukv"].data,
+    ]
+    # Make copies so we can detect if the original arrays are modified
+    original_array_copies = [array.copy() for array in original_array_references]
+
+    preprocess_dataset_dict(datasets_dict, times[-1], config, build_normalisation_arrays(config))
+
+    processed_arrays = [
+        datasets_dict["generation_input"].data,
+        datasets_dict["generation_target"].data,
+        datasets_dict["sat"].data,
+        datasets_dict["nwp"]["ukv"].data,
+    ]
+    for original_reference, original_copy, processed in zip(
+        original_array_references, original_array_copies, processed_arrays, strict=True,
+    ):
+        # Check that the processing actually returned different arrays from the original, else the
+        # following check that the original NumPy arrays are unmodified becomes a dummy
+        assert not np.array_equal(processed, original_copy, equal_nan=True)
+
+        # Check that the original arrays are unmodified
+        np.testing.assert_array_equal(original_reference, original_copy)
 
