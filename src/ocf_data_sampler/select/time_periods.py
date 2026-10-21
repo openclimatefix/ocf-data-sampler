@@ -90,7 +90,7 @@ def find_contiguous_t0_periods_nwp(
     interval_end: np.timedelta64,
     first_forecast_step: np.timedelta64,
     last_forecast_step: np.timedelta64,
-    max_dropout: np.timedelta64 = ZERO_TDELTA,
+    max_delay: np.timedelta64 = ZERO_TDELTA,
     max_staleness: np.timedelta64 | None = None,
 ) -> pd.DataFrame:
     """Get all time periods from the NWP init-times which are valid as t0 datetimes.
@@ -101,7 +101,7 @@ def find_contiguous_t0_periods_nwp(
         interval_end: The end of the time interval with respect to t0.
         first_forecast_step: The timedelta of the first step of the NWP forecast.
         last_forecast_step: The timedelta of the last step of the NWP forecast.
-        max_dropout: What is the maximum amount of dropout that will be used.
+        max_delay: Maximum simulated NWP availability delay.
             This must be <= max_staleness.
         max_staleness: How long after each init-time are we willing to use that init-time. If set to
             None, no additional limit is applied.
@@ -115,7 +115,7 @@ def find_contiguous_t0_periods_nwp(
     if len(init_times) == 0:
         raise ValueError("No init-times to use")
 
-    if max_dropout < ZERO_TDELTA:
+    if max_delay < ZERO_TDELTA:
         raise ValueError("The max dropout must be non-negative (zero or positive)")
 
     if max_staleness is not None:
@@ -123,9 +123,9 @@ def find_contiguous_t0_periods_nwp(
         if max_staleness < ZERO_TDELTA:
             raise ValueError("The max staleness must be non-negative (zero or positive)")
 
-        if max_dropout > max_staleness:
+        if max_delay > max_staleness:
             raise ValueError(
-                f"max_dropout ({max_dropout}) must be <= max_staleness ({max_staleness})"
+                f"max_delay ({max_delay}) must be <= max_staleness ({max_staleness})"
             )
 
         # This is the max staleness we can use considering the max step of the input data
@@ -138,7 +138,7 @@ def find_contiguous_t0_periods_nwp(
             )
 
     # We can't use an init-time until this timedelta afterwards to account for dropout
-    init_start_timedelta = max(first_forecast_step - interval_start, max_dropout)
+    init_start_timedelta = max(first_forecast_step - interval_start, max_delay)
 
     # We can only use an init-time until up to this timedelta afterwards to account for the slice
     # requested and the max_staleness

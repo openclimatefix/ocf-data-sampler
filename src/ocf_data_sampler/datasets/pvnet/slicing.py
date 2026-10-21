@@ -6,6 +6,7 @@ from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
 from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import Coordinate, Location, SourceDict
+from ocf_data_sampler.select.dropout import choose_delay
 from ocf_data_sampler.select.spatial_slice import (
     select_spatial_slice_pixels,
     select_spatial_slice_pixels_multiple,
@@ -184,8 +185,10 @@ def slice_datasets_by_time(
                 time_resolution=minutes(nwp_config.time_resolution_minutes),
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 interval_end=minutes(interval_end_mins),
-                dropout_timedeltas=minutes(nwp_config.dropout_timedeltas_minutes),
-                dropout_frac=nwp_config.dropout_fraction,
+                delay=(
+                    None if nwp_config.delay_minute_probabilities is None
+                    else choose_delay(nwp_config.delay_minute_probabilities)
+                ),
             )
 
     if "sat" in datasets_dict:

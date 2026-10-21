@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration
@@ -27,39 +28,43 @@ def _generation_da(generation_mw: np.ndarray, capacity_mwp: np.ndarray) -> xr.Da
 
 
 def _assert_dropout_applied(da: xr.DataArray, cutoff_time: np.datetime64):
-    """Assert that all values after the cutoff time are NaN, and all values before are not NaN.
-    """
+    """Check that the cutoff is retained and later observations are NaN."""
     assert not np.any(np.isnan(da.sel(time_utc=slice(None, cutoff_time))))
     assert np.all(np.isnan(da.sel(time_utc=slice(cutoff_time + np.timedelta64(1, "s"), None))))
 
 
-def test_fill_nans_in_dataset_dicts(config_filename):
-    """Test the fill_nans_in_arrays function from configuration"""
+@pytest.mark.parametrize(
+    "fill_value, expected",
+    [
+        (None, [1.0, np.nan, 3.0, np.nan]),
+        (0.0, [1.0, 0.0, 3.0, 0.0]),
+        (-2.0, [1.0, -2.0, 3.0, -2.0]),
+    ],
+)
+def test_fill_nans_in_dataset_dicts(config_filename, fill_value, expected):
+    """Fill generation and NWP inputs only when configured, including an explicit zero."""
 
     configuration = load_yaml_configuration(config_filename)
 
-    # Set custom satellite and nwp values, generation is left as default 0.0
-    configuration.satellite.dropout_fill_value = -1.0
-    configuration.nwp["ukv"].dropout_fill_value = -2.0
+    # Zero is a valid fill value; None preserves missing observations.
+    configuration.generation.input.fill_value = fill_value
+    configuration.nwp["ukv"].fill_value = fill_value
+    configuration.satellite.fill_value = -1.0
 
     gen = np.array([1.0, np.nan, 3.0, np.nan])
     sat = np.array([1.0, np.nan, 3.0, np.nan])
-    ukv = np.array([np.nan, 3.0, np.nan])
 
     datasets_dict = {
         "generation_input": xr.DataArray(gen),
-        "generation_target": xr.DataArray(gen.copy()),
         "sat": xr.DataArray(sat),
-        "nwp": {"ukv": xr.DataArray(ukv)},
+        "nwp": {"ukv": xr.DataArray(gen.copy())},
     }
 
     datasets_dict = fill_nans_in_dataset_dicts(datasets_dict, config=configuration)
 
-    expected_gen = np.array([1.0, 0.0, 3.0, 0.0])
-    assert np.array_equal(datasets_dict["generation_input"].values, expected_gen)
-    assert np.array_equal(datasets_dict["generation_target"].values, expected_gen)
+    np.testing.assert_array_equal(datasets_dict["generation_input"].values, expected)
+    np.testing.assert_array_equal(datasets_dict["nwp"]["ukv"].values, expected)
     assert np.array_equal(datasets_dict["sat"].values, np.array([1.0, -1.0, 3.0, -1.0]))
-    assert np.array_equal(datasets_dict["nwp"]["ukv"].values, np.array([-2.0, 3.0, -2.0]))
 
 
 def test_normalise_dataset_dicts_generation():
@@ -90,14 +95,13 @@ def test_normalise_dataset_dicts_generation():
         assert np.array_equal(result.sel(gen_param="capacity_mwp").values, capacity_mwp)
 
 
-def test_apply_dropout_to_datasets(pvnet_config_filename):
-    config = load_yaml_configuration(pvnet_config_filename)
+def test_apply_dropout_to_datasets(config_filename):
+    config = load_yaml_configuration(config_filename)
 
-    config.generation.input.dropout_timedeltas_minutes = [-30]
-    config.generation.input.dropout_fraction = 1.0
-
-    config.satellite.dropout_timedeltas_minutes = [-60]
-    config.satellite.dropout_fraction = 1.0
+    config.generation.input.dropout_minute_probabilities = {30: 1.0}
+    config.generation.input.fill_value = -1.0
+    config.satellite.dropout_minute_probabilities = {60: 1.0}
+    config.satellite.fill_value = -2.0
 
     generation_input = _generation_da(generation_mw=np.ones((4, 2)),  capacity_mwp=np.ones((4, 2)))
     generation_target = generation_input.copy(deep=True)
@@ -120,14 +124,23 @@ def test_apply_dropout_to_datasets(pvnet_config_filename):
 
     apply_dropout_to_datasets(datasets_dict, t0, config)
 
-    # Generation dropout with a -30 minute cutoff should blank everything from t0
-    _assert_dropout_applied(datasets_dict["generation_input"], t0 - np.timedelta64(30, "m"))
+    # Generation dropout with a 30-minute delay should blank everything from t0
+    _assert_dropout_applied(
+        datasets_dict["generation_input"], t0 - np.timedelta64(30, "m"),
+    )
 
     # No dropout is applied to generation.target, so it should have no NaNs
     assert not np.any(np.isnan(datasets_dict["generation_target"]))
 
-    # Satellite dropout with a -60 minute cutoff should blank everything from t0 - 60 minutes
+    # Satellite dropout with a 60-minute delay should blank everything from t0 - 60 minutes
     _assert_dropout_applied(datasets_dict["sat"], t0 - np.timedelta64(60, "m"))
+
+    fill_nans_in_dataset_dicts(datasets_dict, config)
+    assert (datasets_dict["generation_input"].sel(time_utc=slice(t0, None)) == -1.0).all()
+    assert (
+        datasets_dict["sat"].sel(time_utc=slice(t0 - np.timedelta64(30, "m"), None)) == -2.0
+    ).all()
+    xr.testing.assert_equal(datasets_dict["generation_target"], generation_target)
 
 
 def test_normalise_channels(config_filename):

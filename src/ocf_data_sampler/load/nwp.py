@@ -9,7 +9,8 @@ import xarray as xr
 from numpy.typing import NDArray
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
-from ocf_data_sampler.common.xr_tensorstore import ZarrSource, open_zarr_paths
+from ocf_data_sampler.common.types import ZarrSource
+from ocf_data_sampler.common.xr_tensorstore import open_zarr_paths
 from ocf_data_sampler.load.conventions import (
     extract_only_data_array,
     make_spatial_coords_increasing,

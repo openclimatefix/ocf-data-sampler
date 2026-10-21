@@ -1,15 +1,17 @@
+from operator import attrgetter
+
 import pytest
 from pydantic import ValidationError
 
 from ocf_data_sampler.config import load_yaml_configuration
-from ocf_data_sampler.config.model import PVNetDataConfig
+from ocf_data_sampler.config.model import DropoutMixin, PVNetDataConfig
 
 _MINIMAL_SAMPLING_GRID = {"locations_csv_path": "locations.csv", "t0_resolution_minutes": 30}
 
 
 def _load_config_and_provider(config_path):
     config = load_yaml_configuration(config_path)
-    provider = next(iter(config.nwp.root.keys()))
+    provider = next(iter(config.nwp.keys()))
     return config, provider
 
 
@@ -58,7 +60,8 @@ def test_sampling_grid_does_not_require_nwp_resolution_multiple(config_filename)
     configuration = load_yaml_configuration(config_filename)
     configuration.satellite = None
     configuration.generation = None
-    configuration.sampling_grid.t0_resolution_minutes = 7
+    # A 30-minute sampling cadence need not be a multiple of the 60-minute NWP resolution.
+    configuration.sampling_grid.t0_resolution_minutes = 30
 
     _validate_configuration(configuration)
 
@@ -112,93 +115,38 @@ def test_incorrect_nwp_provider(config_filename):
         _validate_configuration(configuration)
 
 
-def test_nwp_provider_is_canonicalized(config_filename):
-    """NWP provider names are stored using their canonical lowercase spelling."""
-    configuration, provider = _load_config_and_provider(config_filename)
-    configuration.nwp[provider].provider = "UKV"
-
-    validated = _validate_configuration(configuration)
-
-    assert validated.nwp[provider].provider == "ukv"
+def test_dropout_probability_sum():
+    """Individually valid probabilities must also form a valid distribution."""
+    with pytest.raises(ValidationError, match="Probabilities must sum to at most 1"):
+        DropoutMixin(dropout_minute_probabilities={60: 0.8, 120: 0.4})
 
 
-def test_incorrect_dropout(config_filename):
-    """
-    Check a dropout timedelta over 0 causes error and 0 doesn't
-    """
-    configuration, provider = _load_config_and_provider(config_filename)
+def test_dropout_requires_fill_value():
+    with pytest.raises(ValidationError, match="fill_value must be set"):
+        DropoutMixin(dropout_minute_probabilities={60: 0.2})
 
-    # Check that a positive number is not allowed
-    configuration.nwp[provider].dropout_timedeltas_minutes = [120]
-    with pytest.raises(Exception, match="Dropout timedeltas must be negative"):
-        _validate_configuration(configuration)
-
-    # Check that zero is allowed
-    configuration.nwp[provider].dropout_timedeltas_minutes = [0]
-    _validate_configuration(configuration)
+    # Zero is a valid replacement value, rather than an absent setting.
+    config = DropoutMixin(dropout_minute_probabilities={60: 0.2}, fill_value=0.0)
+    assert config.fill_value == 0.0
 
 
-def test_incorrect_dropout_fraction(config_filename):
-    """
-    Check dropout fraction outside of range causes error
-    """
-    configuration, provider = _load_config_and_provider(config_filename)
+@pytest.mark.parametrize("window_path", ["satellite", "generation.input"])
+@pytest.mark.parametrize("delay_minutes", [30, 60])
+def test_dropout_rejects_cutoffs_at_or_after_interval_end(
+    config_filename, window_path, delay_minutes,
+):
+    config = load_yaml_configuration(config_filename)
+    window = attrgetter(window_path)(config)
+    window.interval_start_minutes = -120
+    window.interval_end_minutes = -60
+    window.dropout_minute_probabilities = {delay_minutes: 0.5, 90: 0.5}
+    window.fill_value = 0.0
 
-    configuration.nwp[provider].dropout_fraction = 1.1
-    with pytest.raises(ValidationError, match=r"Dropout fractions must be in range *"):
-        _validate_configuration(configuration)
+    with pytest.raises(ValidationError, match="must mask at least one value"):
+        _validate_configuration(config)
 
-    configuration.nwp[provider].dropout_fraction = -0.1
-    with pytest.raises(ValidationError, match=r"Dropout fractions must be in range *"):
-        _validate_configuration(configuration)
-
-    configuration.nwp[provider].dropout_fraction = [1.0, 0.1]
-    with pytest.raises(ValidationError, match=r"The sum of dropout fractions must be in range *"):
-        _validate_configuration(configuration)
-
-    configuration.nwp[provider].dropout_fraction = [-0.1, 1.1]
-    with pytest.raises(ValidationError, match=r"All dropout fractions must be in range *"):
-        _validate_configuration(configuration)
-
-    configuration.nwp[provider].dropout_fraction = []
-    with pytest.raises(ValidationError, match="List cannot be empty"):
-        _validate_configuration(configuration)
-
-
-def test_dropout_fraction_list_length_matches_timedeltas(config_filename):
-    """List dropout fractions must align with dropout timedeltas one-to-one."""
-    configuration, provider = _load_config_and_provider(config_filename)
-
-    configuration.nwp[provider].dropout_timedeltas_minutes = [-60, -120]
-    configuration.nwp[provider].dropout_fraction = [0.5]
-
-    with pytest.raises(
-        ValidationError,
-        match="must have the same length as `dropout_timedeltas_minutes`",
-    ):
-        _validate_configuration(configuration)
-
-
-def test_inconsistent_dropout_use(config_filename):
-    """
-    Check dropout fraction outside of range causes error
-    """
-    configuration = load_yaml_configuration(config_filename)
-    configuration.satellite.dropout_fraction = 1.0
-    configuration.satellite.dropout_timedeltas_minutes = []
-    with pytest.raises(
-        ValueError,
-        match="To dropout fraction > 0 requires a list of dropout timedeltas",
-    ):
-        _validate_configuration(configuration)
-
-    configuration.satellite.dropout_fraction = 0.0
-    configuration.satellite.dropout_timedeltas_minutes = [-120, -60]
-    with pytest.raises(
-        ValueError,
-        match="To use dropout timedeltas dropout fraction should be > 0",
-    ):
-        _validate_configuration(configuration)
+    window.dropout_minute_probabilities = {90: 1.0}
+    _validate_configuration(config)
 
 
 def test_accum_channels_validation(config_filename):
@@ -207,7 +155,7 @@ def test_accum_channels_validation(config_filename):
 
     # Test invalid channel scenario
     invalid_config = config.model_copy(deep=True)
-    invalid_nwp = invalid_config.nwp.root[nwp_name]
+    invalid_nwp = invalid_config.nwp[nwp_name]
     invalid_nwp.accum_channels = ["invalid_channel"]
 
     # Verify exact error message

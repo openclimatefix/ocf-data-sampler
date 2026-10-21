@@ -4,7 +4,6 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import NormalisationValues, PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import (
@@ -13,7 +12,7 @@ from ocf_data_sampler.datasets.pvnet.types import (
 )
 from ocf_data_sampler.features.diff_channels import diff_channels
 from ocf_data_sampler.features.normalisation import clip_and_standardise
-from ocf_data_sampler.select.dropout import apply_dropout
+from ocf_data_sampler.select.dropout import apply_dropout, choose_delay
 
 
 def _build_source_normalisation_arrays(
@@ -150,63 +149,61 @@ def apply_dropout_to_datasets(
     Returns:
         None. The input datasets_dict is modified in place.
     """
-    if "sat" in datasets_dict:
+    sat_conf = config.satellite
+    if sat_conf is not None and sat_conf.dropout_minute_probabilities is not None:
         apply_dropout(
             datasets_dict["sat"],
             t0,
-            dropout_timedeltas=minutes(config.satellite.dropout_timedeltas_minutes),
-            dropout_frac=config.satellite.dropout_fraction,
+            dropout_delay=choose_delay(sat_conf.dropout_minute_probabilities),
         )
 
     # generation_target is never dropped out since it's the prediction target
-    if "generation_input" in datasets_dict:
+    gen_conf = config.generation
+    if (
+        gen_conf is not None
+        and gen_conf.input is not None
+        and gen_conf.input.dropout_minute_probabilities is not None
+    ):
 
         # Note: capacity_mwp is dropped out along with generation_mw
         apply_dropout(
             datasets_dict["generation_input"],
             t0,
-            dropout_timedeltas=minutes(config.generation.input.dropout_timedeltas_minutes),
-            dropout_frac=config.generation.input.dropout_fraction,
+            dropout_delay=choose_delay(gen_conf.input.dropout_minute_probabilities),
         )
 
     return
 
 
 def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: PVNetDataConfig) -> SourceDict:
-    """Fills all NaN values in the dataarrays in-place.
+    """Fill NaNs in input sources where a fill value is configured.
 
     Args:
         datasets_dict: Dictionary of the input data sources
         config: PVNetDataConfig object.
     """
-    if config.generation is not None:
-        for key, window_config in (
-            ("generation_input", config.generation.input),
-            ("generation_target", config.generation.target),
-        ):
-            if key in datasets_dict:
-                datasets_dict[key] = fill_nans(
-                    datasets_dict[key], window_config.dropout_fill_value,
-                )
+    if (
+        "generation_input" in datasets_dict
+        and config.generation.input.fill_value is not None
+    ):
+        fill_nans(datasets_dict["generation_input"], config.generation.input.fill_value)
 
-    if "sat" in datasets_dict:
-        datasets_dict["sat"] = fill_nans(datasets_dict["sat"], config.satellite.dropout_fill_value)
+    if "sat" in datasets_dict and config.satellite.fill_value is not None:
+        fill_nans(datasets_dict["sat"], config.satellite.fill_value)
 
     if "nwp" in datasets_dict:
-        for nwp_key, nwp_config in config.nwp.items():
-            datasets_dict["nwp"][nwp_key] = fill_nans(
-                datasets_dict["nwp"][nwp_key],
-                nwp_config.dropout_fill_value,
-            )
+        for nwp_source, da in datasets_dict["nwp"].items():
+            fill_value = config.nwp[nwp_source].fill_value
+            if fill_value is not None:
+                fill_nans(da, fill_value)
 
     return datasets_dict
 
 
-def fill_nans(da: TArray, fill_value: float) -> TArray:
+def fill_nans(da: TArray, fill_value: float) -> None:
     """Fill NaNs in a DataArray in-place."""
     if np.isnan(da.data).any():
         da.data = np.nan_to_num(da.data, copy=True, nan=fill_value)
-    return da
 
 
 def preprocess_dataset_dict(
