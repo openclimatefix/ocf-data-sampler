@@ -412,8 +412,8 @@ class SamplingGrid(Base):
     t0_resolution_minutes: int = Field(
         ...,
         gt=0,
-        description="Spacing between candidate t0 times. Must be a multiple of the satellite and "
-        "generation resolutions, a factor or multiple of 60, and a factor of 1440 (one day).",
+        description="Spacing between candidate t0 times. Must be a factor or multiple of 60 "
+        "and a factor of 1440 (one day).",
     )
 
     @field_validator("t0_resolution_minutes")
@@ -472,15 +472,3 @@ class PVNetDataConfig(Base):
     solar_position: SolarPosition | None = None
     datetime_encoding: DatetimeEncoding | None = None
     t0_embedding: T0Embedding | None = None
-
-    @model_validator(mode="after")
-    def validate_t0_resolution_alignment(self) -> "PVNetDataConfig":
-        """Require the t0 resolution to be multiple of generation and satellite time resolution."""
-        resolution = self.sampling_grid.t0_resolution_minutes
-        for name, source in (("satellite", self.satellite), ("generation", self.generation)):
-            if source is not None and resolution % source.time_resolution_minutes != 0:
-                raise ValueError(
-                    f"sampling_grid.t0_resolution_minutes ({resolution}) must be divisible by "
-                    f"{name}.time_resolution_minutes ({source.time_resolution_minutes})",
-                )
-        return self
