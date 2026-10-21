@@ -1,5 +1,6 @@
 """Configuration model for the PVNet dataset."""
 
+from collections.abc import Sequence
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, field_validator, model_validator
