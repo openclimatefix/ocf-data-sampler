@@ -207,7 +207,7 @@ def test_find_contiguous_t0_periods_nwp_forecast_too_short():
     """Test that a forecast too short to serve any t0 raises rather than emitting empty periods."""
     init_times = date_range(
         to_datetime64("2023-01-01 00:00"),
-        to_datetime64("2023-01-02 00:00"), 
+        to_datetime64("2023-01-02 00:00"),
         freq=np.timedelta64(6, "h")
     )
 
@@ -376,15 +376,15 @@ def test_find_contiguous_t0_periods_matches_slicing():
     for t0 in potential_t0s:
         try:
             _ = select_time_slice(
-                da, 
-                t0, 
+                da,
+                t0,
                 interval_start=interval_start,
                 interval_end=interval_end,
                 time_resolution=time_resolution,
             )
         except ValueError:
             continue
-        
+
         sliceable_t0s.append(t0)
 
     np.testing.assert_array_equal(sliceable_t0s, calculated_t0_times)
@@ -426,8 +426,8 @@ def test_find_contiguous_t0_periods_nwp_matches_slicing():
     # Test slicing out a range of potential t0 times to see if the this agrees with the t0 times
     # calculated above
     potential_t0s = date_range(
-        to_datetime64("2023-01-01T22:00"), 
-        to_datetime64("2023-01-02T12:00"), 
+        to_datetime64("2023-01-01T22:00"),
+        to_datetime64("2023-01-02T12:00"),
         freq=t0_freq,
     )
     sliceable_t0s = []

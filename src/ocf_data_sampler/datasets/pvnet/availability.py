@@ -133,7 +133,7 @@ def _find_generation_t0_periods(
         generation_config: Generation configuration specifying the time resolution and windows.
 
     Returns:
-        A DataFrame of periods valid for every configured window, with inclusive start_dt and 
+        A DataFrame of periods valid for every configured window, with inclusive start_dt and
         exclusive end_dt bounds. Empty if no periods are valid.
     """
     window_periods = [
