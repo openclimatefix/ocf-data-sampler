@@ -10,7 +10,8 @@ from ocf_data_sampler.select.time_periods import (
     find_contiguous_t0_periods_nwp,
     intersect_time_periods,
 )
-from ocf_data_sampler.select.time_slice import select_time_slice_nwp
+from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
+from tests.conftest import to_datetime64
 
 
 def construct_time_periods_df(start_dt: list[str], end_dt: list[str]) -> pd.DataFrame:
@@ -25,25 +26,26 @@ def construct_time_periods_df(start_dt: list[str], end_dt: list[str]) -> pd.Data
     """
     return pd.DataFrame(
         {
-            "start_dt": pd.to_datetime(start_dt),
-            "end_dt": pd.to_datetime(end_dt),
+            "start_dt": to_datetime64(start_dt),
+            "end_dt": to_datetime64(end_dt),
         },
-    ).astype("datetime64[ns]")
+    )
 
 
 def test_find_contiguous_t0_periods():
 
     # Typical case with some missing time stamps in the middle of the range
-    freq = pd.Timedelta(5, "min")
-    interval_start = pd.Timedelta(-60, "min")
-    interval_end = pd.Timedelta(15, "min")
+    freq = minutes(5)
+    interval_start = minutes(-60)
+    interval_end = minutes(15)
 
-    datetimes = pd.date_range(
-        "2023-01-01 12:00",
-        "2023-01-01 17:00",
+    all_datetimes = date_range(
+        to_datetime64("2023-01-01 12:00"),
+        to_datetime64("2023-01-01 17:00"),
         freq=freq,
-        unit="ns",
-    ).delete([5, 6, 30])
+    )
+    missing_datetimes = to_datetime64(["2023-01-01 12:25", "2023-01-01 12:30", "2023-01-01 14:30"])
+    datetimes = np.setdiff1d(all_datetimes, missing_datetimes)
 
     periods = find_contiguous_t0_periods(
         datetimes=datetimes,
@@ -74,17 +76,16 @@ def test_find_contiguous_t0_periods():
     ).empty
 
     # This is a stand in for where we just need a single satellite image from 5 minutes ago
-    interval_start = pd.Timedelta(-5, "min")
-    interval_end = pd.Timedelta(-5, "min")
+    interval_start = minutes(-5)
+    interval_end = minutes(-5)
 
-    datetimes = np.array(
+    datetimes = to_datetime64(
         [
             "2023-01-01 12:00",
             "2023-01-01 12:05",
             "2023-01-01 12:10",
             "2023-01-01 12:20",
         ],
-        dtype="datetime64[ns]",
     )
 
     periods = find_contiguous_t0_periods(
@@ -104,15 +105,14 @@ def test_find_contiguous_t0_periods():
 
 
 def test_find_contiguous_t0_periods_keeps_exact_length_period():
-    freq = pd.Timedelta(5, "min")
-    interval_start = pd.Timedelta(0, "min")
-    interval_end = pd.Timedelta(20, "min")
+    freq = minutes(5)
+    interval_start = minutes(0)
+    interval_end = minutes(20)
 
-    datetimes = pd.date_range(
-        "2023-01-01 00:00",
-        "2023-01-01 00:20",
+    datetimes = date_range(
+        to_datetime64("2023-01-01 00:00"),
+        to_datetime64("2023-01-01 00:20"),
         freq=freq,
-        unit="ns",
     )
 
     periods = find_contiguous_t0_periods(
@@ -162,11 +162,16 @@ def test_find_contiguous_t0_periods_nwp():
     expected_results = [exp_res1, exp_res2, exp_res3, exp_res4, exp_res5]
 
     # Create 3-hourly init times with a few time stamps missing
-    init_times = (
-        pd.date_range("2023-01-01 03:00", "2023-01-02 21:00", freq="3h", unit="ns")
-        .delete([1, 4, 5, 6, 7, 9, 10])
-        .values
-    )
+    init_times = to_datetime64([
+        "2023-01-01 03:00",
+        "2023-01-01 09:00",
+        "2023-01-01 12:00",
+        "2023-01-02 03:00",
+        "2023-01-02 12:00",
+        "2023-01-02 15:00",
+        "2023-01-02 18:00",
+        "2023-01-02 21:00",
+    ])
 
     first_forecast_step = np.timedelta64(0, "h")
     last_forecast_step = np.timedelta64(36, "h")
@@ -200,7 +205,11 @@ def test_find_contiguous_t0_periods_nwp():
 
 def test_find_contiguous_t0_periods_nwp_forecast_too_short():
     """Test that a forecast too short to serve any t0 raises rather than emitting empty periods."""
-    init_times = pd.date_range("2023-01-01 00:00", "2023-01-02 00:00", freq="6h", unit="ns").values
+    init_times = date_range(
+        to_datetime64("2023-01-01 00:00"),
+        to_datetime64("2023-01-02 00:00"), 
+        freq=np.timedelta64(6, "h")
+    )
 
     # The forecast only reaches 2 hours ahead, but each sample needs 3 hours of future data
     with pytest.raises(ValueError, match="no t0s are available"):
@@ -294,24 +303,24 @@ def test_intersect_time_periods_with_many_inputs():
 def test_fill_time_periods():
     time_periods = pd.DataFrame(
         {
-            "start_dt": np.array([
+            "start_dt": to_datetime64([
                 "2021-01-01 04:10:00",
                 "2021-01-01 09:00:00",
                 "2021-01-01 09:15:00",
                 "2021-01-01 12:00:00",
-            ], dtype="datetime64[ns]"),
-            "end_dt": np.array([
+            ]),
+            "end_dt": to_datetime64([
                 "2021-01-01 06:00:00",
                 "2021-01-01 09:00:00",
                 "2021-01-01 09:20:00",
                 "2021-01-01 14:45:00",
-            ], dtype="datetime64[ns]"),
+            ]),
         },
     )
 
     filled = fill_time_periods(time_periods, freq=minutes(30))
 
-    expected = np.array(
+    expected = to_datetime64(
         [
             "2021-01-01 04:30",
             "2021-01-01 05:00",
@@ -323,13 +332,62 @@ def test_fill_time_periods():
             "2021-01-01 14:00",
             "2021-01-01 14:30",
         ],
-        dtype="datetime64[ns]",
     )
 
     assert np.array_equal(filled, expected)
 
     filled = fill_time_periods(construct_time_periods_df([], []), freq=minutes(30))
     assert len(filled) == 0
+
+
+def test_find_contiguous_t0_periods_matches_slicing():
+    """Check that calculated t0 availability agrees with slicing a timeseries with a gap."""
+    interval_start = minutes(-30)
+    interval_end = minutes(60)
+    time_resolution = minutes(30)
+    t0_freq = minutes(30)
+
+    all_datetimes = date_range(
+        to_datetime64("2023-01-02T00:00"),
+        to_datetime64("2023-01-02T05:00"),
+        freq=time_resolution,
+    )
+    # Removing 02:00 leaves exactly one full window before the gap.
+    datetimes = np.setdiff1d(all_datetimes, to_datetime64(["2023-01-02T02:00"]))
+    da = xr.DataArray(np.zeros(len(datetimes)), dims="time_utc", coords={"time_utc": datetimes})
+
+    # Find the available t0 times for the data
+    periods = find_contiguous_t0_periods(
+        datetimes=datetimes,
+        interval_start=interval_start,
+        interval_end=interval_end,
+        time_resolution=time_resolution,
+    )
+    calculated_t0_times = fill_time_periods(periods, freq=t0_freq)
+
+    # Test slicing out a range of potential t0 times to see if the this agrees with the t0 times
+    # calculated above
+    potential_t0s = date_range(
+        to_datetime64("2023-01-01T23:00"),
+        to_datetime64("2023-01-02T06:00"),
+        freq=t0_freq
+    )
+    sliceable_t0s = []
+    for t0 in potential_t0s:
+        try:
+            _ = select_time_slice(
+                da, 
+                t0, 
+                interval_start=interval_start,
+                interval_end=interval_end,
+                time_resolution=time_resolution,
+            )
+        except ValueError:
+            continue
+        
+        sliceable_t0s.append(t0)
+
+    np.testing.assert_array_equal(sliceable_t0s, calculated_t0_times)
 
 
 def test_find_contiguous_t0_periods_nwp_matches_slicing():
@@ -342,10 +400,7 @@ def test_find_contiguous_t0_periods_nwp_matches_slicing():
     t0_freq = minutes(30)
 
     # The missing 06:00 initialisation leaves a gap in availability.
-    init_times = np.array(
-        ["2023-01-02T00:00", "2023-01-02T03:00", "2023-01-02T09:00"],
-        dtype="datetime64[ns]",
-    )
+    init_times = to_datetime64(["2023-01-02T00:00", "2023-01-02T03:00", "2023-01-02T09:00"])
 
     steps = np.arange(7) * time_resolution
 
@@ -371,8 +426,8 @@ def test_find_contiguous_t0_periods_nwp_matches_slicing():
     # Test slicing out a range of potential t0 times to see if the this agrees with the t0 times
     # calculated above
     potential_t0s = date_range(
-        np.datetime64("2023-01-01T22:00"), 
-        np.datetime64("2023-01-02T12:00"), 
+        to_datetime64("2023-01-01T22:00"), 
+        to_datetime64("2023-01-02T12:00"), 
         freq=t0_freq,
     )
     sliceable_t0s = []
