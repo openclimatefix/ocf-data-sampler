@@ -149,24 +149,15 @@ def test_dropout_rejects_cutoffs_at_or_after_interval_end(
     _validate_configuration(config)
 
 
-def test_accum_channels_validation(config_filename):
-    """Test accum_channels validation with required normalization constants."""
-    config, nwp_name = _load_config_and_provider(config_filename)
+@pytest.mark.parametrize("source_name", ["satellite", "ukv"])
+def test_duplicate_channel_names(config_filename, source_name):
+    config = load_yaml_configuration(config_filename)
+    sources = {"satellite": config.satellite, "ukv": config.nwp["ukv"]}
+    source = sources[source_name]
+    source.channels.append(source.channels[0].model_copy())
 
-    # Test invalid channel scenario
-    invalid_config = config.model_copy(deep=True)
-    invalid_nwp = invalid_config.nwp[nwp_name]
-    invalid_nwp.accum_channels = ["invalid_channel"]
-
-    # Verify exact error message
-    expected_error = (
-        rf"nwp.{nwp_name}\n"
-        fr"  Value error, NWP provider '{nwp_name}': all values in 'accum_channels' "
-        r"should be present in 'channels'\. "
-        r"Extra values found: {'invalid_channel'}.*"
-    )
-    with pytest.raises(ValidationError, match=expected_error):
-        _validate_configuration(invalid_config)
+    with pytest.raises(ValidationError, match="Channel names must be unique"):
+        _validate_configuration(config)
 
 
 def test_generation_interval_divisibility_raises(config_filename):

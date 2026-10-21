@@ -1,5 +1,6 @@
 """Configuration model for the PVNet dataset."""
 
+from collections.abc import Sequence
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, field_validator, model_validator
@@ -53,6 +54,13 @@ _Embedding = tuple[
     Annotated[str, Field(pattern=r"^[0-9]+[hy]$")],
     Literal["cyclic", "linear"],
 ]
+
+
+def _validate_unique_channel_names(channels: Sequence["Channel"]) -> None:
+    """Reject duplicate source channel names."""
+    names = [channel.name for channel in channels]
+    if len(names) != len(set(names)):
+        raise ValueError("Channel names must be unique")
 
 
 class Base(BaseModel, extra="forbid"):
@@ -147,8 +155,10 @@ class SpatialWindowMixin(Base):
     )
 
 
-class NormalisationValues(Base):
-    """Normalisation parameters."""
+class Channel(Base):
+    """A source channel and its normalisation parameters."""
+
+    name: str = Field(..., description="Channel name in the source data")
 
     mean: float = Field(..., description="Mean used for normalisation")
     std: float = Field(..., gt=0, description="Standard deviation used for normalisation")
@@ -162,7 +172,7 @@ class NormalisationValues(Base):
     )
 
     @model_validator(mode="after")
-    def validate_clip_range(self) -> "NormalisationValues":
+    def validate_clip_range(self) -> "Channel":
         """Require the minimum clipping bound to be below the maximum when both are set."""
         if (
             self.clip_min is not None
@@ -175,13 +185,23 @@ class NormalisationValues(Base):
         return self
 
 
-class NormalisationConstantsMixin(Base):
-    """Normalisation constants for multiple channels."""
+class NWPChannel(Channel):
+    """A source channel with normalisation parameters and optional differencing.
 
-    normalisation_constants: dict[str, NormalisationValues]
+    Clipping and normalisation apply to the differences when accumulated is True.
+    """
+
+    accumulated: bool = Field(
+        default=False,
+        description="Whether to difference the channel before normalisation. The normalisation "
+        "values (`mean`, `std`, `min_clip`, and `max_clip`) apply to the differenced values. "
+        "Each difference is labelled with the earlier step's timestamp, and the output channel "
+        "name is prefixed with diff_.",
+    )
 
 
-class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, NormalisationConstantsMixin):
+
+class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     """Satellite configuration model."""
 
     zarr_path: ZarrSource = Field(
@@ -190,7 +210,7 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
         "to read from alternative filesystems.",
     )
 
-    channels: list[str] = Field(
+    channels: list[Channel] = Field(
         ...,
         min_length=1,
         description="Channels to include, in output order",
@@ -207,20 +227,14 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin, Normalisation
         _validate_dropout_interval_end(self.dropout_minute_probabilities, self.interval_end_minutes)
         return self
 
-    @model_validator(mode="after")
-    def check_all_channels_have_normalisation_constants(self) -> "Satellite":
-        """Check that all the channels have normalisation constants."""
-        normalisation_channels = set(self.normalisation_constants)
-        missing_channels = set(self.channels) - normalisation_channels
-        if missing_channels:
-            raise ValueError(
-                "Normalisation constants must be provided for all channels. Missing values for "
-                f"channels: {missing_channels}",
-            )
-        return self
+    @field_validator("channels")
+    def validate_channel_names(cls, channels: list[Channel]) -> list[Channel]:
+        """Reject duplicate source channel names."""
+        _validate_unique_channel_names(channels)
+        return channels
 
 
-class NWP(TimeWindowMixin, FillValueMixin, SpatialWindowMixin, NormalisationConstantsMixin):
+class NWP(TimeWindowMixin, FillValueMixin, SpatialWindowMixin):
     """NWP configuration model."""
 
     zarr_path: ZarrSource = Field(
@@ -229,7 +243,7 @@ class NWP(TimeWindowMixin, FillValueMixin, SpatialWindowMixin, NormalisationCons
         "to read from alternative filesystems.",
     )
 
-    channels: list[str] = Field(
+    channels: list[NWPChannel] = Field(
         ...,
         min_length=1,
         description="Channels to include, in output order",
@@ -244,8 +258,6 @@ class NWP(TimeWindowMixin, FillValueMixin, SpatialWindowMixin, NormalisationCons
 
     provider: str = Field(..., description="The provider of the NWP data")
 
-    accum_channels: list[str] = Field([], description="The channels which need to be diffed")
-
     max_staleness_minutes: int | None = Field(
         None,
         description="Sets a limit on how stale an NWP init-time is allowed to be whilst still "
@@ -258,17 +270,6 @@ class NWP(TimeWindowMixin, FillValueMixin, SpatialWindowMixin, NormalisationCons
         """Validate the supported temporal resolution."""
         return _validate_grid_resolution_minutes(resolution)
 
-    @model_validator(mode="after")
-    def validate_accum_channels_subset(self) -> "NWP":
-        """Validate accum_channels is subset of channels."""
-        invalid_channels = set(self.accum_channels) - set(self.channels)
-        if invalid_channels:
-            raise ValueError(
-                f"NWP provider '{self.provider}': all values in 'accum_channels' should "
-                f"be present in 'channels'. Extra values found: {invalid_channels}",
-            )
-        return self
-
     @field_validator("provider")
     def validate_provider(cls, provider: str) -> str:
         """Require a registered provider name."""
@@ -277,29 +278,11 @@ class NWP(TimeWindowMixin, FillValueMixin, SpatialWindowMixin, NormalisationCons
             raise ValueError(f"Unknown NWP provider {provider!r}. Supported: {supported}")
         return provider
 
-    @model_validator(mode="after")
-    def check_all_channels_have_normalisation_constants(self) -> "NWP":
-        """Check that all the channels have normalisation constants."""
-        normalisation_channels = set(self.normalisation_constants)
-        non_accum_channels = [c for c in self.channels if c not in self.accum_channels]
-        accum_channel_names = [f"diff_{c}" for c in self.accum_channels]
-
-        missing_channels = set(non_accum_channels) - normalisation_channels
-        if missing_channels:
-            raise ValueError(
-                "Normalisation constants must be provided for all channels. Missing values for "
-                f"channels: {missing_channels}",
-            )
-
-        missing_channels = set(accum_channel_names) - normalisation_channels
-        if missing_channels:
-            raise ValueError(
-                "Normalisation constants must be provided for all channels. Accumulated "
-                "channels which will be diffed require normalisation constant names which "
-                "start with the prefix 'diff_'. The following channels were missing: "
-                f"{missing_channels}.",
-            )
-        return self
+    @field_validator("channels")
+    def validate_channel_names(cls, channels: list[NWPChannel]) -> list[NWPChannel]:
+        """Reject duplicate source channel names."""
+        _validate_unique_channel_names(channels)
+        return channels
 
 
 class GenerationWindow(Base):

@@ -171,7 +171,7 @@ def slice_datasets_by_time(
             nwp_config = config.nwp[nwp_key]
 
             # Add a buffer if we need to diff some of the channels in time
-            if len(nwp_config.accum_channels)>0:
+            if any(channel.accumulated for channel in nwp_config.channels):
                 interval_end_mins = (
                     nwp_config.interval_end_minutes
                     + nwp_config.time_resolution_minutes

@@ -4,7 +4,9 @@ import numpy as np
 import pyproj
 import xarray as xr
 
-from ocf_data_sampler.datasets.pvnet.loading import add_source_coordinates
+from ocf_data_sampler.config import load_yaml_configuration
+from ocf_data_sampler.config.model import Channel, NWPChannel
+from ocf_data_sampler.datasets.pvnet.loading import add_source_coordinates, get_dataset_dict
 from ocf_data_sampler.datasets.pvnet.types import Location
 from ocf_data_sampler.spatial import WGS84
 from tests.conftest import UK_SAT_AREA
@@ -49,3 +51,20 @@ def test_add_source_coordinates_different_geostationary_sources():
         )
         assert (coordinate.x_dim, coordinate.y_dim) == ("x_geostationary", "y_geostationary")
     assert sat_coord.x != cloud_coord.x
+
+
+def test_get_dataset_dict_preserves_channel_order(pvnet_config_filename):
+    config = load_yaml_configuration(pvnet_config_filename)
+    config.generation = None
+    config.satellite.channels = [
+        Channel(name="IR_039", mean=0, std=1), Channel(name="IR_016", mean=0, std=1),
+    ]
+    config.nwp["ukv"].channels = [
+        NWPChannel(name="t", mean=0, std=1), NWPChannel(name="si10", mean=0, std=1),
+    ]
+
+    datasets = get_dataset_dict(config, location_ids=[])
+
+    # Both configured orders differ from their source coordinate order.
+    np.testing.assert_array_equal(datasets["sat"]["channel"].values, ["IR_039", "IR_016"])
+    np.testing.assert_array_equal(datasets["nwp"]["ukv"]["channel"].values, ["t", "si10"])

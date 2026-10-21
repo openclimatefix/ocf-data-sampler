@@ -21,18 +21,16 @@ nwp:
     interval_end_minutes: 120
     time_resolution_minutes: 60
     channels:
-      - t # 2-metre temperature
+      - name: t # 2-metre temperature
+        mean: 283.64913206
+        std: 4.38818501
+        clip_min: 270
+        clip_max: 310
     image_size_pixels_height: 2
     image_size_pixels_width: 2
     delay_minute_probabilities:
       180: 1.0
     max_staleness_minutes: null
-    normalisation_constants:
-      t:
-        mean: 283.64913206
-        std: 4.38818501
-        clip_min: 270
-        clip_max: 310
 
 satellite:
   zarr_path: set_in_temp_file
@@ -40,13 +38,11 @@ satellite:
   interval_end_minutes: 0
   time_resolution_minutes: 5
   channels:
-    - IR_016
-  image_size_pixels_height: 2
-  image_size_pixels_width: 2
-  normalisation_constants:
-    IR_016:
+    - name: IR_016
       mean: 0.17594202
       std: 0.21462157
+  image_size_pixels_height: 2
+  image_size_pixels_width: 2
 
 solar_position:
   interval_start_minutes: -15

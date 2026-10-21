@@ -5,7 +5,7 @@ from collections.abc import Sequence
 import numpy as np
 
 from ocf_data_sampler.common.types import TArray
-from ocf_data_sampler.config.model import NormalisationValues, PVNetDataConfig
+from ocf_data_sampler.config.model import Channel, PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import (
     NormalisationArrays,
     SourceDict,
@@ -15,9 +15,7 @@ from ocf_data_sampler.features.normalisation import clip_and_standardise
 from ocf_data_sampler.select.dropout import apply_dropout, choose_delay
 
 
-def _build_source_normalisation_arrays(
-    values: Sequence[NormalisationValues]
-) -> NormalisationArrays:
+def _build_source_normalisation_arrays(values: Sequence[Channel]) -> NormalisationArrays:
     """Build parameters broadcastable over (time, channel, x, y)."""
     def channel_array(channel_values: list[float]) -> np.ndarray:
         return np.array(channel_values, dtype=np.float32)[None, :, None, None]
@@ -36,18 +34,11 @@ def build_normalisation_arrays(config: PVNetDataConfig) -> SourceDict[Normalisat
     if config.nwp is not None:
         normalisation_arrays["nwp"] = {}
         for nwp_source, nwp_config in config.nwp.items():
-            channels = [
-                f"diff_{channel}" if channel in nwp_config.accum_channels else channel
-                for channel in nwp_config.channels
-            ]
             normalisation_arrays["nwp"][nwp_source] = _build_source_normalisation_arrays(
-                [nwp_config.normalisation_constants[channel] for channel in channels]
+                nwp_config.channels,
             )
     if config.satellite is not None:
-        sat_config = config.satellite
-        normalisation_arrays["sat"] = _build_source_normalisation_arrays(
-            [sat_config.normalisation_constants[channel] for channel in sat_config.channels]
-        )
+        normalisation_arrays["sat"] = _build_source_normalisation_arrays(config.satellite.channels)
     return normalisation_arrays
 
 
@@ -127,7 +118,9 @@ def diff_nwp_data(dataset_dict: SourceDict, config: PVNetDataConfig) -> SourceDi
     """
     if "nwp" in dataset_dict:
         for nwp_key, da_nwp in dataset_dict["nwp"].items():
-            accum_channels = config.nwp[nwp_key].accum_channels
+            accum_channels = [
+                channel.name for channel in config.nwp[nwp_key].channels if channel.accumulated
+            ]
             if len(accum_channels)>0:
                 # diff_channels() is an in-place operation and modifies the input
                 dataset_dict["nwp"][nwp_key] = diff_channels(da_nwp, accum_channels)
