@@ -12,7 +12,6 @@ def test_diff_channels(ds_nwp_ukv_time_sliced, array_factory):
     channels = ["dswrf", "t"]
     da_input = ds_nwp_ukv_time_sliced.assign_coords(channel=channels)
 
-    # Construct copy as function edits inputs in-place
     da = array_factory(da_input.copy(deep=True))
 
     da_diffed = diff_channels(da, accum_channels=["dswrf"])
@@ -20,6 +19,10 @@ def test_diff_channels(ds_nwp_ukv_time_sliced, array_factory):
     # Convert to xarray for easier testing
     if isinstance(da_diffed, LightDataArray):
         da_diffed = da_diffed.to_xarray()
+        da = da.to_xarray()
+
+    # Differencing should leave the input data and coordinates unchanged
+    xr.testing.assert_identical(da, da_input)
 
     assert list(da_diffed["channel"].values) == ["diff_dswrf", "t"]
 

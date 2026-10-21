@@ -161,10 +161,8 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
         """
         sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
         sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-        sample_dict = materialise_data(sample_dict)
-        sample_dict = preprocess_dataset_dict(
-            sample_dict, t0, self.config, self.normalisation_arrays,
-        )
+        materialise_data(sample_dict)
+        preprocess_dataset_dict(sample_dict, t0, self.config, self.normalisation_arrays)
         return build_numpy_sample(
             sample_dict, t0, location, self.config, self.include_extra_metadata,
         )
@@ -239,11 +237,9 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
         """
         # Slice by time then load to avoid loading the data multiple times from disk
         sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
-        sample_dict = materialise_data(sample_dict)
+        materialise_data(sample_dict)
         # Preprocessing is location-independent, so do it once before slicing per-location below
-        sample_dict = preprocess_dataset_dict(
-            sample_dict, t0, self.config, self.normalisation_arrays,
-        )
+        preprocess_dataset_dict(sample_dict, t0, self.config, self.normalisation_arrays)
 
         samples = []
 

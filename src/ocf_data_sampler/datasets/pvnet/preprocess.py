@@ -45,7 +45,7 @@ def build_normalisation_arrays(config: PVNetDataConfig) -> SourceDict[Normalisat
 def normalise_dataset_dicts(
     dataset_dict: SourceDict,
     normalisation_arrays: SourceDict[NormalisationArrays],
-) -> SourceDict:
+) -> None:
     """Normalise NWP, satellite, and generation data in-place."""
     if "nwp" in dataset_dict:
         for nwp_source, da in dataset_dict["nwp"].items():
@@ -71,13 +71,13 @@ def normalise_dataset_dicts(
 
     for key in ("generation_input", "generation_target"):
         if key in dataset_dict:
-            dataset_dict[key] = normalise_generation_by_capacity(dataset_dict[key])
-
-    return dataset_dict
+            normalise_generation_by_capacity(dataset_dict[key])
 
 
-def normalise_generation_by_capacity(da: TArray) -> TArray:
+def normalise_generation_by_capacity(da: TArray) -> None:
     """Rescale `generation_mw` to a capacity factor, leaving `capacity_mwp` unchanged.
+
+    Replaces `.data` on the input DataArray without modifying shared source values.
 
     Zero capacity means no plant, so the capacity factor is taken as 0 rather than the undefined
     0/0. Emitting NaN instead would route it through the dropout fill, which signals missing data
@@ -106,11 +106,9 @@ def normalise_generation_by_capacity(da: TArray) -> TArray:
     new_data[tuple(index)] = normalised
     da.data = new_data
 
-    return da
 
-
-def diff_nwp_data(dataset_dict: SourceDict, config: PVNetDataConfig) -> SourceDict:
-    """Take the in-place diff of some channels of the NWP data.
+def diff_nwp_data(dataset_dict: SourceDict, config: PVNetDataConfig) -> None:
+    """Difference accumulated NWP channels, updating the input dictionary in-place.
 
     Args:
         dataset_dict: Dictionary of xarray datasets
@@ -122,9 +120,7 @@ def diff_nwp_data(dataset_dict: SourceDict, config: PVNetDataConfig) -> SourceDi
                 channel.name for channel in config.nwp[nwp_key].channels if channel.accumulated
             ]
             if len(accum_channels)>0:
-                # diff_channels() is an in-place operation and modifies the input
                 dataset_dict["nwp"][nwp_key] = diff_channels(da_nwp, accum_channels)
-    return dataset_dict
 
 
 def apply_dropout_to_datasets(
@@ -132,15 +128,13 @@ def apply_dropout_to_datasets(
     t0: np.datetime64,
     config: PVNetDataConfig,
 ) -> None:
-    """Apply dropout in-place to the dictionary of input data sources around a given t0 time.
+    """Apply dropout to input DataArrays in-place around a given t0 time.
 
     Args:
         datasets_dict: Dictionary of the input data sources
         t0: The init-time
         config: PVNetDataConfig object.
 
-    Returns:
-        None. The input datasets_dict is modified in place.
     """
     sat_conf = config.satellite
     if sat_conf is not None and sat_conf.dropout_minute_probabilities is not None:
@@ -168,8 +162,8 @@ def apply_dropout_to_datasets(
     return
 
 
-def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: PVNetDataConfig) -> SourceDict:
-    """Fill NaNs in input sources where a fill value is configured.
+def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: PVNetDataConfig) -> None:
+    """Fill NaNs in-place in input sources where a fill value is configured.
 
     Args:
         datasets_dict: Dictionary of the input data sources
@@ -190,7 +184,6 @@ def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: PVNetDataConfi
             if fill_value is not None:
                 fill_nans(da, fill_value)
 
-    return datasets_dict
 
 
 def fill_nans(da: TArray, fill_value: float) -> None:
@@ -204,7 +197,7 @@ def preprocess_dataset_dict(
     t0: np.datetime64,
     config: PVNetDataConfig,
     normalisation_arrays: SourceDict[NormalisationArrays],
-) -> SourceDict:
+) -> None:
     """Diff, normalise, dropout, and fill NaNs in the dictionary of input data sources.
 
     These steps are always applied in the order listed, since some steps depend on the output of
@@ -215,6 +208,9 @@ def preprocess_dataset_dict(
       units
     - NaN filling must be done after dropout, since dropout introduces NaNs in the data
 
+    Updates the dictionary and its DataArray-like objects in-place, replacing entries or their
+    `.data` as needed. The original NumPy arrays remain unchanged.
+
     Note: `dataset_dict` is expected to already be loaded - see `materialise_data`.
 
     Args:
@@ -223,8 +219,7 @@ def preprocess_dataset_dict(
         config: PVNetDataConfig object
         normalisation_arrays: Precomputed arrays from `build_normalisation_arrays`
     """
-    dataset_dict = diff_nwp_data(dataset_dict, config)
-    dataset_dict = normalise_dataset_dicts(dataset_dict, normalisation_arrays)
+    diff_nwp_data(dataset_dict, config)
+    normalise_dataset_dicts(dataset_dict, normalisation_arrays)
     apply_dropout_to_datasets(dataset_dict, t0, config)
-    dataset_dict = fill_nans_in_dataset_dicts(dataset_dict, config=config)
-    return dataset_dict
+    fill_nans_in_dataset_dicts(dataset_dict, config=config)
