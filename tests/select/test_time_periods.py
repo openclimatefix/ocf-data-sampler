@@ -1,13 +1,16 @@
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 
+from ocf_data_sampler.common.time_utils import date_range, minutes
 from ocf_data_sampler.select.time_periods import (
     fill_time_periods,
     find_contiguous_t0_periods,
     find_contiguous_t0_periods_nwp,
     intersect_time_periods,
 )
+from ocf_data_sampler.select.time_slice import select_time_slice_nwp
 
 
 def construct_time_periods_df(start_dt: list[str], end_dt: list[str]) -> pd.DataFrame:
@@ -306,7 +309,7 @@ def test_fill_time_periods():
         },
     )
 
-    filled = fill_time_periods(time_periods, freq=np.timedelta64(30, "m"))
+    filled = fill_time_periods(time_periods, freq=minutes(30))
 
     expected = np.array(
         [
@@ -325,5 +328,69 @@ def test_fill_time_periods():
 
     assert np.array_equal(filled, expected)
 
-    filled = fill_time_periods(construct_time_periods_df([], []), freq=np.timedelta64(30, "m"))
+    filled = fill_time_periods(construct_time_periods_df([], []), freq=minutes(30))
     assert len(filled) == 0
+
+
+def test_find_contiguous_t0_periods_nwp_matches_slicing():
+    """Check that the calculated t0 periods match the t0 periods actually available when slicing"""
+    interval_start = minutes(-60)
+    interval_end = minutes(180)
+    time_resolution = minutes(60)
+    max_delay = minutes(90)
+    staleness_limit = minutes(180)
+    t0_freq = minutes(30)
+
+    # The missing 06:00 initialisation leaves a gap in availability.
+    init_times = np.array(
+        ["2023-01-02T00:00", "2023-01-02T03:00", "2023-01-02T09:00"],
+        dtype="datetime64[ns]",
+    )
+
+    steps = np.arange(7) * time_resolution
+
+    da = xr.DataArray(
+        np.zeros((len(init_times), len(steps))),
+        dims=("init_time_utc", "step"),
+        coords={"init_time_utc": init_times, "step": steps},
+    )
+
+    # Find the available t0 times for the data
+    periods = find_contiguous_t0_periods_nwp(
+        init_times=init_times,
+        interval_start=interval_start,
+        interval_end=interval_end,
+        first_forecast_step=steps[0],
+        last_forecast_step=steps[-1],
+        time_resolution=time_resolution,
+        max_delay=max_delay,
+        staleness_limit=staleness_limit,
+    )
+    calculated_t0_times = fill_time_periods(periods, freq=t0_freq)
+
+    # Test slicing out a range of potential t0 times to see if the this agrees with the t0 times
+    # calculated above
+    potential_t0s = date_range(
+        np.datetime64("2023-01-01T22:00"), 
+        np.datetime64("2023-01-02T12:00"), 
+        freq=t0_freq,
+    )
+    sliceable_t0s = []
+    for t0 in potential_t0s:
+        try:
+            sample = select_time_slice_nwp(
+                da,
+                t0,
+                interval_start=interval_start,
+                interval_end=interval_end,
+                time_resolution=time_resolution,
+                delay=max_delay,
+            )
+        except ValueError:
+            continue
+
+        # Slice success alone does not enforce the exclusive staleness limit
+        if t0 - sample.init_time_utc.values < staleness_limit:
+            sliceable_t0s.append(t0)
+
+    np.testing.assert_array_equal(sliceable_t0s, calculated_t0_times)
