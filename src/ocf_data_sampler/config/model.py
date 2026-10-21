@@ -192,10 +192,12 @@ class NWPChannel(Channel):
 
     accumulated: bool = Field(
         default=False,
-        description="Whether to difference the channel before normalisation. "
+        description="Whether to difference the channel before normalisation. The normalisation "
+        "values (`mean`, `std`, `min_clip`, and `max_clip`) apply to the differenced values. "
         "Each difference is labelled with the earlier step's timestamp, and the output channel "
         "name is prefixed with diff_.",
     )
+
 
 
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
