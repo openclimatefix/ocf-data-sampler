@@ -3,8 +3,13 @@ import pandas as pd
 import pytest
 from torch.utils.data import default_collate
 
-from ocf_data_sampler.config.model import PVNetDataConfig, SamplingGrid
+from ocf_data_sampler.config.model import (
+    DatetimeEncoding,
+    PVNetDataConfig,
+    SamplingGrid,
+)
 from ocf_data_sampler.datasets.pvnet.sample import (
+    _build_feature_datetimes,
     _build_solar_features,
     add_source_arrays,
     add_source_metadata,
@@ -12,6 +17,7 @@ from ocf_data_sampler.datasets.pvnet.sample import (
 )
 from ocf_data_sampler.datasets.pvnet.types import Location
 from ocf_data_sampler.load.generation import open_generation
+from tests.conftest import to_datetime64
 
 
 @pytest.mark.parametrize("include_extra_metadata", [False, True])
@@ -38,6 +44,19 @@ def test_build_numpy_sample_metadata(include_extra_metadata):
         # Check that the default collate works on the metadata
         batch = default_collate([sample, sample])
         np.testing.assert_array_equal(batch["metadata"]["location_longitude"], [-1.0, -1.0])
+
+
+def test_build_feature_datetimes():
+    config = DatetimeEncoding(
+        interval_start_minutes=-60, interval_end_minutes=60, time_resolution_minutes=30,
+    )
+    datetimes = _build_feature_datetimes(np.datetime64("2024-06-20T12:45"), config)
+
+    expected = to_datetime64([
+        "2024-06-20T11:30", "2024-06-20T12:00", "2024-06-20T12:30",
+        "2024-06-20T13:00", "2024-06-20T13:30",
+    ])
+    np.testing.assert_array_equal(datetimes, expected)
 
 
 def test_build_solar_features():
