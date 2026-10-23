@@ -5,7 +5,7 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
-from ocf_data_sampler.common.time_utils import date_range, datetime_ceil
+from ocf_data_sampler.common.time_utils import datetime_ceil
 
 ZERO_TDELTA = np.timedelta64(0, "ns")
 
@@ -63,8 +63,8 @@ def find_contiguous_t0_periods(
         time_resolution: The sample frequency of the timeseries
 
     Returns:
-        pd.DataFrame where each row represents a single time period.  The pd.DataFrame
-            has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
+        pd.DataFrame where each row represents a half-open time period, with inclusive
+            `start_dt` and exclusive `end_dt` columns.
     """
     if len(datetimes) == 0:
         return pd.DataFrame(columns=["start_dt", "end_dt"], dtype=datetimes.dtype)
@@ -79,7 +79,7 @@ def find_contiguous_t0_periods(
 
     # Shift the boundaries to give the range of valid t0 values in each period
     t0_period_starts = period_starts[mask] - interval_start
-    t0_period_ends = period_ends[mask] - interval_end
+    t0_period_ends = period_ends[mask] - interval_end + time_resolution
 
     return pd.DataFrame({"start_dt": t0_period_starts, "end_dt": t0_period_ends})
 
@@ -90,8 +90,9 @@ def find_contiguous_t0_periods_nwp(
     interval_end: np.timedelta64,
     first_forecast_step: np.timedelta64,
     last_forecast_step: np.timedelta64,
+    time_resolution: np.timedelta64,
     max_delay: np.timedelta64 = ZERO_TDELTA,
-    max_staleness: np.timedelta64 | None = None,
+    staleness_limit: np.timedelta64 | None = None,
 ) -> pd.DataFrame:
     """Get all time periods from the NWP init-times which are valid as t0 datetimes.
 
@@ -101,14 +102,16 @@ def find_contiguous_t0_periods_nwp(
         interval_end: The end of the time interval with respect to t0.
         first_forecast_step: The timedelta of the first step of the NWP forecast.
         last_forecast_step: The timedelta of the last step of the NWP forecast.
+        time_resolution: Temporal resolution of the NWP data.
         max_delay: Maximum simulated NWP availability delay.
-            This must be <= max_staleness.
-        max_staleness: How long after each init-time are we willing to use that init-time. If set to
-            None, no additional limit is applied.
+            This must be < staleness_limit.
+        staleness_limit: How long after each init-time are we willing to use that init-time.
+            The limit is exclusive: forecasts this stale or staler at t0 are not used.
+            If set to None, no additional limit is applied.
 
     Returns:
-        pd.DataFrame where each row represents a single time period. The pd.DataFrame
-        has two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
+        pd.DataFrame where each row represents a half-open time period, with inclusive
+            `start_dt` and exclusive `end_dt` columns.
     """
     assert_values_unique_increasing(init_times, "init_times")
 
@@ -118,38 +121,37 @@ def find_contiguous_t0_periods_nwp(
     if max_delay < ZERO_TDELTA:
         raise ValueError("The max dropout must be non-negative (zero or positive)")
 
-    if max_staleness is not None:
+    if staleness_limit is not None:
 
-        if max_staleness < ZERO_TDELTA:
-            raise ValueError("The max staleness must be non-negative (zero or positive)")
+        if not staleness_limit > ZERO_TDELTA:
+            raise ValueError("The staleness limit must be positive")
 
-        if max_delay > max_staleness:
+        if not max_delay < staleness_limit:
             raise ValueError(
-                f"max_delay ({max_delay}) must be <= max_staleness ({max_staleness})"
+                f"max_delay ({max_delay}) must be < staleness_limit ({staleness_limit})"
             )
 
         # This is the max staleness we can use considering the max step of the input data
-        max_possible_staleness = last_forecast_step - interval_end
+        max_possible_staleness = last_forecast_step - interval_end + time_resolution
 
-        if max_staleness > max_possible_staleness:
+        if staleness_limit > max_possible_staleness:
             raise ValueError(
-                f"max_staleness is too long for the input data, "
-                f"{max_staleness=}, {max_possible_staleness=}",
+                f"staleness_limit is too long for the input data, "
+                f"{staleness_limit=}, {max_possible_staleness=}",
             )
 
     # We can't use an init-time until this timedelta afterwards to account for dropout
     init_start_timedelta = max(first_forecast_step - interval_start, max_delay)
 
     # We can only use an init-time until up to this timedelta afterwards to account for the slice
-    # requested and the max_staleness
-    if max_staleness is None:
-        init_end_timedelta = last_forecast_step - interval_end
-    else:
-        init_end_timedelta = min(last_forecast_step - interval_end, max_staleness)
+    # requested and the staleness_limit
+    init_end_timedelta = last_forecast_step - interval_end + time_resolution
+    if staleness_limit is not None:
+        init_end_timedelta = min(init_end_timedelta, staleness_limit)
 
-    # Each init-time is unusable before init_start_timedelta and after init_end_timedelta. If they
-    # are the wrong way round then no t0 can ever use it, and every period below will be empty
-    if init_end_timedelta < init_start_timedelta:
+    # Each init-time is unusable before init_start_timedelta and at or after init_end_timedelta.
+    # If the end is at or before the start, no t0 can use it and every period below will be empty.
+    if init_end_timedelta <= init_start_timedelta:
         raise ValueError(
             f"Init-times are usable from {init_start_timedelta} after init-time, but only until "
             f"{init_end_timedelta}, so no t0s are available.",
@@ -177,7 +179,7 @@ def find_contiguous_t0_periods_nwp(
 
 
 def intersect_time_periods(time_periods: list[pd.DataFrame]) -> pd.DataFrame:
-    """Find the intersection of list of time periods.
+    """Find the intersection of list of half-open time periods.
 
     Consecutively updates intersection of time periods.
     See the docstring of _intersect_2_time_periods() for further details.
@@ -199,16 +201,16 @@ def intersect_time_periods(time_periods: list[pd.DataFrame]) -> pd.DataFrame:
 def _intersect_2_time_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
     """Find the intersection of two pd.DataFrames of time periods.
 
-    Each row of each pd.DataFrame represents a single time period.  Each pd.DataFrame has
-    two columns: `start_dt` and `end_dt` (where 'dt' is short for 'datetime').
+    Each row represents a half-open time period, with inclusive start_dt and exclusive end_dt
+    columns.
 
     Graphical representation of two pd.DataFrames of time periods and their intersection,
     as follows:
 
                   ---------------------> TIME ->---------------------
-               a: |-----|   |----|     |----------|     |-----------|
-               b:    |--------|                       |----|    |---|
-    intersection:    |--|   |-|                         |--|    |---|
+               a: [-----)   [----)     [----------)     [-----------)
+               b:    [--------)                       [----)    [---)
+    intersection:    [--)   [-)                         [--)    [---)
 
     Args:
         a: pd.DataFrame where each row represents a time period. The pd.DataFrame has
@@ -244,9 +246,8 @@ def _intersect_2_time_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
         starts = np.maximum(a_starts[i], b_starts)
         ends = np.minimum(a_ends[i], b_ends)
 
-        # Any periods that don't overlap will have a start time that is after the end time.
-        # We filter those out.
-        overlap_mask = starts <= ends
+        # Overlapping periods have a start time which is before the end time
+        overlap_mask = starts < ends
         starts = starts[overlap_mask]
         ends = ends[overlap_mask]
 
@@ -267,7 +268,7 @@ def fill_time_periods(time_periods: pd.DataFrame, freq: np.timedelta64) -> NDArr
     specified frequency.
 
     Args:
-        time_periods: DataFrame with columns 'start_dt' and 'end_dt'
+        time_periods: DataFrame with inclusive 'start_dt' and exclusive 'end_dt' columns.
         freq: Frequency to fill time periods with
     """
     if time_periods.empty:
@@ -276,7 +277,7 @@ def fill_time_periods(time_periods: pd.DataFrame, freq: np.timedelta64) -> NDArr
     start_dts = datetime_ceil(time_periods["start_dt"].values, freq)
     end_dts = time_periods["end_dt"].values
     date_ranges = [
-        date_range(start_dt, end_dt, freq=freq)
+        np.arange(start_dt, end_dt, freq)
         for start_dt, end_dt in zip(start_dts, end_dts, strict=True)
     ]
     return np.concatenate(date_ranges)

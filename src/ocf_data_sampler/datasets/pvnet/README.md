@@ -69,20 +69,31 @@ metadata. Generation capacities and timestamps remain alongside the generation a
 ## Time conventions
 
 `t0` is the forecast reference time. Each source's `interval_start_minutes` and
-`interval_end_minutes` define its time window relative to `t0`.
+`interval_end_minutes` define its time window relative to `t0`. The bounds of each selected time 
+slice for each source are floored to that source's configured time resolution, and both endpoints 
+are included. This applies to generation, satellite, NWP, solar and datetime feature windows.
 
-Generation and satellite windows include both endpoints. For example, a generation input
-window from `-60` to `0` at a 30-minute resolution contains values at `t0 - 60 minutes`,
-`t0 - 30 minutes` and `t0`. Setting `interval_end_minutes=0` therefore includes the value at
-`t0` before any configured dropout is applied.
+For example, with `t0=12:15`:
+
+- A generation input window configured from `-60` to `0` at a 30-minute resolution will contain 
+  values at `11:00`, `11:30` and `12:00`. 
+- A generation target window configured from `30` to `120` at a 30-minute resolution will contain 
+  values at `12:30`, `13:00`, `13:30`, and `14:00`. 
+- A satellite window configured from `-15` to `0` at a 5-minute resolution will contain values at 
+  `12:00`, `12:05`, `12:10` and `12:15`. 
+- An NWP window configured from `-120` to `120` at a 60-minute resolution will contain values at 
+  `10:00`, `11:00`, `12:00`, `13:00`, and `14:00`.
+- A solar or datetime window configured from `0` to `120` at a 60-minute resolution will contain 
+  values at `12:00`, `13:00` and `14:00`
 
 Generation input and target windows are configured separately. A target window starting at
-`0` includes `t0`; to start with the next time step, set its start offset to the generation
-time resolution.
+`0` includes the floored reference time; to start with the next time step, set its start
+offset to the generation time resolution.
 
-NWP windows refer to forecast valid times. Their bounds are rounded up to the configured NWP
-time resolution. Sampling selects the most recent eligible NWP initialisation, accounting for
-the requested window and any configured dropout that simulates an older available forecast.
+NWP windows refer to forecast valid times. Sampling selects the most recent eligible NWP
+initialisation that covers the requested window, accounting for any configured availability
+delay. Availability delays and the exclusive staleness limit are measured relative to `t0`
+before flooring.
 
 The dataset's `time_periods` argument restricts which **`t0` values** are sampled. These periods
 include their start and exclude their end, independently of the source-window conventions above.

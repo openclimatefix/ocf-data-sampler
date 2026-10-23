@@ -55,6 +55,13 @@ def config_filename():
 
 
 # Helpers
+def to_datetime64(datetimes: str | list[str], unit="ns"):
+    """Convert a datetime string or list of strings to NumPy datetime64[ns] values."""
+    if isinstance(datetimes, str):
+        return np.datetime64(datetimes, unit)
+    return np.asarray(datetimes, dtype=f"datetime64[{unit}]")
+
+
 def create_xr_dataset(coords, data, name, attrs=None):
     """Create an xarray dataset with dataset-level attributes."""
     da = xr.DataArray(data, coords=tuple(coords.items()))

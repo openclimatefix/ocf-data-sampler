@@ -5,8 +5,13 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from ocf_data_sampler.common.time_utils import date_range, get_posix_timestamp, minutes
-from ocf_data_sampler.config.model import PVNetDataConfig
+from ocf_data_sampler.common.time_utils import (
+    date_range,
+    datetime_floor,
+    get_posix_timestamp,
+    minutes,
+)
+from ocf_data_sampler.config.model import PVNetDataConfig, TimeWindowMixin
 from ocf_data_sampler.datasets.pvnet.types import Location, NumpySample, SourceDict
 from ocf_data_sampler.features.solar import calculate_azimuth_and_elevation
 from ocf_data_sampler.features.time_encodings import encode_datetimes, encode_t0
@@ -55,27 +60,31 @@ def build_numpy_sample(
         sample["t0_embedding"] = encode_t0(t0, t0_config.embeddings)
 
     if (datetime_config := config.datetime_encoding) is not None:
-
-        datetimes = date_range(
-            t0 + minutes(datetime_config.interval_start_minutes),
-            t0 + minutes(datetime_config.interval_end_minutes),
-            freq=minutes(datetime_config.time_resolution_minutes),
-        )
+        datetimes = _build_feature_datetimes(t0, datetime_config)
         sample.update(encode_datetimes(datetimes=datetimes))
 
     if (solar_config := config.solar_position) is not None:
-
-        datetimes = date_range(
-            t0 + minutes(solar_config.interval_start_minutes),
-            t0 + minutes(solar_config.interval_end_minutes),
-            freq=minutes(solar_config.time_resolution_minutes),
-        )
+        datetimes = _build_feature_datetimes(t0, solar_config)
 
         sample.update(
             _build_solar_features(datetimes, lon=location.longitude, lat=location.latitude)
         )
 
     return sample
+
+
+def _build_feature_datetimes(
+    t0: np.datetime64,
+    config: TimeWindowMixin,
+) -> NDArray[np.datetime64]:
+    """Build an inclusive time range relative to t0 floored to the feature resolution."""
+    time_resolution = minutes(config.time_resolution_minutes)
+    aligned_t0 = datetime_floor(t0, time_resolution)
+    return date_range(
+        aligned_t0 + minutes(config.interval_start_minutes),
+        aligned_t0 + minutes(config.interval_end_minutes),
+        freq=time_resolution,
+    )
 
 
 def add_source_arrays(

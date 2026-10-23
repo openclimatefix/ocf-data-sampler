@@ -86,6 +86,11 @@ class TimeWindowMixin(Base):
         description="Interval ends at `t0 + interval_end_minutes` inclusive",
     )
 
+    @field_validator("time_resolution_minutes")
+    def validate_resolution(cls, resolution: int) -> int:
+        """Validate the supported temporal resolution."""
+        return _validate_grid_resolution_minutes(resolution)
+
     @model_validator(mode="after")
     def validate_intervals(self) -> "TimeWindowMixin":
         """Require ordered interval bounds aligned to the temporal resolution."""
@@ -214,7 +219,6 @@ class NWPChannel(Channel):
     )
 
 
-
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     """Satellite configuration model."""
 
@@ -229,11 +233,6 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         min_length=1,
         description="Channels to include, in output order",
     )
-
-    @field_validator("time_resolution_minutes")
-    def validate_resolution(cls, resolution: int) -> int:
-        """Validate the supported temporal resolution."""
-        return _validate_grid_resolution_minutes(resolution)
 
     @model_validator(mode="after")
     def validate_dropout_interval_end(self) -> "Satellite":
@@ -272,17 +271,13 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
 
     provider: str = Field(..., description="The provider of the NWP data")
 
-    max_staleness_minutes: int | None = Field(
+    staleness_limit_minutes: int | None = Field(
         None,
         description="Sets a limit on how stale an NWP init-time is allowed to be whilst still "
-        "being used to construct an example. If set to None, then no additional limit is applied "
+        "being used to construct an example. The limit is exclusive: forecasts this stale or "
+        "staler at t0 are not used. If set to None, then no additional limit is applied "
         "except that the forecast must cover the requested time interval.",
     )
-
-    @field_validator("time_resolution_minutes")
-    def validate_resolution(cls, resolution: int) -> int:
-        """Validate the supported temporal resolution."""
-        return _validate_grid_resolution_minutes(resolution)
 
     @field_validator("provider")
     def validate_provider(cls, provider: str) -> str:
@@ -411,8 +406,8 @@ class SamplingGrid(Base):
     t0_resolution_minutes: int = Field(
         ...,
         gt=0,
-        description="Spacing between candidate t0 times. Must be a multiple of the satellite and "
-        "generation resolutions, a factor or multiple of 60, and a factor of 1440 (one day).",
+        description="Spacing between candidate t0 times. Must be a factor or multiple of 60 "
+        "and a factor of 1440 (one day).",
     )
 
     @field_validator("t0_resolution_minutes")
@@ -471,15 +466,3 @@ class PVNetDataConfig(Base):
     solar_position: SolarPosition | None = None
     datetime_encoding: DatetimeEncoding | None = None
     t0_embedding: T0Embedding | None = None
-
-    @model_validator(mode="after")
-    def validate_t0_resolution_alignment(self) -> "PVNetDataConfig":
-        """Require the t0 resolution to be multiple of generation and satellite time resolution."""
-        resolution = self.sampling_grid.t0_resolution_minutes
-        for name, source in (("satellite", self.satellite), ("generation", self.generation)):
-            if source is not None and resolution % source.time_resolution_minutes != 0:
-                raise ValueError(
-                    f"sampling_grid.t0_resolution_minutes ({resolution}) must be divisible by "
-                    f"{name}.time_resolution_minutes ({source.time_resolution_minutes})",
-                )
-        return self
