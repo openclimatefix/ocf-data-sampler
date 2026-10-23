@@ -6,7 +6,7 @@ import xarray as xr
 
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import Channel, NWPChannel
-from ocf_data_sampler.datasets.pvnet.loading import add_source_coordinates, get_dataset_dict
+from ocf_data_sampler.datasets.pvnet.loading import add_source_coordinates, open_sources
 from ocf_data_sampler.datasets.pvnet.types import Location
 from ocf_data_sampler.spatial import WGS84
 from tests.conftest import UK_SAT_AREA
@@ -35,7 +35,7 @@ def test_add_source_coordinates_different_geostationary_sources():
     location = Location(id=1, longitude=lon, latitude=lat)
     add_source_coordinates(
         locations=[location],
-        datasets_dict={"sat": da_sat, "nwp": {"cloudcasting": da_cloud}}
+        source_data={"sat": da_sat, "nwp": {"cloudcasting": da_cloud}}
     )
 
     # Each of the geostationary projections should be calculated independently
@@ -53,7 +53,7 @@ def test_add_source_coordinates_different_geostationary_sources():
     assert sat_coord.x != cloud_coord.x
 
 
-def test_get_dataset_dict_preserves_channel_order(pvnet_config_filename):
+def test_open_sources_preserves_channel_order(pvnet_config_filename):
     config = load_yaml_configuration(pvnet_config_filename)
     config.generation = None
     config.satellite.channels = [
@@ -63,7 +63,7 @@ def test_get_dataset_dict_preserves_channel_order(pvnet_config_filename):
         NWPChannel(name="t", mean=0, std=1), NWPChannel(name="si10", mean=0, std=1),
     ]
 
-    datasets = get_dataset_dict(config, location_ids=[])
+    datasets = open_sources(config, location_ids=[])
 
     # Both configured orders differ from their source coordinate order.
     np.testing.assert_array_equal(datasets["sat"]["channel"].values, ["IR_039", "IR_016"])

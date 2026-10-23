@@ -1,16 +1,17 @@
 """Clipping and standardisation of NumPy arrays."""
 
 import numpy as np
+from numpy.typing import NDArray
 
 
 def clip_and_standardise(
-    data: np.ndarray,
+    data: NDArray[np.float32],
     *,
-    clip_min: np.ndarray,
-    clip_max: np.ndarray,
-    mean: np.ndarray,
-    std: np.ndarray,
-) -> np.ndarray:
+    clip_min: NDArray[np.float32],
+    clip_max: NDArray[np.float32],
+    mean: NDArray[np.float32],
+    std: NDArray[np.float32],
+) -> NDArray[np.float32]:
     """Clip, subtract the mean, and divide by the standard deviation.
 
     Args:

@@ -58,7 +58,7 @@ def calculate_azimuth_and_elevation(
     datetimes: NDArray[np.datetime64],
     longitude: float,
     latitude: float,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Calculate the solar azimuth and elevation using optimised ephemeris function.
 
     This function was copied and adapted pvlib's `ephemeris()` function [1] with changes to speed
@@ -72,8 +72,7 @@ def calculate_azimuth_and_elevation(
         latitude: Latitude in decimal degrees. Positive north of equator, negative to south.
 
     Returns:
-        np.ndarray: The azimuth of the datetimes in degrees
-        np.ndarray: The elevation of the datetimes in degrees
+        A tuple of float64 arrays containing azimuth and elevation in degrees.
     """
     abber = 20 / 3600.
     LatR = np.radians(latitude)

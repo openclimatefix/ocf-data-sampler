@@ -5,6 +5,7 @@ from typing import Any, TypedDict, overload
 import numpy as np
 import tensorstore as ts
 import xarray as xr
+from numpy.typing import NDArray
 from xarray_tensorstore import _TensorStoreAdapter
 
 from ocf_data_sampler.common.types import Indexer
@@ -13,16 +14,16 @@ from ocf_data_sampler.common.types import Indexer
 class LightDataArrayState(TypedDict):
     """Serialized state of a LightDataArray."""
 
-    _data: np.ndarray | ts.TensorStore
+    _data: NDArray[Any] | ts.TensorStore
     dims: tuple[str, ...]
-    coords: dict[str, tuple[tuple[str, ...], np.ndarray]]
+    coords: dict[str, tuple[tuple[str, ...], NDArray[Any]]]
     attrs: dict[Any, Any]
 
 
 def _validate_coords(
-    data: np.ndarray | ts.TensorStore,
+    data: NDArray[Any] | ts.TensorStore,
     dims: tuple[str, ...],
-    coords: dict[str, tuple[tuple[str, ...], np.ndarray]]
+    coords: dict[str, tuple[tuple[str, ...], NDArray[Any]]]
 ) -> None:
     """Helper to validate the coordinates dictionary."""
     for coord_name, (coord_dims, coord_values) in coords.items():
@@ -127,7 +128,7 @@ def _sanitise_indexer(dim: str, dim_size: int, indexer: Indexer) -> Indexer:
     return indexer
 
 
-def _normalise_index_origin(data: np.ndarray | ts.TensorStore) -> np.ndarray | ts.TensorStore:
+def _normalise_index_origin(data: NDArray[Any] | ts.TensorStore) -> NDArray[Any] | ts.TensorStore:
     """Translate TensorStore domains to zero so subsequent indexing remains positional."""
     if isinstance(data, ts.TensorStore):
         return data[ts.d[:].translate_to[0]]
@@ -136,9 +137,9 @@ def _normalise_index_origin(data: np.ndarray | ts.TensorStore) -> np.ndarray | t
 
 @overload
 def _apply_axis_indexers(
-    data: np.ndarray,
+    data: NDArray[Any],
     axis_indexers: tuple[Indexer, ...],
-) -> np.ndarray: ...
+) -> NDArray[Any]: ...
 
 
 @overload
@@ -149,9 +150,9 @@ def _apply_axis_indexers(
 
 
 def _apply_axis_indexers(
-    data: np.ndarray | ts.TensorStore,
+    data: NDArray[Any] | ts.TensorStore,
     axis_indexers: tuple[Indexer, ...],
-) -> np.ndarray | ts.TensorStore:
+) -> NDArray[Any] | ts.TensorStore:
 
     if len(axis_indexers) != data.ndim:
         raise ValueError(
@@ -209,8 +210,8 @@ class LightDataArray:
 
     def __init__(
         self,
-        data: np.ndarray | ts.TensorStore,
-        coords: dict[str, tuple[tuple[str, ...], np.ndarray]],
+        data: NDArray[Any] | ts.TensorStore,
+        coords: dict[str, tuple[tuple[str, ...], NDArray[Any]]],
         dims: tuple[str, ...],
         attrs: dict[Any, Any] | None = None,
         skip_validation: bool = False,
@@ -236,12 +237,12 @@ class LightDataArray:
         self._future: ts.Future[Any] | None = None
 
     @property
-    def data(self) -> np.ndarray | ts.TensorStore:
+    def data(self) -> NDArray[Any] | ts.TensorStore:
         """Return the backing array."""
         return self._data
 
     @data.setter
-    def data(self, value: np.ndarray | ts.TensorStore) -> None:
+    def data(self, value: NDArray[Any] | ts.TensorStore) -> None:
         """Replace the backing array without changing dimensions."""
         if value.shape != self.shape:
             raise ValueError(
@@ -256,7 +257,7 @@ class LightDataArray:
     def from_xarray(cls, da: xr.DataArray) -> "LightDataArray":
         """Create a LightDataArray from an Xarray DataArray."""
         # Get raw data handle which can be a numpy array or TensorStore
-        data: ts.TensorStore | np.ndarray
+        data: ts.TensorStore | NDArray[Any]
         if isinstance(da.variable._data, _TensorStoreAdapter):
             data = da.variable._data.array
         elif isinstance(da.variable._data, np.ndarray):
@@ -363,7 +364,7 @@ class LightDataArray:
         return self
 
     @property
-    def values(self) -> np.ndarray:
+    def values(self) -> NDArray[Any]:
         """Return the data as a NumPy array, loading it if necessary."""
         data = self._data
 

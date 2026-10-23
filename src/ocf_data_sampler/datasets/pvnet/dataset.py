@@ -1,6 +1,6 @@
 """Torch dataset for PVNet."""
 
-from typing import Generic, TypeVar
+from typing import Generic, Literal, TypeVar
 
 import numpy as np
 import xarray as xr
@@ -18,20 +18,20 @@ from ocf_data_sampler.datasets.pvnet.availability import (
 )
 from ocf_data_sampler.datasets.pvnet.loading import (
     add_source_coordinates,
-    get_dataset_dict,
     get_locations,
+    open_sources,
 )
 from ocf_data_sampler.datasets.pvnet.materialise import materialise_data
 from ocf_data_sampler.datasets.pvnet.preprocess import (
     build_normalisation_arrays,
-    preprocess_dataset_dict,
+    preprocess_source_data,
 )
 from ocf_data_sampler.datasets.pvnet.sample import build_numpy_sample
 from ocf_data_sampler.datasets.pvnet.sample_index import ConcurrentSampleIndex, SampleIndex
 from ocf_data_sampler.datasets.pvnet.slicing import (
-    reduce_spatial_extent_of_datasets,
-    slice_datasets_by_space,
-    slice_datasets_by_time,
+    crop_sources_to_locations,
+    slice_sources_by_space,
+    slice_sources_by_time,
 )
 from ocf_data_sampler.datasets.pvnet.types import Location, NumpySample, SourceDict, TensorBatch
 
@@ -39,19 +39,19 @@ TIndex = TypeVar("TIndex", SampleIndex, ConcurrentSampleIndex)
 
 
 
-def xarray_to_lightarray_dict(
-    dataset_dict: SourceDict[xr.DataArray],
+def convert_sources_to_lightarray(
+    source_data: SourceDict[xr.DataArray],
 ) -> SourceDict[LightDataArray]:
-    """Create a dictionary LightDataArrays from a dictionary of xarray datasets."""
-    new_dataset_dict = {}
-    for k, v in dataset_dict.items():
+    """Convert xarray source arrays to LightDataArrays."""
+    converted_source_data: SourceDict[LightDataArray] = {}
+    for k, v in source_data.items():
         if isinstance(v, dict):
-            new_dataset_dict[k] = xarray_to_lightarray_dict(v)
+            converted_source_data[k] = convert_sources_to_lightarray(v)
         elif isinstance(v, xr.DataArray):
-            new_dataset_dict[k] = LightDataArray.from_xarray(v)
+            converted_source_data[k] = LightDataArray.from_xarray(v)
         else:
             raise ValueError(f"Unexpected type ({type(v)})")
-    return new_dataset_dict
+    return converted_source_data
 
 
 class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
@@ -62,7 +62,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
         config_filename: str,
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
-        use_xarray: bool = True,
+        array_backend: Literal["xarray", "lightarray"] = "xarray",
     ) -> None:
         """A generic torch Dataset for creating PVNet samples.
 
@@ -76,8 +76,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
                 starts and exclusive ends. None uses all available times.
             include_extra_metadata: Whether to include non-essential metadata for each sample in the
                 sample dict.
-            use_xarray: Whether to use xarray.DataArray or LightDataArray as the underlying data
-                structure when sampling
+            array_backend: Array representation to use when sampling.
 
         """
         super().__init__()
@@ -94,22 +93,26 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
         )
 
         location_ids = [loc.id for loc in self.locations]
-        datasets_dict = get_dataset_dict(config, location_ids=location_ids)
+        source_data = open_sources(config, location_ids=location_ids)
 
         self.sample_index: TIndex = self._build_sample_index(
-            datasets_dict, location_ids, config, time_periods,
+            source_data, location_ids, config, time_periods,
         )
-        add_source_coordinates(self.locations, datasets_dict)
-        datasets_dict = reduce_spatial_extent_of_datasets(datasets_dict, self.locations, config)
+        add_source_coordinates(self.locations, source_data)
+        source_data = crop_sources_to_locations(source_data, self.locations, config)
         self.normalisation_arrays = build_normalisation_arrays(config)
 
         self.config = config
         self.include_extra_metadata = include_extra_metadata
 
-        if use_xarray:
-            self.datasets_dict = datasets_dict
+        if array_backend == "xarray":
+            self.source_data = source_data
+        elif array_backend == "lightarray":
+            self.source_data = convert_sources_to_lightarray(source_data)
         else:
-            self.datasets_dict = xarray_to_lightarray_dict(datasets_dict)
+            raise ValueError(
+                f"Unsupported array_backend {array_backend!r}; expected 'xarray' or 'lightarray'"
+            )
 
 
     def __len__(self) -> int:
@@ -118,7 +121,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
 
     @staticmethod
     def _build_sample_index(
-        datasets_dict: SourceDict,
+        source_data: SourceDict[xr.DataArray],
         location_ids: list[int],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
@@ -136,22 +139,22 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
         config_filename: str,
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
-        use_xarray: bool = True,
+        array_backend: Literal["xarray", "lightarray"] = "xarray",
     ) -> None:
-        super().__init__(config_filename, time_periods, include_extra_metadata, use_xarray)
+        super().__init__(config_filename, time_periods, include_extra_metadata, array_backend)
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
 
     @staticmethod
     @override
     def _build_sample_index(
-        datasets_dict: SourceDict,
+        source_data: SourceDict[xr.DataArray],
         location_ids: list[int],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> SampleIndex:
         """Build an index of available t0 and location pairs."""
-        return build_sample_index(datasets_dict, location_ids, config, time_periods)
+        return build_sample_index(source_data, location_ids, config, time_periods)
 
     def _get_sample(self, t0: np.datetime64, location: Location) -> NumpySample:
         """Generate the PVNet sample for given coordinates.
@@ -160,12 +163,12 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
             t0: init-time for sample
             location: location for sample
         """
-        sample_dict = slice_datasets_by_space(self.datasets_dict, location, self.config)
-        sample_dict = slice_datasets_by_time(sample_dict, t0, self.config)
-        materialise_data(sample_dict)
-        preprocess_dataset_dict(sample_dict, t0, self.config, self.normalisation_arrays)
+        sample_data = slice_sources_by_space(self.source_data, location, self.config)
+        sample_data = slice_sources_by_time(sample_data, t0, self.config)
+        materialise_data(sample_data)
+        preprocess_source_data(sample_data, t0, self.config, self.normalisation_arrays)
         return build_numpy_sample(
-            sample_dict, t0, location, self.config, self.include_extra_metadata,
+            sample_data, t0, location, self.config, self.include_extra_metadata,
         )
 
     @override
@@ -206,13 +209,13 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
     @staticmethod
     @override
     def _build_sample_index(
-        datasets_dict: SourceDict,
+        source_data: SourceDict[xr.DataArray],
         location_ids: list[int],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> ConcurrentSampleIndex:
         """Build an index of t0 times available at every requested location."""
-        return build_concurrent_sample_index(datasets_dict, config, time_periods)
+        return build_concurrent_sample_index(source_data, config, time_periods)
 
     def _get_sample(self, t0: np.datetime64) -> TensorBatch:
         """Generate a concurrent PVNet sample for given init-time.
@@ -221,22 +224,21 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
             t0: init-time for sample
         """
         # Slice by time then load to avoid loading the data multiple times from disk
-        sample_dict = slice_datasets_by_time(self.datasets_dict, t0, self.config)
-        materialise_data(sample_dict)
+        time_sliced_data = slice_sources_by_time(self.source_data, t0, self.config)
+        materialise_data(time_sliced_data)
         # Preprocessing is location-independent, so do it once before slicing per-location below
-        preprocess_dataset_dict(sample_dict, t0, self.config, self.normalisation_arrays)
+        preprocess_source_data(time_sliced_data, t0, self.config, self.normalisation_arrays)
 
         samples = []
 
         # Prepare sample for each location
         for location in self.locations:
-            sliced_sample_dict = slice_datasets_by_space(sample_dict, location, self.config)
+            sample_data = slice_sources_by_space(time_sliced_data, location, self.config)
             numpy_sample = build_numpy_sample(
-                sliced_sample_dict, t0, location, self.config, self.include_extra_metadata,
+                sample_data, t0, location, self.config, self.include_extra_metadata,
             )
             samples.append(numpy_sample)
 
-        # Stack samples
         return default_collate(samples)
 
     @override

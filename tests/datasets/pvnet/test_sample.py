@@ -29,7 +29,7 @@ def test_build_numpy_sample_metadata(include_extra_metadata):
         ),
     )
     sample = build_numpy_sample(
-        dataset_dict={},
+        source_data={},
         t0=np.datetime64("2024-01-01"),
         location=Location(7, -1.0, 52.0),
         config=config,
@@ -73,7 +73,7 @@ def test_build_solar_features():
 
 def test_convert_generation_to_numpy_sample(generation_zarr_path):
     """add_source_arrays just extracts generation_mw/capacity_mwp as-is - normalising
-    generation_mw to a capacity factor is normalise_dataset_dicts's job (see test_preprocess.py).
+    generation_mw to a capacity factor is normalise_source_data's job (see test_preprocess.py).
     """
     da = open_generation(generation_zarr_path).isel(time_utc=slice(0, 10)).sel(location_id=1)
     numpy_sample = {"location_id": 1, "t0": np.float64(1672531200.0)}

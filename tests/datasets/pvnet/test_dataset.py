@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
-from ocf_data_sampler.config.model import SolarPosition
+from ocf_data_sampler.config.model import PVNetDataConfig, SamplingGrid, SolarPosition
 from ocf_data_sampler.datasets.pvnet.dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
@@ -110,6 +110,24 @@ def _expected_num_locations(dataset, catalog_ids):
     return len(catalog_ids) - len(dataset.config.sampling_grid.exclude_location_ids)
 
 
+@pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
+def test_pvnet_dataset_rejects_unknown_array_backend(tmp_path, locations_csv_path, dataset_class):
+    config = PVNetDataConfig(
+        sampling_grid=SamplingGrid(
+            locations_csv_path=str(locations_csv_path), t0_resolution_minutes=30,
+        ),
+    )
+    config_path = tmp_path / "config.yaml"
+    save_yaml_configuration(config, config_path)
+
+    with pytest.raises(ValueError, match="Unsupported array_backend"):
+        dataset_class(
+            config_path,
+            time_periods=[("2023-01-01 00:00", "2023-01-01 01:00")],
+            array_backend="unknown",
+        )
+
+
 def test_pvnet_dataset(pvnet_config_filename):
     dataset = PVNetDataset(
         pvnet_config_filename,
@@ -192,11 +210,13 @@ def test_pvnet_dataset_sites_unbounded_time_periods(pvnet_site_config_filename):
 
 
 def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
-    dataset = PVNetDataset(pvnet_config_filename, use_xarray=True, include_extra_metadata=True)
+    dataset = PVNetDataset(
+        pvnet_config_filename, array_backend="xarray", include_extra_metadata=True,
+    )
     sample = dataset[0]
 
     dataset_nox = PVNetDataset(
-        pvnet_config_filename, use_xarray=False, include_extra_metadata=True,
+        pvnet_config_filename, array_backend="lightarray", include_extra_metadata=True,
     )
     sample_nox = dataset_nox[0]
     _assert_sample_features_float32(sample)
@@ -215,11 +235,11 @@ def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
     check_samples_equal(sample, sample_nox)
 
 
-@pytest.mark.parametrize("use_xarray", [True, False])
-def test_pvnet_concurrent_dataset(pvnet_config_filename, use_xarray):
+@pytest.mark.parametrize("array_backend", ["xarray", "lightarray"])
+def test_pvnet_concurrent_dataset(pvnet_config_filename, array_backend):
     # Create dataset object using limited set of GSPs
     dataset = PVNetConcurrentDataset(
-        pvnet_config_filename, use_xarray=use_xarray, include_extra_metadata=True,
+        pvnet_config_filename, array_backend=array_backend, include_extra_metadata=True,
     )
     num_locations = _expected_num_locations(dataset, LOCATION_IDS)
     assert len(dataset.locations) == num_locations
@@ -240,7 +260,7 @@ def test_pvnet_concurrent_dataset(pvnet_config_filename, use_xarray):
         [loc.longitude for loc in dataset.locations],
     )
     # Check that PVNetConcurrentDataset agrees with PVNetDataset for every location
-    single_sample_dataset = PVNetDataset(pvnet_config_filename, use_xarray=True)
+    single_sample_dataset = PVNetDataset(pvnet_config_filename, array_backend="xarray")
     t0 = dataset.sample_index.t0[0]
     for i in (0, num_locations - 1):
         location_sample = single_sample_dataset.get_sample(t0, dataset.locations[i].id)

@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 
 import numpy as np
 import xarray as xr
+from numpy.typing import NDArray
 
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 from ocf_data_sampler.common.time_utils import datetime_ceil
@@ -109,7 +110,7 @@ def extract_only_data_array(ds: xr.Dataset) -> xr.DataArray:
 
 
 def validate_time_grid(
-    times: np.ndarray,
+    times: NDArray[np.datetime64],
     resolution: np.timedelta64,
     source: str,
 ) -> None:
@@ -129,7 +130,7 @@ def validate_time_grid(
 
 
 def validate_step_grid(
-    steps: np.ndarray,
+    steps: NDArray[np.timedelta64],
     resolution: np.timedelta64,
     source: str,
 ) -> None:
