@@ -11,6 +11,7 @@ from ocf_data_sampler.datasets.pvnet.preprocess import (
     fill_nans_in_dataset_dicts,
     normalise_dataset_dicts,
     preprocess_dataset_dict,
+    validate_and_fill_nans,
 )
 
 
@@ -46,6 +47,7 @@ def test_fill_nans_in_dataset_dicts(config_filename, fill_value, expected):
     """Fill generation and NWP inputs only when configured, including an explicit zero."""
 
     configuration = load_yaml_configuration(config_filename)
+    configuration.generation.target = None
 
     # Zero is a valid fill value; None preserves missing observations.
     configuration.generation.input.fill_value = fill_value
@@ -66,6 +68,55 @@ def test_fill_nans_in_dataset_dicts(config_filename, fill_value, expected):
     np.testing.assert_array_equal(datasets_dict["generation_input"].values, expected)
     np.testing.assert_array_equal(datasets_dict["nwp"]["ukv"].values, expected)
     assert np.array_equal(datasets_dict["sat"].values, np.array([1.0, -1.0, 3.0, -1.0]))
+
+
+@pytest.mark.parametrize(
+    "values, fill_value, reject_nan, reject_inf, expected",
+    [
+        ([1.0, np.nan], None, False, True, [1.0, np.nan]),
+        ([1.0, np.nan], 0.0, False, True, [1.0, 0.0]),
+        ([np.nan, np.inf, -np.inf], -2.0, False, False, [-2.0, np.inf, -np.inf]),
+        ([1.0, 2.0], None, True, True, [1.0, 2.0]),
+    ],
+)
+def test_validate_and_fill_nans(values, fill_value, reject_nan, reject_inf, expected):
+    original = np.array(values, dtype=np.float32)
+    da = xr.DataArray(original)
+
+    validate_and_fill_nans(
+        da,
+        fill_value,
+        reject_nan=reject_nan,
+        reject_inf=reject_inf,
+        source="sat",
+    )
+
+    np.testing.assert_array_equal(da.data, expected)
+    np.testing.assert_array_equal(original, values)
+    # Guard against type promotion
+    assert da.dtype == np.float32
+
+
+@pytest.mark.parametrize(
+    "values, fill_value, reject_nan, message",
+    [
+        ([1.0], 1.0, True, "source: fill_value must be None when reject_nan is True"),
+        ([np.nan], None, True, "source contains NaNs"),
+        ([np.nan, np.inf], 0.0, False, "source contains infinities"),
+        ([-np.inf], None, False, "source contains infinities"),
+    ],
+)
+def test_validate_and_fill_nans_rejects_disallowed_values(values, fill_value, reject_nan, message):
+    da = xr.DataArray(np.array(values, dtype=np.float32))
+
+    with pytest.raises(ValueError, match=message):
+        validate_and_fill_nans(
+            da,
+            fill_value,
+            reject_nan=reject_nan,
+            reject_inf=True,
+            source="source",
+        )
 
 
 def test_normalise_dataset_dicts_generation():
@@ -98,6 +149,7 @@ def test_normalise_dataset_dicts_generation():
 
 def test_apply_dropout_to_datasets(config_filename):
     config = load_yaml_configuration(config_filename)
+    config.nwp = None
 
     config.generation.input.dropout_minute_probabilities = {30: 1.0}
     config.generation.input.fill_value = -1.0

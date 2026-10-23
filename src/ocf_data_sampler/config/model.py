@@ -109,8 +109,13 @@ class TimeWindowMixin(Base):
         return self
 
 
-class FillValueMixin(Base):
-    """Optional replacement value for missing data."""
+class NaNPolicyMixin(Base):
+    """Optional rejection or replacement of missing data."""
+
+    reject_nan: bool = Field(
+        default=False,
+        description="Reject NaNs before filling. Cannot be combined with fill_value or dropout.",
+    )
 
     fill_value: float | None = Field(
         default=None,
@@ -118,8 +123,15 @@ class FillValueMixin(Base):
         "applied after normalisation, so it is in normalised units. None leaves NaNs unfilled.",
     )
 
+    @model_validator(mode="after")
+    def validate_nan_policy(self) -> "NaNPolicyMixin":
+        """Reject filling when NaNs must raise an error."""
+        if self.reject_nan and self.fill_value is not None:
+            raise ValueError("fill_value must be None when reject_nan is True")
+        return self
 
-class DropoutMixin(FillValueMixin):
+
+class DropoutMixin(NaNPolicyMixin):
     """Optional observation masking with a required fill value when enabled."""
 
     dropout_minute_probabilities: _MinuteProbabilities | None = Field(
@@ -132,6 +144,8 @@ class DropoutMixin(FillValueMixin):
     @model_validator(mode="after")
     def validate_fill_value(self) -> "DropoutMixin":
         """Require a replacement value when observations can be dropped out."""
+        if self.dropout_minute_probabilities is not None and self.reject_nan:
+            raise ValueError("dropout_minute_probabilities cannot be configured with reject_nan")
         if self.dropout_minute_probabilities is not None and self.fill_value is None:
             raise ValueError(
                 "fill_value must be set when dropout_minute_probabilities is configured",
@@ -234,7 +248,7 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         return channels
 
 
-class NWP(TimeWindowMixin, FillValueMixin, SpatialWindowMixin):
+class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
     """NWP configuration model."""
 
     zarr_path: ZarrSource = Field(

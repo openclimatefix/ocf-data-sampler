@@ -163,33 +163,85 @@ def apply_dropout_to_datasets(
 
 
 def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: PVNetDataConfig) -> None:
-    """Fill NaNs in-place in input sources where a fill value is configured.
+    """Validate source values and fill NaNs according to configuration.
 
     Args:
         datasets_dict: Dictionary of the input data sources
         config: PVNetDataConfig object.
     """
-    if (
-        "generation_input" in datasets_dict
-        and config.generation.input.fill_value is not None
-    ):
-        fill_nans(datasets_dict["generation_input"], config.generation.input.fill_value)
+    if config.generation is not None:
+        if config.generation.input is not None:
+            validate_and_fill_nans(
+                datasets_dict["generation_input"],
+                config.generation.input.fill_value,
+                reject_nan=config.generation.input.reject_nan,
+                source="generation_input",
+            )
+        if config.generation.target is not None:
+            validate_and_fill_nans(
+                datasets_dict["generation_target"],
+                fill_value=None,
+                reject_nan=True,
+                source="generation_target",
+            )
 
-    if "sat" in datasets_dict and config.satellite.fill_value is not None:
-        fill_nans(datasets_dict["sat"], config.satellite.fill_value)
+    if config.satellite is not None:
+        validate_and_fill_nans(
+            datasets_dict["sat"],
+            config.satellite.fill_value,
+            reject_nan=config.satellite.reject_nan,
+            source="sat",
+        )
 
-    if "nwp" in datasets_dict:
-        for nwp_source, da in datasets_dict["nwp"].items():
-            fill_value = config.nwp[nwp_source].fill_value
+    if config.nwp is not None:
+        for nwp_source, nwp_config in config.nwp.items():
+            validate_and_fill_nans(
+                datasets_dict["nwp"][nwp_source],
+                nwp_config.fill_value,
+                reject_nan=nwp_config.reject_nan,
+                source=f"nwp/{nwp_source}",
+            )
+
+
+def validate_and_fill_nans(
+    da: TArray,
+    fill_value: float | None,
+    *,
+    reject_nan: bool = False,
+    reject_inf: bool = True,
+    source: str,
+) -> None:
+    """Reject disallowed input values and optionally fill NaNs.
+
+    Replaces `.data` only when filling NaNs, without modifying the original NumPy array.
+
+    Args:
+        da: Materialised DataArray-like to fill and validate.
+        fill_value: Finite replacement for NaNs, or None to preserve them if permitted.
+            Must be None when reject_nan is True.
+        reject_nan: Whether NaNs in the input raise an error.
+        reject_inf: Whether positive and negative infinity in the input raise an error.
+        source: Source identifier included in validation errors.
+
+    Raises:
+        ValueError: A fill value is configured with reject_nan, or the input contains
+            disallowed NaNs or infinities.
+    """
+    if reject_nan and fill_value is not None:
+        raise ValueError(f"{source}: fill_value must be None when reject_nan is True")
+
+    if reject_inf and np.isinf(da.data).any():
+        raise ValueError(f"{source} contains infinities")
+
+    if (fill_value is not None) or reject_nan:
+        nan_mask = np.isnan(da.data)
+        contains_nans = nan_mask.any()
+
+        if contains_nans:
+            if reject_nan:
+                raise ValueError(f"{source} contains NaNs")
             if fill_value is not None:
-                fill_nans(da, fill_value)
-
-
-
-def fill_nans(da: TArray, fill_value: float) -> None:
-    """Fill NaNs in a DataArray in-place."""
-    if np.isnan(da.data).any():
-        da.data = np.nan_to_num(da.data, copy=True, nan=fill_value)
+                da.data = np.where(nan_mask, fill_value, da.data)
 
 
 def preprocess_dataset_dict(
