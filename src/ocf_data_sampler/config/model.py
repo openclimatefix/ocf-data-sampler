@@ -86,6 +86,11 @@ class TimeWindowMixin(Base):
         description="Interval ends at `t0 + interval_end_minutes` inclusive",
     )
 
+    @field_validator("time_resolution_minutes")
+    def validate_resolution(cls, resolution: int) -> int:
+        """Validate the supported temporal resolution."""
+        return _validate_grid_resolution_minutes(resolution)
+
     @model_validator(mode="after")
     def validate_intervals(self) -> "TimeWindowMixin":
         """Require ordered interval bounds aligned to the temporal resolution."""
@@ -214,7 +219,6 @@ class NWPChannel(Channel):
     )
 
 
-
 class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     """Satellite configuration model."""
 
@@ -229,11 +233,6 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
         min_length=1,
         description="Channels to include, in output order",
     )
-
-    @field_validator("time_resolution_minutes")
-    def validate_resolution(cls, resolution: int) -> int:
-        """Validate the supported temporal resolution."""
-        return _validate_grid_resolution_minutes(resolution)
 
     @model_validator(mode="after")
     def validate_dropout_interval_end(self) -> "Satellite":
@@ -279,11 +278,6 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
         "staler at t0 are not used. If set to None, then no additional limit is applied "
         "except that the forecast must cover the requested time interval.",
     )
-
-    @field_validator("time_resolution_minutes")
-    def validate_resolution(cls, resolution: int) -> int:
-        """Validate the supported temporal resolution."""
-        return _validate_grid_resolution_minutes(resolution)
 
     @field_validator("provider")
     def validate_provider(cls, provider: str) -> str:
