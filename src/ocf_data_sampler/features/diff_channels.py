@@ -23,6 +23,10 @@ def diff_channels(da: TArray, accum_channels: list[str]) -> TArray:
         raise ValueError("At least one accumulated channel must be requested")
 
     all_channels = da["channel"].values.tolist()
+
+    if set(accum_channels) - set(all_channels):
+        raise ValueError(f"{accum_channels=} not all available in {all_channels=}")
+
     accum_channel_inds = [all_channels.index(c) for c in accum_channels]
 
     da_out = da.isel(step=slice(0, -1))
