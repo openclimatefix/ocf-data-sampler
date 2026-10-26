@@ -11,21 +11,21 @@ from ocf_data_sampler.datasets.pvnet.types import (
     NormalisationArrays,
     SourceDict,
 )
-from ocf_data_sampler.features.diff_channels import diff_channels
+from ocf_data_sampler.features.diff_channels import diff_channels_along_step
 from ocf_data_sampler.features.normalisation import clip_and_standardise
 from ocf_data_sampler.select.dropout import apply_dropout, choose_delay
 
 
-def _build_source_normalisation_arrays(values: Sequence[Channel]) -> NormalisationArrays:
+def _build_source_normalisation_arrays(channels: Sequence[Channel]) -> NormalisationArrays:
     """Build parameters broadcastable over (time, channel, x, y)."""
     def channel_array(channel_values: list[float]) -> NDArray[np.float32]:
         return np.array(channel_values, dtype=np.float32)[None, :, None, None]
 
     return NormalisationArrays(
-        mean=channel_array([v.mean for v in values]),
-        std=channel_array([v.std for v in values]),
-        clip_min=channel_array([-np.inf if v.clip_min is None else v.clip_min for v in values]),
-        clip_max=channel_array([np.inf if v.clip_max is None else v.clip_max for v in values]),
+        mean=channel_array([c.mean for c in channels]),
+        std=channel_array([c.std for c in channels]),
+        clip_min=channel_array([-np.inf if c.clip_min is None else c.clip_min for c in channels]),
+        clip_max=channel_array([np.inf if c.clip_max is None else c.clip_max for c in channels]),
     )
 
 
@@ -108,7 +108,7 @@ def normalise_generation_by_capacity(da: TArray) -> None:
     da.data = new_data
 
 
-def diff_nwp_data(source_data: SourceDict[TArray], config: PVNetDataConfig) -> None:
+def diff_accumulated_nwp_channels(source_data: SourceDict[TArray], config: PVNetDataConfig) -> None:
     """Difference accumulated NWP channels, updating the input dictionary in-place.
 
     Args:
@@ -121,7 +121,7 @@ def diff_nwp_data(source_data: SourceDict[TArray], config: PVNetDataConfig) -> N
                 channel.name for channel in config.nwp[nwp_name].channels if channel.accumulated
             ]
             if len(accum_channels)>0:
-                source_data["nwp"][nwp_name] = diff_channels(da_nwp, accum_channels)
+                source_data["nwp"][nwp_name] = diff_channels_along_step(da_nwp, accum_channels)
 
 
 def apply_source_dropout(
@@ -136,27 +136,27 @@ def apply_source_dropout(
         t0: The init-time
         config: PVNetDataConfig object
     """
-    sat_conf = config.satellite
-    if sat_conf is not None and sat_conf.dropout_minute_probabilities is not None:
+    sat_config = config.satellite
+    if sat_config is not None and sat_config.dropout_minute_probabilities is not None:
         apply_dropout(
             source_data["sat"],
             t0,
-            dropout_delay=choose_delay(sat_conf.dropout_minute_probabilities),
+            dropout_delay=choose_delay(sat_config.dropout_minute_probabilities),
         )
 
     # generation_target is never dropped out since it's the prediction target
-    gen_conf = config.generation
+    gen_config = config.generation
     if (
-        gen_conf is not None
-        and gen_conf.input is not None
-        and gen_conf.input.dropout_minute_probabilities is not None
+        gen_config is not None
+        and gen_config.input is not None
+        and gen_config.input.dropout_minute_probabilities is not None
     ):
 
         # Note: capacity_mwp is dropped out along with generation_mw
         apply_dropout(
             source_data["generation_input"],
             t0,
-            dropout_delay=choose_delay(gen_conf.input.dropout_minute_probabilities),
+            dropout_delay=choose_delay(gen_config.input.dropout_minute_probabilities),
         )
 
     return
@@ -271,7 +271,7 @@ def preprocess_source_data(
         config: PVNetDataConfig object
         normalisation_arrays: Precomputed arrays from `build_normalisation_arrays`
     """
-    diff_nwp_data(source_data, config)
+    diff_accumulated_nwp_channels(source_data, config)
     normalise_source_data(source_data, normalisation_arrays)
     apply_source_dropout(source_data, t0, config)
     validate_and_fill_source_nans(source_data, config=config)

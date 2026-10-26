@@ -11,7 +11,7 @@ from ocf_data_sampler.config import PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import Coordinate, Location, SourceDict
 from ocf_data_sampler.load import open_generation, open_locations, open_nwp, open_satellite
 from ocf_data_sampler.load.conventions import validate_step_grid, validate_time_grid
-from ocf_data_sampler.spatial import lon_lat_to_geostationary_area_coords, lon_lat_to_osgb
+from ocf_data_sampler.spatial import lon_lat_to_geostationary, lon_lat_to_osgb
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ def open_sources(
     return source_data
 
 
-def get_locations(csv_path: str, exclude_ids: list[int] | None = None) -> list[Location]:
+def load_locations(csv_path: str, exclude_ids: list[int] | None = None) -> list[Location]:
     """Load the locations metadata and build the list of all locations.
 
     Args:
@@ -129,7 +129,7 @@ def get_locations(csv_path: str, exclude_ids: list[int] | None = None) -> list[L
     ]
 
 
-def _find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
+def _detect_coordinate_system(da: xr.DataArray) -> tuple[str, str, str]:
     """Searches the DataArray-like object to determine the spatial coordinate system.
 
     Args:
@@ -141,7 +141,7 @@ def _find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
     """
     # We only look at the dimensional coords. It is possible that other coordinate systems are
     # included as non-dimensional coords
-    dimensional_coords = set(da.dims)
+    dimension_names = set(da.dims)
 
     coord_systems: dict[str, tuple[str, str]] = {
         "lon_lat": ("longitude", "latitude"),
@@ -149,23 +149,23 @@ def _find_coord_system(da: xr.DataArray) -> tuple[str, str, str]:
         "osgb": ("x_osgb", "y_osgb"),
     }
 
-    coords_systems_found = []
+    matching_coordinate_systems = []
 
     for coord_name, coord_set in coord_systems.items():
-        if set(coord_set) <= dimensional_coords:
-            coords_systems_found.append(coord_name)
+        if set(coord_set) <= dimension_names:
+            matching_coordinate_systems.append(coord_name)
 
-    if len(coords_systems_found)==0:
+    if len(matching_coordinate_systems)==0:
         raise ValueError(
-            f"Did not find any coordinate pairs in the dimensional coords: {dimensional_coords}",
+            f"Did not find any coordinate pairs in the dimensional coords: {dimension_names}",
         )
-    elif len(coords_systems_found)>1:
+    elif len(matching_coordinate_systems)>1:
         raise ValueError(
-            f"Found >1 ({coords_systems_found}) coordinate pairs in the dimensional coords: "
-            f"{dimensional_coords}",
+            f"Found >1 ({matching_coordinate_systems}) coordinate pairs in the dimensional coords: "
+            f"{dimension_names}",
         )
     else:
-        coord_system_name = coords_systems_found[0]
+        coord_system_name = matching_coordinate_systems[0]
         return coord_system_name, *coord_systems[coord_system_name]
 
 
@@ -175,14 +175,14 @@ def _calculate_source_coordinates(
     da: xr.DataArray,
 ) -> list[Coordinate]:
     # Find the coordinate system required by this dataset
-    coord_system, x_dim, y_dim = _find_coord_system(da)
+    coord_system, x_dim, y_dim = _detect_coordinate_system(da)
 
     if coord_system == "lon_lat":
         xs, ys = longitudes, latitudes
     elif coord_system == "osgb":
         xs, ys = lon_lat_to_osgb(longitudes, latitudes)
     elif coord_system == "geostationary":
-        xs, ys = lon_lat_to_geostationary_area_coords(longitudes, latitudes, da.attrs["area"])
+        xs, ys = lon_lat_to_geostationary(longitudes, latitudes, da.attrs["area"])
 
     return [Coordinate(x_dim=x_dim, y_dim=y_dim, x=x, y=y) for x, y in zip(xs, ys, strict=True)]
 

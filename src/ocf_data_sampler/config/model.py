@@ -161,13 +161,13 @@ class DropoutMixin(NaNPolicyMixin):
 class SpatialWindowMixin(Base):
     """Spatial window dimensions in pixels."""
 
-    image_size_pixels_height: int = Field(
+    image_height_pixels: int = Field(
         ...,
         gt=0,
         description="Height of the region of interest in pixels",
     )
 
-    image_size_pixels_width: int = Field(
+    image_width_pixels: int = Field(
         ...,
         gt=0,
         description="Width of the region of interest in pixels",

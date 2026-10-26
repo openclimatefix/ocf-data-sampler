@@ -11,7 +11,7 @@ from ocf_data_sampler.config.model import PVNetDataConfig, SamplingGrid, SolarPo
 from ocf_data_sampler.datasets.pvnet.dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
-    get_locations,
+    load_locations,
 )
 from tests.conftest import LOCATION_IDS, SITE_LOCATION_IDS
 
@@ -158,7 +158,7 @@ def test_pvnet_dataset_rejects_oversized_crops(
     config = load_yaml_configuration(pvnet_config_filename)
     source_config = {"satellite": config.satellite, "ukv": config.nwp["ukv"]}[source]
     # Both fixture grids are narrower than 201 pixels.
-    source_config.image_size_pixels_width = 201
+    source_config.image_width_pixels = 201
     config_path = tmp_path / "oversized_crop.yaml"
     save_yaml_configuration(config, config_path)
 
@@ -166,23 +166,23 @@ def test_pvnet_dataset_rejects_oversized_crops(
         dataset_class(config_path)
 
 
-def test_get_locations_exclude_ids(locations_csv_path):
+def test_load_locations_exclude_ids(locations_csv_path):
     excluded_ids = [LOCATION_IDS[0], LOCATION_IDS[5], LOCATION_IDS[-1]]
-    locations = get_locations(locations_csv_path, exclude_ids=excluded_ids)
+    locations = load_locations(locations_csv_path, exclude_ids=excluded_ids)
 
     assert len(locations) == len(LOCATION_IDS) - len(excluded_ids)
     assert not set(excluded_ids) & {loc.id for loc in locations}
 
 
-def test_get_locations_exclude_unknown_id(locations_csv_path):
+def test_load_locations_exclude_unknown_id(locations_csv_path):
     unknown_id = max(LOCATION_IDS) + 1
     with pytest.raises(ValueError, match="not in the locations data"):
-        get_locations(locations_csv_path, exclude_ids=[unknown_id])
+        load_locations(locations_csv_path, exclude_ids=[unknown_id])
 
 
-def test_get_locations_exclude_all_ids(locations_csv_path):
+def test_load_locations_exclude_all_ids(locations_csv_path):
     with pytest.raises(ValueError, match=r"All location IDs .* have been excluded"):
-        get_locations(locations_csv_path, exclude_ids=list(LOCATION_IDS))
+        load_locations(locations_csv_path, exclude_ids=list(LOCATION_IDS))
 
 
 def test_pvnet_dataset_incomplete_generation(pvnet_site_config_filename):

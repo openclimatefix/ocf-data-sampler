@@ -15,7 +15,7 @@ from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import PVNetDataConfig, TimeWindowMixin
 from ocf_data_sampler.datasets.pvnet.types import Location, NumpySample, SourceDict
 from ocf_data_sampler.features.solar import calculate_azimuth_and_elevation
-from ocf_data_sampler.features.time_encodings import encode_datetimes, encode_t0
+from ocf_data_sampler.features.time_encodings import build_t0_embedding, encode_datetimes
 
 
 def build_numpy_sample(
@@ -58,7 +58,7 @@ def build_numpy_sample(
         add_source_metadata(sample["metadata"], source_data)
 
     if (t0_config := config.t0_embedding) is not None:
-        sample["t0_embedding"] = encode_t0(t0, t0_config.embeddings)
+        sample["t0_embedding"] = build_t0_embedding(t0, t0_config.embeddings)
 
     if (datetime_config := config.datetime_encoding) is not None:
         datetimes = _build_feature_datetimes(t0, datetime_config)

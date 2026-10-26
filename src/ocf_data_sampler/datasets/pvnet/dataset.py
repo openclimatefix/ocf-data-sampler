@@ -18,7 +18,7 @@ from ocf_data_sampler.datasets.pvnet.availability import (
 )
 from ocf_data_sampler.datasets.pvnet.loading import (
     add_source_coordinates,
-    get_locations,
+    load_locations,
     open_sources,
 )
 from ocf_data_sampler.datasets.pvnet.materialise import materialise_data
@@ -87,7 +87,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
 
         config = load_yaml_configuration(config_filename)
 
-        self.locations = get_locations(
+        self.locations = load_locations(
             config.sampling_grid.locations_csv_path,
             config.sampling_grid.exclude_location_ids,
         )

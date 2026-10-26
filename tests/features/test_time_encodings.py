@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 
 from ocf_data_sampler.features.time_encodings import (
+    build_t0_embedding,
     encode_datetimes,
-    encode_t0,
 )
 
 
@@ -23,10 +23,11 @@ def test_encode_datetimes():
         assert np.all(np.abs(features[key]) <= 1)
         assert features[key].dtype == np.float32
 
-    # The date encoding must agree with encode_t0 and must not alias across the year boundary
+    # The date encoding must agree with build_t0_embedding and must not alias across
+    # the year boundary.
     for datetime in (np.datetime64("2023-01-01"), np.datetime64("2024-12-31")):
         date_sin = encode_datetimes(np.array([datetime]))["date_sin"][0]
-        assert date_sin == encode_t0(datetime, [("1y", "cyclic")])[0]
+        assert date_sin == build_t0_embedding(datetime, [("1y", "cyclic")])[0]
 
     assert (
         encode_datetimes(np.array([np.datetime64("2023-01-01")]))["date_sin"][0]
@@ -34,7 +35,7 @@ def test_encode_datetimes():
     )
 
 
-def test_encode_t0():
+def test_build_t0_embedding():
 
     # Check some input-output pairs for both linear and cyclic encodings for hourly frequencies
     # These are [datetime, frequency, expected linear fraction through the period] pairs
@@ -74,12 +75,12 @@ def test_encode_t0():
 
     for t0_str, freq_str, linear_frac in input_output_pairs:
         # Check linear encodings
-        linear_result = encode_t0(np.datetime64(t0_str), [(freq_str, "linear")])
+        linear_result = build_t0_embedding(np.datetime64(t0_str), [(freq_str, "linear")])
         assert (linear_result >= 0) & (linear_result <= 1)
         assert np.isclose(linear_frac, linear_result)
 
         # Check cyclic encodings
-        cyclic_result = encode_t0(np.datetime64(t0_str), [(freq_str, "cyclic")])
+        cyclic_result = build_t0_embedding(np.datetime64(t0_str), [(freq_str, "cyclic")])
         expected_cyclic = [np.sin(2 * np.pi * linear_frac), np.cos(2 * np.pi * linear_frac)]
         assert ((cyclic_result >= -1) & (cyclic_result <= 1)).all()
         assert np.allclose(cyclic_result, expected_cyclic)
@@ -96,5 +97,5 @@ def test_encode_t0():
     for n in [2, 3, 4]:
         for embedding_result_set in itertools.permutations(embedding_result_options, n):
             embeddings, expected_list = list(zip(*embedding_result_set, strict=False))
-            result = encode_t0(t0, embeddings)
+            result = build_t0_embedding(t0, embeddings)
             assert np.allclose(result, np.concatenate(expected_list))

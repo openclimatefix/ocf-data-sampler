@@ -9,8 +9,8 @@ from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import Coordinate, Location, SourceDict
 from ocf_data_sampler.select.dropout import choose_delay
 from ocf_data_sampler.select.spatial_slice import (
-    select_spatial_slice_pixels,
-    select_spatial_slice_pixels_multiple,
+    select_envelope_of_spatial_windows,
+    select_spatial_slice,
 )
 from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
 
@@ -38,26 +38,26 @@ def slice_sources_by_space(
 
             for nwp_name, nwp_config in config.nwp.items():
                 coordinate = location.source_coordinates["nwp"][nwp_name]
-                sliced_source_data["nwp"][nwp_name] = select_spatial_slice_pixels(
+                sliced_source_data["nwp"][nwp_name] = select_spatial_slice(
                     source_data["nwp"][nwp_name],
                     x=coordinate.x,
                     y=coordinate.y,
                     x_dim=coordinate.x_dim,
                     y_dim=coordinate.y_dim,
-                    height_pixels=nwp_config.image_size_pixels_height,
-                    width_pixels=nwp_config.image_size_pixels_width,
+                    height_pixels=nwp_config.image_height_pixels,
+                    width_pixels=nwp_config.image_width_pixels,
                 )
 
         if "sat" in source_data:
             coordinate = location.source_coordinates["sat"]
-            sliced_source_data["sat"] = select_spatial_slice_pixels(
+            sliced_source_data["sat"] = select_spatial_slice(
                 source_data["sat"],
                 x=coordinate.x,
                 y=coordinate.y,
                 x_dim=coordinate.x_dim,
                 y_dim=coordinate.y_dim,
-                height_pixels=config.satellite.image_size_pixels_height,
-                width_pixels=config.satellite.image_size_pixels_width,
+                height_pixels=config.satellite.image_height_pixels,
+                width_pixels=config.satellite.image_width_pixels,
             )
 
         # Depending on whether this is called before or after time-slicing, the generation data is
@@ -78,7 +78,7 @@ def slice_sources_by_space(
     return sliced_source_data
 
 
-def _get_source_spatial_coordinates(
+def _unpack_spatial_coordinates(
     coordinates: list[Coordinate],
 ) -> tuple[list[tuple[float, float]], str, str]:
     """Extract paired centres and shared spatial dimensions from source coordinates."""
@@ -119,26 +119,26 @@ def crop_sources_to_locations(
                 source_coordinates = [
                     loc.source_coordinates["nwp"][nwp_name] for loc in locations
                 ]
-                centres, x_dim, y_dim = _get_source_spatial_coordinates(source_coordinates)
-                sliced_source_data["nwp"][nwp_name] = select_spatial_slice_pixels_multiple(
+                centres, x_dim, y_dim = _unpack_spatial_coordinates(source_coordinates)
+                sliced_source_data["nwp"][nwp_name] = select_envelope_of_spatial_windows(
                     source_data["nwp"][nwp_name],
                     centres=centres,
                     x_dim=x_dim,
                     y_dim=y_dim,
-                    height_pixels=nwp_config.image_size_pixels_height,
-                    width_pixels=nwp_config.image_size_pixels_width,
+                    height_pixels=nwp_config.image_height_pixels,
+                    width_pixels=nwp_config.image_width_pixels,
                 )
 
         if "sat" in source_data:
             source_coordinates = [loc.source_coordinates["sat"] for loc in locations]
-            centres, x_dim, y_dim = _get_source_spatial_coordinates(source_coordinates)
-            sliced_source_data["sat"] = select_spatial_slice_pixels_multiple(
+            centres, x_dim, y_dim = _unpack_spatial_coordinates(source_coordinates)
+            sliced_source_data["sat"] = select_envelope_of_spatial_windows(
                 source_data["sat"],
                 centres=centres,
                 x_dim=x_dim,
                 y_dim=y_dim,
-                height_pixels=config.satellite.image_size_pixels_height,
-                width_pixels=config.satellite.image_size_pixels_width,
+                height_pixels=config.satellite.image_height_pixels,
+                width_pixels=config.satellite.image_width_pixels,
             )
 
         if "generation" in source_data:

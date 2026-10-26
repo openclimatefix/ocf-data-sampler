@@ -23,7 +23,7 @@ def _extract_tensorstore(da: xr.DataArray) -> ts.TensorStore:
     return data.array
 
 
-def _validate(datasets: Sequence[xr.Dataset], concat_dim: str) -> None:
+def _validate_concat_compatibility(datasets: Sequence[xr.Dataset], concat_dim: str) -> None:
     first, *rest = datasets
     if concat_dim not in first.dims:
         raise ValueError(f"{concat_dim!r} is not a dimension: {tuple(first.dims)}")
@@ -78,7 +78,7 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
     datasets = list(datasets)
     if len(datasets) < 2:
         raise ValueError("need at least two datasets")
-    _validate(datasets, concat_dim)
+    _validate_concat_compatibility(datasets, concat_dim)
     first = datasets[0]
 
     # Create a new shell dataset which contains only the concatenated coords. We will handle the
