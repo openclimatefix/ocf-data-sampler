@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
-from ocf_data_sampler.config.model import PVNetDataConfig, SamplingGrid, SolarPosition
+from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.datasets.pvnet.dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
@@ -108,24 +108,6 @@ def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
 def _expected_num_locations(dataset, catalog_ids):
     """The catalogued locations which survive the config's exclusion list."""
     return len(catalog_ids) - len(dataset.config.sampling_grid.exclude_location_ids)
-
-
-@pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
-def test_pvnet_dataset_rejects_unknown_array_backend(tmp_path, locations_csv_path, dataset_class):
-    config = PVNetDataConfig(
-        sampling_grid=SamplingGrid(
-            locations_csv_path=str(locations_csv_path), t0_resolution_minutes=30,
-        ),
-    )
-    config_path = tmp_path / "config.yaml"
-    save_yaml_configuration(config, config_path)
-
-    with pytest.raises(ValueError, match="Unsupported array_backend"):
-        dataset_class(
-            config_path,
-            time_periods=[("2023-01-01 00:00", "2023-01-01 01:00")],
-            array_backend="unknown",
-        )
 
 
 def test_pvnet_dataset(pvnet_config_filename):

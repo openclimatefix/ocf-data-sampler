@@ -116,9 +116,7 @@ def crop_sources_to_locations(
             sliced_source_data["nwp"] = {}
 
             for nwp_name, nwp_config in config.nwp.items():
-                source_coordinates = [
-                    loc.source_coordinates["nwp"][nwp_name] for loc in locations
-                ]
+                source_coordinates = [loc.source_coordinates["nwp"][nwp_name] for loc in locations]
                 centres, x_dim, y_dim = _unpack_spatial_coordinates(source_coordinates)
                 sliced_source_data["nwp"][nwp_name] = select_envelope_of_spatial_windows(
                     source_data["nwp"][nwp_name],
