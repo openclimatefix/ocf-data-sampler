@@ -1,6 +1,6 @@
 """Helper function to find index positions."""
 
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -26,7 +26,7 @@ def get_indices_in_sorted_unique(
     return indices
 
 
-def assert_values_unique_increasing(values: NDArray[T], label: str = "values") -> None:
+def assert_values_unique_increasing(values: NDArray[Any], label: str = "values") -> None:
     """Assert the values are unique and monotonically increasing."""
     if not (values[:-1] < values[1:]).all():
         raise ValueError(f"{label} must be strictly increasing")
