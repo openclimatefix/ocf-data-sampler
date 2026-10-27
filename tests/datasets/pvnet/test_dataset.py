@@ -2,6 +2,7 @@ import os
 import pickle
 
 import numpy as np
+import pandas as pd
 import pytest
 import torch
 from torch.utils.data import DataLoader
@@ -157,9 +158,8 @@ def test_load_locations_exclude_ids(locations_csv_path):
 
 
 def test_load_locations_exclude_unknown_id(locations_csv_path):
-    unknown_id = max(LOCATION_IDS) + 1
     with pytest.raises(ValueError, match="not in the locations data"):
-        load_locations(locations_csv_path, exclude_ids=[unknown_id])
+        load_locations(locations_csv_path, exclude_ids=["unknown_id"])
 
 
 def test_load_locations_exclude_all_ids(locations_csv_path):
@@ -218,10 +218,30 @@ def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
 
 
 @pytest.mark.parametrize("array_backend", ["xarray", "lightarray"])
-def test_pvnet_concurrent_dataset(pvnet_config_filename, array_backend):
-    # Create dataset object using limited set of GSPs
+def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend):
+    config = load_yaml_configuration(pvnet_config_filename)
+
+    # Reverse the CSV rows so their order differs from the generation source. This is so we can 
+    # check that the location ordering comes from the locations CSV as the source of truth.
+    locations_path = tmp_path / "reordered_locations.csv"
+    config_path = tmp_path / "reordered_configuration.yaml"
+
+    df_locations = pd.read_csv(
+        config.sampling_grid.locations_csv_path, 
+        dtype={"location_id": str}
+    ).iloc[::-1]
+    df_locations.to_csv(locations_path, index=False)
+
+    config.sampling_grid.locations_csv_path = str(locations_path)
+    save_yaml_configuration(config, config_path)
+
+    expected_ids = [
+        location_id for location_id in df_locations["location_id"]
+        if location_id not in config.sampling_grid.exclude_location_ids
+    ]
+
     dataset = PVNetConcurrentDataset(
-        pvnet_config_filename, array_backend=array_backend, include_extra_metadata=True,
+        config_path, array_backend=array_backend, include_extra_metadata=True,
     )
     num_locations = _expected_num_locations(dataset, LOCATION_IDS)
     assert len(dataset.locations) == num_locations
@@ -233,19 +253,21 @@ def test_pvnet_concurrent_dataset(pvnet_config_filename, array_backend):
     _pvnet_dataset_sample_check(sample, dataset.config, (num_locations,))
 
     # Check locations correctly ordered
-    np.testing.assert_array_equal(
-        sample["location_id"].numpy(), [loc.id for loc in dataset.locations],
-    )
+    assert sample["location_id"] == expected_ids
     # Make sure the metadata is correctly ordered
     np.testing.assert_array_equal(
         sample["metadata"]["location_longitude"].numpy(),
         [loc.longitude for loc in dataset.locations],
     )
-    # Check that PVNetConcurrentDataset agrees with PVNetDataset for every location
-    single_sample_dataset = PVNetDataset(pvnet_config_filename, array_backend="xarray")
+    # Check that PVNetConcurrentDataset agrees with PVNetDataset for all locations.
+    single_sample_dataset = PVNetDataset(config_path, array_backend="xarray")
+    # Complete generation gives each location the same valid times as the concurrent dataset.
+    np.testing.assert_array_equal(
+        single_sample_dataset.sample_index.location_id, np.repeat(expected_ids, len(dataset)),
+    )
     t0 = dataset.sample_index.t0[0]
-    for i in (0, num_locations - 1):
-        location_sample = single_sample_dataset.get_sample(t0, dataset.locations[i].id)
+    for i, location_id in enumerate(expected_ids):
+        location_sample = single_sample_dataset.get_sample(t0, location_id)
         for key in ("generation_input", "generation_target"):
             np.testing.assert_array_equal(sample[key][i].numpy(), location_sample[key])
 
@@ -380,7 +402,7 @@ def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
     for key in ("date_sin", "date_cos", "time_sin", "time_cos"):
         assert raw_sample[key].shape == (expected_dt_time_steps,)
 
-    assert isinstance(raw_sample["location_id"], int | np.integer)
+    assert isinstance(raw_sample["location_id"], str)
 
 
 def test_pvnet_dataset_pickle(tmp_path, pvnet_config_filename):
@@ -424,7 +446,7 @@ def test_pvnet_dataset_sites_get_sample(pvnet_site_config_filename):
 
     # Check error raised if loc_id does not exist
     with pytest.raises(ValueError):
-        sample = dataset.get_sample(t0=t0, location_id=400)
+        sample = dataset.get_sample(t0=t0, location_id="loc_400")
 
     # Check error raised if t0 does not exist
     with pytest.raises(ValueError):

@@ -63,7 +63,7 @@ class BaseSample(TypedDict, Generic[TSampleArray], total=False):
 class NumpySample(BaseSample[NDArray[Any]], total=False):
     """One forecast time and location, with NumPy arrays."""
 
-    location_id: Required[int]
+    location_id: Required[str]
     # Forecast reference time, float64 POSIX seconds.
     t0: Required[np.float64]
 
@@ -74,8 +74,8 @@ class TensorBatch(BaseSample[torch.Tensor], total=False):
     Concurrent batches follow the dataset's location order.
     """
 
-    # (batch,), int64 location IDs.
-    location_id: Required[torch.Tensor]
+    # (batch,), string location IDs.
+    location_id: Required[list[str]]
     # (batch,), float64 POSIX seconds.
     t0: Required[torch.Tensor]
 
@@ -117,7 +117,7 @@ class Coordinate:
 class Location:
     """A sampling location with source-specific coordinates."""
 
-    id: int
+    id: str
     longitude: float
     latitude: float
     source_coordinates: SourceDict[Coordinate] = field(default_factory=dict)

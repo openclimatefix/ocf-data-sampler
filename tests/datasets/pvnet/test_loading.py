@@ -32,7 +32,7 @@ def test_add_source_coordinates_different_geostationary_sources():
 
     # Make a location
     lon, lat = 0.0, 50.0
-    location = Location(id=1, longitude=lon, latitude=lat)
+    location = Location(id="loc_1", longitude=lon, latitude=lat)
     add_source_coordinates(
         locations=[location],
         source_data={"sat": da_sat, "nwp": {"cloudcasting": da_cloud}}

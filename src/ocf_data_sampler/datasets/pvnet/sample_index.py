@@ -30,7 +30,7 @@ class SampleIndex:
     """
 
     t0: NDArray[np.datetime64]
-    location_id: NDArray[np.int64]
+    location_id: NDArray[np.str_]
 
     def __post_init__(self) -> None:
         """Validate the shape and alignment of the sample arrays."""
@@ -43,12 +43,12 @@ class SampleIndex:
         """Return the number of valid samples."""
         return len(self.t0)
 
-    def __getitem__(self, idx: int) -> tuple[np.datetime64, np.int64]:
+    def __getitem__(self, idx: int) -> tuple[np.datetime64, str]:
         """Return a sample's time and location, supporting negative integer indices."""
         index = _sanitise_index(idx, len(self))
         return self.t0[index], self.location_id[index]
 
-    def contains(self, t0: np.datetime64, location_id: int) -> bool:
+    def contains(self, t0: np.datetime64, location_id: str) -> bool:
         """Return whether the time and location identify a valid sample."""
         return bool(np.any((self.t0 == t0) & (self.location_id == location_id)))
 

@@ -67,7 +67,7 @@ def pvnet_config():
 
 @pytest.fixture
 def location_ids():
-    return [1, 2]
+    return ["site-1", "site-2"]
 
 
 @pytest.fixture
@@ -90,7 +90,7 @@ def make_satellite(datetimes):
 def _assert_sample_index(index, expected_times, expected_ids):
     np.testing.assert_array_equal(index.t0, np.asarray(expected_times, dtype="datetime64[ns]"))
     np.testing.assert_array_equal(index.location_id, expected_ids)
-    assert index.location_id.dtype == np.int64
+    assert np.issubdtype(index.location_id.dtype, np.str_)
 
 
 def test_build_sample_index_unusable_location(pvnet_config, location_ids, datetimes):
@@ -100,14 +100,19 @@ def test_build_sample_index_unusable_location(pvnet_config, location_ids, dateti
     sample_index = build_sample_index(sources, location_ids, pvnet_config, None)
     # Samples use one hour (2 steps before t0) of history and two hours (4 steps after t0) of future
     expected_t0s = datetimes[2:-4]
-    _assert_sample_index(sample_index, np.tile(expected_t0s, 2), [1, 1, 1, 2, 2, 2])
+    _assert_sample_index(
+        sample_index, np.tile(expected_t0s, 2),
+        ["site-1", "site-1", "site-1", "site-2", "site-2", "site-2"],
+    )
 
     concurrent_index = build_concurrent_sample_index(sources, pvnet_config, None)
     np.testing.assert_array_equal(concurrent_index.t0, expected_t0s)
 
     values[:, 1] = np.nan
     sources = {"generation": make_generation(values, location_ids, datetimes)}
-    with pytest.raises(ValueError, match=r"No valid t0 times found for locations: \[2\]"):
+    with pytest.raises(
+        ValueError, match=r"No valid t0 times found for locations: \['site-2'\]",
+    ):
         build_sample_index(sources, location_ids, pvnet_config, None)
     with pytest.raises(ValueError, match="every requested location"):
         build_concurrent_sample_index(sources, pvnet_config, None)
@@ -121,7 +126,9 @@ def test_build_sample_index_non_overlapping_sources(
         "generation": make_generation(values, location_ids, datetimes),
         "sat": make_satellite(datetimes + np.timedelta64(1, "D")),
     }
-    with pytest.raises(ValueError, match=r"No valid t0 times found for locations: \[1, 2\]"):
+    with pytest.raises(
+        ValueError, match=r"No valid t0 times found for locations: \['site-1', 'site-2'\]",
+    ):
         build_sample_index(sources, location_ids, pvnet_config, None)
     with pytest.raises(ValueError, match="every requested location"):
         build_concurrent_sample_index(sources, pvnet_config, None)
@@ -143,7 +150,8 @@ def test_build_sample_index_generation_only(pvnet_config, location_ids, datetime
     sources = {"generation": make_generation(values, location_ids, datetimes)}
     index = build_sample_index(sources, location_ids, pvnet_config, None)
     _assert_sample_index(
-        index, np.concatenate([expected_datetimes_1, expected_datetimes_2]), [1, 1, 2, 2],
+        index, np.concatenate([expected_datetimes_1, expected_datetimes_2]),
+        ["site-1", "site-1", "site-2", "site-2"],
     )
 
     # Concurrent samples require all locations to have generation data for each t0
@@ -170,7 +178,8 @@ def test_build_sample_index_no_shared_t0s(pvnet_config, location_ids, datetimes)
     sources = {"generation": make_generation(values, location_ids, datetimes)}
     index = build_sample_index(sources, location_ids, pvnet_config, None)
     _assert_sample_index(
-        index, np.concatenate([expected_datetimes_1, expected_datetimes_2]), [1, 2],
+        index, np.concatenate([expected_datetimes_1, expected_datetimes_2]),
+        ["site-1", "site-2"],
     )
 
     # The concurrent PVNet sample index finds no t0 times where all locations are available so it
@@ -203,7 +212,10 @@ def test_build_sample_index_without_sources(pvnet_config, location_ids, datetime
         ("2023-01-01T01:00", "2023-01-01T01:30"),
     ]
     index = build_sample_index({}, location_ids, pvnet_config, requested_periods)
-    _assert_sample_index(index, np.tile(datetimes[1:3], 2), [1, 1, 2, 2])
+    _assert_sample_index(
+        index, np.tile(datetimes[1:3], 2),
+        ["site-1", "site-1", "site-2", "site-2"],
+    )
 
 
 @pytest.mark.parametrize("periods", [None, [(None, "2023-01-02")]])

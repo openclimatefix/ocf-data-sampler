@@ -16,9 +16,9 @@ RANDOM_SEED = 42
 
 # The LOCATION_IDS catalog mirrors the GSPs: ID 0 is the national aggregate and IDs 1-317 are the
 # regional GSPs
-LOCATION_IDS = tuple(range(318))
+LOCATION_IDS = tuple(f"loc_{i}" for i in range(318))
 # The SITE_LOCATION_IDS catalog has no national aggregate since they mirror different sites
-SITE_LOCATION_IDS = tuple(range(1, 11))
+SITE_LOCATION_IDS = tuple(f"loc_{i}" for i in range(1, 11))
 
 UK_SAT_AREA = {
     "msg_seviri_rss_3km": {

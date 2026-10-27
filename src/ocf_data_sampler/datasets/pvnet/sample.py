@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from ocf_data_sampler.common.indexing import get_string_index
 from ocf_data_sampler.common.time_utils import (
     date_range,
     datetime_floor,
@@ -108,14 +109,14 @@ def add_source_arrays(
         da_gen = source_data[key]
 
         # Generation is already normalised by capacity; capacity remains in MW.
-        gen_params = list(da_gen["gen_param"].values)
-        generation = da_gen.isel(gen_param=gen_params.index("generation_mw")).values
-        capacity = da_gen.isel(gen_param=gen_params.index("capacity_mwp")).values
+        gen_params = da_gen["gen_param"].values
+        gen_idx = get_string_index(gen_params, "generation_mw")
+        cap_idx = get_string_index(gen_params, "capacity_mwp")
 
         sample.update(
             {
-                key: generation,
-                f"{key}_capacity_mwp": capacity,
+                key: da_gen.isel(gen_param=gen_idx).values,
+                f"{key}_capacity_mwp": da_gen.isel(gen_param=cap_idx).values,
                 f"{key}_time_utc": get_posix_timestamp(da_gen["time_utc"].values),
             },
         )

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
+from ocf_data_sampler.common.indexing import get_string_index
 from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import PVNetDataConfig
@@ -68,7 +68,7 @@ def slice_sources_by_space(
                 continue
 
             location_ids = source_data[key]["location_id"].values
-            loc_index = get_indices_in_sorted_unique(location_ids, location.id)
+            loc_index = get_string_index(location_ids, location.id)
 
             sliced_source_data[key] = source_data[key].isel(location_id=loc_index)
 

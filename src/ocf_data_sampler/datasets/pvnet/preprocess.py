@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import numpy as np
 from numpy.typing import NDArray
 
+from ocf_data_sampler.common.indexing import get_string_index
 from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import Channel, PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import (
@@ -87,9 +88,9 @@ def normalise_generation_by_capacity(da: TArray) -> None:
     Args:
         da: Generation DataArray-like with a `gen_param` dimension
     """
-    gen_params = list(da["gen_param"].values)
-    gen_idx = gen_params.index("generation_mw")
-    cap_idx = gen_params.index("capacity_mwp")
+    gen_params = da["gen_param"].values
+    gen_idx = get_string_index(gen_params, "generation_mw")
+    cap_idx = get_string_index(gen_params, "capacity_mwp")
 
     generation_values = da.isel(gen_param=gen_idx).values
     capacity_values = da.isel(gen_param=cap_idx).values
