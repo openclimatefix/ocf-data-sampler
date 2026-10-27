@@ -221,13 +221,13 @@ def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
 def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend):
     config = load_yaml_configuration(pvnet_config_filename)
 
-    # Reverse the CSV rows so their order differs from the generation source. This is so we can 
+    # Reverse the CSV rows so their order differs from the generation source. This is so we can
     # check that the location ordering comes from the locations CSV as the source of truth.
     locations_path = tmp_path / "reordered_locations.csv"
     config_path = tmp_path / "reordered_configuration.yaml"
 
     df_locations = pd.read_csv(
-        config.sampling_grid.locations_csv_path, 
+        config.sampling_grid.locations_csv_path,
         dtype={"location_id": str}
     ).iloc[::-1]
     df_locations.to_csv(locations_path, index=False)
