@@ -8,7 +8,7 @@ Data Variables:
     capacity_mwp (time_utc, location_id): The capacity in MW peak
 Coordinates:
     time_utc (time_utc): The datetimes associated with each generation and capacity value
-    location_id (location_id): The integer IDs of the locations
+    location_id (location_id): The unique string IDs of the locations, in any order
 """
 
 import numpy as np
@@ -38,7 +38,7 @@ def open_generation(zarr_path: str) -> xr.DataArray:
 
     coord_dtypes = {
         "time_utc": np.datetime64,
-        "location_id": np.integer,
+        "location_id": np.str_,
     }
     validate_coords(
         ds,
@@ -53,7 +53,8 @@ def open_generation(zarr_path: str) -> xr.DataArray:
     da = ds.to_dataarray("gen_param").transpose("time_utc", "location_id", "gen_param")
 
     assert_values_unique_increasing(ds["time_utc"].values, "time_utc")
-    assert_values_unique_increasing(ds["location_id"].values, "location_id")
+    if not ds.indexes["location_id"].is_unique:
+        raise ValueError("location_id must contain unique values")
 
     # Validate data types
     if not np.issubdtype(da.dtype, np.floating):

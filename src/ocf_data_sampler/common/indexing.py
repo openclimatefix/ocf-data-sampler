@@ -8,6 +8,21 @@ from numpy.typing import NDArray
 T = TypeVar("T", bound=np.generic)
 
 
+def get_string_index(values: NDArray[np.str_], query: str) -> int:
+    """Find a string's position in a one-dimensional array of unique strings.
+
+    The array may be unsorted. Raise ValueError unless the string matches exactly once.
+
+    Args:
+        values: One-dimensional array of unique strings, in any order.
+        query: String whose integer index to find in `values`.
+    """
+    indices = np.flatnonzero(values == query)
+    if indices.size != 1:
+        raise ValueError(f"Expected one match for {query!r}, found {indices.size}")
+    return int(indices[0])
+
+
 def get_indices_in_sorted_unique(
     values: NDArray[T],
     query: T | NDArray[T],

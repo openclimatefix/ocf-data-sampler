@@ -25,7 +25,7 @@ graph TD
 - `PVNetDataset`: each index selects one forecast reference time (`t0`) and location and
   returns a dictionary of NumPy arrays and metadata.
 - `PVNetConcurrentDataset`: each index selects one `t0` that is valid at every requested
-  location and returns a batch of tensors containing all locations.
+  location and returns a batch in locations CSV order, with tensor data and string location IDs.
 
 The retrieval paths differ so that concurrent samples share loading and preprocessing:
 

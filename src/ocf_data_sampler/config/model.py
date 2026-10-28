@@ -397,7 +397,7 @@ class SamplingGrid(Base):
         "and their coordinates) - see `ocf_data_sampler.load.locations.open_locations`.",
     )
 
-    exclude_location_ids: list[int] = Field(
+    exclude_location_ids: list[str] = Field(
         default=[],
         description="Location IDs from the locations metadata to drop from the sampling grid. "
         "Every ID listed must be present in the locations data.",
@@ -416,7 +416,7 @@ class SamplingGrid(Base):
         return _validate_grid_resolution_minutes(resolution)
 
     @field_validator("exclude_location_ids")
-    def validate_exclude_location_ids_unique(cls, v: list[int]) -> list[int]:
+    def validate_exclude_location_ids_unique(cls, v: list[str]) -> list[str]:
         """Reject repeated excluded location IDs."""
         duplicates = {i for i in v if v.count(i) > 1}
         if duplicates:

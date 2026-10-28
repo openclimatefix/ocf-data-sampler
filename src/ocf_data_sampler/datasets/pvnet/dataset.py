@@ -122,7 +122,7 @@ class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
     @staticmethod
     def _build_sample_index(
         source_data: SourceDict[xr.DataArray],
-        location_ids: list[int],
+        location_ids: list[str],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> TIndex:
@@ -149,7 +149,7 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
     @override
     def _build_sample_index(
         source_data: SourceDict[xr.DataArray],
-        location_ids: list[int],
+        location_ids: list[str],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> SampleIndex:
@@ -182,7 +182,7 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
 
         return self._get_sample(t0, location)
 
-    def get_sample(self, t0: np.datetime64, location_id: int) -> NumpySample:
+    def get_sample(self, t0: np.datetime64, location_id: str) -> NumpySample:
         """Generate a sample for the given coordinates.
 
         Useful for users to generate specific samples.
@@ -210,7 +210,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
     @override
     def _build_sample_index(
         source_data: SourceDict[xr.DataArray],
-        location_ids: list[int],
+        location_ids: list[str],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> ConcurrentSampleIndex:

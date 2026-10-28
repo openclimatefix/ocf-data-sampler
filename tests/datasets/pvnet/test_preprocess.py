@@ -22,7 +22,7 @@ def _generation_da(generation_mw: np.ndarray, capacity_mwp: np.ndarray) -> xr.Da
         np.stack([generation_mw, capacity_mwp], axis=-1),
         coords={
             "time_utc": pd.date_range("2023-01-01", periods=n_times, freq="30min"),
-            "location_id": np.arange(1, n_locations + 1),
+            "location_id": [f"loc_{i}" for i in range(1, n_locations + 1)],
             "gen_param": ["generation_mw", "capacity_mwp"],
         },
         dims=("time_utc", "location_id", "gen_param"),

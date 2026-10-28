@@ -212,7 +212,7 @@ def _build_t0_times_from_requested_periods(
 
 def build_sample_index(
     source_data: SourceDict[xr.DataArray],
-    location_ids: list[int],
+    location_ids: list[str],
     config: PVNetDataConfig,
     requested_periods: list[tuple[str | None, str | None]] | None,
 ) -> SampleIndex:
@@ -262,8 +262,8 @@ def build_sample_index(
 
     # Generation availability can differ by location.
     t0_arrays: list[NDArray[np.datetime64]] = []
-    location_id_arrays: list[NDArray[np.int64]] = []
-    unavailable_location_ids: list[int] = []
+    location_id_arrays: list[NDArray[np.str_]] = []
+    unavailable_location_ids: list[str] = []
     for location_id in location_ids:
         da_gen_loc = source_data["generation"].sel(location_id=location_id).dropna(dim="time_utc")
 
@@ -280,7 +280,7 @@ def build_sample_index(
             unavailable_location_ids.append(location_id)
         else:
             t0_arrays.append(t0_times.astype("datetime64[ns]"))
-            location_id_arrays.append(np.full(len(t0_times), location_id, dtype=np.int64))
+            location_id_arrays.append(np.full(len(t0_times), location_id))
 
     if len(unavailable_location_ids) > 0:
         raise ValueError(f"No valid t0 times found for locations: {unavailable_location_ids}")

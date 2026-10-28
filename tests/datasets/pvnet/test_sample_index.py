@@ -14,13 +14,13 @@ def t0_times():
 
 
 def test_sample_index_access_and_membership(t0_times):
-    index = SampleIndex(t0=t0_times, location_id=np.array([1, 2], dtype=np.int64))
+    index = SampleIndex(t0=t0_times, location_id=np.array(["site-1", "site-2"]))
     assert len(index) == 2
-    assert index[0] == (t0_times[0], 1)
-    assert index[-len(index)] == (t0_times[0], 1)
-    assert index[-1] == (t0_times[1], 2)
-    assert index.contains(t0_times[1], 2)
-    assert not index.contains(t0_times[1], 1)
+    assert index[0] == (t0_times[0], "site-1")
+    assert index[-len(index)] == (t0_times[0], "site-1")
+    assert index[-1] == (t0_times[1], "site-2")
+    assert index.contains(t0_times[1], "site-2")
+    assert not index.contains(t0_times[1], "site-1")
 
 
 def test_concurrent_index_access_and_membership(t0_times):

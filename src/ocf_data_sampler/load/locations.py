@@ -2,11 +2,11 @@
 
 Locations data schema: a CSV file with the following columns:
 
-    location_id: The integer IDs of the locations
+    location_id: The unique string IDs of the locations
     longitude: The longitudes of the locations
     latitude: The latitudes of the locations
 
-Rows must be in increasing `location_id` order, and no value may be left blank (i.e. no NaNs).
+No value may be left blank (i.e. no NaNs).
 
 A CSV is used rather than zarr since this catalogue is small and benefits from being human
 readable and hand editable. Additional columns may be included to make the file easier to work with,
@@ -14,8 +14,6 @@ but are dropped on load.
 """
 
 import pandas as pd
-
-from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 
 
 def open_locations(csv_path: str) -> pd.DataFrame:
@@ -25,10 +23,10 @@ def open_locations(csv_path: str) -> pd.DataFrame:
         csv_path: Path to the locations CSV data
 
     Returns:
-        pd.DataFrame: The locations metadata, in increasing location ID order
+        pd.DataFrame: The locations metadata
     """
     column_dtypes = {
-        "location_id": "int64",
+        "location_id": "str",
         "longitude": "float64",
         "latitude": "float64",
     }
@@ -46,6 +44,7 @@ def open_locations(csv_path: str) -> pd.DataFrame:
     if df.isna().any().any():
         raise ValueError("Locations data must not contain missing values")
 
-    assert_values_unique_increasing(df["location_id"].values, "location_id")
+    if not df["location_id"].is_unique:
+        raise ValueError("location_id must contain unique values")
 
     return df

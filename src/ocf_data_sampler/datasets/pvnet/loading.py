@@ -26,7 +26,7 @@ def _warn_if_not_float32(source: str, data: xr.DataArray) -> None:
 
 def open_sources(
     config: PVNetDataConfig,
-    location_ids: list[int],
+    location_ids: list[str],
 ) -> SourceDict[xr.DataArray]:
     """Open the configured data sources.
 
@@ -98,7 +98,7 @@ def open_sources(
     return source_data
 
 
-def load_locations(csv_path: str, exclude_ids: list[int] | None = None) -> list[Location]:
+def load_locations(csv_path: str, exclude_ids: list[str] | None = None) -> list[Location]:
     """Load the locations metadata and build the list of all locations.
 
     Args:
@@ -123,7 +123,7 @@ def load_locations(csv_path: str, exclude_ids: list[int] | None = None) -> list[
         Location(
             longitude=row.longitude,
             latitude=row.latitude,
-            id=int(row.location_id),
+            id=row.location_id,
         )
         for row in locations_data.itertuples()
     ]
