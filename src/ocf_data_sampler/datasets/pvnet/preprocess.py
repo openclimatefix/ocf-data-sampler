@@ -5,16 +5,19 @@ from collections.abc import Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from ocf_data_sampler.common.indexing import get_string_index
 from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import Channel, PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import (
     NormalisationArrays,
     SourceDict,
 )
-from ocf_data_sampler.features.diff_channels import diff_channels_along_step
-from ocf_data_sampler.features.normalisation import clip_and_standardise
 from ocf_data_sampler.select.dropout import apply_dropout, choose_delay
+from ocf_data_sampler.transforms.diff_channels import diff_channels_along_step
+from ocf_data_sampler.transforms.missing_values import validate_and_fill_nans
+from ocf_data_sampler.transforms.normalisation import (
+    clip_and_standardise,
+    normalise_generation_by_capacity,
+)
 
 
 def _build_source_normalisation_arrays(channels: Sequence[Channel]) -> NormalisationArrays:
@@ -52,8 +55,8 @@ def normalise_source_data(
     if "nwp" in source_data:
         for nwp_name, da in source_data["nwp"].items():
             params = normalisation_arrays["nwp"][nwp_name]
-            da.data = clip_and_standardise(
-                da.data,
+            clip_and_standardise(
+                da,
                 clip_min=params.clip_min,
                 clip_max=params.clip_max,
                 mean=params.mean,
@@ -63,8 +66,8 @@ def normalise_source_data(
     if "sat" in source_data:
         da = source_data["sat"]
         params = normalisation_arrays["sat"]
-        da.data = clip_and_standardise(
-            da.data,
+        clip_and_standardise(
+            da,
             clip_min=params.clip_min,
             clip_max=params.clip_max,
             mean=params.mean,
@@ -74,39 +77,6 @@ def normalise_source_data(
     for key in ("generation_input", "generation_target"):
         if key in source_data:
             normalise_generation_by_capacity(source_data[key])
-
-
-def normalise_generation_by_capacity(da: TArray) -> None:
-    """Rescale `generation_mw` to a capacity factor, leaving `capacity_mwp` unchanged.
-
-    Replaces `.data` on the input DataArray without modifying shared source values.
-
-    Zero capacity means no plant, so the capacity factor is taken as 0 rather than the undefined
-    0/0. Emitting NaN instead would route it through the dropout fill, which signals missing data
-    rather than a known-zero output.
-
-    Args:
-        da: Generation DataArray-like with a `gen_param` dimension
-    """
-    gen_params = da["gen_param"].values
-    gen_idx = get_string_index(gen_params, "generation_mw")
-    cap_idx = get_string_index(gen_params, "capacity_mwp")
-
-    generation_values = da.isel(gen_param=gen_idx).values
-    capacity_values = da.isel(gen_param=cap_idx).values
-
-    normalised = np.divide(
-        generation_values,
-        capacity_values,
-        out=np.zeros_like(generation_values),
-        where=capacity_values != 0,
-    )
-
-    new_data = da.data.copy()
-    index = [slice(None)] * new_data.ndim
-    index[da.dims.index("gen_param")] = gen_idx
-    new_data[tuple(index)] = normalised
-    da.data = new_data
 
 
 def diff_accumulated_nwp_channels(source_data: SourceDict[TArray], config: PVNetDataConfig) -> None:
@@ -202,47 +172,6 @@ def validate_and_fill_source_nans(source_data: SourceDict[TArray], config: PVNet
                 reject_nan=nwp_config.reject_nan,
                 source=f"nwp/{nwp_name}",
             )
-
-
-def validate_and_fill_nans(
-    da: TArray,
-    fill_value: float | None,
-    *,
-    reject_nan: bool = False,
-    reject_inf: bool = True,
-    source: str,
-) -> None:
-    """Reject disallowed input values and optionally fill NaNs.
-
-    Replaces `.data` only when filling NaNs, without modifying the original NumPy array.
-
-    Args:
-        da: Materialised DataArray-like to fill and validate.
-        fill_value: Finite replacement for NaNs, or None to preserve them if permitted.
-            Must be None when reject_nan is True.
-        reject_nan: Whether NaNs in the input raise an error.
-        reject_inf: Whether positive and negative infinity in the input raise an error.
-        source: Source identifier included in validation errors.
-
-    Raises:
-        ValueError: A fill value is configured with reject_nan, or the input contains
-            disallowed NaNs or infinities.
-    """
-    if reject_nan and fill_value is not None:
-        raise ValueError(f"{source}: fill_value must be None when reject_nan is True")
-
-    if reject_inf and np.isinf(da.data).any():
-        raise ValueError(f"{source} contains infinities")
-
-    if (fill_value is not None) or reject_nan:
-        nan_mask = np.isnan(da.data)
-        contains_nans = nan_mask.any()
-
-        if contains_nans:
-            if reject_nan:
-                raise ValueError(f"{source} contains NaNs")
-            if fill_value is not None:
-                da.data = np.where(nan_mask, fill_value, da.data)
 
 
 def preprocess_source_data(

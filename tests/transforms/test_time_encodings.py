@@ -3,7 +3,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
-from ocf_data_sampler.features.time_encodings import (
+from ocf_data_sampler.transforms.time_encodings import (
     build_t0_embedding,
     encode_datetimes,
 )

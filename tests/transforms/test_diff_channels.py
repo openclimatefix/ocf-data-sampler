@@ -2,7 +2,7 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.common.lightarray import LightDataArray
-from ocf_data_sampler.features.diff_channels import diff_channels_along_step
+from ocf_data_sampler.transforms.diff_channels import diff_channels_along_step
 
 
 @pytest.mark.parametrize("array_factory", [xr.DataArray, LightDataArray.from_xarray])
