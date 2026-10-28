@@ -15,8 +15,8 @@ from ocf_data_sampler.common.time_utils import (
 from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import PVNetDataConfig, TimeWindowMixin
 from ocf_data_sampler.datasets.pvnet.types import Location, NumpySample, SourceDict
-from ocf_data_sampler.features.solar import calculate_azimuth_and_elevation
-from ocf_data_sampler.features.time_encodings import build_t0_embedding, encode_datetimes
+from ocf_data_sampler.transforms.solar import calculate_azimuth_and_elevation
+from ocf_data_sampler.transforms.time_encodings import build_t0_embedding, encode_datetimes
 
 
 def build_numpy_sample(

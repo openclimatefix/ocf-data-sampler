@@ -1,6 +1,6 @@
 import numpy as np
 
-from ocf_data_sampler.features.normalisation import clip_and_standardise
+from ocf_data_sampler.transforms.normalisation import clip_and_standardise
 
 
 def test_clip_and_standardise():

@@ -12,9 +12,9 @@ from ocf_data_sampler.datasets.pvnet.types import (
     NormalisationArrays,
     SourceDict,
 )
-from ocf_data_sampler.features.diff_channels import diff_channels_along_step
-from ocf_data_sampler.features.normalisation import clip_and_standardise
 from ocf_data_sampler.select.dropout import apply_dropout, choose_delay
+from ocf_data_sampler.transforms.diff_channels import diff_channels_along_step
+from ocf_data_sampler.transforms.normalisation import clip_and_standardise
 
 
 def _build_source_normalisation_arrays(channels: Sequence[Channel]) -> NormalisationArrays:
