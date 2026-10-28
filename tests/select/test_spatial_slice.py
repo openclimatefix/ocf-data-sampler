@@ -5,8 +5,8 @@ import xarray as xr
 from ocf_data_sampler.select.spatial_slice import (
     _get_central_index,
     _get_window_bounds,
-    select_spatial_slice_pixels,
-    select_spatial_slice_pixels_multiple,
+    select_envelope_of_spatial_windows,
+    select_spatial_slice,
 )
 
 
@@ -54,10 +54,10 @@ def test_get_window_bounds(central_index, window_size, expected_slice):
     assert index_slice == expected_slice
 
 
-def test_select_spatial_slice_pixels(da):
+def test_select_spatial_slice(da):
 
     # Select odd sized window
-    da_sliced = select_spatial_slice_pixels(
+    da_sliced = select_spatial_slice(
         da,
         x=10.1,
         y=-4.9,
@@ -73,7 +73,7 @@ def test_select_spatial_slice_pixels(da):
 
 
     # Select even sized window
-    da_sliced = select_spatial_slice_pixels(
+    da_sliced = select_spatial_slice(
         da,
         x=10.1,
         y=-4.9,
@@ -89,7 +89,7 @@ def test_select_spatial_slice_pixels(da):
 
 
     # Select mixed odd and even sized window
-    da_sliced = select_spatial_slice_pixels(
+    da_sliced = select_spatial_slice(
         da,
         x=10.1,
         y=-4.9,
@@ -104,7 +104,7 @@ def test_select_spatial_slice_pixels(da):
     assert not da_sliced.isnull().any()
 
     # Select window where the edge of the window lies right on the edge of the data
-    da_sliced = select_spatial_slice_pixels(
+    da_sliced = select_spatial_slice(
         da,
         x=-90.1,
         y=89.9,
@@ -120,10 +120,10 @@ def test_select_spatial_slice_pixels(da):
     assert not da_sliced.isnull().any()
 
 
-def test_select_spatial_slice_pixels_out_of_bounds(da):
+def test_select_spatial_slice_out_of_bounds(da):
     """Test that ValueError is raised when the requested slice goes out of bounds."""
     with pytest.raises(ValueError, match=r"Left index \(-5\) < 0"):
-        select_spatial_slice_pixels(
+        select_spatial_slice(
             da,
             x=-90.1,
             y=-80.1,
@@ -133,7 +133,7 @@ def test_select_spatial_slice_pixels_out_of_bounds(da):
             height_pixels=30,
         )
     with pytest.raises(ValueError, match=r"Right index \(211\) > total_width \(200\)"):
-        select_spatial_slice_pixels(
+        select_spatial_slice(
             da,
             x=90.1,
             y=90.1,
@@ -144,10 +144,10 @@ def test_select_spatial_slice_pixels_out_of_bounds(da):
         )
 
 
-def test_select_spatial_slice_pixels_multiple_empty_centres(da):
+def test_select_envelope_of_spatial_windows_empty_centres(da):
     """Test that an empty centres list raises rather than returning an empty slice."""
     with pytest.raises(ValueError, match="`centres` is empty"):
-        select_spatial_slice_pixels_multiple(
+        select_envelope_of_spatial_windows(
             da,
             centres=[],
             x_dim="x_osgb",
@@ -157,10 +157,10 @@ def test_select_spatial_slice_pixels_multiple_empty_centres(da):
         )
 
 
-def test_select_spatial_slice_pixels_multiple_out_of_bounds(da):
+def test_select_envelope_of_spatial_windows_out_of_bounds(da):
     """Test that a multi-centre crop cannot extend beyond the source grid."""
     with pytest.raises(ValueError, match=r"Left index \(-5\) < 0"):
-        select_spatial_slice_pixels_multiple(
+        select_envelope_of_spatial_windows(
             da,
             centres=[(-90.1, -80.1), (-89.9, -79.9)],
             x_dim="x_osgb",

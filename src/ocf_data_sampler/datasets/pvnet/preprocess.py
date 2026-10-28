@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import Channel, PVNetDataConfig
@@ -10,21 +11,21 @@ from ocf_data_sampler.datasets.pvnet.types import (
     NormalisationArrays,
     SourceDict,
 )
-from ocf_data_sampler.features.diff_channels import diff_channels
+from ocf_data_sampler.features.diff_channels import diff_channels_along_step
 from ocf_data_sampler.features.normalisation import clip_and_standardise
 from ocf_data_sampler.select.dropout import apply_dropout, choose_delay
 
 
-def _build_source_normalisation_arrays(values: Sequence[Channel]) -> NormalisationArrays:
+def _build_source_normalisation_arrays(channels: Sequence[Channel]) -> NormalisationArrays:
     """Build parameters broadcastable over (time, channel, x, y)."""
-    def channel_array(channel_values: list[float]) -> np.ndarray:
+    def channel_array(channel_values: list[float]) -> NDArray[np.float32]:
         return np.array(channel_values, dtype=np.float32)[None, :, None, None]
 
     return NormalisationArrays(
-        mean=channel_array([v.mean for v in values]),
-        std=channel_array([v.std for v in values]),
-        clip_min=channel_array([-np.inf if v.clip_min is None else v.clip_min for v in values]),
-        clip_max=channel_array([np.inf if v.clip_max is None else v.clip_max for v in values]),
+        mean=channel_array([c.mean for c in channels]),
+        std=channel_array([c.std for c in channels]),
+        clip_min=channel_array([-np.inf if c.clip_min is None else c.clip_min for c in channels]),
+        clip_max=channel_array([np.inf if c.clip_max is None else c.clip_max for c in channels]),
     )
 
 
@@ -33,8 +34,8 @@ def build_normalisation_arrays(config: PVNetDataConfig) -> SourceDict[Normalisat
     normalisation_arrays: SourceDict[NormalisationArrays] = {}
     if config.nwp is not None:
         normalisation_arrays["nwp"] = {}
-        for nwp_source, nwp_config in config.nwp.items():
-            normalisation_arrays["nwp"][nwp_source] = _build_source_normalisation_arrays(
+        for nwp_name, nwp_config in config.nwp.items():
+            normalisation_arrays["nwp"][nwp_name] = _build_source_normalisation_arrays(
                 nwp_config.channels,
             )
     if config.satellite is not None:
@@ -42,14 +43,14 @@ def build_normalisation_arrays(config: PVNetDataConfig) -> SourceDict[Normalisat
     return normalisation_arrays
 
 
-def normalise_dataset_dicts(
-    dataset_dict: SourceDict,
+def normalise_source_data(
+    source_data: SourceDict[TArray],
     normalisation_arrays: SourceDict[NormalisationArrays],
 ) -> None:
     """Normalise NWP, satellite, and generation data in-place."""
-    if "nwp" in dataset_dict:
-        for nwp_source, da in dataset_dict["nwp"].items():
-            params = normalisation_arrays["nwp"][nwp_source]
+    if "nwp" in source_data:
+        for nwp_name, da in source_data["nwp"].items():
+            params = normalisation_arrays["nwp"][nwp_name]
             da.data = clip_and_standardise(
                 da.data,
                 clip_min=params.clip_min,
@@ -58,8 +59,8 @@ def normalise_dataset_dicts(
                 std=params.std,
             )
 
-    if "sat" in dataset_dict:
-        da = dataset_dict["sat"]
+    if "sat" in source_data:
+        da = source_data["sat"]
         params = normalisation_arrays["sat"]
         da.data = clip_and_standardise(
             da.data,
@@ -70,8 +71,8 @@ def normalise_dataset_dicts(
         )
 
     for key in ("generation_input", "generation_target"):
-        if key in dataset_dict:
-            normalise_generation_by_capacity(dataset_dict[key])
+        if key in source_data:
+            normalise_generation_by_capacity(source_data[key])
 
 
 def normalise_generation_by_capacity(da: TArray) -> None:
@@ -107,79 +108,78 @@ def normalise_generation_by_capacity(da: TArray) -> None:
     da.data = new_data
 
 
-def diff_nwp_data(dataset_dict: SourceDict, config: PVNetDataConfig) -> None:
+def diff_accumulated_nwp_channels(source_data: SourceDict[TArray], config: PVNetDataConfig) -> None:
     """Difference accumulated NWP channels, updating the input dictionary in-place.
 
     Args:
-        dataset_dict: Dictionary of xarray datasets
+        source_data: Source arrays containing the NWP data to difference
         config: PVNetDataConfig object
     """
-    if "nwp" in dataset_dict:
-        for nwp_key, da_nwp in dataset_dict["nwp"].items():
+    if "nwp" in source_data:
+        for nwp_name, da_nwp in source_data["nwp"].items():
             accum_channels = [
-                channel.name for channel in config.nwp[nwp_key].channels if channel.accumulated
+                channel.name for channel in config.nwp[nwp_name].channels if channel.accumulated
             ]
             if len(accum_channels)>0:
-                dataset_dict["nwp"][nwp_key] = diff_channels(da_nwp, accum_channels)
+                source_data["nwp"][nwp_name] = diff_channels_along_step(da_nwp, accum_channels)
 
 
-def apply_dropout_to_datasets(
-    datasets_dict: SourceDict,
+def apply_source_dropout(
+    source_data: SourceDict[TArray],
     t0: np.datetime64,
     config: PVNetDataConfig,
 ) -> None:
     """Apply dropout to input DataArrays in-place around a given t0 time.
 
     Args:
-        datasets_dict: Dictionary of the input data sources
+        source_data: Input source arrays
         t0: The init-time
-        config: PVNetDataConfig object.
-
+        config: PVNetDataConfig object
     """
-    sat_conf = config.satellite
-    if sat_conf is not None and sat_conf.dropout_minute_probabilities is not None:
+    sat_config = config.satellite
+    if sat_config is not None and sat_config.dropout_minute_probabilities is not None:
         apply_dropout(
-            datasets_dict["sat"],
+            source_data["sat"],
             t0,
-            dropout_delay=choose_delay(sat_conf.dropout_minute_probabilities),
+            dropout_delay=choose_delay(sat_config.dropout_minute_probabilities),
         )
 
     # generation_target is never dropped out since it's the prediction target
-    gen_conf = config.generation
+    gen_config = config.generation
     if (
-        gen_conf is not None
-        and gen_conf.input is not None
-        and gen_conf.input.dropout_minute_probabilities is not None
+        gen_config is not None
+        and gen_config.input is not None
+        and gen_config.input.dropout_minute_probabilities is not None
     ):
 
         # Note: capacity_mwp is dropped out along with generation_mw
         apply_dropout(
-            datasets_dict["generation_input"],
+            source_data["generation_input"],
             t0,
-            dropout_delay=choose_delay(gen_conf.input.dropout_minute_probabilities),
+            dropout_delay=choose_delay(gen_config.input.dropout_minute_probabilities),
         )
 
     return
 
 
-def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: PVNetDataConfig) -> None:
+def validate_and_fill_source_nans(source_data: SourceDict[TArray], config: PVNetDataConfig) -> None:
     """Validate source values and fill NaNs according to configuration.
 
     Args:
-        datasets_dict: Dictionary of the input data sources
+        source_data: Input source arrays.
         config: PVNetDataConfig object.
     """
     if config.generation is not None:
         if config.generation.input is not None:
             validate_and_fill_nans(
-                datasets_dict["generation_input"],
+                source_data["generation_input"],
                 config.generation.input.fill_value,
                 reject_nan=config.generation.input.reject_nan,
                 source="generation_input",
             )
         if config.generation.target is not None:
             validate_and_fill_nans(
-                datasets_dict["generation_target"],
+                source_data["generation_target"],
                 fill_value=None,
                 reject_nan=True,
                 source="generation_target",
@@ -187,19 +187,19 @@ def fill_nans_in_dataset_dicts(datasets_dict: SourceDict, config: PVNetDataConfi
 
     if config.satellite is not None:
         validate_and_fill_nans(
-            datasets_dict["sat"],
+            source_data["sat"],
             config.satellite.fill_value,
             reject_nan=config.satellite.reject_nan,
             source="sat",
         )
 
     if config.nwp is not None:
-        for nwp_source, nwp_config in config.nwp.items():
+        for nwp_name, nwp_config in config.nwp.items():
             validate_and_fill_nans(
-                datasets_dict["nwp"][nwp_source],
+                source_data["nwp"][nwp_name],
                 nwp_config.fill_value,
                 reject_nan=nwp_config.reject_nan,
-                source=f"nwp/{nwp_source}",
+                source=f"nwp/{nwp_name}",
             )
 
 
@@ -244,8 +244,8 @@ def validate_and_fill_nans(
                 da.data = np.where(nan_mask, fill_value, da.data)
 
 
-def preprocess_dataset_dict(
-    dataset_dict: SourceDict,
+def preprocess_source_data(
+    source_data: SourceDict[TArray],
     t0: np.datetime64,
     config: PVNetDataConfig,
     normalisation_arrays: SourceDict[NormalisationArrays],
@@ -263,15 +263,15 @@ def preprocess_dataset_dict(
     Updates the dictionary and its DataArray-like objects in-place, replacing entries or their
     `.data` as needed. The original NumPy arrays remain unchanged.
 
-    Note: `dataset_dict` is expected to already be loaded - see `materialise_data`.
+    Note: `source_data` is expected to already be loaded - see `materialise_data`.
 
     Args:
-        dataset_dict: Dictionary of xarray datasets
+        source_data: Source arrays to preprocess
         t0: The init-time
         config: PVNetDataConfig object
         normalisation_arrays: Precomputed arrays from `build_normalisation_arrays`
     """
-    diff_nwp_data(dataset_dict, config)
-    normalise_dataset_dicts(dataset_dict, normalisation_arrays)
-    apply_dropout_to_datasets(dataset_dict, t0, config)
-    fill_nans_in_dataset_dicts(dataset_dict, config=config)
+    diff_accumulated_nwp_channels(source_data, config)
+    normalise_source_data(source_data, normalisation_arrays)
+    apply_source_dropout(source_data, t0, config)
+    validate_and_fill_source_nans(source_data, config=config)

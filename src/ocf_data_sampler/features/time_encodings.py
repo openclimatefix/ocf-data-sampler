@@ -9,9 +9,9 @@ from ocf_data_sampler.common.time_utils import (
     get_day_fraction,
     get_day_of_year,
     get_hour,
-    get_is_leap_year,
     get_minute,
     get_year,
+    is_leap_year,
 )
 
 
@@ -27,7 +27,7 @@ def encode_datetimes(datetimes: NDArray[np.datetime64]) -> dict[str, NDArray[np.
     day_fraction = get_day_fraction(datetimes)
     day_of_year = get_day_of_year(datetimes)
 
-    days_in_year = 365 + get_is_leap_year(datetimes).astype(int)
+    days_in_year = 365 + is_leap_year(datetimes).astype(int)
 
     time_in_radians = (2 * np.pi) * day_fraction
     date_in_radians = (2 * np.pi) * ((day_of_year - 1) / days_in_year)
@@ -40,7 +40,7 @@ def encode_datetimes(datetimes: NDArray[np.datetime64]) -> dict[str, NDArray[np.
     }
 
 
-def encode_t0(
+def build_t0_embedding(
     t0: np.datetime64,
     embeddings: list[tuple[str, Literal["cyclic", "linear"]]],
 ) -> NDArray[np.float32]:
@@ -62,22 +62,22 @@ def encode_t0(
         if period_str.endswith("h"):
             period_hours = int(period_str.removesuffix("h"))
             hour_float = get_hour(t0) + get_minute(t0) / 60
-            frac = (hour_float % period_hours) / period_hours
+            period_fraction = (hour_float % period_hours) / period_hours
 
         elif period_str.endswith("y"):
             period_years = int(period_str.removesuffix("y"))
-            days_in_year = 366 if get_is_leap_year(t0) else 365
+            days_in_year = 366 if is_leap_year(t0) else 365
             year_float = get_year(t0) + (get_day_of_year(t0) - 1) / days_in_year
-            frac = (year_float % period_years) / period_years
+            period_fraction = (year_float % period_years) / period_years
         else:
             raise ValueError(f"Invalid period_str: {period_str}. Must end with 'h' or 'y'.")
 
         if embedding_type == "cyclic":
-            radians = 2 * np.pi * frac
+            radians = 2 * np.pi * period_fraction
             features.extend([np.sin(radians), np.cos(radians)])
 
         elif embedding_type == "linear":
-            features.append(frac)
+            features.append(period_fraction)
 
         else:
             raise ValueError(

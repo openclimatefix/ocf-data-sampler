@@ -11,14 +11,15 @@ from ocf_data_sampler.common.time_utils import (
     get_posix_timestamp,
     minutes,
 )
+from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import PVNetDataConfig, TimeWindowMixin
 from ocf_data_sampler.datasets.pvnet.types import Location, NumpySample, SourceDict
 from ocf_data_sampler.features.solar import calculate_azimuth_and_elevation
-from ocf_data_sampler.features.time_encodings import encode_datetimes, encode_t0
+from ocf_data_sampler.features.time_encodings import build_t0_embedding, encode_datetimes
 
 
 def build_numpy_sample(
-    dataset_dict: SourceDict,
+    source_data: SourceDict[TArray],
     t0: np.datetime64,
     location: Location,
     config: PVNetDataConfig,
@@ -26,13 +27,13 @@ def build_numpy_sample(
 ) -> NumpySample:
     """Build source arrays, metadata and configured features for one time and location.
 
-    Source arrays must already be preprocessed by `preprocess_dataset_dict`.
+    Source arrays must already be preprocessed by `preprocess_source_data`.
 
     Field shapes, units and optionality are documented in `NumpySample`.
     Arrays may share memory with the prepared input.
 
     Args:
-        dataset_dict: Preprocessed source arrays for one location and forecast time.
+        source_data: Preprocessed source arrays for one location and forecast time.
         t0: Forecast reference time.
         location: location of the sample
         config: PVNetDataConfig object
@@ -46,7 +47,7 @@ def build_numpy_sample(
         "t0": get_posix_timestamp(t0),
     }
 
-    add_source_arrays(sample, dataset_dict)
+    add_source_arrays(sample, source_data)
 
     if include_extra_metadata:
         sample["metadata"] = {
@@ -54,10 +55,10 @@ def build_numpy_sample(
             "location_latitude": location.latitude,
         }
 
-        add_source_metadata(sample["metadata"], dataset_dict)
+        add_source_metadata(sample["metadata"], source_data)
 
     if (t0_config := config.t0_embedding) is not None:
-        sample["t0_embedding"] = encode_t0(t0, t0_config.embeddings)
+        sample["t0_embedding"] = build_t0_embedding(t0, t0_config.embeddings)
 
     if (datetime_config := config.datetime_encoding) is not None:
         datetimes = _build_feature_datetimes(t0, datetime_config)
@@ -89,7 +90,7 @@ def _build_feature_datetimes(
 
 def add_source_arrays(
     sample: NumpySample,
-    datasets_dict: SourceDict,
+    source_data: SourceDict[TArray],
 ) -> None:
     """Add source data arrays to the sample in place.
 
@@ -98,13 +99,13 @@ def add_source_arrays(
 
     Args:
         sample: Sample to populate.
-        datasets_dict: Preprocessed source arrays for one sample.
+        source_data: Preprocessed source arrays for one sample.
     """
     for key in ("generation_input", "generation_target"):
-        if key not in datasets_dict:
+        if key not in source_data:
             continue
 
-        da_gen = datasets_dict[key]
+        da_gen = source_data[key]
 
         # Generation is already normalised by capacity; capacity remains in MW.
         gen_params = list(da_gen["gen_param"].values)
@@ -119,18 +120,18 @@ def add_source_arrays(
             },
         )
 
-    if "sat" in datasets_dict:
-        sample["satellite"] = datasets_dict["sat"].values
+    if "sat" in source_data:
+        sample["satellite"] = source_data["sat"].values
 
-    if "nwp" in datasets_dict:
+    if "nwp" in source_data:
         sample["nwp"] = {
-            provider: da_nwp.values for provider, da_nwp in datasets_dict["nwp"].items()
+            nwp_name: da_nwp.values for nwp_name, da_nwp in source_data["nwp"].items()
         }
 
 
 def add_source_metadata(
     metadata: dict[str, Any],
-    datasets_dict: SourceDict,
+    source_data: SourceDict[TArray],
 ) -> None:
     """Add source diagnostics to an existing metadata dictionary in place.
 
@@ -139,21 +140,21 @@ def add_source_metadata(
 
     Args:
         metadata: Metadata dictionary to populate, retaining unrelated entries.
-        datasets_dict: Source arrays for one sample.
+        source_data: Source arrays for one sample.
     """
-    if "sat" in datasets_dict:
-        da_sat = datasets_dict["sat"]
+    if "sat" in source_data:
+        da_sat = source_data["sat"]
         metadata.update({
             "satellite_time_utc": get_posix_timestamp(da_sat["time_utc"].values),
             "satellite_x_geostationary": da_sat["x_geostationary"].values,
             "satellite_y_geostationary": da_sat["y_geostationary"].values,
         })
 
-    if "nwp" in datasets_dict:
+    if "nwp" in source_data:
         metadata["nwp"] = {}
-        for provider, da_nwp in datasets_dict["nwp"].items():
+        for nwp_name, da_nwp in source_data["nwp"].items():
             step_hours = (da_nwp["step"].values / np.timedelta64(1, "h")).astype(np.float32)
-            metadata["nwp"][provider] = {
+            metadata["nwp"][nwp_name] = {
                 "init_time_utc": get_posix_timestamp(da_nwp["init_time_utc"].values),
                 "step_hours": step_hours,
             }

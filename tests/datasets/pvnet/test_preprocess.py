@@ -6,12 +6,12 @@ import xarray as xr
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import Channel, NWPChannel
 from ocf_data_sampler.datasets.pvnet.preprocess import (
-    apply_dropout_to_datasets,
+    apply_source_dropout,
     build_normalisation_arrays,
-    fill_nans_in_dataset_dicts,
-    normalise_dataset_dicts,
-    preprocess_dataset_dict,
+    normalise_source_data,
+    preprocess_source_data,
     validate_and_fill_nans,
+    validate_and_fill_source_nans,
 )
 
 
@@ -43,7 +43,7 @@ def _assert_dropout_applied(da: xr.DataArray, cutoff_time: np.datetime64):
         (-2.0, [1.0, -2.0, 3.0, -2.0]),
     ],
 )
-def test_fill_nans_in_dataset_dicts(config_filename, fill_value, expected):
+def test_validate_and_fill_source_nans(config_filename, fill_value, expected):
     """Fill generation and NWP inputs only when configured, including an explicit zero."""
 
     configuration = load_yaml_configuration(config_filename)
@@ -57,17 +57,17 @@ def test_fill_nans_in_dataset_dicts(config_filename, fill_value, expected):
     gen = np.array([1.0, np.nan, 3.0, np.nan])
     sat = np.array([1.0, np.nan, 3.0, np.nan])
 
-    datasets_dict = {
+    source_data = {
         "generation_input": xr.DataArray(gen),
         "sat": xr.DataArray(sat),
         "nwp": {"ukv": xr.DataArray(gen.copy())},
     }
 
-    fill_nans_in_dataset_dicts(datasets_dict, config=configuration)
+    validate_and_fill_source_nans(source_data, config=configuration)
 
-    np.testing.assert_array_equal(datasets_dict["generation_input"].values, expected)
-    np.testing.assert_array_equal(datasets_dict["nwp"]["ukv"].values, expected)
-    assert np.array_equal(datasets_dict["sat"].values, np.array([1.0, -1.0, 3.0, -1.0]))
+    np.testing.assert_array_equal(source_data["generation_input"].values, expected)
+    np.testing.assert_array_equal(source_data["nwp"]["ukv"].values, expected)
+    assert np.array_equal(source_data["sat"].values, np.array([1.0, -1.0, 3.0, -1.0]))
 
 
 @pytest.mark.parametrize(
@@ -119,20 +119,20 @@ def test_validate_and_fill_nans_rejects_disallowed_values(values, fill_value, re
         )
 
 
-def test_normalise_dataset_dicts_generation():
+def test_normalise_source_data_generation():
     """Generation is normalised to a capacity factor (generation_mw / capacity_mwp)."""
     capacity_mwp = np.array([[100.0, 0.0], [100.0, 40.0]])
     generation = _generation_da(np.array([[50.0, 0.0], [100.0, 20.0]]), capacity_mwp)
 
-    datasets_dict = {
+    source_data = {
         "generation_input": generation,
         "generation_target": generation.copy(deep=True),
     }
 
-    normalise_dataset_dicts(datasets_dict, {})
+    normalise_source_data(source_data, {})
 
     for key in ("generation_input", "generation_target"):
-        result = datasets_dict[key]
+        result = source_data[key]
 
         # generation_mw is rescaled element-wise by capacity_mwp
         normalised = result.sel(gen_param="generation_mw").values
@@ -147,7 +147,7 @@ def test_normalise_dataset_dicts_generation():
         assert np.array_equal(result.sel(gen_param="capacity_mwp").values, capacity_mwp)
 
 
-def test_apply_dropout_to_datasets(config_filename):
+def test_apply_source_dropout(config_filename):
     config = load_yaml_configuration(config_filename)
     config.nwp = None
 
@@ -169,31 +169,31 @@ def test_apply_dropout_to_datasets(config_filename):
         dims=("time_utc",),
     )
 
-    datasets_dict = {
+    source_data = {
         "generation_input": generation_input,
         "generation_target": generation_target,
         "sat": sat
     }
 
-    apply_dropout_to_datasets(datasets_dict, t0, config)
+    apply_source_dropout(source_data, t0, config)
 
     # Generation dropout with a 30-minute delay should blank everything from t0
     _assert_dropout_applied(
-        datasets_dict["generation_input"], t0 - np.timedelta64(30, "m"),
+        source_data["generation_input"], t0 - np.timedelta64(30, "m"),
     )
 
     # No dropout is applied to generation.target, so it should have no NaNs
-    assert not np.any(np.isnan(datasets_dict["generation_target"]))
+    assert not np.any(np.isnan(source_data["generation_target"]))
 
     # Satellite dropout with a 60-minute delay should blank everything from t0 - 60 minutes
-    _assert_dropout_applied(datasets_dict["sat"], t0 - np.timedelta64(60, "m"))
+    _assert_dropout_applied(source_data["sat"], t0 - np.timedelta64(60, "m"))
 
-    fill_nans_in_dataset_dicts(datasets_dict, config)
-    assert (datasets_dict["generation_input"].sel(time_utc=slice(t0, None)) == -1.0).all()
+    validate_and_fill_source_nans(source_data, config)
+    assert (source_data["generation_input"].sel(time_utc=slice(t0, None)) == -1.0).all()
     assert (
-        datasets_dict["sat"].sel(time_utc=slice(t0 - np.timedelta64(30, "m"), None)) == -2.0
+        source_data["sat"].sel(time_utc=slice(t0 - np.timedelta64(30, "m"), None)) == -2.0
     ).all()
-    xr.testing.assert_equal(datasets_dict["generation_target"], generation_target)
+    xr.testing.assert_equal(source_data["generation_target"], generation_target)
 
 
 def test_normalise_channels(config_filename):
@@ -210,7 +210,7 @@ def test_normalise_channels(config_filename):
     nwp = sat.copy(deep=True)
     datasets = {"sat": sat, "nwp": {"ukv": nwp}}
 
-    normalise_dataset_dicts(datasets, build_normalisation_arrays(config))
+    normalise_source_data(datasets, build_normalisation_arrays(config))
 
     expected = np.array([[-1, 0, 1], [-2, 0, np.nan]])[None, :, None, :]
     for da in (sat, nwp):
@@ -218,7 +218,7 @@ def test_normalise_channels(config_filename):
         np.testing.assert_allclose(da.values, expected)
 
 
-def test_preprocess_dataset_dict_preserves_original_arrays(config_filename):
+def test_preprocess_source_data_preserves_original_arrays(config_filename):
     """Preprocessing updates the supplied dictionary but preserves its original NumPy data."""
     config = load_yaml_configuration(config_filename)
     config.generation.input.dropout_minute_probabilities = {30: 1.0}
@@ -245,7 +245,7 @@ def test_preprocess_dataset_dict_preserves_original_arrays(config_filename):
         coords={"step": times - times[0], "channel": ["a"], "x": [0], "y": [0]},
         dims=("step", "channel", "x", "y"),
     )
-    datasets_dict = {
+    source_data = {
         "generation_input": generation,
         "generation_target": generation.copy(deep=True),
         "sat": sat,
@@ -253,21 +253,21 @@ def test_preprocess_dataset_dict_preserves_original_arrays(config_filename):
     }
     # Keep references to the actual input arrays, since preprocessing replaces .data.
     original_array_references = [
-        datasets_dict["generation_input"].data,
-        datasets_dict["generation_target"].data,
-        datasets_dict["sat"].data,
-        datasets_dict["nwp"]["ukv"].data,
+        source_data["generation_input"].data,
+        source_data["generation_target"].data,
+        source_data["sat"].data,
+        source_data["nwp"]["ukv"].data,
     ]
     # Make copies so we can detect if the original arrays are modified
     original_array_copies = [array.copy() for array in original_array_references]
 
-    preprocess_dataset_dict(datasets_dict, times[-1], config, build_normalisation_arrays(config))
+    preprocess_source_data(source_data, times[-1], config, build_normalisation_arrays(config))
 
     processed_arrays = [
-        datasets_dict["generation_input"].data,
-        datasets_dict["generation_target"].data,
-        datasets_dict["sat"].data,
-        datasets_dict["nwp"]["ukv"].data,
+        source_data["generation_input"].data,
+        source_data["generation_target"].data,
+        source_data["sat"].data,
+        source_data["nwp"]["ukv"].data,
     ]
     for original_reference, original_copy, processed in zip(
         original_array_references, original_array_copies, processed_arrays, strict=True,

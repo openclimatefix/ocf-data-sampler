@@ -11,7 +11,7 @@ from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.datasets.pvnet.dataset import (
     PVNetConcurrentDataset,
     PVNetDataset,
-    get_locations,
+    load_locations,
 )
 from tests.conftest import LOCATION_IDS, SITE_LOCATION_IDS
 
@@ -140,7 +140,7 @@ def test_pvnet_dataset_rejects_oversized_crops(
     config = load_yaml_configuration(pvnet_config_filename)
     source_config = {"satellite": config.satellite, "ukv": config.nwp["ukv"]}[source]
     # Both fixture grids are narrower than 201 pixels.
-    source_config.image_size_pixels_width = 201
+    source_config.image_width_pixels = 201
     config_path = tmp_path / "oversized_crop.yaml"
     save_yaml_configuration(config, config_path)
 
@@ -148,23 +148,23 @@ def test_pvnet_dataset_rejects_oversized_crops(
         dataset_class(config_path)
 
 
-def test_get_locations_exclude_ids(locations_csv_path):
+def test_load_locations_exclude_ids(locations_csv_path):
     excluded_ids = [LOCATION_IDS[0], LOCATION_IDS[5], LOCATION_IDS[-1]]
-    locations = get_locations(locations_csv_path, exclude_ids=excluded_ids)
+    locations = load_locations(locations_csv_path, exclude_ids=excluded_ids)
 
     assert len(locations) == len(LOCATION_IDS) - len(excluded_ids)
     assert not set(excluded_ids) & {loc.id for loc in locations}
 
 
-def test_get_locations_exclude_unknown_id(locations_csv_path):
+def test_load_locations_exclude_unknown_id(locations_csv_path):
     unknown_id = max(LOCATION_IDS) + 1
     with pytest.raises(ValueError, match="not in the locations data"):
-        get_locations(locations_csv_path, exclude_ids=[unknown_id])
+        load_locations(locations_csv_path, exclude_ids=[unknown_id])
 
 
-def test_get_locations_exclude_all_ids(locations_csv_path):
+def test_load_locations_exclude_all_ids(locations_csv_path):
     with pytest.raises(ValueError, match=r"All location IDs .* have been excluded"):
-        get_locations(locations_csv_path, exclude_ids=list(LOCATION_IDS))
+        load_locations(locations_csv_path, exclude_ids=list(LOCATION_IDS))
 
 
 def test_pvnet_dataset_incomplete_generation(pvnet_site_config_filename):
@@ -192,11 +192,13 @@ def test_pvnet_dataset_sites_unbounded_time_periods(pvnet_site_config_filename):
 
 
 def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
-    dataset = PVNetDataset(pvnet_config_filename, use_xarray=True, include_extra_metadata=True)
+    dataset = PVNetDataset(
+        pvnet_config_filename, array_backend="xarray", include_extra_metadata=True,
+    )
     sample = dataset[0]
 
     dataset_nox = PVNetDataset(
-        pvnet_config_filename, use_xarray=False, include_extra_metadata=True,
+        pvnet_config_filename, array_backend="lightarray", include_extra_metadata=True,
     )
     sample_nox = dataset_nox[0]
     _assert_sample_features_float32(sample)
@@ -215,11 +217,11 @@ def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
     check_samples_equal(sample, sample_nox)
 
 
-@pytest.mark.parametrize("use_xarray", [True, False])
-def test_pvnet_concurrent_dataset(pvnet_config_filename, use_xarray):
+@pytest.mark.parametrize("array_backend", ["xarray", "lightarray"])
+def test_pvnet_concurrent_dataset(pvnet_config_filename, array_backend):
     # Create dataset object using limited set of GSPs
     dataset = PVNetConcurrentDataset(
-        pvnet_config_filename, use_xarray=use_xarray, include_extra_metadata=True,
+        pvnet_config_filename, array_backend=array_backend, include_extra_metadata=True,
     )
     num_locations = _expected_num_locations(dataset, LOCATION_IDS)
     assert len(dataset.locations) == num_locations
@@ -240,7 +242,7 @@ def test_pvnet_concurrent_dataset(pvnet_config_filename, use_xarray):
         [loc.longitude for loc in dataset.locations],
     )
     # Check that PVNetConcurrentDataset agrees with PVNetDataset for every location
-    single_sample_dataset = PVNetDataset(pvnet_config_filename, use_xarray=True)
+    single_sample_dataset = PVNetDataset(pvnet_config_filename, array_backend="xarray")
     t0 = dataset.sample_index.t0[0]
     for i in (0, num_locations - 1):
         location_sample = single_sample_dataset.get_sample(t0, dataset.locations[i].id)

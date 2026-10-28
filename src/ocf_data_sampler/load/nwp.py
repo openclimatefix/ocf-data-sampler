@@ -52,7 +52,7 @@ def open_nwp(zarr_path: ZarrSource, provider: str) -> xr.DataArray:
     spec = PROVIDER_REGISTRY[provider]
 
     ds = open_zarr_paths(zarr_path, concat_dim="init_time_utc", validator=spec.validator)
-    ds = _rename(ds, name_mapping={"variable": "channel"})
+    ds = _rename_coords(ds, name_mapping={"variable": "channel"})
 
     expected_coord_dtypes = {
         "init_time_utc": np.datetime64,
@@ -98,7 +98,7 @@ def _assert_steps_uniformly_spaced(steps: NDArray[np.timedelta64], provider: str
         )
 
 
-def _rename(ds: xr.Dataset, name_mapping: Mapping[str, str]) -> xr.Dataset:
+def _rename_coords(ds: xr.Dataset, name_mapping: Mapping[str, str]) -> xr.Dataset:
     """Renames coordinates in the dataset based on the provided mapping.
 
     Args:

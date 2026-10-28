@@ -14,26 +14,26 @@ OSGB36 = 27700
 TCoordinateValue = TypeVar("TCoordinateValue", float, NDArray[np.number[Any]])
 
 # Reuse the transformer to avoid rebuilding it each time `lon_lat_to_osgb` is called
-_lon_lat_to_osgb = pyproj.Transformer.from_crs(crs_from=WGS84, crs_to=OSGB36, always_xy=True)
+_osgb_transformer = pyproj.Transformer.from_crs(crs_from=WGS84, crs_to=OSGB36, always_xy=True)
 
 
 def lon_lat_to_osgb(
-    x: TCoordinateValue,
-    y: TCoordinateValue,
+    longitude: TCoordinateValue,
+    latitude: TCoordinateValue,
 ) -> tuple[TCoordinateValue, TCoordinateValue]:
     """Convert lon-lat coordinates to OSGB.
 
     Args:
-        x: longitude
-        y: latitude
+        longitude: Longitude in decimal degrees, positive east
+        latitude: Latitude in decimal degrees, positive north
 
     Returns:
-        x_osgb, y_osgb
+        OSGB easting and northing in metres.
     """
-    return _lon_lat_to_osgb.transform(xx=x, yy=y)
+    return _osgb_transformer.transform(xx=longitude, yy=latitude)
 
 
-def lon_lat_to_geostationary_area_coords(
+def lon_lat_to_geostationary(
     longitude: TCoordinateValue,
     latitude: TCoordinateValue,
     area_spec: Mapping[str, Any],
@@ -41,8 +41,8 @@ def lon_lat_to_geostationary_area_coords(
     """Convert from lon-lat to geostationary coords.
 
     Args:
-        longitude: longitude
-        latitude: latitude
+        longitude: Longitude in decimal degrees, positive east
+        latitude: Latitude in decimal degrees, positive north
         area_spec: Mapping containing one named geostationary area with a projection entry.
 
     Returns:

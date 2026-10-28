@@ -77,7 +77,7 @@ def _validate_window_slice(
         raise ValueError(f"Top index ({top_idx}) > total_height ({total_height})")
 
 
-def select_spatial_slice_pixels(
+def select_spatial_slice(
     da: TArray,
     *,
     x: float,
@@ -87,16 +87,16 @@ def select_spatial_slice_pixels(
     width_pixels: int,
     height_pixels: int,
 ) -> TArray:
-    """Select spatial slice based off pixels from location point of interest.
+    """Select a spatial window of the requested pixel size around the given centre.
 
     Args:
         da: DataArray-like object to slice from
-        x: X coordinate of the centre in the source's coordinate system
-        y: Y coordinate of the centre in the source's coordinate system
+        x: X coordinate of the window centre in the source's coordinate system
+        y: Y coordinate of the window centre in the source's coordinate system
         x_dim: Name of the source's X coordinate dimension
         y_dim: Name of the source's Y coordinate dimension
-        height_pixels: Height of the slice in pixels
-        width_pixels: Width of the slice in pixels
+        height_pixels: Height of the window in pixels.
+        width_pixels: Width of the window in pixels.
 
     Returns:
         The selected DataArray-like slice.
@@ -125,7 +125,7 @@ def select_spatial_slice_pixels(
     return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
 
 
-def select_spatial_slice_pixels_multiple(
+def select_envelope_of_spatial_windows(
     da: TArray,
     *,
     centres: list[tuple[float, float]],
@@ -134,15 +134,15 @@ def select_spatial_slice_pixels_multiple(
     width_pixels: int,
     height_pixels: int,
 ) -> TArray:
-    """Select spatial slice which covers all given locations.
+    """Select a rectangular region enclosing the spatial windows around all given centres.
 
     Args:
         da: DataArray-like object to slice from
-        centres: Paired (x, y) centres in the source's coordinate system
+        centres: Paired (x, y) window centres in the source's coordinate system
         x_dim: Name of the source's X coordinate dimension
         y_dim: Name of the source's Y coordinate dimension
-        height_pixels: Height of the slice in pixels
-        width_pixels: Width of the slice in pixels
+        height_pixels: Height of each window in pixels.
+        width_pixels: Width of each window in pixels.
 
     Returns:
         The selected DataArray-like slice.
@@ -182,8 +182,8 @@ def select_spatial_slice_pixels_multiple(
         total_size=(data_width_pixels, data_height_pixels),
     )
 
-    # We add a conditional buffer so that this crop is compatible with select_spatial_slice_pixels
-    # for all of the locations. select_spatial_slice_pixels checks that the location centres are
+    # We add a conditional buffer so that this crop is compatible with select_spatial_slice
+    # for all of the locations. select_spatial_slice checks that the location centres are
     # strictly within the spatial bounds of the data. If using a window size of 1, the locations at
     # the edge of the crop calculated above could fail the check x_min < loc.x < x_max. There is a
     # similar edge case for window size of 2 pixels if a location at the edge of the crop sits

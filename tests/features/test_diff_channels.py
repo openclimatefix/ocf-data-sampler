@@ -2,11 +2,11 @@ import pytest
 import xarray as xr
 
 from ocf_data_sampler.common.lightarray import LightDataArray
-from ocf_data_sampler.features.diff_channels import diff_channels
+from ocf_data_sampler.features.diff_channels import diff_channels_along_step
 
 
 @pytest.mark.parametrize("array_factory", [xr.DataArray, LightDataArray.from_xarray])
-def test_diff_channels(ds_nwp_ukv_time_sliced, array_factory):
+def test_diff_channels_along_step(ds_nwp_ukv_time_sliced, array_factory):
 
     # Use explicit channel names for clearer testing
     channels = ["dswrf", "t"]
@@ -14,7 +14,7 @@ def test_diff_channels(ds_nwp_ukv_time_sliced, array_factory):
 
     da = array_factory(da_input.copy(deep=True))
 
-    da_diffed = diff_channels(da, accum_channels=["dswrf"])
+    da_diffed = diff_channels_along_step(da, channels=["dswrf"])
 
     # Convert to xarray for easier testing
     if isinstance(da_diffed, LightDataArray):
@@ -38,12 +38,12 @@ def test_diff_channels(ds_nwp_ukv_time_sliced, array_factory):
     assert (da_diffed.sel(channel="diff_dswrf").values == expected_diffed.values).all()
 
 
-def test_diff_channels_missing_channel(ds_nwp_ukv_time_sliced):
+def test_diff_channels_along_step_missing_channel(ds_nwp_ukv_time_sliced):
     da = ds_nwp_ukv_time_sliced.assign_coords(channel=["dswrf", "t"])
 
     with pytest.raises(
         ValueError,
-        match=r"accum_channels=\['dswrf', 'missing'\] not all available in "
+        match=r"channels=\['dswrf', 'missing'\] not all available in "
         r"all_channels=\['dswrf', 't'\]",
     ):
-        diff_channels(da, accum_channels=["dswrf", "missing"])
+        diff_channels_along_step(da, channels=["dswrf", "missing"])

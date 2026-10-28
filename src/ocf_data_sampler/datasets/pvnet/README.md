@@ -62,8 +62,8 @@ requested location are excluded from the index.
 ## Sample fields
 
 See `NumpySample` and `TensorBatch` in [types.py](types.py) for fields, shapes and units.
-NWP arrays are accessed as `sample["nwp"][provider]`. Optional diagnostics are grouped
-under `sample["metadata"]`, including `sample["metadata"]["nwp"][provider]` for forecast
+NWP arrays are accessed as `sample["nwp"][nwp_name]`. Optional diagnostics are grouped
+under `sample["metadata"]`, including `sample["metadata"]["nwp"][nwp_name]` for forecast
 metadata. Generation capacities and timestamps remain alongside the generation arrays.
 
 ## Time conventions

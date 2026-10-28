@@ -7,11 +7,11 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-TArray = TypeVar("TArray")
+TSampleArray = TypeVar("TSampleArray")
 TSource = TypeVar("TSource")
 
 
-class BaseSample(TypedDict, Generic[TArray], total=False):
+class BaseSample(TypedDict, Generic[TSampleArray], total=False):
     """Optional sources, features and metadata shared by samples and batches.
 
     Shapes describe one sample; collation adds a leading batch dimension.
@@ -22,40 +22,40 @@ class BaseSample(TypedDict, Generic[TArray], total=False):
         - satellite_time_utc: (time,), float64 POSIX seconds.
         - satellite_x_geostationary, satellite_y_geostationary: (x,) and (y,)
           coordinate vectors, retaining source units and dtypes.
-        - nwp[provider]["init_time_utc"]: scalar, float64 POSIX seconds.
-        - nwp[provider]["step_hours"]: (step,), float32 forecast lead times in hours.
+        - nwp[nwp_name]["init_time_utc"]: scalar, float64 POSIX seconds.
+        - nwp[nwp_name]["step_hours"]: (step,), float32 forecast lead times in hours.
     """
 
     # Generation: (time,), normalised by capacity.
-    generation_input: TArray
-    generation_target: TArray
+    generation_input: TSampleArray
+    generation_target: TSampleArray
 
     # Capacity: (time,), MW.
-    generation_input_capacity_mwp: TArray
-    generation_target_capacity_mwp: TArray
+    generation_input_capacity_mwp: TSampleArray
+    generation_target_capacity_mwp: TSampleArray
 
     # Timestamps: (time,), float64 POSIX seconds.
-    generation_input_time_utc: TArray
-    generation_target_time_utc: TArray
+    generation_input_time_utc: TSampleArray
+    generation_target_time_utc: TSampleArray
 
     # (time, channel, x, y).
-    satellite: TArray
+    satellite: TSampleArray
 
-    # Provider name -> (valid_time, channel, x, y).
-    nwp: dict[str, TArray]
+    # Configured source name -> (valid_time, channel, x, y).
+    nwp: dict[str, TSampleArray]
 
     # (features,), two features per cyclic embedding and one per linear embedding.
-    t0_embedding: TArray
+    t0_embedding: TSampleArray
 
     # (time,), sine/cosine encodings.
-    date_sin: TArray
-    date_cos: TArray
-    time_sin: TArray
-    time_cos: TArray
+    date_sin: TSampleArray
+    date_cos: TSampleArray
+    time_sin: TSampleArray
+    time_cos: TSampleArray
 
     # (time,), solar angles scaled to [0, 1].
-    solar_azimuth: TArray
-    solar_elevation: TArray
+    solar_azimuth: TSampleArray
+    solar_elevation: TSampleArray
 
     metadata: dict[str, Any]
 

@@ -9,10 +9,10 @@ from ocf_data_sampler.common.time_utils import (
     get_day_fraction,
     get_day_of_year,
     get_hour,
-    get_is_leap_year,
     get_minute,
     get_posix_timestamp,
     get_year,
+    is_leap_year,
 )
 
 
@@ -59,9 +59,9 @@ def test_get_day_fraction(random_datetimes):
     assert np.allclose(get_day_fraction(random_datetimes), expected)
 
 
-def test_get_is_leap_year(random_datetimes):
+def test_is_leap_year(random_datetimes):
     assert np.array_equal(
-        get_is_leap_year(random_datetimes),
+        is_leap_year(random_datetimes),
         pd.to_datetime(random_datetimes).is_leap_year,
     )
 

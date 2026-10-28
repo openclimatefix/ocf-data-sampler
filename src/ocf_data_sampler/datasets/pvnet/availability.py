@@ -4,6 +4,7 @@ from itertools import pairwise
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from numpy.typing import NDArray
 
 from ocf_data_sampler.common.time_utils import minutes
@@ -44,13 +45,13 @@ def validate_requested_periods(requested_periods: list[tuple[str | None, str | N
 
 
 def _find_non_generation_t0_periods(
-    datasets_dict: SourceDict,
+    source_data: SourceDict[xr.DataArray],
     config: PVNetDataConfig,
 ) -> pd.DataFrame:
     """Find overlapping valid t0 periods for NWP and satellite sources.
 
     Args:
-        datasets_dict: A dictionary of input datasets
+        source_data: Input source arrays.
         config: PVNet data configuration
 
     Returns:
@@ -58,8 +59,8 @@ def _find_non_generation_t0_periods(
     """
     source_periods: list[pd.DataFrame] = []
     if config.nwp is not None:
-        for nwp_key, nwp_config in config.nwp.items():
-            da = datasets_dict["nwp"][nwp_key]
+        for nwp_name, nwp_config in config.nwp.items():
+            da = source_data["nwp"][nwp_name]
 
             first_forecast_step = da["step"].values[0]
             last_forecast_step = da["step"].values[-1]
@@ -94,7 +95,7 @@ def _find_non_generation_t0_periods(
 
             if len(nwp_periods) == 0:
                 raise ValueError(
-                    f"No valid t0 periods found for NWP source {nwp_key} with the requested "
+                    f"No valid t0 periods found for NWP source {nwp_name} with the requested "
                     "configuration."
                 )
 
@@ -102,7 +103,7 @@ def _find_non_generation_t0_periods(
 
     if config.satellite is not None:
         sat_periods = find_contiguous_t0_periods(
-            datasets_dict["sat"]["time_utc"].values,
+            source_data["sat"]["time_utc"].values,
             time_resolution=minutes(config.satellite.time_resolution_minutes),
             interval_start=minutes(config.satellite.interval_start_minutes),
             interval_end=minutes(config.satellite.interval_end_minutes),
@@ -210,7 +211,7 @@ def _build_t0_times_from_requested_periods(
 
 
 def build_sample_index(
-    datasets_dict: SourceDict,
+    source_data: SourceDict[xr.DataArray],
     location_ids: list[int],
     config: PVNetDataConfig,
     requested_periods: list[tuple[str | None, str | None]] | None,
@@ -218,7 +219,7 @@ def build_sample_index(
     """Construct a SampleIndex containing all valid t0 and location_id pairs.
 
     Args:
-        datasets_dict: Validated input datasets matching the configured sources.
+        source_data: Validated source arrays matching the configured sources.
         location_ids: Non-empty list of validated sampling location IDs, present in generation
             data when generation is configured.
         config: PVNet data configuration
@@ -240,7 +241,7 @@ def build_sample_index(
 
     # Shared source periods apply to every location, so calculate them once.
     non_generation_sources = {
-        key: source for key, source in datasets_dict.items() if key != "generation"
+        key: source for key, source in source_data.items() if key != "generation"
     }
     non_generation_periods = (
         _find_non_generation_t0_periods(non_generation_sources, config)
@@ -264,9 +265,8 @@ def build_sample_index(
     location_id_arrays: list[NDArray[np.int64]] = []
     unavailable_location_ids: list[int] = []
     for location_id in location_ids:
-        da_gen_loc = (
-            datasets_dict["generation"].sel(location_id=location_id).dropna(dim="time_utc")
-        )
+        da_gen_loc = source_data["generation"].sel(location_id=location_id).dropna(dim="time_utc")
+
         generation_periods = _find_generation_t0_periods(
             da_gen_loc["time_utc"].values, config.generation,
         )
@@ -292,15 +292,15 @@ def build_sample_index(
 
 
 def build_concurrent_sample_index(
-    datasets_dict: SourceDict,
+    source_data: SourceDict[xr.DataArray],
     config: PVNetDataConfig,
     requested_periods: list[tuple[str | None, str | None]] | None,
 ) -> ConcurrentSampleIndex:
     """Construct an index of t0 times available at every selected location.
 
     Args:
-        datasets_dict: Validated input datasets matching the configured sources, with
-            generation restricted to a non-empty set of validated requested locations.
+        source_data: Validated source arrays matching the configured sources, with generation
+            restricted to a non-empty set of validated requested locations.
         config: PVNet data configuration
         requested_periods: Validated periods with inclusive starts and exclusive ends.
             Bounds may be None only when data sources are available.
@@ -316,7 +316,7 @@ def build_concurrent_sample_index(
 
     # Shared source periods apply to every location, so calculate them once.
     non_generation_sources = {
-        key: source for key, source in datasets_dict.items() if key != "generation"
+        key: source for key, source in source_data.items() if key != "generation"
     }
     non_generation_periods = (
         _find_non_generation_t0_periods(non_generation_sources, config)
@@ -333,7 +333,7 @@ def build_concurrent_sample_index(
         return ConcurrentSampleIndex(t0=t0_times)
 
     # All locations must have non-NaN generation data for each t0
-    da_gen = datasets_dict["generation"].dropna(dim="time_utc", how="any")
+    da_gen = source_data["generation"].dropna(dim="time_utc", how="any")
 
     generation_periods = _find_generation_t0_periods(da_gen["time_utc"].values, config.generation)
     if non_generation_periods is not None:

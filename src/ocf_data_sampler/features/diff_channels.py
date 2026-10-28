@@ -5,7 +5,7 @@ import numpy as np
 from ocf_data_sampler.common.types import TArray
 
 
-def diff_channels(da: TArray, accum_channels: list[str]) -> TArray:
+def diff_channels_along_step(da: TArray, channels: list[str]) -> TArray:
     """Difference selected channels along step without modifying the input.
 
     The returned array is sliced to one step shorter to allow for differencing the
@@ -14,30 +14,30 @@ def diff_channels(da: TArray, accum_channels: list[str]) -> TArray:
 
     Args:
         da: The DataArray to slice from
-        accum_channels: Channels which are accumulated and need to be differenced
+        channels: Names of the channels to difference along the step axis.
     """
     if da.dims[:2] != ("step", "channel"):
         raise ValueError("This function assumes the first two dimensions are step then channel")
 
-    if len(accum_channels)==0:
-        raise ValueError("At least one accumulated channel must be requested")
+    if len(channels)==0:
+        raise ValueError("At least one channel must be requested")
 
     all_channels = da["channel"].values.tolist()
 
-    if set(accum_channels) - set(all_channels):
-        raise ValueError(f"{accum_channels=} not all available in {all_channels=}")
+    if set(channels) - set(all_channels):
+        raise ValueError(f"{channels=} not all available in {all_channels=}")
 
-    accum_channel_inds = [all_channels.index(c) for c in accum_channels]
+    channel_indices = [all_channels.index(c) for c in channels]
 
     da_out = da.isel(step=slice(0, -1))
     all_values = da.values
 
     out_values = all_values[:-1].copy()
-    out_values[:, accum_channel_inds] = np.diff(all_values[:, accum_channel_inds], axis=0)
+    out_values[:, channel_indices] = np.diff(all_values[:, channel_indices], axis=0)
     da_out.data = out_values
 
     new_channels = np.array([
-        f"diff_{channel}" if channel in accum_channels else channel
+        f"diff_{channel}" if channel in channels else channel
         for channel in all_channels
     ])
     da_out.coords["channel"] = (("channel",), new_channels)

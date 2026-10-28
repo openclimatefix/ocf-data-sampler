@@ -76,13 +76,13 @@ def get_day_fraction(
     return cast("np.float64 | NDArray[np.float64]", day_fraction)
 
 
-def get_is_leap_year(
+def is_leap_year(
     datetimes: np.datetime64 | NDArray[np.datetime64],
 ) ->  np.bool_ | NDArray[np.bool_]:
-    """Get whether the datetime is in a leap year.
+    """Return whether each datetime falls in a leap year.
 
     Args:
-        datetimes: the datetimes to get leap year for
+        datetimes: datetime or array of datetimes to check.
     """
     years = get_year(datetimes)
     result = (years % 4 == 0) & ((years % 100 != 0) | (years % 400 == 0))
@@ -105,7 +105,7 @@ def date_range(
     return np.arange(start, end + np.timedelta64(1, "ns"), freq)
 
 
-def _floor_ceil_check_freq(freq: np.timedelta64) -> None:
+def _validate_rounding_frequency(freq: np.timedelta64) -> None:
     """Check that the frequency is a factor or multiple of 1 hour and a factor of 1 day.
 
     This is required for the floor and ceil functions to work correctly.
@@ -130,7 +130,7 @@ def datetime_ceil(
         datetimes: the datetimes to ceil
         freq: the frequency to ceil to
     """
-    _floor_ceil_check_freq(freq)
+    _validate_rounding_frequency(freq)
     epoch_datetime = np.datetime64("1970-01-01", "ns")
     periods_since_epoch = np.ceil((datetimes - epoch_datetime) / freq)
     result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
@@ -147,7 +147,7 @@ def datetime_floor(
         datetimes: the datetimes to floor
         freq: the frequency to floor to
     """
-    _floor_ceil_check_freq(freq)
+    _validate_rounding_frequency(freq)
     epoch_datetime = np.datetime64("1970-01-01", "ns")
     periods_since_epoch = np.floor((datetimes - epoch_datetime) / freq)
     result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
