@@ -8,7 +8,6 @@ import xarray as xr
 from numpy.typing import NDArray
 
 from ocf_data_sampler.common.time_utils import minutes
-from ocf_data_sampler.common.types import TArray
 from ocf_data_sampler.config.model import Generation, PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.sample_index import ConcurrentSampleIndex, SampleIndex
 from ocf_data_sampler.datasets.pvnet.types import SourceDict
@@ -46,7 +45,7 @@ def validate_requested_periods(requested_periods: list[tuple[str | None, str | N
 
 
 def _find_non_generation_t0_periods(
-    source_data: SourceDict[TArray],
+    source_data: SourceDict[xr.DataArray],
     config: PVNetDataConfig,
 ) -> pd.DataFrame:
     """Find overlapping valid t0 periods for NWP and satellite sources.
