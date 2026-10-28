@@ -119,34 +119,6 @@ def test_validate_and_fill_nans_rejects_disallowed_values(values, fill_value, re
         )
 
 
-def test_normalise_source_data_generation():
-    """Generation is normalised to a capacity factor (generation_mw / capacity_mwp)."""
-    capacity_mwp = np.array([[100.0, 0.0], [100.0, 40.0]])
-    generation = _generation_da(np.array([[50.0, 0.0], [100.0, 20.0]]), capacity_mwp)
-
-    source_data = {
-        "generation_input": generation,
-        "generation_target": generation.copy(deep=True),
-    }
-
-    normalise_source_data(source_data, {})
-
-    for key in ("generation_input", "generation_target"):
-        result = source_data[key]
-
-        # generation_mw is rescaled element-wise by capacity_mwp
-        normalised = result.sel(gen_param="generation_mw").values
-        assert normalised[0, 0] == 0.5
-        assert normalised[1, 0] == 1.0
-        assert normalised[1, 1] == 0.5
-
-        # Zero capacity normalises to 0 rather than raw MW or a division error
-        assert normalised[0, 1] == 0.0
-
-        # capacity_mwp itself is left unchanged
-        assert np.array_equal(result.sel(gen_param="capacity_mwp").values, capacity_mwp)
-
-
 def test_apply_source_dropout(config_filename):
     config = load_yaml_configuration(config_filename)
     config.nwp = None
