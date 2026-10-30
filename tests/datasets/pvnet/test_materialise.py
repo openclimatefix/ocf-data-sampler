@@ -10,7 +10,7 @@ from ocf_data_sampler.common.xr_tensorstore import open_zarr_paths
 from ocf_data_sampler.datasets.pvnet.materialise import block_until_loaded, materialise_data
 
 
-@pytest.mark.parametrize("source_key", ["array1", "generation"])
+@pytest.mark.parametrize("source_key", ["sat", "generation"])
 def test_block_until_loaded(source_key):
     """Test load function with dask array"""
     da_dask = xr.DataArray(dask.array.random.random((5, 5)))
@@ -18,14 +18,14 @@ def test_block_until_loaded(source_key):
     # Create a nested dictionary with dask arrays
     source_dict = {
         source_key: da_dask,
-        "nested": {"array2": da_dask.copy()},
+        "nwp": {"ukv": da_dask.copy()},
     }
 
     block_until_loaded(source_dict)
 
     # Assert that the result is no longer lazy
     assert isinstance(source_dict[source_key].data, np.ndarray)
-    assert isinstance(source_dict["nested"]["array2"].data, np.ndarray)
+    assert isinstance(source_dict["nwp"]["ukv"].data, np.ndarray)
 
 
 @pytest.mark.parametrize("use_lightarray", [False, True])
@@ -36,7 +36,7 @@ def test_materialise_data_skips_loaded_arrays(monkeypatch, use_lightarray):
 
     read = Mock(side_effect=AssertionError("Already-loaded data must not be read"))
     load = Mock(side_effect=AssertionError("Already-loaded data must not be loaded"))
-    monkeypatch.setattr("ocf_data_sampler.datasets.pvnet.materialise.xtr_read", read)
+    monkeypatch.setattr("ocf_data_sampler.datasets.pvnet.materialise.read_tensorstore", read)
     monkeypatch.setattr(LightDataArray, "read", read)
     monkeypatch.setattr(type(da), "load", load)
 
@@ -66,17 +66,17 @@ def test_materialise_data(tmp_path, use_lightarray, dtype):
 
     # Create a nested dictionary with tensorstore arrays
     source_dict = {
-        "array1": da_ts,
-        "nested": {"array2": nested_da_ts},
+        "sat": da_ts,
+        "nwp": {"ukv": nested_da_ts},
     }
 
     materialise_data(source_dict)
 
     # Assert that the result is no longer lazy
-    assert isinstance(source_dict["array1"].data, np.ndarray)
-    assert isinstance(source_dict["nested"]["array2"].data, np.ndarray)
+    assert isinstance(source_dict["sat"].data, np.ndarray)
+    assert isinstance(source_dict["nwp"]["ukv"].data, np.ndarray)
 
-    for da in (source_dict["array1"], source_dict["nested"]["array2"]):
+    for da in (source_dict["sat"], source_dict["nwp"]["ukv"]):
         assert da.data.dtype == np.float32
         np.testing.assert_array_equal(da.values, values.astype(np.float32))
         assert da["x"].values.dtype == np.float64

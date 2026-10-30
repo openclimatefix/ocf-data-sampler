@@ -80,7 +80,6 @@ allowed-unresolved-imports = ["tensorstore.**", "xarray_tensorstore.**"]
 [[tool.ty.overrides]]
 include = [
     "src/ocf_data_sampler/datasets/pvnet/dataset.py",
-    "src/ocf_data_sampler/datasets/pvnet/materialise.py",
 ]
 
 [tool.ty.overrides.rules]
