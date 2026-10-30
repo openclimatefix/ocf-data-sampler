@@ -12,14 +12,14 @@ from ocf_data_sampler.common.time_utils import (
     get_posix_timestamp,
     minutes,
 )
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 from ocf_data_sampler.config.model import PVNetDataConfig, TimeWindowMixin
 from ocf_data_sampler.datasets.pvnet.types import Location, NumpySample, SourceDict
 from ocf_data_sampler.transforms.solar import calculate_azimuth_and_elevation
 from ocf_data_sampler.transforms.time_encodings import build_t0_embedding, encode_datetimes
 
 
-def build_numpy_sample(
+def build_numpy_sample[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     t0: np.datetime64,
     location: Location,
@@ -63,14 +63,13 @@ def build_numpy_sample(
 
     if (datetime_config := config.datetime_encoding) is not None:
         datetimes = _build_feature_datetimes(t0, datetime_config)
-        sample.update(encode_datetimes(datetimes=datetimes))
+        datetime_features = encode_datetimes(datetimes=datetimes)
+        for key in ("date_sin", "date_cos", "time_sin", "time_cos"):
+            sample[key] = datetime_features[key]
 
     if (solar_config := config.solar_position) is not None:
         datetimes = _build_feature_datetimes(t0, solar_config)
-
-        sample.update(
-            _build_solar_features(datetimes, lon=location.longitude, lat=location.latitude)
-        )
+        _add_solar_features(sample, datetimes, lon=location.longitude, lat=location.latitude)
 
     return sample
 
@@ -89,7 +88,7 @@ def _build_feature_datetimes(
     )
 
 
-def add_source_arrays(
+def add_source_arrays[TArray: DataArrayLike](
     sample: NumpySample,
     source_data: SourceDict[TArray],
 ) -> None:
@@ -130,7 +129,7 @@ def add_source_arrays(
         }
 
 
-def add_source_metadata(
+def add_source_metadata[TArray: DataArrayLike](
     metadata: dict[str, Any],
     source_data: SourceDict[TArray],
 ) -> None:
@@ -161,14 +160,16 @@ def add_source_metadata(
             }
 
 
-def _build_solar_features(
+def _add_solar_features(
+    sample: NumpySample,
     datetimes: NDArray[np.datetime64],
     lon: float,
     lat: float,
-) -> dict[str, NDArray[np.float32]]:
-    """Creates NumpySample with standardized solar coordinates.
+) -> None:
+    """Add scaled float32 solar coordinates to the sample in-place.
 
     Args:
+        sample: Sample to populate.
         datetimes: Datetimes for which to calculate the solar coordinates.
         lon: Longitude in decimal degrees. Positive east of prime meridian, negative to west.
         lat: Latitude in decimal degrees. Positive north of equator, negative to south.
@@ -179,7 +180,5 @@ def _build_solar_features(
     azimuth = azimuth / 360
     elevation = elevation / 180 + 0.5
 
-    return {
-        "solar_azimuth": azimuth.astype(np.float32),
-        "solar_elevation": elevation.astype(np.float32),
-    }
+    sample["solar_azimuth"] = azimuth.astype(np.float32)
+    sample["solar_elevation"] = elevation.astype(np.float32)
