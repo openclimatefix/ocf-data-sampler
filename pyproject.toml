@@ -79,7 +79,13 @@ allowed-unresolved-imports = ["tensorstore.**", "xarray_tensorstore.**"]
 # Ratchet: modules not yet conformant. Delete entries as they're fixed.
 [[tool.ty.overrides]]
 include = [
-    "src/ocf_data_sampler/datasets/**",
+    "src/ocf_data_sampler/datasets/pvnet/availability.py",
+    "src/ocf_data_sampler/datasets/pvnet/dataset.py",
+    "src/ocf_data_sampler/datasets/pvnet/loading.py",
+    "src/ocf_data_sampler/datasets/pvnet/materialise.py",
+    "src/ocf_data_sampler/datasets/pvnet/preprocess.py",
+    "src/ocf_data_sampler/datasets/pvnet/sample.py",
+    "src/ocf_data_sampler/datasets/pvnet/slicing.py",
 ]
 
 [tool.ty.overrides.rules]
