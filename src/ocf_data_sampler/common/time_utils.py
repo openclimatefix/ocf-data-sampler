@@ -184,6 +184,14 @@ def datetime_floor(
     return result
 
 
+@overload
+def get_posix_timestamp(datetimes: np.datetime64) -> np.float64: ...
+
+
+@overload
+def get_posix_timestamp(datetimes: NDArray[np.datetime64]) -> NDArray[np.float64]: ...
+
+
 def get_posix_timestamp(
     datetimes: np.datetime64 | NDArray[np.datetime64],
 ) -> np.float64 | NDArray[np.float64]:
