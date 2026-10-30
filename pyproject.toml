@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 name = "ocf-data-sampler"
 dynamic = ["version"] # Set automtically using git: https://setuptools-git-versioning.readthedocs.io/en/stable/
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.12,<3.14"
 license = { file = "LICENSE" }
 authors = [
     { name = "Open Climate Fix team", email = "info@openclimatefix.org" },
@@ -81,9 +81,7 @@ allowed-unresolved-imports = ["tensorstore.**", "xarray_tensorstore.**"]
 include = [
     "src/ocf_data_sampler/datasets/pvnet/dataset.py",
     "src/ocf_data_sampler/datasets/pvnet/materialise.py",
-    "src/ocf_data_sampler/datasets/pvnet/preprocess.py",
     "src/ocf_data_sampler/datasets/pvnet/sample.py",
-    "src/ocf_data_sampler/datasets/pvnet/slicing.py",
 ]
 
 [tool.ty.overrides.rules]

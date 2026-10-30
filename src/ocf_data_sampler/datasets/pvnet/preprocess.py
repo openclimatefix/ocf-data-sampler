@@ -5,7 +5,7 @@ from collections.abc import Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 from ocf_data_sampler.config.model import Channel, PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import (
     NormalisationArrays,
@@ -47,7 +47,7 @@ def build_normalisation_arrays(config: PVNetDataConfig) -> SourceDict[Normalisat
     return normalisation_arrays
 
 
-def normalise_source_data(
+def normalise_source_data[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     normalisation_arrays: SourceDict[NormalisationArrays],
 ) -> None:
@@ -79,7 +79,10 @@ def normalise_source_data(
             normalise_generation_by_capacity(source_data[key])
 
 
-def diff_accumulated_nwp_channels(source_data: SourceDict[TArray], config: PVNetDataConfig) -> None:
+def diff_accumulated_nwp_channels[TArray: DataArrayLike](
+    source_data: SourceDict[TArray],
+    config: PVNetDataConfig,
+) -> None:
     """Difference accumulated NWP channels, updating the input dictionary in-place.
 
     Args:
@@ -95,7 +98,7 @@ def diff_accumulated_nwp_channels(source_data: SourceDict[TArray], config: PVNet
                 source_data["nwp"][nwp_name] = diff_channels_along_step(da_nwp, accum_channels)
 
 
-def apply_source_dropout(
+def apply_source_dropout[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     t0: np.datetime64,
     config: PVNetDataConfig,
@@ -133,7 +136,10 @@ def apply_source_dropout(
     return
 
 
-def validate_and_fill_source_nans(source_data: SourceDict[TArray], config: PVNetDataConfig) -> None:
+def validate_and_fill_source_nans[TArray: DataArrayLike](
+    source_data: SourceDict[TArray],
+    config: PVNetDataConfig,
+) -> None:
     """Validate source values and fill NaNs according to configuration.
 
     Args:
@@ -174,7 +180,7 @@ def validate_and_fill_source_nans(source_data: SourceDict[TArray], config: PVNet
             )
 
 
-def preprocess_source_data(
+def preprocess_source_data[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     t0: np.datetime64,
     config: PVNetDataConfig,
