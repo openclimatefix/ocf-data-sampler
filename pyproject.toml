@@ -81,9 +81,6 @@ allowed-unresolved-imports = ["tensorstore.**", "xarray_tensorstore.**"]
 include = [
     "src/ocf_data_sampler/datasets/**",
     "src/ocf_data_sampler/load/**",
-    "src/ocf_data_sampler/config/**",
-    "src/ocf_data_sampler/select/**",
-    "src/ocf_data_sampler/transforms/**",
 ]
 
 [tool.ty.overrides.rules]
