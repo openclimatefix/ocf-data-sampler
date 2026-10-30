@@ -101,7 +101,7 @@ class AbstractPVNetDataset[
         source_data = open_sources(config, location_ids=location_ids)
 
         self.sample_index: TIndex = self._build_sample_index(
-            source_data, location_ids, config, time_periods,
+            source_data, location_ids, config, time_periods
         )
         add_source_coordinates(self.locations, source_data)
         source_data = crop_sources_to_locations(source_data, self.locations, config)
@@ -118,7 +118,6 @@ class AbstractPVNetDataset[
             raise ValueError(
                 f"Unsupported array_backend {array_backend!r}; expected 'xarray' or 'lightarray'"
             )
-
 
     def __len__(self) -> int:
         """Return the number of samples in the dataset index."""
@@ -173,7 +172,7 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
         materialise_data(sample_data)
         preprocess_source_data(sample_data, t0, self.config, self.normalisation_arrays)
         return build_numpy_sample(
-            sample_data, t0, location, self.config, self.include_extra_metadata,
+            sample_data, t0, location, self.config, self.include_extra_metadata
         )
 
     @override
@@ -240,7 +239,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
         for location in self.locations:
             sample_data = slice_sources_by_space(time_sliced_data, location, self.config)
             numpy_sample = build_numpy_sample(
-                sample_data, t0, location, self.config, self.include_extra_metadata,
+                sample_data, t0, location, self.config, self.include_extra_metadata
             )
             samples.append(numpy_sample)
 

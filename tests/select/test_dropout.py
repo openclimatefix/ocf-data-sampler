@@ -35,7 +35,8 @@ def test_apply_dropout(da_sample, delay_minutes):
 
     # Keep the cutoff itself; mask every later observation, including any beyond t0.
     xr.testing.assert_equal(
-        da_sample.sel(time_utc=slice(None, cutoff)), original.sel(time_utc=slice(None, cutoff)),
+        da_sample.sel(time_utc=slice(None, cutoff)),
+        original.sel(time_utc=slice(None, cutoff)),
     )
     assert da_sample.sel(time_utc=slice(cutoff + minutes(5), None)).isnull().all()
     assert da_sample.dtype == original.dtype

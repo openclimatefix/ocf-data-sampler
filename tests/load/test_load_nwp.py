@@ -35,6 +35,7 @@ def test_load_cloudcasting(nwp_cloudcasting_zarr_path):
     assert da.shape == (2, 12, 3, 100, 100)
     assert len(np.unique(da.coords["channel"])) == da.shape[2]
 
+
 def test_load_ukv_new_coords(tmp_path):
     """Test UKV loader handles data that already has new coordinate names."""
     zarr_path = tmp_path / "new_ukv_coords.zarr"

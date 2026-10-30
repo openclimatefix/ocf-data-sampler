@@ -110,7 +110,7 @@ def test_dropout_requires_fill_value():
 @pytest.mark.parametrize("window_path", ["satellite", "generation.input"])
 @pytest.mark.parametrize("delay_minutes", [30, 60])
 def test_dropout_rejects_cutoffs_at_or_after_interval_end(
-    config_filename, window_path, delay_minutes,
+    config_filename, window_path, delay_minutes
 ):
     config = load_yaml_configuration(config_filename)
     window = attrgetter(window_path)(config)

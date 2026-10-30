@@ -17,9 +17,7 @@ def _is_numpy_backed(da: xr.DataArray | LightDataArray) -> bool:
     return isinstance(data, np.ndarray)
 
 
-def _iter_source_arrays[TArray: DataArrayLike](
-    source_data: SourceDict[TArray],
-) -> Iterator[TArray]:
+def _iter_source_arrays[TArray: DataArrayLike](source_data: SourceDict[TArray]) -> Iterator[TArray]:
     """Iterate over source arrays, including named NWP sources."""
     for key in NON_NWP_SOURCE_KEYS:
         if key in source_data:
@@ -48,9 +46,7 @@ def block_until_loaded[TArray: xr.DataArray | LightDataArray](
             v.load()
 
 
-def convert_to_float32[TArray: DataArrayLike](
-    source_data: SourceDict[TArray],
-) -> None:
+def convert_to_float32[TArray: DataArrayLike](source_data: SourceDict[TArray]) -> None:
     """Assign float32 data to source DataArrays, preserving coordinates."""
     for value in _iter_source_arrays(source_data):
         value.data = value.data.astype(np.float32, copy=False)

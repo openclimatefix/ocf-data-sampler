@@ -81,7 +81,6 @@ def open_sources(
 
     # Load satellite data if in config
     if config.satellite:
-
         da_sat = open_satellite(config.satellite.zarr_path)
         _warn_if_not_float32("satellite", da_sat)
 
@@ -155,11 +154,11 @@ def _detect_coordinate_system(da: xr.DataArray) -> tuple[str, str, str]:
         if set(coord_set) <= dimension_names:
             matching_coordinate_systems.append(coord_name)
 
-    if len(matching_coordinate_systems)==0:
+    if len(matching_coordinate_systems) == 0:
         raise ValueError(
             f"Did not find any coordinate pairs in the dimensional coords: {dimension_names}",
         )
-    elif len(matching_coordinate_systems)>1:
+    elif len(matching_coordinate_systems) > 1:
         raise ValueError(
             f"Found >1 ({matching_coordinate_systems}) coordinate pairs in the dimensional coords: "
             f"{dimension_names}",

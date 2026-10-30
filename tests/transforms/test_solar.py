@@ -12,7 +12,7 @@ from ocf_data_sampler.transforms.solar import (
 def test_calculate_azimuth_and_elevation(lat):
 
     # Summer solstice day and sun angle calculation
-    datetimes =  np.array(["2024-06-20 12:00"], dtype="datetime64[ns]")
+    datetimes = np.array(["2024-06-20 12:00"], dtype="datetime64[ns]")
     azimuth, elevation = calculate_azimuth_and_elevation(datetimes, longitude=0, latitude=lat)
 
     assert len(azimuth) == len(datetimes)
@@ -34,9 +34,8 @@ def test_calculate_azimuth_and_elevation_against_pvlib():
 
     # For each location, test the solar coords for all sampled datetimes
     for lon, lat in zip(random_longitudes, random_latitudes, strict=True):
-
         # Calculate the solar coords for the same positions and times with pvlib and our method
-        azimuth, elevation= calculate_azimuth_and_elevation(
+        azimuth, elevation = calculate_azimuth_and_elevation(
             random_datetimes,
             longitude=lon,
             latitude=lat,

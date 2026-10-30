@@ -5,9 +5,7 @@ import numpy as np
 from ocf_data_sampler.common.types import DataArrayLike
 
 
-def diff_channels_along_step[TArray: DataArrayLike](
-    da: TArray, channels: list[str],
-) -> TArray:
+def diff_channels_along_step[TArray: DataArrayLike](da: TArray, channels: list[str]) -> TArray:
     """Difference selected channels along step without modifying the input.
 
     The returned array is sliced to one step shorter to allow for differencing the
@@ -21,7 +19,7 @@ def diff_channels_along_step[TArray: DataArrayLike](
     if da.dims[:2] != ("step", "channel"):
         raise ValueError("This function assumes the first two dimensions are step then channel")
 
-    if len(channels)==0:
+    if len(channels) == 0:
         raise ValueError("At least one channel must be requested")
 
     all_channels = da["channel"].values.tolist()
@@ -38,10 +36,9 @@ def diff_channels_along_step[TArray: DataArrayLike](
     out_values[:, channel_indices] = np.diff(all_values[:, channel_indices], axis=0)
     da_out.data = out_values
 
-    new_channels = np.array([
-        f"diff_{channel}" if channel in channels else channel
-        for channel in all_channels
-    ])
+    new_channels = np.array(
+        [f"diff_{channel}" if channel in channels else channel for channel in all_channels]
+    )
     da_out.coords["channel"] = (("channel",), new_channels)
 
     return da_out

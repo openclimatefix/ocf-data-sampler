@@ -27,7 +27,7 @@ def get_indices_in_sorted_unique[T: np.generic](values: NDArray[T], query: T) ->
 
 @overload
 def get_indices_in_sorted_unique[T: np.generic](
-    values: NDArray[T], query: NDArray[T],
+    values: NDArray[T], query: NDArray[T]
 ) -> NDArray[np.intp]: ...
 
 

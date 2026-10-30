@@ -35,7 +35,7 @@ def test_add_source_coordinates_different_geostationary_sources():
     location = Location(id="loc_1", longitude=lon, latitude=lat)
     add_source_coordinates(
         locations=[location],
-        source_data={"sat": da_sat, "nwp": {"cloudcasting": da_cloud}}
+        source_data={"sat": da_sat, "nwp": {"cloudcasting": da_cloud}},
     )
 
     # Each of the geostationary projections should be calculated independently
@@ -43,11 +43,15 @@ def test_add_source_coordinates_different_geostationary_sources():
     cloud_coord = location.source_coordinates["nwp"]["cloudcasting"]
     for coordinate, area in ((sat_coord, UK_SAT_AREA), (cloud_coord, zero_degree_area)):
         transformer = pyproj.Transformer.from_crs(
-            WGS84, area["msg_seviri_rss_3km"]["projection"],
+            WGS84,
+            area["msg_seviri_rss_3km"]["projection"],
             always_xy=True,
         )
         np.testing.assert_allclose(
-            (coordinate.x, coordinate.y), transformer.transform(lon, lat), rtol=0, atol=0.001,
+            (coordinate.x, coordinate.y),
+            transformer.transform(lon, lat),
+            rtol=0,
+            atol=0.001,
         )
         assert (coordinate.x_dim, coordinate.y_dim) == ("x_geostationary", "y_geostationary")
     assert sat_coord.x != cloud_coord.x
@@ -57,10 +61,12 @@ def test_open_sources_preserves_channel_order(pvnet_config_filename):
     config = load_yaml_configuration(pvnet_config_filename)
     config.generation = None
     config.satellite.channels = [
-        Channel(name="IR_039", mean=0, std=1), Channel(name="IR_016", mean=0, std=1),
+        Channel(name="IR_039", mean=0, std=1),
+        Channel(name="IR_016", mean=0, std=1),
     ]
     config.nwp["ukv"].channels = [
-        NWPChannel(name="t", mean=0, std=1), NWPChannel(name="si10", mean=0, std=1),
+        NWPChannel(name="t", mean=0, std=1),
+        NWPChannel(name="si10", mean=0, std=1),
     ]
 
     datasets = open_sources(config, location_ids=[])

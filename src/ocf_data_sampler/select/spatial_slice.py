@@ -11,7 +11,7 @@ from ocf_data_sampler.common.types import DataArrayLike
 def _get_central_index(
     values: NDArray[np.number[Any]],
     val: float,
-    method: Literal["nearest", "left"]
+    method: Literal["nearest", "left"],
 ) -> int:
     """Find pixel index location closest to given value.
 
@@ -40,7 +40,7 @@ def _get_central_index(
     elif method == "nearest":
         # Get the index of the closest value to val
         index = np.searchsorted(values, val, side="left") - 1
-        if index < len(values) - 1 and (abs(values[index+1] - val) < abs(values[index] - val)):
+        if index < len(values) - 1 and (abs(values[index + 1] - val) < abs(values[index] - val)):
             index += 1
     else:
         raise ValueError(f"Unknown method: {method}")
@@ -50,8 +50,8 @@ def _get_central_index(
 
 def _get_window_bounds(central_index: int, window_size: int) -> tuple[int, int]:
     """Get the lower and upper bounds of a window around a central index."""
-    low_pad = (window_size+1)//2 - 1
-    high_pad = window_size//2 + 1
+    low_pad = (window_size + 1) // 2 - 1
+    high_pad = window_size // 2 + 1
 
     low_idx = int(central_index - low_pad)
     high_idx = int(central_index + high_pad)
