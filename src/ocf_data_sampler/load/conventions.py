@@ -63,10 +63,10 @@ def validate_coords(
 
 
 def make_spatial_coords_increasing(
-    ds: xr.Dataset | xr.DataArray,
+    ds: xr.Dataset,
     x_coord: str,
     y_coord: str,
-) -> xr.Dataset | xr.DataArray:
+) -> xr.Dataset:
     """Make sure the spatial coordinates are in increasing order.
 
     Args:
