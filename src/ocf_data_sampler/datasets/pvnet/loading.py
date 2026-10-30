@@ -119,13 +119,13 @@ def load_locations(csv_path: str, exclude_ids: list[str] | None = None) -> list[
         if len(locations_data) == 0:
             raise ValueError("All location IDs in the locations data have been excluded")
 
+    longitudes = locations_data["longitude"].values
+    latitudes = locations_data["latitude"].values
+    location_ids = locations_data["location_id"].values
+
     return [
-        Location(
-            longitude=row.longitude,
-            latitude=row.latitude,
-            id=row.location_id,
-        )
-        for row in locations_data.itertuples()
+        Location(longitude=lon, latitude=lat, id=loc)
+        for lon, lat, loc in zip(longitudes, latitudes, location_ids, strict=True)
     ]
 
 
