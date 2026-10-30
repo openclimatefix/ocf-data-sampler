@@ -4,11 +4,11 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ocf_data_sampler.common.indexing import get_string_index
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 
 
 def clip_and_standardise(
-    da: TArray,
+    da: DataArrayLike,
     *,
     clip_min: NDArray[np.float32],
     clip_max: NDArray[np.float32],
@@ -29,7 +29,7 @@ def clip_and_standardise(
     da.data = (da.data.clip(clip_min, clip_max) - mean) / std
 
 
-def normalise_generation_by_capacity(da: TArray) -> None:
+def normalise_generation_by_capacity(da: DataArrayLike) -> None:
     """Rescale `generation_mw` to a capacity factor, leaving `capacity_mwp` unchanged.
 
     Replaces `.data` on the input DataArray without modifying shared source values.

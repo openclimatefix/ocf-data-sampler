@@ -9,7 +9,7 @@ contract, not a convenience grab-bag.
 """
 
 from collections.abc import Hashable, Sequence
-from typing import Any, Protocol, Self, TypeVar
+from typing import Any, Protocol, Self
 
 import numpy as np
 from numpy.typing import NDArray
@@ -20,6 +20,7 @@ type ZarrSource = str | list[str] | tuple[str, ...]
 # Types accepted as a single-dimension indexer in `.isel()` method below.
 type Indexer = (
     int
+    | np.integer
     | slice
     | Sequence[int]
     | Sequence[bool]
@@ -33,8 +34,8 @@ class DataArrayLike(Protocol):
 
     Satisfied by ``xarray.DataArray`` and ``LightDataArray``. Pipeline code
     that is generic over the array backend should be typed against this
-    protocol — usually via ``TArray`` so the concrete type is preserved
-    through the pipeline — rather than against either concrete class.
+    protocol, using a local bounded type parameter when the concrete return
+    type must be preserved, rather than against either concrete class.
     """
 
     @property
@@ -78,7 +79,3 @@ class DataArrayLike(Protocol):
 
     def __len__(self) -> int:
         """Length of the leading dimension."""
-
-
-# Used to type functions that return the same kind of DataArray-like object they receive.
-TArray = TypeVar("TArray", bound=DataArrayLike)

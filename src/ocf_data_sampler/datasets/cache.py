@@ -22,11 +22,11 @@ class PickleCacheMixin:
         Args:
             pickle_path: Where to write the object state to.
         """
-        self._pickle_path = pickle_path
         with open(pickle_path, "wb") as f:
-            pickle.dump(self.__dict__, f)
+            pickle.dump({**self.__dict__, "_pickle_path": pickle_path}, f)
+        self._pickle_path = pickle_path
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> dict[str, object]:
         """If presaved, only pickle reference. Otherwise pickle everything."""
         if self._pickle_path:
             return {"_pickle_path": self._pickle_path}
@@ -34,7 +34,7 @@ class PickleCacheMixin:
             # Copied so that the pickled state can't be mutated through the live object
             return dict(self.__dict__)
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, object]) -> None:
         """Restore object from pickle, reloading from presaved file if possible."""
         self.__dict__.update(state)
 
