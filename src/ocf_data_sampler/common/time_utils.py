@@ -6,14 +6,14 @@ from numpy.typing import NDArray
 
 
 @overload
-def minutes(minutes: int) -> np.timedelta64: ...
+def minutes(minutes: int | np.integer) -> np.timedelta64: ...
 
 
 @overload
 def minutes(minutes: list[int]) -> NDArray[np.timedelta64]: ...
 
 
-def minutes(minutes: int | list[int]) -> np.timedelta64 | NDArray[np.timedelta64]:
+def minutes(minutes: int | np.integer | list[int]) -> np.timedelta64 | NDArray[np.timedelta64]:
     """Timedelta minutes.
 
     Args:

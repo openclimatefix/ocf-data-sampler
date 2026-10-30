@@ -5,7 +5,7 @@ from collections.abc import Mapping
 import numpy as np
 
 from ocf_data_sampler.common.time_utils import minutes
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 
 
 def choose_delay(delay_minute_probabilities: Mapping[int, float]) -> np.timedelta64 | None:
@@ -33,7 +33,7 @@ def choose_delay(delay_minute_probabilities: Mapping[int, float]) -> np.timedelt
 
 
 def apply_dropout(
-    da: TArray,
+    da: DataArrayLike,
     t0: np.datetime64,
     dropout_delay: np.timedelta64 | None,
 ) -> None:

@@ -56,7 +56,10 @@ def convert_sources_to_lightarray(
     return converted_source_data
 
 
-class AbstractPVNetDataset[TIndex: (SampleIndex, ConcurrentSampleIndex)](PickleCacheMixin, Dataset):
+class AbstractPVNetDataset[
+    TIndex: (SampleIndex, ConcurrentSampleIndex),
+    TSample,
+](PickleCacheMixin, Dataset[TSample]):
     """Abstract class for PVNet datasets."""
 
     def __init__(
@@ -132,7 +135,7 @@ class AbstractPVNetDataset[TIndex: (SampleIndex, ConcurrentSampleIndex)](PickleC
         raise NotImplementedError("Subclasses must implement sample index construction")
 
 
-class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
+class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
     """A torch Dataset for creating PVNet samples."""
 
     @override
@@ -205,7 +208,7 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
         return self._get_sample(t0, location)
 
 
-class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
+class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorBatch]):
     """A torch Dataset for creating concurrent PVNet location samples."""
 
     @staticmethod
