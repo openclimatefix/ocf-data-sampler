@@ -4,7 +4,7 @@ import numpy as np
 
 from ocf_data_sampler.common.indexing import get_string_index
 from ocf_data_sampler.common.time_utils import minutes
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import Coordinate, Location, SourceDict
 from ocf_data_sampler.select.dropout import choose_delay
@@ -15,7 +15,7 @@ from ocf_data_sampler.select.spatial_slice import (
 from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
 
 
-def slice_sources_by_space(
+def slice_sources_by_space[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     location: Location,
     config: PVNetDataConfig,
@@ -94,7 +94,7 @@ def _unpack_spatial_coordinates(
     return [(coordinate.x, coordinate.y) for coordinate in coordinates], x_dim, y_dim
 
 
-def crop_sources_to_locations(
+def crop_sources_to_locations[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     locations: list[Location],
     config: PVNetDataConfig,
@@ -148,7 +148,7 @@ def crop_sources_to_locations(
     return sliced_source_data
 
 
-def slice_sources_by_time(
+def slice_sources_by_time[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     t0: np.datetime64,
     config: PVNetDataConfig,
