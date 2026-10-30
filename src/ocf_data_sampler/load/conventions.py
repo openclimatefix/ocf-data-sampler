@@ -16,8 +16,9 @@ def validate_matching_projections(datasets: Sequence[xr.Dataset]) -> None:
     Args:
         datasets: Non-empty sequence of datasets with dataset-level area metadata.
     """
+
     def _get_projection(ds: xr.Dataset) -> dict[str, object]:
-        area, = ds.attrs["area"].values()
+        (area,) = ds.attrs["area"].values()
         return area["projection"]
 
     projections = [_get_projection(ds) for ds in datasets]
@@ -119,7 +120,7 @@ def validate_time_grid(
     This allows us to catch any misalignment between the timestamps in the data and the expected
     resolution early in the pipleline before any errors show up in slicing.
     """
-    aligned = (times == datetime_ceil(times, resolution))
+    aligned = times == datetime_ceil(times, resolution)
 
     if not aligned.all():
         example = times[~aligned][0]

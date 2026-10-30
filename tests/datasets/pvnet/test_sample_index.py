@@ -33,7 +33,8 @@ def test_concurrent_index_access_and_membership(t0_times):
 
 
 @pytest.mark.parametrize(
-    ("idx", "error"), [(2, IndexError), (-3, IndexError), (True, TypeError), (0.5, TypeError)],
+    ("idx", "error"),
+    [(2, IndexError), (-3, IndexError), (True, TypeError), (0.5, TypeError)],
 )
 def test_invalid_index(idx, error):
     with pytest.raises(error):

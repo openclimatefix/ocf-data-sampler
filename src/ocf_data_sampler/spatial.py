@@ -46,7 +46,7 @@ def lon_lat_to_geostationary[TCoordinateValue: (float, NDArray[np.number[Any]])]
     Returns:
         x_geostationary, y_geostationary
     """
-    area_definition, = area_spec.values()
+    (area_definition,) = area_spec.values()
     geostationary_crs = pyproj.CRS.from_user_input(area_definition["projection"])
     coord_transformer = pyproj.Transformer.from_crs(
         crs_from=WGS84,

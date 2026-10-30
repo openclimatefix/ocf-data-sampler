@@ -13,5 +13,8 @@ def test_lon_lat_to_geostationary_projection_only():
     # Test against these numbers to make sure the transform to the EUMETSAT RSS projection is
     # maintained
     np.testing.assert_allclose(
-        coords, (-636553.2521574589, 4540516.747321172), rtol=0, atol=0.001,
+        coords,
+        (-636553.2521574589, 4540516.747321172),
+        rtol=0,
+        atol=0.001,
     )

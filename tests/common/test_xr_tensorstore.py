@@ -63,7 +63,9 @@ def test_read_preserves_lazy_crop_and_source(zarr_paths):
     # This fails if read() converts an adapter to NumPy instead of only starting the async read
     source_adapter = da_original.variable._data
     with patch.object(
-        type(source_adapter), "__array__", side_effect=AssertionError("Unexpected load"),
+        type(source_adapter),
+        "__array__",
+        side_effect=AssertionError("Unexpected load"),
     ):
         read(da)
 
@@ -85,7 +87,10 @@ def test_open_multi_zarrs(zarr_paths, zarr_format):
     ds_ts = open_zarr_paths(paths, concat_dim="init_time_utc")
     # Check tensorstore version returns same results as dask version
     ds_dask = xr.open_mfdataset(
-        paths, concat_dim="init_time_utc", combine="nested", engine="zarr",
+        paths,
+        concat_dim="init_time_utc",
+        combine="nested",
+        engine="zarr",
     )
     assert ds_ts.compute().equals(ds_dask.compute())
 

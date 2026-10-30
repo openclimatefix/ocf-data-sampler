@@ -22,6 +22,7 @@ from ocf_data_sampler.transforms.normalisation import (
 
 def _build_source_normalisation_arrays(channels: Sequence[Channel]) -> NormalisationArrays:
     """Build parameters broadcastable over (time, channel, x, y)."""
+
     def channel_array(channel_values: list[float]) -> NDArray[np.float32]:
         return np.array(channel_values, dtype=np.float32)[None, :, None, None]
 
@@ -94,7 +95,7 @@ def diff_accumulated_nwp_channels[TArray: DataArrayLike](
             accum_channels = [
                 channel.name for channel in config.nwp[nwp_name].channels if channel.accumulated
             ]
-            if len(accum_channels)>0:
+            if len(accum_channels) > 0:
                 source_data["nwp"][nwp_name] = diff_channels_along_step(da_nwp, accum_channels)
 
 
@@ -125,7 +126,6 @@ def apply_source_dropout[TArray: DataArrayLike](
         and gen_config.input is not None
         and gen_config.input.dropout_minute_probabilities is not None
     ):
-
         # Note: capacity_mwp is dropped out along with generation_mw
         apply_dropout(
             source_data["generation_input"],

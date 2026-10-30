@@ -1,4 +1,5 @@
 """A mixin for classes that need to cache their state using pickle."""
+
 import os
 import pickle
 

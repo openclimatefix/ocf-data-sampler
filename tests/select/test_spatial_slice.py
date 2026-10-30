@@ -23,6 +23,7 @@ def da():
         },
     )
 
+
 @pytest.mark.parametrize(
     "x_query, expected_xval, method",
     [
@@ -47,7 +48,7 @@ def test_get_central_index(x_query, expected_xval, method):
         (5, 3, (4, 7)),
         (5, 4, (4, 8)),
         (5, 5, (3, 8)),
-    ]
+    ],
 )
 def test_get_window_bounds(central_index, window_size, expected_slice):
     index_slice = _get_window_bounds(central_index, window_size)
@@ -71,7 +72,6 @@ def test_select_spatial_slice(da):
     assert (da_sliced["y_osgb"].values == np.array([-6, -5, -4])).all()
     assert not da_sliced.isnull().any()
 
-
     # Select even sized window
     da_sliced = select_spatial_slice(
         da,
@@ -86,7 +86,6 @@ def test_select_spatial_slice(da):
     assert (da_sliced["x_osgb"].values == np.array([9, 10, 11, 12])).all()
     assert (da_sliced["y_osgb"].values == np.array([-6, -5, -4, -3])).all()
     assert not da_sliced.isnull().any()
-
 
     # Select mixed odd and even sized window
     da_sliced = select_spatial_slice(

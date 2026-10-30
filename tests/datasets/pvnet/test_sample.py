@@ -23,10 +23,7 @@ from tests.conftest import to_datetime64
 @pytest.mark.parametrize("include_extra_metadata", [False, True])
 def test_build_numpy_sample_metadata(include_extra_metadata):
     config = PVNetDataConfig(
-        sampling_grid=SamplingGrid(
-            locations_csv_path="locations.csv",
-            t0_resolution_minutes=30
-        ),
+        sampling_grid=SamplingGrid(locations_csv_path="locations.csv", t0_resolution_minutes=30),
     )
     sample = build_numpy_sample(
         source_data={},
@@ -48,14 +45,21 @@ def test_build_numpy_sample_metadata(include_extra_metadata):
 
 def test_build_feature_datetimes():
     config = DatetimeEncoding(
-        interval_start_minutes=-60, interval_end_minutes=60, time_resolution_minutes=30,
+        interval_start_minutes=-60,
+        interval_end_minutes=60,
+        time_resolution_minutes=30,
     )
     datetimes = _build_feature_datetimes(np.datetime64("2024-06-20T12:45"), config)
 
-    expected = to_datetime64([
-        "2024-06-20T11:30", "2024-06-20T12:00", "2024-06-20T12:30",
-        "2024-06-20T13:00", "2024-06-20T13:30",
-    ])
+    expected = to_datetime64(
+        [
+            "2024-06-20T11:30",
+            "2024-06-20T12:00",
+            "2024-06-20T12:30",
+            "2024-06-20T13:00",
+            "2024-06-20T13:30",
+        ]
+    )
     np.testing.assert_array_equal(datetimes, expected)
 
 
@@ -80,9 +84,7 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
     """
     da = open_generation(generation_zarr_path).isel(time_utc=slice(0, 10)).sel(location_id="loc_1")
     numpy_sample = {"location_id": "loc_1", "t0": np.float64(1672531200.0)}
-    add_source_arrays(
-        numpy_sample, {"generation_input": da, "generation_target": da},
-    )
+    add_source_arrays(numpy_sample, {"generation_input": da, "generation_target": da})
 
     generation_mw = da.sel(gen_param="generation_mw").values
     capacity = da.sel(gen_param="capacity_mwp").values
@@ -100,7 +102,7 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
         assert isinstance(numpy_sample[f"{key}_time_utc"], np.ndarray)
         assert numpy_sample[f"{key}_time_utc"].dtype == np.float64
         np.testing.assert_array_equal(
-            numpy_sample[f"{key}_time_utc"], 1672531200.0 + np.arange(10) * 1800,
+            numpy_sample[f"{key}_time_utc"], 1672531200.0 + np.arange(10) * 1800
         )
 
 

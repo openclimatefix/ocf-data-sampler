@@ -1,4 +1,5 @@
 """Module for datetime utilities."""
+
 from typing import overload
 
 import numpy as np
@@ -86,7 +87,7 @@ def get_day_fraction(
 
 def is_leap_year(
     datetimes: np.datetime64 | NDArray[np.datetime64],
-) ->  np.bool_ | NDArray[np.bool_]:
+) -> np.bool_ | NDArray[np.bool_]:
     """Return whether each datetime falls in a leap year.
 
     Args:
@@ -120,7 +121,7 @@ def _validate_rounding_frequency(freq: np.timedelta64) -> None:
     """
     # For simplicity don't support frequencies that aren't factors or multiples of 1 hour.
     # For example what would it mean to ceil/floor to 45 minutes?
-    if (np.timedelta64(1, "h") / freq) % 1 != 0 and (freq/np.timedelta64(1, "h") ) % 1 != 0:
+    if (np.timedelta64(1, "h") / freq) % 1 != 0 and (freq / np.timedelta64(1, "h")) % 1 != 0:
         raise ValueError(f"Frequency {freq} must be factor of 1 hour or multiple of hour.")
     # Also don't support frequencies that aren't factors of 1 day.
     # For example what would it mean to ceil/floor to 7 hours?

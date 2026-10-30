@@ -4,4 +4,3 @@ from .time_periods import (
     find_contiguous_t0_periods_nwp,
     intersect_time_periods,
 )
-

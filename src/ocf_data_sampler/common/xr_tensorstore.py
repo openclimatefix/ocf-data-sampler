@@ -39,7 +39,6 @@ def _validate_concat_compatibility(datasets: Sequence[xr.Dataset], concat_dim: s
         raise ValueError(f"{concat_dim!r} is not a dimension: {tuple(first.dims)}")
 
     for i, ds in enumerate(rest, start=1):
-
         # All coords and data_vars must be present in all datasets
         if set(ds.coords) != set(first.coords):
             raise ValueError(
@@ -70,9 +69,7 @@ def _validate_concat_compatibility(datasets: Sequence[xr.Dataset], concat_dim: s
         # which should be small
         for name in [*first.coords, *first.data_vars]:
             if concat_dim not in first[name].dims and not ds[name].equals(first[name]):
-                raise ValueError(
-                    f"dataset {i}: {name!r} does not span {concat_dim!r} but differs"
-                )
+                raise ValueError(f"dataset {i}: {name!r} does not span {concat_dim!r} but differs")
 
 
 def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Dataset:
@@ -114,7 +111,6 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
         else:
             ds_out[name] = da.variable  # attrs travel with the Variable; xarray copies on assign
     return ds_out
-
 
 
 def resolve_zarr_paths(zarr_path: ZarrSource) -> list[str]:
