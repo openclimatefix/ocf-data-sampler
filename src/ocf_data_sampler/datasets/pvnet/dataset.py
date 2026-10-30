@@ -1,11 +1,10 @@
 """Torch dataset for PVNet."""
 
-from typing import Generic, Literal, TypeVar
+from typing import Literal, override
 
 import numpy as np
 import xarray as xr
 from torch.utils.data import Dataset, default_collate
-from typing_extensions import override
 
 from ocf_data_sampler.common.lightarray import LightDataArray
 from ocf_data_sampler.config import load_yaml_configuration
@@ -33,10 +32,13 @@ from ocf_data_sampler.datasets.pvnet.slicing import (
     slice_sources_by_space,
     slice_sources_by_time,
 )
-from ocf_data_sampler.datasets.pvnet.types import Location, NumpySample, SourceDict, TensorBatch
-
-TIndex = TypeVar("TIndex", SampleIndex, ConcurrentSampleIndex)
-
+from ocf_data_sampler.datasets.pvnet.types import (
+    NON_NWP_SOURCE_KEYS,
+    Location,
+    NumpySample,
+    SourceDict,
+    TensorBatch,
+)
 
 
 def convert_sources_to_lightarray(
@@ -44,17 +46,17 @@ def convert_sources_to_lightarray(
 ) -> SourceDict[LightDataArray]:
     """Convert xarray source arrays to LightDataArrays."""
     converted_source_data: SourceDict[LightDataArray] = {}
-    for k, v in source_data.items():
-        if isinstance(v, dict):
-            converted_source_data[k] = convert_sources_to_lightarray(v)
-        elif isinstance(v, xr.DataArray):
-            converted_source_data[k] = LightDataArray.from_xarray(v)
-        else:
-            raise ValueError(f"Unexpected type ({type(v)})")
+    for k in NON_NWP_SOURCE_KEYS:
+        if k in source_data:
+            converted_source_data[k] = LightDataArray.from_xarray(source_data[k])
+    if "nwp" in source_data:
+        converted_source_data["nwp"] = {
+            k: LightDataArray.from_xarray(v) for k, v in source_data["nwp"].items()
+        }
     return converted_source_data
 
 
-class AbstractPVNetDataset(PickleCacheMixin, Dataset, Generic[TIndex]):
+class AbstractPVNetDataset[TIndex: (SampleIndex, ConcurrentSampleIndex)](PickleCacheMixin, Dataset):
     """Abstract class for PVNet datasets."""
 
     def __init__(
@@ -172,10 +174,10 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex]):
         )
 
     @override
-    def __getitem__(self, idx: int) -> NumpySample:
+    def __getitem__(self, index: int) -> NumpySample:
 
         # Get the coordinates of the sample
-        t0, location_id = self.sample_index[idx]
+        t0, location_id = self.sample_index[index]
 
         # Get location from location id
         location = self.location_lookup[location_id]
@@ -242,8 +244,8 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex]):
         return default_collate(samples)
 
     @override
-    def __getitem__(self, idx: int) -> TensorBatch:
-        return self._get_sample(self.sample_index[idx])
+    def __getitem__(self, index: int) -> TensorBatch:
+        return self._get_sample(self.sample_index[index])
 
     def get_sample(self, t0: np.datetime64) -> TensorBatch:
         """Generate a sample for the given init-time.

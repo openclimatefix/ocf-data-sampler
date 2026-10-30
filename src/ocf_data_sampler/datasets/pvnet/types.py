@@ -1,17 +1,28 @@
 """Types for PVNet dataset orchestration."""
 
 from dataclasses import dataclass, field
-from typing import Any, Generic, Required, TypedDict, TypeVar
+from typing import Any, Final, Required, TypedDict
 
 import numpy as np
 import torch
 from numpy.typing import NDArray
 
-TSampleArray = TypeVar("TSampleArray")
-TSource = TypeVar("TSource")
+NON_NWP_SOURCE_KEYS: Final = ("sat", "generation", "generation_input", "generation_target")
+
+class SourceDict[TSource](TypedDict, total=False):
+    """A fixed layout of optional source keys with values of a common type.
+
+    NWP values are nested by source name.
+    """
+
+    sat: TSource
+    generation: TSource
+    generation_input: TSource
+    generation_target: TSource
+    nwp: dict[str, TSource]
 
 
-class BaseSample(TypedDict, Generic[TSampleArray], total=False):
+class BaseSample[TSampleArray](TypedDict, total=False):
     """Optional sources, features and metadata shared by samples and batches.
 
     Shapes describe one sample; collation adds a leading batch dimension.
@@ -78,19 +89,6 @@ class TensorBatch(BaseSample[torch.Tensor], total=False):
     location_id: Required[list[str]]
     # (batch,), float64 POSIX seconds.
     t0: Required[torch.Tensor]
-
-
-class SourceDict(TypedDict, Generic[TSource], total=False):
-    """A fixed layout of optional source keys with values of a common type.
-
-    NWP values are nested by source name.
-    """
-
-    sat: TSource
-    generation: TSource
-    generation_input: TSource
-    generation_target: TSource
-    nwp: dict[str, TSource]
 
 
 @dataclass(eq=False)

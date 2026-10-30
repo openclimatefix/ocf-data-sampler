@@ -8,7 +8,7 @@ import xarray as xr
 from ocf_data_sampler.common.lightarray import LightDataArray
 from ocf_data_sampler.common.types import DataArrayLike
 from ocf_data_sampler.common.xr_tensorstore import read as read_tensorstore
-from ocf_data_sampler.datasets.pvnet.types import SourceDict
+from ocf_data_sampler.datasets.pvnet.types import NON_NWP_SOURCE_KEYS, SourceDict
 
 
 def _is_numpy_backed(da: xr.DataArray | LightDataArray) -> bool:
@@ -21,7 +21,7 @@ def _iter_source_arrays[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
 ) -> Iterator[TArray]:
     """Iterate over source arrays, including named NWP sources."""
-    for key in ("sat", "generation", "generation_input", "generation_target"):
+    for key in NON_NWP_SOURCE_KEYS:
         if key in source_data:
             yield source_data[key]
     if "nwp" in source_data:
