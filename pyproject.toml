@@ -76,16 +76,6 @@ root = ["./src"]
 [tool.ty.analysis]
 allowed-unresolved-imports = ["tensorstore.**", "xarray_tensorstore.**"]
 
-# Ratchet: modules not yet conformant. Delete entries as they're fixed.
-[[tool.ty.overrides]]
-include = [
-    "src/ocf_data_sampler/datasets/pvnet/dataset.py",
-]
-
-[tool.ty.overrides.rules]
-all = "ignore"
-
-
 # Ruff configuration
 # * See https://beta.ruff.rs/docs/
 [tool.ruff]
