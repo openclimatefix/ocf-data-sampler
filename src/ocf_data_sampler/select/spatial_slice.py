@@ -5,7 +5,7 @@ from typing import Any, Literal
 import numpy as np
 from numpy.typing import NDArray
 
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 
 
 def _get_central_index(
@@ -45,7 +45,7 @@ def _get_central_index(
     else:
         raise ValueError(f"Unknown method: {method}")
 
-    return index
+    return int(index)
 
 
 def _get_window_bounds(central_index: int, window_size: int) -> tuple[int, int]:
@@ -77,7 +77,7 @@ def _validate_window_slice(
         raise ValueError(f"Top index ({top_idx}) > total_height ({total_height})")
 
 
-def select_spatial_slice(
+def select_spatial_slice[TArray: DataArrayLike](
     da: TArray,
     *,
     x: float,
@@ -125,7 +125,7 @@ def select_spatial_slice(
     return da.isel({x_dim: slice(left_idx, right_idx), y_dim: slice(bottom_idx, top_idx)})
 
 
-def select_envelope_of_spatial_windows(
+def select_envelope_of_spatial_windows[TArray: DataArrayLike](
     da: TArray,
     *,
     centres: list[tuple[float, float]],

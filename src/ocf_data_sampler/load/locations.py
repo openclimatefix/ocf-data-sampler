@@ -13,7 +13,12 @@ readable and hand editable. Additional columns may be included to make the file 
 but are dropped on load.
 """
 
+from typing import TYPE_CHECKING
+
 import pandas as pd
+
+if TYPE_CHECKING:
+    from collections.abc import Hashable
 
 
 def open_locations(csv_path: str) -> pd.DataFrame:
@@ -25,7 +30,7 @@ def open_locations(csv_path: str) -> pd.DataFrame:
     Returns:
         pd.DataFrame: The locations metadata
     """
-    column_dtypes = {
+    column_dtypes: dict[Hashable, str] = {
         "location_id": "str",
         "longitude": "float64",
         "latitude": "float64",

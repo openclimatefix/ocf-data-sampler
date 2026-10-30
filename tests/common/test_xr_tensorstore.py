@@ -8,6 +8,7 @@ from ocf_data_sampler.common.xr_tensorstore import (
     _extract_tensorstore,
     concat_tensorstore,
     open_zarr_paths,
+    read,
 )
 
 ZARR_FORMATS = [2, 3]
@@ -50,6 +51,32 @@ def test_open_single_zarr(zarr_paths, zarr_format):
     path = zarr_paths[zarr_format][0]
     # Check tensorstore version returns same results as dask version
     assert open_zarr_paths(path).compute().equals(xr.open_zarr(path).compute())
+
+
+def test_read_preserves_lazy_crop_and_source(zarr_paths):
+
+    da_original = next(iter(open_zarr_paths(zarr_paths[2][0]).data_vars.values()))
+
+    indexers = {dim: slice(0, 1) for dim in da_original.dims}
+    da = da_original.isel(indexers)
+
+    # This fails if read() converts an adapter to NumPy instead of only starting the async read
+    source_adapter = da_original.variable._data
+    with patch.object(
+        type(source_adapter), "__array__", side_effect=AssertionError("Unexpected load"),
+    ):
+        read(da)
+
+    # The sliced DataArray should have a future now
+    assert da.variable._data.future is not None
+
+    # Starting one sample's read must leave the reusable dataset source unchanged
+    assert da_original.variable._data is source_adapter
+    assert source_adapter.future is None
+
+    # Make sure we get the same result through slice-read-load and slice-compute
+    da.load()
+    xr.testing.assert_equal(da, da_original.isel(indexers).compute())
 
 
 @pytest.mark.parametrize("zarr_format", ZARR_FORMATS)

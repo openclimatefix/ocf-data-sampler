@@ -2,10 +2,12 @@
 
 import numpy as np
 
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 
 
-def diff_channels_along_step(da: TArray, channels: list[str]) -> TArray:
+def diff_channels_along_step[TArray: DataArrayLike](
+    da: TArray, channels: list[str],
+) -> TArray:
     """Difference selected channels along step without modifying the input.
 
     The returned array is sliced to one step shorter to allow for differencing the

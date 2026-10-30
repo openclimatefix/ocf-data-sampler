@@ -1,7 +1,7 @@
 """Convert longitude/latitude to OSGB36 and geostationary coordinates."""
 
 from collections.abc import Mapping
-from typing import Any, TypeVar
+from typing import Any
 
 import numpy as np
 import pyproj
@@ -11,13 +11,11 @@ WGS84 = 4326
 OSGB36 = 27700
 
 
-TCoordinateValue = TypeVar("TCoordinateValue", float, NDArray[np.number[Any]])
-
 # Reuse the transformer to avoid rebuilding it each time `lon_lat_to_osgb` is called
 _osgb_transformer = pyproj.Transformer.from_crs(crs_from=WGS84, crs_to=OSGB36, always_xy=True)
 
 
-def lon_lat_to_osgb(
+def lon_lat_to_osgb[TCoordinateValue: (float, NDArray[np.number[Any]])](
     longitude: TCoordinateValue,
     latitude: TCoordinateValue,
 ) -> tuple[TCoordinateValue, TCoordinateValue]:
@@ -33,7 +31,7 @@ def lon_lat_to_osgb(
     return _osgb_transformer.transform(xx=longitude, yy=latitude)
 
 
-def lon_lat_to_geostationary(
+def lon_lat_to_geostationary[TCoordinateValue: (float, NDArray[np.number[Any]])](
     longitude: TCoordinateValue,
     latitude: TCoordinateValue,
     area_spec: Mapping[str, Any],

@@ -4,7 +4,7 @@ import numpy as np
 
 from ocf_data_sampler.common.indexing import get_string_index
 from ocf_data_sampler.common.time_utils import minutes
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import Coordinate, Location, SourceDict
 from ocf_data_sampler.select.dropout import choose_delay
@@ -15,7 +15,7 @@ from ocf_data_sampler.select.spatial_slice import (
 from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
 
 
-def slice_sources_by_space(
+def slice_sources_by_space[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     location: Location,
     config: PVNetDataConfig,
@@ -33,7 +33,7 @@ def slice_sources_by_space(
     try:
         sliced_source_data: SourceDict[TArray] = {}
 
-        if "nwp" in source_data:
+        if config.nwp is not None:
             sliced_source_data["nwp"] = {}
 
             for nwp_name, nwp_config in config.nwp.items():
@@ -48,7 +48,7 @@ def slice_sources_by_space(
                     width_pixels=nwp_config.image_width_pixels,
                 )
 
-        if "sat" in source_data:
+        if config.satellite is not None:
             coordinate = location.source_coordinates["sat"]
             sliced_source_data["sat"] = select_spatial_slice(
                 source_data["sat"],
@@ -94,7 +94,7 @@ def _unpack_spatial_coordinates(
     return [(coordinate.x, coordinate.y) for coordinate in coordinates], x_dim, y_dim
 
 
-def crop_sources_to_locations(
+def crop_sources_to_locations[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     locations: list[Location],
     config: PVNetDataConfig,
@@ -112,7 +112,7 @@ def crop_sources_to_locations(
     try:
         sliced_source_data: SourceDict[TArray] = {}
 
-        if "nwp" in source_data:
+        if config.nwp is not None:
             sliced_source_data["nwp"] = {}
 
             for nwp_name, nwp_config in config.nwp.items():
@@ -127,7 +127,7 @@ def crop_sources_to_locations(
                     width_pixels=nwp_config.image_width_pixels,
                 )
 
-        if "sat" in source_data:
+        if config.satellite is not None:
             source_coordinates = [loc.source_coordinates["sat"] for loc in locations]
             centres, x_dim, y_dim = _unpack_spatial_coordinates(source_coordinates)
             sliced_source_data["sat"] = select_envelope_of_spatial_windows(
@@ -148,7 +148,7 @@ def crop_sources_to_locations(
     return sliced_source_data
 
 
-def slice_sources_by_time(
+def slice_sources_by_time[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     t0: np.datetime64,
     config: PVNetDataConfig,
@@ -165,7 +165,7 @@ def slice_sources_by_time(
     """
     sliced_source_data: SourceDict[TArray] = {}
 
-    if "nwp" in source_data:
+    if config.nwp is not None:
         sliced_source_data["nwp"] = {}
 
         for nwp_name, da_nwp in source_data["nwp"].items():
@@ -192,7 +192,7 @@ def slice_sources_by_time(
                 ),
             )
 
-    if "sat" in source_data:
+    if config.satellite is not None:
 
         sliced_source_data["sat"] = select_time_slice(
             source_data["sat"],
@@ -202,7 +202,7 @@ def slice_sources_by_time(
             interval_end=minutes(config.satellite.interval_end_minutes),
         )
 
-    if "generation" in source_data:
+    if config.generation is not None:
         for key, window_config in (
             ("generation_input", config.generation.input),
             ("generation_target", config.generation.target),

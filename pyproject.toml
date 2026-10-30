@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 name = "ocf-data-sampler"
 dynamic = ["version"] # Set automtically using git: https://setuptools-git-versioning.readthedocs.io/en/stable/
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.12,<3.14"
 license = { file = "LICENSE" }
 authors = [
     { name = "Open Climate Fix team", email = "info@openclimatefix.org" },
@@ -75,20 +75,6 @@ root = ["./src"]
 
 [tool.ty.analysis]
 allowed-unresolved-imports = ["tensorstore.**", "xarray_tensorstore.**"]
-
-# Ratchet: modules not yet conformant. Delete entries as they're fixed.
-[[tool.ty.overrides]]
-include = [
-    "src/ocf_data_sampler/datasets/**",
-    "src/ocf_data_sampler/load/**",
-    "src/ocf_data_sampler/config/**",
-    "src/ocf_data_sampler/select/**",
-    "src/ocf_data_sampler/transforms/**",
-]
-
-[tool.ty.overrides.rules]
-all = "ignore"
-
 
 # Ruff configuration
 # * See https://beta.ruff.rs/docs/

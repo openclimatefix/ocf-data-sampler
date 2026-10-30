@@ -4,10 +4,10 @@ import numpy as np
 
 from ocf_data_sampler.common.indexing import get_indices_in_sorted_unique
 from ocf_data_sampler.common.time_utils import date_range, datetime_floor
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 
 
-def select_time_slice(
+def select_time_slice[TArray: DataArrayLike](
     da: TArray,
     t0: np.datetime64,
     interval_start: np.timedelta64,
@@ -44,7 +44,7 @@ def select_time_slice(
     return da_sel
 
 
-def select_time_slice_nwp(
+def select_time_slice_nwp[TArray: DataArrayLike](
     da: TArray,
     t0: np.datetime64,
     interval_start: np.timedelta64,
