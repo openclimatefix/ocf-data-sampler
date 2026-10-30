@@ -33,7 +33,7 @@ def slice_sources_by_space(
     try:
         sliced_source_data: SourceDict[TArray] = {}
 
-        if "nwp" in source_data:
+        if config.nwp is not None:
             sliced_source_data["nwp"] = {}
 
             for nwp_name, nwp_config in config.nwp.items():
@@ -48,7 +48,7 @@ def slice_sources_by_space(
                     width_pixels=nwp_config.image_width_pixels,
                 )
 
-        if "sat" in source_data:
+        if config.satellite is not None:
             coordinate = location.source_coordinates["sat"]
             sliced_source_data["sat"] = select_spatial_slice(
                 source_data["sat"],
@@ -112,7 +112,7 @@ def crop_sources_to_locations(
     try:
         sliced_source_data: SourceDict[TArray] = {}
 
-        if "nwp" in source_data:
+        if config.nwp is not None:
             sliced_source_data["nwp"] = {}
 
             for nwp_name, nwp_config in config.nwp.items():
@@ -127,7 +127,7 @@ def crop_sources_to_locations(
                     width_pixels=nwp_config.image_width_pixels,
                 )
 
-        if "sat" in source_data:
+        if config.satellite is not None:
             source_coordinates = [loc.source_coordinates["sat"] for loc in locations]
             centres, x_dim, y_dim = _unpack_spatial_coordinates(source_coordinates)
             sliced_source_data["sat"] = select_envelope_of_spatial_windows(
@@ -165,7 +165,7 @@ def slice_sources_by_time(
     """
     sliced_source_data: SourceDict[TArray] = {}
 
-    if "nwp" in source_data:
+    if config.nwp is not None:
         sliced_source_data["nwp"] = {}
 
         for nwp_name, da_nwp in source_data["nwp"].items():
@@ -192,7 +192,7 @@ def slice_sources_by_time(
                 ),
             )
 
-    if "sat" in source_data:
+    if config.satellite is not None:
 
         sliced_source_data["sat"] = select_time_slice(
             source_data["sat"],
@@ -202,7 +202,7 @@ def slice_sources_by_time(
             interval_end=minutes(config.satellite.interval_end_minutes),
         )
 
-    if "generation" in source_data:
+    if config.generation is not None:
         for key, window_config in (
             ("generation_input", config.generation.input),
             ("generation_target", config.generation.target),

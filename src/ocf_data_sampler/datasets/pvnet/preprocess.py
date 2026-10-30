@@ -86,7 +86,7 @@ def diff_accumulated_nwp_channels(source_data: SourceDict[TArray], config: PVNet
         source_data: Source arrays containing the NWP data to difference
         config: PVNetDataConfig object
     """
-    if "nwp" in source_data:
+    if config.nwp is not None:
         for nwp_name, da_nwp in source_data["nwp"].items():
             accum_channels = [
                 channel.name for channel in config.nwp[nwp_name].channels if channel.accumulated
