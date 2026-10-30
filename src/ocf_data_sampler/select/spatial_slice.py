@@ -45,7 +45,7 @@ def _get_central_index(
     else:
         raise ValueError(f"Unknown method: {method}")
 
-    return index
+    return int(index)
 
 
 def _get_window_bounds(central_index: int, window_size: int) -> tuple[int, int]:
