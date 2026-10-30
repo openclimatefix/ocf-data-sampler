@@ -1,11 +1,9 @@
 """Helper function to find index positions."""
 
-from typing import Any, TypeVar, overload
+from typing import Any, overload
 
 import numpy as np
 from numpy.typing import NDArray
-
-T = TypeVar("T", bound=np.generic)
 
 
 def get_string_index(values: NDArray[np.str_], query: str) -> int:
@@ -24,14 +22,16 @@ def get_string_index(values: NDArray[np.str_], query: str) -> int:
 
 
 @overload
-def get_indices_in_sorted_unique(values: NDArray[T], query: T) -> np.intp: ...
+def get_indices_in_sorted_unique[T: np.generic](values: NDArray[T], query: T) -> np.intp: ...
 
 
 @overload
-def get_indices_in_sorted_unique(values: NDArray[T], query: NDArray[T]) -> NDArray[np.intp]: ...
+def get_indices_in_sorted_unique[T: np.generic](
+    values: NDArray[T], query: NDArray[T],
+) -> NDArray[np.intp]: ...
 
 
-def get_indices_in_sorted_unique(
+def get_indices_in_sorted_unique[T: np.generic](
     values: NDArray[T],
     query: T | NDArray[T],
 ) -> np.intp | NDArray[np.intp]:

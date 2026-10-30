@@ -9,16 +9,16 @@ contract, not a convenience grab-bag.
 """
 
 from collections.abc import Hashable, Sequence
-from typing import Any, Protocol, Self, TypeAlias, TypeVar
+from typing import Any, Protocol, Self, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
 
 # A single path, a local glob, or an explicit sequence of Zarr store paths
-ZarrSource: TypeAlias = str | list[str] | tuple[str, ...]
+type ZarrSource = str | list[str] | tuple[str, ...]
 
 # Types accepted as a single-dimension indexer in `.isel()` method below.
-Indexer: TypeAlias = (
+type Indexer = (
     int
     | slice
     | Sequence[int]
