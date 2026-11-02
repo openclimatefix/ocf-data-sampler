@@ -26,14 +26,19 @@ def _validate_dropout_interval_end(
     dropout_minute_probabilities: dict[int, float] | None,
     interval_end_minutes: int,
 ) -> None:
-    """Reject choices that would leave every observation in the window untouched."""
+    """Require each dropout cutoff to precede the window's configured end relative to t0.
+
+    When t0 lies on the source's time grid, every cutoff therefore masks at least one value.
+    Otherwise the last selected timestamp can fall before t0 + interval_end_minutes, so a
+    cutoff may mask nothing.
+    """
     if dropout_minute_probabilities is None:
         return
     for delay_minutes in dropout_minute_probabilities:
         if delay_minutes <= -interval_end_minutes:
             raise ValueError(
-                f"Dropout minutes ({delay_minutes}) must mask at least one value in the "
-                f"selected interval ending at {interval_end_minutes} minutes relative to t0",
+                f"Dropout minutes ({delay_minutes}) must place the cutoff before the "
+                f"interval end ({interval_end_minutes} minutes relative to t0)",
             )
 
 
