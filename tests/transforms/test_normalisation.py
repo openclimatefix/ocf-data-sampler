@@ -39,11 +39,13 @@ def test_normalise_generation_by_capacity(array_factory):
     generation_mw = np.array([[50.0, 0.0], [100.0, 20.0]], dtype=np.float32)
     data = np.stack([generation_mw, capacity_mwp], axis=-1)
     original = data.copy()
-    da = array_factory(xr.DataArray(
-        data,
-        coords={"gen_param": ["generation_mw", "capacity_mwp"]},
-        dims=("time_utc", "location_id", "gen_param"),
-    ))
+    da = array_factory(
+        xr.DataArray(
+            data,
+            coords={"gen_param": ["generation_mw", "capacity_mwp"]},
+            dims=("time_utc", "location_id", "gen_param"),
+        )
+    )
 
     normalise_generation_by_capacity(da)
 

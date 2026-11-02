@@ -142,8 +142,8 @@ def test_select_time_slice_nwp_basic(da_nwp_like, t0_str):
 
     # Check the init-time is the first init time before the first target time
     init_times = da_nwp_like["init_time_utc"].values
-    expected_init_time = init_times[init_times<=expected_target_times[0]][-1]
-    assert (expected_init_time == da_slice["init_time_utc"].values)
+    expected_init_time = init_times[init_times <= expected_target_times[0]][-1]
+    assert expected_init_time == da_slice["init_time_utc"].values
 
 
 @pytest.mark.parametrize(
@@ -185,4 +185,4 @@ def test_select_time_slice_nwp_with_delay(
     assert (valid_times == expected_target_times).all()
 
     expected_init_time = np.datetime64(f"2024-01-02 {expected_init_time_str}")
-    assert (expected_init_time == da_slice["init_time_utc"].values)
+    assert expected_init_time == da_slice["init_time_utc"].values

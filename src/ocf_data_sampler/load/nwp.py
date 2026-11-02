@@ -1,6 +1,5 @@
 """Module for opening NWP data."""
 
-
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
@@ -36,7 +35,7 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
     "gencast": ProviderSpec("longitude", "latitude"),
     "fgn": ProviderSpec("longitude", "latitude"),
     "cloudcasting": ProviderSpec(
-        "x_geostationary", "y_geostationary", validate_matching_projections,
+        "x_geostationary", "y_geostationary", validate_matching_projections
     ),
 }
 

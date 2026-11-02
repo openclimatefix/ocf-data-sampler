@@ -9,6 +9,7 @@ from numpy.typing import NDArray
 
 NON_NWP_SOURCE_KEYS: Final = ("sat", "generation", "generation_input", "generation_target")
 
+
 class SourceDict[TSource](TypedDict, total=False):
     """A fixed layout of optional source keys with values of a common type.
 

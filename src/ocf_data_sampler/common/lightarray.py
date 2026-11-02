@@ -23,11 +23,10 @@ class LightDataArrayState(TypedDict):
 def _validate_coords(
     data: NDArray[Any] | ts.TensorStore,
     dims: tuple[str, ...],
-    coords: dict[str, tuple[tuple[str, ...], NDArray[Any]]]
+    coords: dict[str, tuple[tuple[str, ...], NDArray[Any]]],
 ) -> None:
     """Helper to validate the coordinates dictionary."""
     for coord_name, (coord_dims, coord_values) in coords.items():
-
         # Check types in coords
         if not isinstance(coord_name, str):
             raise TypeError(f"Coordinate name must be a string. Got {type(coord_name)}.")
@@ -54,7 +53,7 @@ def _validate_coords(
             if dim not in coords:
                 raise ValueError(
                     f"Dimension '{dim}' for coordinate '{coord_name}' is not present in the "
-                     "coordinates dictionary.",
+                    "coordinates dictionary.",
                 )
 
     for dim in dims:
@@ -175,7 +174,6 @@ def _apply_axis_indexers(
 
     current_axis = 0
     for indexer in axis_indexers:
-
         # Slices are already applied in the basic_indexers step, so we skip them here and
         # increment the current_axis counter to keep track of which axis we're on in the sliced data
         if isinstance(indexer, slice):
@@ -200,7 +198,6 @@ def _apply_axis_indexers(
             )
 
     return sliced_data
-
 
 
 class LightDataArray:

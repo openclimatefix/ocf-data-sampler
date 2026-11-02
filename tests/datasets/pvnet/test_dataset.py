@@ -20,10 +20,18 @@ from tests.conftest import LOCATION_IDS, SITE_LOCATION_IDS
 def _assert_sample_features_float32(sample):
     """The underlying data for all features should be float32, whether numpy or torch"""
     feature_keys = {
-        "satellite", "generation_input", "generation_target",
-        "generation_input_capacity_mwp", "generation_target_capacity_mwp",
-        "solar_azimuth", "solar_elevation",
-        "date_sin", "date_cos", "time_sin", "time_cos", "t0_embedding",
+        "satellite",
+        "generation_input",
+        "generation_target",
+        "generation_input_capacity_mwp",
+        "generation_target_capacity_mwp",
+        "solar_azimuth",
+        "solar_elevation",
+        "date_sin",
+        "date_cos",
+        "time_sin",
+        "time_cos",
+        "t0_embedding",
     }
     for key, value in sample.items():
         if key not in feature_keys:
@@ -37,7 +45,7 @@ def _assert_sample_features_float32(sample):
         assert value.dtype == (np.float32 if isinstance(value, np.ndarray) else torch.float32)
 
 
-def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
+def _pvnet_dataset_sample_check(sample, config, batch_dim=None):
     """Helper function to verify samples"""
 
     if batch_dim is None:
@@ -48,7 +56,12 @@ def _pvnet_dataset_sample_check(sample, config, batch_dim = None):
 
     # Specific keys should always be present
     required_keys = [
-        "nwp", "satellite", "generation_input", "generation_target", "t0", "t0_embedding",
+        "nwp",
+        "satellite",
+        "generation_input",
+        "generation_target",
+        "t0",
+        "t0_embedding",
     ]
     for key in required_keys:
         assert key in sample
@@ -136,7 +149,7 @@ def test_pvnet_dataset(pvnet_config_filename):
 @pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
 @pytest.mark.parametrize("source", ["satellite", "ukv"])
 def test_pvnet_dataset_rejects_oversized_crops(
-    tmp_path, pvnet_config_filename, dataset_class, source,
+    tmp_path, pvnet_config_filename, dataset_class, source
 ):
     config = load_yaml_configuration(pvnet_config_filename)
     source_config = {"satellite": config.satellite, "ukv": config.nwp["ukv"]}[source]
@@ -193,19 +206,23 @@ def test_pvnet_dataset_sites_unbounded_time_periods(pvnet_site_config_filename):
 
 def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
     dataset = PVNetDataset(
-        pvnet_config_filename, array_backend="xarray", include_extra_metadata=True,
+        pvnet_config_filename,
+        array_backend="xarray",
+        include_extra_metadata=True,
     )
     sample = dataset[0]
 
     dataset_nox = PVNetDataset(
-        pvnet_config_filename, array_backend="lightarray", include_extra_metadata=True,
+        pvnet_config_filename,
+        array_backend="lightarray",
+        include_extra_metadata=True,
     )
     sample_nox = dataset_nox[0]
     _assert_sample_features_float32(sample)
     _assert_sample_features_float32(sample_nox)
 
     def check_samples_equal(sample0, sample1):
-        assert set(sample0.keys())==set(sample1.keys())
+        assert set(sample0.keys()) == set(sample1.keys())
         for k in sample0:
             if isinstance(sample0[k], np.ndarray):
                 assert (sample0[k] == sample1[k]).all()
@@ -227,8 +244,7 @@ def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend
     config_path = tmp_path / "reordered_configuration.yaml"
 
     df_locations = pd.read_csv(
-        config.sampling_grid.locations_csv_path,
-        dtype={"location_id": str}
+        config.sampling_grid.locations_csv_path, dtype={"location_id": str}
     ).iloc[::-1]
     df_locations.to_csv(locations_path, index=False)
 
@@ -236,12 +252,15 @@ def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend
     save_yaml_configuration(config, config_path)
 
     expected_ids = [
-        location_id for location_id in df_locations["location_id"]
+        location_id
+        for location_id in df_locations["location_id"]
         if location_id not in config.sampling_grid.exclude_location_ids
     ]
 
     dataset = PVNetConcurrentDataset(
-        config_path, array_backend=array_backend, include_extra_metadata=True,
+        config_path,
+        array_backend=array_backend,
+        include_extra_metadata=True,
     )
     num_locations = _expected_num_locations(dataset, LOCATION_IDS)
     assert len(dataset.locations) == num_locations
@@ -263,7 +282,8 @@ def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend
     single_sample_dataset = PVNetDataset(config_path, array_backend="xarray")
     # Complete generation gives each location the same valid times as the concurrent dataset.
     np.testing.assert_array_equal(
-        single_sample_dataset.sample_index.location_id, np.repeat(expected_ids, len(dataset)),
+        single_sample_dataset.sample_index.location_id,
+        np.repeat(expected_ids, len(dataset)),
     )
     t0 = dataset.sample_index.t0[0]
     for i, location_id in enumerate(expected_ids):

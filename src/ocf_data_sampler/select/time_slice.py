@@ -32,7 +32,7 @@ def select_time_slice[TArray: DataArrayLike](
     start_ind, end_ind = get_indices_in_sorted_unique(da["time_utc"].values, interval_bounds)
 
     requested_times = date_range(interval_bounds[0], interval_bounds[1], freq=time_resolution)
-    da_sel = da.isel(time_utc=slice(start_ind, end_ind+1))
+    da_sel = da.isel(time_utc=slice(start_ind, end_ind + 1))
 
     sliced_times = da_sel["time_utc"].values
     if not np.array_equal(sliced_times, requested_times):

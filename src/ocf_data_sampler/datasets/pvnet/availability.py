@@ -85,7 +85,7 @@ def _find_non_generation_t0_periods(
             nwp_periods = find_contiguous_t0_periods_nwp(
                 init_times=da["init_time_utc"].values,
                 interval_start=minutes(nwp_config.interval_start_minutes),
-                interval_end=minutes(nwp_config.interval_end_minutes)+end_buffer,
+                interval_end=minutes(nwp_config.interval_end_minutes) + end_buffer,
                 first_forecast_step=first_forecast_step,
                 last_forecast_step=last_forecast_step,
                 time_resolution=minutes(nwp_config.time_resolution_minutes),
@@ -253,7 +253,8 @@ def build_sample_index(
     # Shared source periods apply to every location, so calculate them once.
     non_generation_periods = (
         _find_non_generation_t0_periods(source_data, config)
-        if config.satellite is not None or config.nwp is not None else None
+        if config.satellite is not None or config.nwp is not None
+        else None
     )
 
     # Generation availability can differ by location.
@@ -264,7 +265,7 @@ def build_sample_index(
         da_gen_loc = source_data["generation"].sel(location_id=location_id).dropna(dim="time_utc")
 
         generation_periods = _find_generation_t0_periods(
-            da_gen_loc["time_utc"].values, config.generation,
+            da_gen_loc["time_utc"].values, config.generation
         )
         if non_generation_periods is not None:
             available_periods = intersect_time_periods([non_generation_periods, generation_periods])
@@ -313,9 +314,7 @@ def build_concurrent_sample_index(
     # Without generation, all locations share the same t0 times.
     if config.generation is None:
         non_generation_periods = _find_non_generation_t0_periods(source_data, config)
-        t0_times = _build_t0_times(
-            non_generation_periods, t0_frequency, requested_periods
-        )
+        t0_times = _build_t0_times(non_generation_periods, t0_frequency, requested_periods)
         if len(t0_times) == 0:
             raise ValueError("No t0 times found")
         return ConcurrentSampleIndex(t0=t0_times)
@@ -323,7 +322,8 @@ def build_concurrent_sample_index(
     # Shared source periods apply to every location, so calculate them once.
     non_generation_periods = (
         _find_non_generation_t0_periods(source_data, config)
-        if config.satellite is not None or config.nwp is not None else None
+        if config.satellite is not None or config.nwp is not None
+        else None
     )
 
     # All locations must have non-NaN generation data for each t0

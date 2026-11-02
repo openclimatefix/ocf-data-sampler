@@ -13,9 +13,11 @@ from ocf_data_sampler.load.satellite import open_satellite
 def xr_gen(generation_zarr_path) -> xr.DataArray:
     return open_generation(generation_zarr_path)
 
+
 @pytest.fixture()
 def xr_ukv(nwp_ukv_zarr_path) -> xr.DataArray:
     return open_nwp(zarr_path=nwp_ukv_zarr_path, provider="ukv")
+
 
 @pytest.fixture()
 def xr_sat(sat_zarr_path) -> xr.DataArray:
@@ -48,8 +50,8 @@ def test_isel(xr_gen, xr_ukv, xr_sat):
         (fr_gen, xr_gen, {"time_utc": slice(3, None)}),
         # arrays
         (fr_gen, xr_gen, {"location_id": [0]}),
-        (fr_gen, xr_gen, {"time_utc": np.array([3,5,7])}),
-        (fr_sat, xr_sat, {"time_utc": np.array([5,3,7])}),
+        (fr_gen, xr_gen, {"time_utc": np.array([3, 5, 7])}),
+        (fr_sat, xr_sat, {"time_utc": np.array([5, 3, 7])}),
         (fr_gen, xr_gen, {"gen_param": np.array([True, False])}),
     ]
     for fda, xda, indexer in index_tasks_1D:
