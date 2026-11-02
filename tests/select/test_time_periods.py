@@ -103,7 +103,6 @@ def test_find_contiguous_t0_periods():
     assert periods.equals(expected_results)
 
 
-
 def test_find_contiguous_t0_periods_keeps_exact_length_period():
     freq = minutes(5)
     interval_start = minutes(0)
@@ -146,12 +145,24 @@ def test_find_contiguous_t0_periods_nwp():
     )
     exp_res4 = construct_time_periods_df(
         start_dt=[
-            "2023-01-01 05:00", "2023-01-01 11:00", "2023-01-01 14:00", "2023-01-02 05:00",
-            "2023-01-02 14:00", "2023-01-02 17:00", "2023-01-02 20:00", "2023-01-02 23:00",
+            "2023-01-01 05:00",
+            "2023-01-01 11:00",
+            "2023-01-01 14:00",
+            "2023-01-02 05:00",
+            "2023-01-02 14:00",
+            "2023-01-02 17:00",
+            "2023-01-02 20:00",
+            "2023-01-02 23:00",
         ],
         end_dt=[
-            "2023-01-01 06:00", "2023-01-01 12:00", "2023-01-01 15:00", "2023-01-02 06:00",
-            "2023-01-02 15:00", "2023-01-02 18:00", "2023-01-02 21:00", "2023-01-03 00:00",
+            "2023-01-01 06:00",
+            "2023-01-01 12:00",
+            "2023-01-01 15:00",
+            "2023-01-02 06:00",
+            "2023-01-02 15:00",
+            "2023-01-02 18:00",
+            "2023-01-02 21:00",
+            "2023-01-03 00:00",
         ],
     )
     exp_res5 = construct_time_periods_df(
@@ -162,16 +173,18 @@ def test_find_contiguous_t0_periods_nwp():
     expected_results = [exp_res1, exp_res2, exp_res3, exp_res4, exp_res5]
 
     # Create 3-hourly init times with a few time stamps missing
-    init_times = to_datetime64([
-        "2023-01-01 03:00",
-        "2023-01-01 09:00",
-        "2023-01-01 12:00",
-        "2023-01-02 03:00",
-        "2023-01-02 12:00",
-        "2023-01-02 15:00",
-        "2023-01-02 18:00",
-        "2023-01-02 21:00",
-    ])
+    init_times = to_datetime64(
+        [
+            "2023-01-01 03:00",
+            "2023-01-01 09:00",
+            "2023-01-01 12:00",
+            "2023-01-02 03:00",
+            "2023-01-02 12:00",
+            "2023-01-02 15:00",
+            "2023-01-02 18:00",
+            "2023-01-02 21:00",
+        ]
+    )
 
     first_forecast_step = np.timedelta64(0, "h")
     last_forecast_step = np.timedelta64(36, "h")
@@ -208,7 +221,7 @@ def test_find_contiguous_t0_periods_nwp_forecast_too_short():
     init_times = date_range(
         to_datetime64("2023-01-01 00:00"),
         to_datetime64("2023-01-02 00:00"),
-        freq=np.timedelta64(6, "h")
+        freq=np.timedelta64(6, "h"),
     )
 
     # The forecast only reaches 2 hours ahead, but each sample needs 3 hours of future data
@@ -303,18 +316,22 @@ def test_intersect_time_periods_with_many_inputs():
 def test_fill_time_periods():
     time_periods = pd.DataFrame(
         {
-            "start_dt": to_datetime64([
-                "2021-01-01 04:10:00",
-                "2021-01-01 09:00:00",
-                "2021-01-01 09:15:00",
-                "2021-01-01 12:00:00",
-            ]),
-            "end_dt": to_datetime64([
-                "2021-01-01 06:00:00",
-                "2021-01-01 09:00:00",
-                "2021-01-01 09:20:00",
-                "2021-01-01 14:45:00",
-            ]),
+            "start_dt": to_datetime64(
+                [
+                    "2021-01-01 04:10:00",
+                    "2021-01-01 09:00:00",
+                    "2021-01-01 09:15:00",
+                    "2021-01-01 12:00:00",
+                ]
+            ),
+            "end_dt": to_datetime64(
+                [
+                    "2021-01-01 06:00:00",
+                    "2021-01-01 09:00:00",
+                    "2021-01-01 09:20:00",
+                    "2021-01-01 14:45:00",
+                ]
+            ),
         },
     )
 
@@ -370,7 +387,7 @@ def test_find_contiguous_t0_periods_matches_slicing():
     potential_t0s = date_range(
         to_datetime64("2023-01-01T23:00"),
         to_datetime64("2023-01-02T06:00"),
-        freq=t0_freq
+        freq=t0_freq,
     )
     sliceable_t0s = []
     for t0 in potential_t0s:

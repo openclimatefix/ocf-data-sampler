@@ -78,7 +78,7 @@ def test_apply_source_dropout(config_filename):
     config.satellite.dropout_minute_probabilities = {60: 1.0}
     config.satellite.fill_value = -2.0
 
-    generation_input = _generation_da(generation_mw=np.ones((4, 2)),  capacity_mwp=np.ones((4, 2)))
+    generation_input = _generation_da(generation_mw=np.ones((4, 2)), capacity_mwp=np.ones((4, 2)))
     generation_target = generation_input.copy(deep=True)
 
     t0 = np.datetime64("2023-01-01 00:00")
@@ -94,15 +94,13 @@ def test_apply_source_dropout(config_filename):
     source_data = {
         "generation_input": generation_input,
         "generation_target": generation_target,
-        "sat": sat
+        "sat": sat,
     }
 
     apply_source_dropout(source_data, t0, config)
 
     # Generation dropout with a 30-minute delay should blank everything from t0
-    _assert_dropout_applied(
-        source_data["generation_input"], t0 - np.timedelta64(30, "m"),
-    )
+    _assert_dropout_applied(source_data["generation_input"], t0 - np.timedelta64(30, "m"))
 
     # No dropout is applied to generation.target, so it should have no NaNs
     assert not np.any(np.isnan(source_data["generation_target"]))
@@ -192,7 +190,10 @@ def test_preprocess_source_data_preserves_original_arrays(config_filename):
         source_data["nwp"]["ukv"].data,
     ]
     for original_reference, original_copy, processed in zip(
-        original_array_references, original_array_copies, processed_arrays, strict=True,
+        original_array_references,
+        original_array_copies,
+        processed_arrays,
+        strict=True,
     ):
         # Check that the processing actually returned different arrays from the original, else the
         # following check that the original NumPy arrays are unmodified becomes a dummy
@@ -200,4 +201,3 @@ def test_preprocess_source_data_preserves_original_arrays(config_filename):
 
         # Check that the original arrays are unmodified
         np.testing.assert_array_equal(original_reference, original_copy)
-

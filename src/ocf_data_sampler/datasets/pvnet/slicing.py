@@ -174,8 +174,7 @@ def slice_sources_by_time[TArray: DataArrayLike](
             # Add a buffer if we need to diff some of the channels in time
             if any(channel.accumulated for channel in nwp_config.channels):
                 interval_end_mins = (
-                    nwp_config.interval_end_minutes
-                    + nwp_config.time_resolution_minutes
+                    nwp_config.interval_end_minutes + nwp_config.time_resolution_minutes
                 )
             else:
                 interval_end_mins = nwp_config.interval_end_minutes
@@ -187,13 +186,13 @@ def slice_sources_by_time[TArray: DataArrayLike](
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 interval_end=minutes(interval_end_mins),
                 delay=(
-                    None if nwp_config.delay_minute_probabilities is None
+                    None
+                    if nwp_config.delay_minute_probabilities is None
                     else choose_delay(nwp_config.delay_minute_probabilities)
                 ),
             )
 
     if config.satellite is not None:
-
         sliced_source_data["sat"] = select_time_slice(
             source_data["sat"],
             t0,

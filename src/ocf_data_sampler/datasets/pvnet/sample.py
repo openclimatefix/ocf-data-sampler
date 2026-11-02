@@ -124,9 +124,7 @@ def add_source_arrays[TArray: DataArrayLike](
         sample["satellite"] = source_data["sat"].values
 
     if "nwp" in source_data:
-        sample["nwp"] = {
-            nwp_name: da_nwp.values for nwp_name, da_nwp in source_data["nwp"].items()
-        }
+        sample["nwp"] = {nwp_name: da_nwp.values for nwp_name, da_nwp in source_data["nwp"].items()}
 
 
 def add_source_metadata[TArray: DataArrayLike](
@@ -144,11 +142,13 @@ def add_source_metadata[TArray: DataArrayLike](
     """
     if "sat" in source_data:
         da_sat = source_data["sat"]
-        metadata.update({
-            "satellite_time_utc": get_posix_timestamp(da_sat["time_utc"].values),
-            "satellite_x_geostationary": da_sat["x_geostationary"].values,
-            "satellite_y_geostationary": da_sat["y_geostationary"].values,
-        })
+        metadata.update(
+            {
+                "satellite_time_utc": get_posix_timestamp(da_sat["time_utc"].values),
+                "satellite_x_geostationary": da_sat["x_geostationary"].values,
+                "satellite_y_geostationary": da_sat["y_geostationary"].values,
+            }
+        )
 
     if "nwp" in source_data:
         metadata["nwp"] = {}

@@ -122,7 +122,6 @@ def find_contiguous_t0_periods_nwp(
         raise ValueError("The max dropout must be non-negative (zero or positive)")
 
     if staleness_limit is not None:
-
         if not staleness_limit > ZERO_TDELTA:
             raise ValueError("The staleness limit must be positive")
 
@@ -240,7 +239,6 @@ def _intersect_2_time_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
     all_ends: list[NDArray[np.datetime64]] = []
 
     for i in range(len(a)):
-
         # The overlapping periods can't start before either period starts, and can't end after
         # either period ends. So we take the max of the start times and the min of the end times.
         starts = np.maximum(a_starts[i], b_starts)
@@ -254,10 +252,12 @@ def _intersect_2_time_periods(a: pd.DataFrame, b: pd.DataFrame) -> pd.DataFrame:
         all_starts.append(starts)
         all_ends.append(ends)
 
-    intersecting_periods = pd.DataFrame({
-        "start_dt": np.concatenate(all_starts),
-        "end_dt": np.concatenate(all_ends),
-    })
+    intersecting_periods = pd.DataFrame(
+        {
+            "start_dt": np.concatenate(all_starts),
+            "end_dt": np.concatenate(all_ends),
+        }
+    )
     return intersecting_periods.sort_values(by="start_dt").reset_index(drop=True)
 
 
