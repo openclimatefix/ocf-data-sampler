@@ -42,8 +42,6 @@ PROVIDER_REGISTRY: dict[str, ProviderSpec] = {
 
 def open_nwp(zarr_path: ZarrSource, provider: str) -> xr.DataArray:
     """Open NWP data and conform it to the standard layout."""
-    provider = provider.lower()
-
     if provider not in PROVIDER_REGISTRY:
         supported = ", ".join(sorted(PROVIDER_REGISTRY))
         raise ValueError(f"Unknown provider: {provider!r}. Supported: {supported}")
