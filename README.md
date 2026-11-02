@@ -13,7 +13,7 @@
 
 This project is primarily licensed under the MIT License (see LICENSE).
 
-It includes and adapts the `ephemeris()` function from the [pvlib-python](https://github.com/pvlib/pvlib-python) project, licensed under the BSD 3-Clause License. The original notice is retained in `src/ocf_data_sampler/features/solar.py`.
+It includes and adapts the `ephemeris()` function from the [pvlib-python](https://github.com/pvlib/pvlib-python) project, licensed under the BSD 3-Clause License. The original notice is retained in `src/ocf_data_sampler/transforms/solar.py`.
 
 ## Documentation
 

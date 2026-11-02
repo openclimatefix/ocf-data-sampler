@@ -83,7 +83,7 @@ include = [
     "src/ocf_data_sampler/load/**",
     "src/ocf_data_sampler/config/**",
     "src/ocf_data_sampler/select/**",
-    "src/ocf_data_sampler/features/**",
+    "src/ocf_data_sampler/transforms/**",
 ]
 
 [tool.ty.overrides.rules]
@@ -96,7 +96,7 @@ all = "ignore"
 line-length = 100
 indent-width = 4
 force-exclude = true
-extend-exclude = ["src/ocf_data_sampler/features/solar.py"]
+extend-exclude = ["src/ocf_data_sampler/transforms/solar.py"]
 
 [tool.ruff.lint]
 select = [
