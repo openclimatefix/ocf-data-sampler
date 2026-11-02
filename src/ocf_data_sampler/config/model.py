@@ -68,8 +68,8 @@ def _validate_unique_channel_names(channels: Sequence["Channel"]) -> None:
         raise ValueError("Channel names must be unique")
 
 
-class Base(BaseModel, extra="forbid"):
-    """Base configuration model that rejects unknown fields."""
+class Base(BaseModel, extra="forbid", allow_inf_nan=False):
+    """Base configuration model that rejects unknown fields and non-finite floats."""
 
 
 class TimeWindowMixin(Base):
@@ -124,7 +124,8 @@ class NaNPolicyMixin(Base):
 
     reject_nan: bool = Field(
         default=False,
-        description="Reject NaNs before filling. Cannot be combined with fill_value or dropout.",
+        description="Raise an error if a sample contains NaNs. Cannot be combined with "
+        "fill_value or dropout.",
     )
 
     fill_value: float | None = Field(
@@ -218,7 +219,7 @@ class NWPChannel(Channel):
     accumulated: bool = Field(
         default=False,
         description="Whether to difference the channel before normalisation. The normalisation "
-        "values (`mean`, `std`, `min_clip`, and `max_clip`) apply to the differenced values. "
+        "values (`mean`, `std`, `clip_min`, and `clip_max`) apply to the differenced values. "
         "Each difference is labelled with the earlier step's timestamp, and the output channel "
         "name is prefixed with diff_.",
     )
@@ -278,6 +279,7 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
 
     staleness_limit_minutes: int | None = Field(
         None,
+        gt=0,
         description="Sets a limit on how stale an NWP init-time is allowed to be whilst still "
         "being used to construct an example. The limit is exclusive: forecasts this stale or "
         "staler at t0 are not used. If set to None, then no additional limit is applied "
@@ -291,6 +293,19 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
             supported = ", ".join(sorted(PROVIDER_REGISTRY))
             raise ValueError(f"Unknown NWP provider {provider!r}. Supported: {supported}")
         return provider
+
+    @model_validator(mode="after")
+    def validate_delay_staleness(self) -> "NWP":
+        """Require every delay to be shorter than the staleness limit."""
+        if self.delay_minute_probabilities is None or self.staleness_limit_minutes is None:
+            return self
+        max_delay = max(self.delay_minute_probabilities)
+        if max_delay >= self.staleness_limit_minutes:
+            raise ValueError(
+                f"Maximum delay ({max_delay} minutes) must be less than "
+                f"staleness_limit_minutes ({self.staleness_limit_minutes})",
+            )
+        return self
 
     @field_validator("channels")
     def validate_channel_names(cls, channels: list[NWPChannel]) -> list[NWPChannel]:
