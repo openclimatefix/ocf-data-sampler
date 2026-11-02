@@ -1,11 +1,19 @@
 """Module for datetime utilities."""
-from typing import cast
+from typing import overload
 
 import numpy as np
 from numpy.typing import NDArray
 
 
-def minutes(minutes: int | list[int]) -> np.timedelta64 | NDArray[np.timedelta64]:
+@overload
+def minutes(minutes: int | np.integer) -> np.timedelta64: ...
+
+
+@overload
+def minutes(minutes: list[int]) -> NDArray[np.timedelta64]: ...
+
+
+def minutes(minutes: int | np.integer | list[int]) -> np.timedelta64 | NDArray[np.timedelta64]:
     """Timedelta minutes.
 
     Args:
@@ -73,7 +81,7 @@ def get_day_fraction(
     """
     day_start = datetimes.astype("datetime64[D]")
     day_fraction = ((datetimes - day_start) / np.timedelta64(1, "D")).astype(np.float64)
-    return cast("np.float64 | NDArray[np.float64]", day_fraction)
+    return day_fraction
 
 
 def is_leap_year(
@@ -86,7 +94,7 @@ def is_leap_year(
     """
     years = get_year(datetimes)
     result = (years % 4 == 0) & ((years % 100 != 0) | (years % 400 == 0))
-    return cast("np.bool_ | NDArray[np.bool_]", result)
+    return result
 
 
 def date_range(
@@ -120,6 +128,17 @@ def _validate_rounding_frequency(freq: np.timedelta64) -> None:
         raise ValueError(f"Frequency {freq} must be factor of 1 day.")
 
 
+@overload
+def datetime_ceil(datetimes: np.datetime64, freq: np.timedelta64) -> np.datetime64: ...
+
+
+@overload
+def datetime_ceil(
+    datetimes: NDArray[np.datetime64],
+    freq: np.timedelta64,
+) -> NDArray[np.datetime64]: ...
+
+
 def datetime_ceil(
     datetimes: np.datetime64 | NDArray[np.datetime64],
     freq: np.timedelta64,
@@ -134,7 +153,18 @@ def datetime_ceil(
     epoch_datetime = np.datetime64("1970-01-01", "ns")
     periods_since_epoch = np.ceil((datetimes - epoch_datetime) / freq)
     result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
-    return cast("np.datetime64 | NDArray[np.datetime64]", result)
+    return result
+
+
+@overload
+def datetime_floor(datetimes: np.datetime64, freq: np.timedelta64) -> np.datetime64: ...
+
+
+@overload
+def datetime_floor(
+    datetimes: NDArray[np.datetime64],
+    freq: np.timedelta64,
+) -> NDArray[np.datetime64]: ...
 
 
 def datetime_floor(
@@ -151,7 +181,15 @@ def datetime_floor(
     epoch_datetime = np.datetime64("1970-01-01", "ns")
     periods_since_epoch = np.floor((datetimes - epoch_datetime) / freq)
     result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
-    return cast("np.datetime64 | NDArray[np.datetime64]", result)
+    return result
+
+
+@overload
+def get_posix_timestamp(datetimes: np.datetime64) -> np.float64: ...
+
+
+@overload
+def get_posix_timestamp(datetimes: NDArray[np.datetime64]) -> NDArray[np.float64]: ...
 
 
 def get_posix_timestamp(

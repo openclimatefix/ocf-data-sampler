@@ -239,26 +239,22 @@ def build_sample_index(
             location_id=np.repeat(location_ids, len(t0_times)),
         )
 
-    # Shared source periods apply to every location, so calculate them once.
-    non_generation_sources = {
-        key: source for key, source in source_data.items() if key != "generation"
-    }
-    non_generation_periods = (
-        _find_non_generation_t0_periods(non_generation_sources, config)
-        if non_generation_sources else None
-    )
-
     # Without generation, all locations share the same t0 times.
     if config.generation is None:
-        t0_times = _build_t0_times(
-            non_generation_periods, t0_frequency, requested_periods
-        )
+        periods = _find_non_generation_t0_periods(source_data, config)
+        t0_times = _build_t0_times(periods, t0_frequency, requested_periods)
         if len(t0_times) == 0:
             raise ValueError("No t0 times found for locations")
         return SampleIndex(
             t0=np.tile(t0_times, len(location_ids)),
             location_id=np.repeat(location_ids, len(t0_times)),
         )
+
+    # Shared source periods apply to every location, so calculate them once.
+    non_generation_periods = (
+        _find_non_generation_t0_periods(source_data, config)
+        if config.satellite is not None or config.nwp is not None else None
+    )
 
     # Generation availability can differ by location.
     t0_arrays: list[NDArray[np.datetime64]] = []
@@ -314,23 +310,21 @@ def build_concurrent_sample_index(
             raise ValueError("No t0 times are available")
         return ConcurrentSampleIndex(t0=t0_times)
 
-    # Shared source periods apply to every location, so calculate them once.
-    non_generation_sources = {
-        key: source for key, source in source_data.items() if key != "generation"
-    }
-    non_generation_periods = (
-        _find_non_generation_t0_periods(non_generation_sources, config)
-        if non_generation_sources else None
-    )
-
     # Without generation, all locations share the same t0 times.
     if config.generation is None:
+        non_generation_periods = _find_non_generation_t0_periods(source_data, config)
         t0_times = _build_t0_times(
             non_generation_periods, t0_frequency, requested_periods
         )
         if len(t0_times) == 0:
             raise ValueError("No t0 times found")
         return ConcurrentSampleIndex(t0=t0_times)
+
+    # Shared source periods apply to every location, so calculate them once.
+    non_generation_periods = (
+        _find_non_generation_t0_periods(source_data, config)
+        if config.satellite is not None or config.nwp is not None else None
+    )
 
     # All locations must have non-NaN generation data for each t0
     da_gen = source_data["generation"].dropna(dim="time_utc", how="any")

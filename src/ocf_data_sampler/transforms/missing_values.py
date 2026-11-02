@@ -2,11 +2,11 @@
 
 import numpy as np
 
-from ocf_data_sampler.common.types import TArray
+from ocf_data_sampler.common.types import DataArrayLike
 
 
 def validate_and_fill_nans(
-    da: TArray,
+    da: DataArrayLike,
     fill_value: float | None,
     *,
     reject_nan: bool = False,

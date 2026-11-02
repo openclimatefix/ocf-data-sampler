@@ -15,6 +15,16 @@ import xarray_tensorstore as xrt
 from ocf_data_sampler.common.types import ZarrSource
 
 
+def read(da: xr.DataArray) -> None:
+    """Start a TensorStore read in-place without waiting; leave other backends unchanged.
+
+    Replaces the adapter on the existing Variable, so arrays sharing that Variable see the change.
+    """
+    data = da.variable._data
+    if isinstance(data, xrt._TensorStoreAdapter):
+        da.data = data.read()
+
+
 def _extract_tensorstore(da: xr.DataArray) -> ts.TensorStore:
     """Extract the backing TensorStore, or fail with a message that says why."""
     data = da.variable._data

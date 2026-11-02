@@ -9,8 +9,8 @@ from ocf_data_sampler.config.model import (
     SamplingGrid,
 )
 from ocf_data_sampler.datasets.pvnet.sample import (
+    _add_solar_features,
     _build_feature_datetimes,
-    _build_solar_features,
     add_source_arrays,
     add_source_metadata,
     build_numpy_sample,
@@ -59,12 +59,15 @@ def test_build_feature_datetimes():
     np.testing.assert_array_equal(datetimes, expected)
 
 
-def test_build_solar_features():
+def test_add_solar_features():
     datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min").values
-    sample = _build_solar_features(datetimes, lon=0, lat=51.5)
+    sample = {"location_id": "loc_1", "t0": np.float64(1718884800.0)}
+    _add_solar_features(sample, datetimes, lon=0, lat=51.5)
 
     # Assertion accounting for solar coord normalisation
-    assert set(sample) == {"solar_elevation", "solar_azimuth"}
+    assert set(sample) == {"location_id", "t0", "solar_elevation", "solar_azimuth"}
+    assert sample["location_id"] == "loc_1"
+    assert sample["t0"] == np.float64(1718884800.0)
     assert sample["solar_elevation"].dtype == np.float32
     assert sample["solar_azimuth"].dtype == np.float32
     assert np.all((sample["solar_elevation"] >= 0) & (sample["solar_elevation"] <= 1))

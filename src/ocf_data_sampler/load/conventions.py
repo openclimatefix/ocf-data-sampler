@@ -16,7 +16,7 @@ def validate_matching_projections(datasets: Sequence[xr.Dataset]) -> None:
     Args:
         datasets: Non-empty sequence of datasets with dataset-level area metadata.
     """
-    def _get_projection(ds: xr.Dataset) -> dict:
+    def _get_projection(ds: xr.Dataset) -> dict[str, object]:
         area, = ds.attrs["area"].values()
         return area["projection"]
 
@@ -63,10 +63,10 @@ def validate_coords(
 
 
 def make_spatial_coords_increasing(
-    ds: xr.Dataset | xr.DataArray,
+    ds: xr.Dataset,
     x_coord: str,
     y_coord: str,
-) -> xr.Dataset | xr.DataArray:
+) -> xr.Dataset:
     """Make sure the spatial coordinates are in increasing order.
 
     Args:
