@@ -443,20 +443,20 @@ class T0Embedding(Base):
     embeddings: list[_Embedding] = Field(
         ...,
         description="Period and representation pairs, e.g. ('6h', 'cyclic') or ('1y', 'linear'). "
-        "Periods support 1-24 hours or positive integer years. Each cyclic period adds two "
-        "elements (sine and cosine) to the output vector; each linear period adds one "
-        "element (fraction through the period).",
+        "Hour periods must divide 24; year periods must be positive integers. Each cyclic "
+        "period adds two elements (sine and cosine) to the output vector; each linear period "
+        "adds one element (fraction through the period).",
     )
 
     @field_validator("embeddings")
     def validate_embeddings(cls, embeddings: list[_Embedding]) -> list[_Embedding]:
-        """Require positive embedding periods, with hours limited to 24."""
+        """Require positive embedding periods, with hours dividing 24."""
         for period, _ in embeddings:
             value = int(period[:-1])
             if value <= 0:
                 raise ValueError("Embedding period must be > 0")
-            if period[-1] == "h" and value > 24:
-                raise ValueError("Embedding period in hours must be <= 24")
+            if period[-1] == "h" and 24 % value != 0:
+                raise ValueError("Embedding period in hours must divide 24")
 
         return embeddings
 
