@@ -28,6 +28,7 @@ dependencies = [
     "pydantic>=2.11.8",
     "pyproj",
     "pyyaml",
+    "tensorstore",
     "xarray-tensorstore==0.3.0",
     "zarr>=3",
 ]
