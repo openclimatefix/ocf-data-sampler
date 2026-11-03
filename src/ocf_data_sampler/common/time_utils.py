@@ -39,7 +39,7 @@ def get_minute(datetimes: np.datetime64 | NDArray[np.datetime64]) -> np.int32 | 
     """Get the minute past the hour.
 
     Args:
-        datetimes: the datetimes to get day of year for
+        datetimes: the datetimes to get minute for
     """
     # Convert to minutes since epoch, then mod 60 for minute-of-hour
     return datetimes.astype("datetime64[m]").astype(np.int32) % 60
