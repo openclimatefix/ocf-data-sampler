@@ -17,7 +17,8 @@ def clip_and_standardise(
 ) -> None:
     """Clip, subtract the mean, and divide by the standard deviation.
 
-    Replaces `.data` on the input DataArray without modifying shared source values.
+    Replaces `.data` on the input DataArray without modifying shared source values. The input's
+    floating-point dtype is preserved.
 
     Args:
         da: Input DataArray-like.
@@ -26,7 +27,17 @@ def clip_and_standardise(
         mean: Means to subtract, broadcastable to the input shape.
         std: Standard deviations to divide by, broadcastable to the input shape.
     """
-    da.data = (da.data.clip(clip_min, clip_max) - mean) / std
+    # Allocate one new array, then work in place on it. Clipping is skipped when every bound is
+    # infinite, since it would not change any values.
+    data = da.data.copy()
+    if clip_min.max() != -np.inf:
+        np.maximum(data, clip_min, out=data)
+    if clip_max.min() != np.inf:
+        np.minimum(data, clip_max, out=data)
+
+    data -= mean
+    data /= std
+    da.data = data
 
 
 def normalise_generation_by_capacity(da: DataArrayLike) -> None:
