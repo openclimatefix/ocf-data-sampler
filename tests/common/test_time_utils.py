@@ -106,5 +106,7 @@ def test_datetime_floor(example_datetimes, freq):
 @pytest.mark.parametrize("unit", ["ns", "us"])
 def test_get_posix_timestamp(unit):
     datetimes = np.array(["2024-01-01T00:00", "2024-01-01T01:00"], dtype=f"datetime64[{unit}]")
-    np.testing.assert_array_equal(get_posix_timestamp(datetimes), [1704067200.0, 1704070800.0])
-    assert get_posix_timestamp(datetimes[0]) == 1704067200.0
+    timestamps = get_posix_timestamp(datetimes)
+    assert timestamps.dtype == np.int64
+    np.testing.assert_array_equal(timestamps, [1704067200, 1704070800])
+    assert get_posix_timestamp(datetimes[0]) == 1704067200

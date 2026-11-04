@@ -94,7 +94,7 @@ def _add_source_arrays[TArray: DataArrayLike](
 ) -> None:
     """Add source data arrays to the sample in place.
 
-    Generation timestamps are float64 POSIX seconds. Added arrays may share
+    Generation timestamps are int64 POSIX seconds. Added arrays may share
     memory with the source arrays.
 
     Args:
@@ -133,7 +133,7 @@ def _add_source_metadata[TArray: DataArrayLike](
 ) -> None:
     """Add source diagnostics to an existing metadata dictionary in place.
 
-    Absolute timestamps are float64 POSIX seconds; NWP lead times are float32 hours.
+    Absolute timestamps are int64 POSIX seconds; NWP lead times are float32 hours.
     Coordinate arrays retain source units and dtypes and may share source memory.
 
     Args:
