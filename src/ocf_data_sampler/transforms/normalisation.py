@@ -39,22 +39,23 @@ def normalise_generation_by_capacity(da: DataArrayLike) -> None:
     Args:
         da: Generation DataArray-like with a `gen_param` dimension
     """
+    if da.dims[-1] != "gen_param":
+        raise ValueError("Expected 'gen_param' as the last dimension.")
+
     gen_params = da["gen_param"].values
     gen_idx = get_string_index(gen_params, "generation_mw")
     cap_idx = get_string_index(gen_params, "capacity_mwp")
 
-    generation_values = da.isel(gen_param=gen_idx).values
-    capacity_values = da.isel(gen_param=cap_idx).values
+    normalised_data = da.data.copy()
 
-    normalised = np.divide(
+    generation_values = normalised_data[..., gen_idx]
+    capacity_values = normalised_data[..., cap_idx]
+
+    normalised_data[..., gen_idx] = np.divide(
         generation_values,
         capacity_values,
         out=np.zeros_like(generation_values),
         where=capacity_values != 0,
     )
 
-    new_data = da.data.copy()
-    index = [slice(None)] * new_data.ndim
-    index[da.dims.index("gen_param")] = gen_idx
-    new_data[tuple(index)] = normalised
-    da.data = new_data
+    da.data = normalised_data

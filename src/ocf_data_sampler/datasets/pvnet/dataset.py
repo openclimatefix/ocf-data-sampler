@@ -1,6 +1,7 @@
 """Torch dataset for PVNet."""
 
-from typing import Literal, override
+from abc import ABC, abstractmethod
+from typing import Any, Literal, override
 
 import numpy as np
 import xarray as xr
@@ -59,7 +60,7 @@ def convert_sources_to_lightarray(
 class AbstractPVNetDataset[
     TIndex: (SampleIndex, ConcurrentSampleIndex),
     TSample,
-](PickleCacheMixin, Dataset[TSample]):
+](PickleCacheMixin, Dataset[TSample], ABC):
     """Abstract class for PVNet datasets."""
 
     def __init__(
@@ -86,9 +87,13 @@ class AbstractPVNetDataset[
         """
         super().__init__()
 
-        # Validate requested periods before loading sources to fail fast on invalid input
+        # Validate arguments before loading sources to fail fast on invalid input
         if time_periods is not None:
             validate_requested_periods(time_periods)
+        if array_backend not in ("xarray", "lightarray"):
+            raise ValueError(
+                f"Unsupported array_backend {array_backend!r}; expected 'xarray' or 'lightarray'"
+            )
 
         config = load_yaml_configuration(config_filename)
 
@@ -110,20 +115,18 @@ class AbstractPVNetDataset[
         self.config = config
         self.include_extra_metadata = include_extra_metadata
 
+        self.source_data: SourceDict[Any]
         if array_backend == "xarray":
             self.source_data = source_data
-        elif array_backend == "lightarray":
-            self.source_data = convert_sources_to_lightarray(source_data)
         else:
-            raise ValueError(
-                f"Unsupported array_backend {array_backend!r}; expected 'xarray' or 'lightarray'"
-            )
+            self.source_data = convert_sources_to_lightarray(source_data)
 
     def __len__(self) -> int:
         """Return the number of samples in the dataset index."""
         return len(self.sample_index)
 
     @staticmethod
+    @abstractmethod
     def _build_sample_index(
         source_data: SourceDict[xr.DataArray],
         location_ids: list[str],
@@ -131,7 +134,6 @@ class AbstractPVNetDataset[
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> TIndex:
         """Build the sample index for this dataset subclass."""
-        raise NotImplementedError("Subclasses must implement sample index construction")
 
 
 class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):

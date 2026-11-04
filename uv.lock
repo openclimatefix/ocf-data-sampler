@@ -3,10 +3,10 @@ revision = 5
 requires-python = ">=3.12, <3.14"
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'win32'",
-    "python_full_version < '3.13' and sys_platform == 'win32'",
     "python_full_version >= '3.13' and sys_platform == 'emscripten'",
-    "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "python_full_version >= '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
@@ -702,6 +702,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyproj" },
     { name = "pyyaml" },
+    { name = "tensorstore" },
     { name = "torch" },
     { name = "xarray" },
     { name = "xarray-tensorstore" },
@@ -726,6 +727,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11.8" },
     { name = "pyproj" },
     { name = "pyyaml" },
+    { name = "tensorstore" },
     { name = "torch" },
     { name = "xarray" },
     { name = "xarray-tensorstore", specifier = "==0.3.0" },

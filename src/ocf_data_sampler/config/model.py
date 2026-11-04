@@ -26,14 +26,19 @@ def _validate_dropout_interval_end(
     dropout_minute_probabilities: dict[int, float] | None,
     interval_end_minutes: int,
 ) -> None:
-    """Reject choices that would leave every observation in the window untouched."""
+    """Require each dropout cutoff to precede the window's configured end relative to t0.
+
+    When t0 lies on the source's time grid, every cutoff therefore masks at least one value.
+    Otherwise the last selected timestamp can fall before t0 + interval_end_minutes, so a
+    cutoff may mask nothing.
+    """
     if dropout_minute_probabilities is None:
         return
     for delay_minutes in dropout_minute_probabilities:
         if delay_minutes <= -interval_end_minutes:
             raise ValueError(
-                f"Dropout minutes ({delay_minutes}) must mask at least one value in the "
-                f"selected interval ending at {interval_end_minutes} minutes relative to t0",
+                f"Dropout minutes ({delay_minutes}) must place the cutoff before the "
+                f"interval end ({interval_end_minutes} minutes relative to t0)",
             )
 
 
@@ -63,8 +68,8 @@ def _validate_unique_channel_names(channels: Sequence["Channel"]) -> None:
         raise ValueError("Channel names must be unique")
 
 
-class Base(BaseModel, extra="forbid"):
-    """Base configuration model that rejects unknown fields."""
+class Base(BaseModel, extra="forbid", allow_inf_nan=False):
+    """Base configuration model that rejects unknown fields and non-finite floats."""
 
 
 class TimeWindowMixin(Base):
@@ -119,7 +124,8 @@ class NaNPolicyMixin(Base):
 
     reject_nan: bool = Field(
         default=False,
-        description="Reject NaNs before filling. Cannot be combined with fill_value or dropout.",
+        description="Raise an error if a sample contains NaNs. Cannot be combined with "
+        "fill_value or dropout.",
     )
 
     fill_value: float | None = Field(
@@ -213,7 +219,7 @@ class NWPChannel(Channel):
     accumulated: bool = Field(
         default=False,
         description="Whether to difference the channel before normalisation. The normalisation "
-        "values (`mean`, `std`, `min_clip`, and `max_clip`) apply to the differenced values. "
+        "values (`mean`, `std`, `clip_min`, and `clip_max`) apply to the differenced values. "
         "Each difference is labelled with the earlier step's timestamp, and the output channel "
         "name is prefixed with diff_.",
     )
@@ -273,6 +279,7 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
 
     staleness_limit_minutes: int | None = Field(
         None,
+        gt=0,
         description="Sets a limit on how stale an NWP init-time is allowed to be whilst still "
         "being used to construct an example. The limit is exclusive: forecasts this stale or "
         "staler at t0 are not used. If set to None, then no additional limit is applied "
@@ -286,6 +293,19 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
             supported = ", ".join(sorted(PROVIDER_REGISTRY))
             raise ValueError(f"Unknown NWP provider {provider!r}. Supported: {supported}")
         return provider
+
+    @model_validator(mode="after")
+    def validate_delay_staleness(self) -> "NWP":
+        """Require every delay to be shorter than the staleness limit."""
+        if self.delay_minute_probabilities is None or self.staleness_limit_minutes is None:
+            return self
+        max_delay = max(self.delay_minute_probabilities)
+        if max_delay >= self.staleness_limit_minutes:
+            raise ValueError(
+                f"Maximum delay ({max_delay} minutes) must be less than "
+                f"staleness_limit_minutes ({self.staleness_limit_minutes})",
+            )
+        return self
 
     @field_validator("channels")
     def validate_channel_names(cls, channels: list[NWPChannel]) -> list[NWPChannel]:
@@ -438,20 +458,20 @@ class T0Embedding(Base):
     embeddings: list[_Embedding] = Field(
         ...,
         description="Period and representation pairs, e.g. ('6h', 'cyclic') or ('1y', 'linear'). "
-        "Periods support 1-24 hours or positive integer years. Each cyclic period adds two "
-        "elements (sine and cosine) to the output vector; each linear period adds one "
-        "element (fraction through the period).",
+        "Hour periods must divide 24; year periods must be positive integers. Each cyclic "
+        "period adds two elements (sine and cosine) to the output vector; each linear period "
+        "adds one element (fraction through the period).",
     )
 
     @field_validator("embeddings")
     def validate_embeddings(cls, embeddings: list[_Embedding]) -> list[_Embedding]:
-        """Require positive embedding periods, with hours limited to 24."""
+        """Require positive embedding periods, with hours dividing 24."""
         for period, _ in embeddings:
             value = int(period[:-1])
             if value <= 0:
                 raise ValueError("Embedding period must be > 0")
-            if period[-1] == "h" and value > 24:
-                raise ValueError("Embedding period in hours must be <= 24")
+            if period[-1] == "h" and 24 % value != 0:
+                raise ValueError("Embedding period in hours must divide 24")
 
         return embeddings
 

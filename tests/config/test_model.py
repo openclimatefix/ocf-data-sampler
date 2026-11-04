@@ -119,7 +119,7 @@ def test_dropout_rejects_cutoffs_at_or_after_interval_end(
     window.dropout_minute_probabilities = {delay_minutes: 0.5, 90: 0.5}
     window.fill_value = 0.0
 
-    with pytest.raises(ValidationError, match="must mask at least one value"):
+    with pytest.raises(ValidationError, match="must place the cutoff before the interval end"):
         _validate_configuration(config)
 
     window.dropout_minute_probabilities = {90: 1.0}

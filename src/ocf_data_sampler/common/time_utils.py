@@ -39,7 +39,7 @@ def get_minute(datetimes: np.datetime64 | NDArray[np.datetime64]) -> np.int32 | 
     """Get the minute past the hour.
 
     Args:
-        datetimes: the datetimes to get day of year for
+        datetimes: the datetimes to get minute for
     """
     # Convert to minutes since epoch, then mod 60 for minute-of-hour
     return datetimes.astype("datetime64[m]").astype(np.int32) % 60
@@ -152,9 +152,8 @@ def datetime_ceil(
     """
     _validate_rounding_frequency(freq)
     epoch_datetime = np.datetime64("1970-01-01", "ns")
-    periods_since_epoch = np.ceil((datetimes - epoch_datetime) / freq)
-    result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
-    return result
+    periods_since_epoch = -((epoch_datetime - datetimes) // freq)
+    return ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
 
 
 @overload
@@ -180,9 +179,8 @@ def datetime_floor(
     """
     _validate_rounding_frequency(freq)
     epoch_datetime = np.datetime64("1970-01-01", "ns")
-    periods_since_epoch = np.floor((datetimes - epoch_datetime) / freq)
-    result = ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
-    return result
+    periods_since_epoch = (datetimes - epoch_datetime) // freq
+    return ((periods_since_epoch * freq) + epoch_datetime).astype(datetimes.dtype)
 
 
 @overload
