@@ -232,7 +232,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
         # Slice by time then load to avoid loading the data multiple times from disk
         time_sliced_data = slice_sources_by_time(self.source_data, t0, self.config)
         materialise_data(time_sliced_data)
-        # Preprocessing is location-independent, so do it once before slicing per-location below
+        # Preprocess once for all locations, so they share the same dropout draws
         preprocess_source_data(time_sliced_data, t0, self.config, self.normalisation_arrays)
 
         samples = []
