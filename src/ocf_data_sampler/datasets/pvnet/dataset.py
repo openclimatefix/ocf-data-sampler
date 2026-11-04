@@ -1,5 +1,6 @@
 """Torch dataset for PVNet."""
 
+from abc import ABC, abstractmethod
 from typing import Literal, override
 
 import numpy as np
@@ -59,7 +60,7 @@ def convert_sources_to_lightarray(
 class AbstractPVNetDataset[
     TIndex: (SampleIndex, ConcurrentSampleIndex),
     TSample,
-](PickleCacheMixin, Dataset[TSample]):
+](PickleCacheMixin, Dataset[TSample], ABC):
     """Abstract class for PVNet datasets."""
 
     def __init__(
@@ -124,6 +125,7 @@ class AbstractPVNetDataset[
         return len(self.sample_index)
 
     @staticmethod
+    @abstractmethod
     def _build_sample_index(
         source_data: SourceDict[xr.DataArray],
         location_ids: list[str],
@@ -131,7 +133,6 @@ class AbstractPVNetDataset[
         time_periods: list[tuple[str | None, str | None]] | None,
     ) -> TIndex:
         """Build the sample index for this dataset subclass."""
-        raise NotImplementedError("Subclasses must implement sample index construction")
 
 
 class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
