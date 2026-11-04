@@ -167,3 +167,53 @@ def test_select_envelope_of_spatial_windows_out_of_bounds(da):
             width_pixels=30,
             height_pixels=30,
         )
+
+
+def test_select_envelope_of_spatial_windows(da):
+    """Test that the envelope is the tightest crop covering every centre's window."""
+    da_sliced = select_envelope_of_spatial_windows(
+        da,
+        centres=[(10.1, -4.9), (20.4, 5.6)],
+        x_dim="x_osgb",
+        y_dim="y_osgb",
+        width_pixels=3,
+        height_pixels=4,
+    )
+
+    # x windows (odd width, nearest pixel) are [9, 10, 11] and [19, 20, 21]
+    assert (da_sliced["x_osgb"].values == np.arange(9, 22)).all()
+    # y windows (even height, pixel to the left) are [-6, ..., -3] and [4, ..., 7]
+    assert (da_sliced["y_osgb"].values == np.arange(-6, 8)).all()
+
+
+@pytest.mark.parametrize("width_pixels, height_pixels", [(1, 1), (2, 2), (3, 4), (4, 3)])
+def test_select_envelope_of_spatial_windows_supports_select_spatial_slice(
+    da,
+    width_pixels,
+    height_pixels,
+):
+    """Test that every centre's window can be selected from the envelope.
+
+    Centres lying exactly on pixels and at the envelope's edges cover the cases where windows
+    of 1 or 2 pixels would otherwise put a centre on or beyond the envelope's boundary.
+    """
+    centres = [(10.0, -5.0), (20.4, 5.6), (15.0, 0.4)]
+    envelope = select_envelope_of_spatial_windows(
+        da,
+        centres=centres,
+        x_dim="x_osgb",
+        y_dim="y_osgb",
+        width_pixels=width_pixels,
+        height_pixels=height_pixels,
+    )
+
+    for x, y in centres:
+        kwargs = {
+            "x": x,
+            "y": y,
+            "x_dim": "x_osgb",
+            "y_dim": "y_osgb",
+            "width_pixels": width_pixels,
+            "height_pixels": height_pixels,
+        }
+        assert select_spatial_slice(envelope, **kwargs).equals(select_spatial_slice(da, **kwargs))
