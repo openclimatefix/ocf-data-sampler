@@ -31,7 +31,7 @@ def build_numpy_sample[TArray: DataArrayLike](
     Source arrays must already be preprocessed by `preprocess_source_data`.
 
     Field shapes, units and optionality are documented in `NumpySample`.
-    Arrays may share memory with the prepared input.
+    Extra-metadata coordinate arrays may share memory with the dataset and must not be modified.
 
     Args:
         source_data: Preprocessed source arrays for one location and forecast time.
