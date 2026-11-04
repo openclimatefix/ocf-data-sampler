@@ -112,10 +112,13 @@ def _add_source_arrays[TArray: DataArrayLike](
         gen_idx = get_string_index(gen_params, "generation_mw")
         cap_idx = get_string_index(gen_params, "capacity_mwp")
 
+        # The loader orders generation dims as (time_utc, location_id, gen_param), so gen_param is
+        # last. Index the values directly, since isel builds a whole new DataArray for each column.
+        gen_values = da_gen.values
         sample.update(
             {
-                key: da_gen.isel(gen_param=gen_idx).values,
-                f"{key}_capacity_mwp": da_gen.isel(gen_param=cap_idx).values,
+                key: gen_values[..., gen_idx],
+                f"{key}_capacity_mwp": gen_values[..., cap_idx],
                 f"{key}_time_utc": get_posix_timestamp(da_gen["time_utc"].values),
             },
         )

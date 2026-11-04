@@ -119,4 +119,4 @@ class Location:
     id: str
     longitude: float
     latitude: float
-    source_coordinates: SourceDict[Coordinate] = field(default_factory=dict)
+    source_coordinates: SourceDict[Coordinate] = field(default_factory=SourceDict[Coordinate])
