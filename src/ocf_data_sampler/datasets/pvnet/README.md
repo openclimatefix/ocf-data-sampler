@@ -103,9 +103,10 @@ include their start and exclude their end, independently of the source-window co
 When using multiple `DataLoader` workers, set `multiprocessing_context="forkserver"`.
 The `fork` context is unsupported for TensorStore-backed datasets.
 
-Dropout choices use NumPy's global random state (`np.random`). Repeated access to the same
-sample index can therefore choose different dropout; the choice depends on the random state
-at the time of sampling.
+Dropout and NWP delay choices use NumPy's global random state (`np.random`). Repeated access
+to the same sample index can therefore choose different dropout and delays; the choice depends
+on the random state at the time of sampling. `PVNetConcurrentDataset` draws these once per
+`t0`, so all locations in a batch share them.
 
 PyTorch seeds NumPy in each `DataLoader` worker. Seed PyTorch before creating the loader's
 iterator, or supply a seeded `torch.Generator` to the loader, to control its worker seeds.
