@@ -1,7 +1,7 @@
 """Torch dataset for PVNet."""
 
 from abc import ABC, abstractmethod
-from typing import Literal, override
+from typing import Any, Literal, override
 
 import numpy as np
 import xarray as xr
@@ -115,6 +115,7 @@ class AbstractPVNetDataset[
         self.config = config
         self.include_extra_metadata = include_extra_metadata
 
+        self.source_data: SourceDict[Any]
         if array_backend == "xarray":
             self.source_data = source_data
         else:
