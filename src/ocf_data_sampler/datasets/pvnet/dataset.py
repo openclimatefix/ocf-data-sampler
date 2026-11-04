@@ -87,9 +87,13 @@ class AbstractPVNetDataset[
         """
         super().__init__()
 
-        # Validate requested periods before loading sources to fail fast on invalid input
+        # Validate arguments before loading sources to fail fast on invalid input
         if time_periods is not None:
             validate_requested_periods(time_periods)
+        if array_backend not in ("xarray", "lightarray"):
+            raise ValueError(
+                f"Unsupported array_backend {array_backend!r}; expected 'xarray' or 'lightarray'"
+            )
 
         config = load_yaml_configuration(config_filename)
 
@@ -113,12 +117,8 @@ class AbstractPVNetDataset[
 
         if array_backend == "xarray":
             self.source_data = source_data
-        elif array_backend == "lightarray":
-            self.source_data = convert_sources_to_lightarray(source_data)
         else:
-            raise ValueError(
-                f"Unsupported array_backend {array_backend!r}; expected 'xarray' or 'lightarray'"
-            )
+            self.source_data = convert_sources_to_lightarray(source_data)
 
     def __len__(self) -> int:
         """Return the number of samples in the dataset index."""
