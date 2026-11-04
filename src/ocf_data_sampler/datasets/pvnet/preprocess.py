@@ -190,11 +190,10 @@ def preprocess_source_data[TArray: DataArrayLike](
 
     These steps are always applied in the order listed, since some steps depend on the output of
     previous steps. For example,
-    - NWP channel differencing must be done before normalisation, since the diffed channels have
-      different statistics
-    - Dropout must be applied after normalisation, since the fill value is specified in normalised
-      units
-    - NaN filling must be done after dropout, since dropout introduces NaNs in the data
+    - NWP channel differencing must be done before normalisation and clipping, since the diffed
+      channels have different statistics
+    - NaN filling must be done after normalisation, since the fill value is specified in
+      normalised units, and after dropout, since dropout introduces NaNs in the data
 
     Updates the dictionary and its DataArray-like objects in-place, replacing entries or their
     `.data` as needed. The original NumPy arrays remain unchanged.
