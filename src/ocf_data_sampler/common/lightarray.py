@@ -186,14 +186,13 @@ def _apply_axis_indexers(
 
     # If all indexers are integers or slices, we can apply them directly to the data in one step.
     # This is the fastest path and is the most common case, so we check for it first.
-    if all(isinstance(indexer, int | np.integer | slice) for indexer in axis_indexers):
+    if all(isinstance(indexer, int | slice) for indexer in axis_indexers):
         return _normalise_index_origin(data[axis_indexers])
 
     # Apply basic indexers together, then array indexers one axis at a time to preserve xarray's
     # orthogonal indexing semantics without slowing down the common int-and-slice path.
     basic_indexers = tuple(
-        indexer if isinstance(indexer, int | np.integer | slice) else slice(None)
-        for indexer in axis_indexers
+        indexer if isinstance(indexer, int | slice) else slice(None) for indexer in axis_indexers
     )
     sliced_data = _normalise_index_origin(data[basic_indexers])
 
@@ -207,20 +206,16 @@ def _apply_axis_indexers(
 
         # Dimensions that have been reduced to points do not have an axis in the sliced data, so
         # we don't increment current_axis for these dimensions
-        elif isinstance(indexer, int | np.integer):
+        elif isinstance(indexer, int):
             continue
 
-        elif isinstance(indexer, np.ndarray | list | tuple):
+        # The remaining indexers are 1-d NumPy arrays
+        else:
             axis_indexer = tuple(
                 indexer if i == current_axis else slice(None) for i in range(current_axis + 1)
             )
             sliced_data = _normalise_index_origin(sliced_data[axis_indexer])
             current_axis += 1
-
-        else:
-            raise TypeError(
-                f"Unsupported indexer type: {type(indexer)}. Must be int, slice, or array-like.",
-            )
 
     return sliced_data
 
@@ -332,7 +327,7 @@ class LightDataArray:
         for dim in indexers_kwargs:
             if dim not in self.dims:
                 raise KeyError(
-                    f"'{dim}' is not a valid dimension or coordinate for data with dimensions"
+                    f"'{dim}' is not a valid dimension or coordinate for data with dimensions "
                     f"{self.dims}",
                 )
 
@@ -347,9 +342,7 @@ class LightDataArray:
         sliced_data = _apply_axis_indexers(self.data, axis_indexers)
 
         # Remove dimensions that have been reduced to single points (i.e., indexed by an integer)
-        new_dims = tuple(
-            dim for dim in self.dims if not isinstance(indexers_kwargs.get(dim), int | np.integer)
-        )
+        new_dims = tuple(dim for dim in self.dims if not isinstance(indexers_kwargs.get(dim), int))
 
         # Slice the coordinate values
         indexed_dims = indexers_kwargs.keys()
