@@ -79,37 +79,32 @@ def _validate_coords(
             )
 
 
-def _sanitise_indexer(dim: str, dim_size: int, indexer: Indexer) -> Indexer:
-    """Normalise an indexer so dimension-collapse logic and indexing agree on its semantics."""
-    if isinstance(indexer, bool | np.bool_):
+def _sanitise_scalar_indexer(dim: str, dim_size: int, indexer: NDArray[Any]) -> int:
+    """Validate a 0-d integer indexer and resolve a negative position."""
+    if not np.issubdtype(indexer.dtype, np.integer):
         raise TypeError(
-            f"Found scalar boolean indexer on dimension '{dim}'. Scalar boolean indexers are not "
-            "supported."
+            f"Scalar indexer for dimension '{dim}' must be of integer type. "
+            f"Got dtype {indexer.dtype}.",
         )
 
-    # Pass the expected types through unchanged
-    if isinstance(indexer, int | np.integer | slice):
-        return indexer
+    index = int(indexer)
+    if not -dim_size <= index < dim_size:
+        raise IndexError(f"Index {index} is out of range for dimension '{dim}' of size {dim_size}.")
+    return index % dim_size
 
-    # Convert array-likes (e.g. list, tuple) to numpy arrays
-    indexer = np.asarray(indexer)
 
-    # Convert 0-d integer arrays to plain ints
-    if indexer.ndim == 0:
-        if not np.issubdtype(indexer.dtype, np.integer):
-            raise TypeError(
-                f"0-d indexer for dimension '{dim}' must be of integer type. "
-                f"Got dtype {indexer.dtype}.",
-            )
-        return int(indexer)
-
-    # Check that the indexer is at most 1-dimensional
-    if indexer.ndim > 1:
-        raise ValueError(
-            f"Indexer for dimension '{dim}' must be at most 1-dimensional. "
-            f"Got {indexer.ndim} dimensions.",
+def _sanitise_slice_indexer(dim: str, dim_size: int, indexer: slice) -> slice:
+    """Resolve a slice to explicit non-negative bounds."""
+    if indexer.step is not None and indexer.step < 0:
+        raise NotImplementedError(
+            f"Found slice with negative step on dimension '{dim}'. Negative slice steps are "
+            "not supported."
         )
+    return slice(*indexer.indices(dim_size))
 
+
+def _sanitise_array_indexer(dim: str, dim_size: int, indexer: NDArray[Any]) -> NDArray[Any]:
+    """Validate a 1-d boolean or integer indexer and resolve negative positions."""
     if np.issubdtype(indexer.dtype, np.bool_):
         if len(indexer) != dim_size:
             raise IndexError(
@@ -124,7 +119,37 @@ def _sanitise_indexer(dim: str, dim_size: int, indexer: Indexer) -> Indexer:
             f"Got dtype {indexer.dtype}.",
         )
 
-    return indexer
+    # `min` and `max` are undefined for an empty array, which selects nothing anyway
+    if len(indexer) == 0:
+        return indexer
+
+    # Check the extremes rather than every element, and only allocate when wrapping is needed,
+    # since per-element comparisons dominate the cost for the short arrays used in sampling
+    low, high = indexer.min(), indexer.max()
+    if low < -dim_size or high >= dim_size:
+        raise IndexError(f"Indexer is out of range for dimension '{dim}' of size {dim_size}.")
+    return indexer % dim_size if low < 0 else indexer
+
+
+def _sanitise_indexer(dim: str, dim_size: int, indexer: Indexer) -> Indexer:
+    """Normalise an indexer so dimension-collapse logic and indexing agree on its semantics.
+
+    TensorStore rejects negative and out-of-range positions where NumPy wraps or clips, and the
+    coordinates are always indexed with NumPy, so all positions are resolved here.
+    """
+    if isinstance(indexer, slice):
+        return _sanitise_slice_indexer(dim, dim_size, indexer)
+
+    # Convert scalars and array-likes (e.g. list, tuple) to numpy arrays
+    indexer = np.asarray(indexer)
+    if indexer.ndim == 0:
+        return _sanitise_scalar_indexer(dim, dim_size, indexer)
+    if indexer.ndim == 1:
+        return _sanitise_array_indexer(dim, dim_size, indexer)
+    raise ValueError(
+        f"Indexer for dimension '{dim}' must be at most 1-dimensional. "
+        f"Got {indexer.ndim} dimensions.",
+    )
 
 
 def _normalise_index_origin(data: NDArray[Any] | ts.TensorStore) -> NDArray[Any] | ts.TensorStore:
