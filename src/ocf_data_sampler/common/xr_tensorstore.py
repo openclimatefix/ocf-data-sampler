@@ -113,7 +113,7 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
     return ds_out
 
 
-def resolve_zarr_paths(zarr_path: ZarrSource) -> list[str]:
+def _resolve_zarr_paths(zarr_path: ZarrSource) -> list[str]:
     """Resolve a path, local glob, or sequence into a non-empty list of paths."""
     if isinstance(zarr_path, str):
         paths = sorted(glob(zarr_path)) if has_magic(zarr_path) else [zarr_path]
@@ -139,7 +139,7 @@ def open_zarr_paths(
         concat_dim: Dimension along which multiple stores are concatenated.
         validator: Optional callback called with opened datasets before returning or concatenating.
     """
-    paths = resolve_zarr_paths(zarr_path)
+    paths = _resolve_zarr_paths(zarr_path)
 
     datasets = [xrt.open_zarr(p) for p in paths]
     if validator is not None:

@@ -42,7 +42,7 @@ from ocf_data_sampler.datasets.pvnet.types import (
 )
 
 
-def convert_sources_to_lightarray(
+def _convert_sources_to_lightarray(
     source_data: SourceDict[xr.DataArray],
 ) -> SourceDict[LightDataArray]:
     """Convert xarray source arrays to LightDataArrays."""
@@ -119,7 +119,7 @@ class AbstractPVNetDataset[
         if array_backend == "xarray":
             self.source_data = source_data
         else:
-            self.source_data = convert_sources_to_lightarray(source_data)
+            self.source_data = _convert_sources_to_lightarray(source_data)
 
     def __len__(self) -> int:
         """Return the number of samples in the dataset index."""
