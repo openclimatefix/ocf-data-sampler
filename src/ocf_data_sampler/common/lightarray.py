@@ -320,8 +320,10 @@ class LightDataArray:
             A new LightDataArray. Attributes are copied, while coordinate arrays may be views of
             the original coordinate arrays rather than independent copies.
         """
-        if indexers is not None:
-            indexers_kwargs.update(indexers)
+        if indexers:
+            if indexers_kwargs:
+                raise ValueError("cannot specify both keyword and positional arguments to .isel")
+            indexers_kwargs = indexers
 
         # Validate that all indexers correspond to valid dimensions
         for dim in indexers_kwargs:
