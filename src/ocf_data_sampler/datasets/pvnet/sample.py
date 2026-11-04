@@ -48,7 +48,7 @@ def build_numpy_sample[TArray: DataArrayLike](
         "t0": get_posix_timestamp(t0),
     }
 
-    add_source_arrays(sample, source_data)
+    _add_source_arrays(sample, source_data)
 
     if include_extra_metadata:
         sample["metadata"] = {
@@ -56,7 +56,7 @@ def build_numpy_sample[TArray: DataArrayLike](
             "location_latitude": location.latitude,
         }
 
-        add_source_metadata(sample["metadata"], source_data)
+        _add_source_metadata(sample["metadata"], source_data)
 
     if (t0_config := config.t0_embedding) is not None:
         sample["t0_embedding"] = build_t0_embedding(t0, t0_config.embeddings)
@@ -88,7 +88,7 @@ def _build_feature_datetimes(
     )
 
 
-def add_source_arrays[TArray: DataArrayLike](
+def _add_source_arrays[TArray: DataArrayLike](
     sample: NumpySample,
     source_data: SourceDict[TArray],
 ) -> None:
@@ -127,7 +127,7 @@ def add_source_arrays[TArray: DataArrayLike](
         sample["nwp"] = {nwp_name: da_nwp.values for nwp_name, da_nwp in source_data["nwp"].items()}
 
 
-def add_source_metadata[TArray: DataArrayLike](
+def _add_source_metadata[TArray: DataArrayLike](
     metadata: dict[str, Any],
     source_data: SourceDict[TArray],
 ) -> None:

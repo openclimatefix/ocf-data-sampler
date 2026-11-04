@@ -10,9 +10,9 @@ from ocf_data_sampler.config.model import (
 )
 from ocf_data_sampler.datasets.pvnet.sample import (
     _add_solar_features,
+    _add_source_arrays,
+    _add_source_metadata,
     _build_feature_datetimes,
-    add_source_arrays,
-    add_source_metadata,
     build_numpy_sample,
 )
 from ocf_data_sampler.datasets.pvnet.types import Location
@@ -79,12 +79,12 @@ def test_add_solar_features():
 
 
 def test_convert_generation_to_numpy_sample(generation_zarr_path):
-    """add_source_arrays just extracts generation_mw/capacity_mwp as-is - normalising
+    """_add_source_arrays just extracts generation_mw/capacity_mwp as-is - normalising
     generation_mw to a capacity factor is normalise_source_data's job (see test_preprocess.py).
     """
     da = open_generation(generation_zarr_path).isel(time_utc=slice(0, 10)).sel(location_id="loc_1")
     numpy_sample = {"location_id": "loc_1", "t0": np.float64(1672531200.0)}
-    add_source_arrays(numpy_sample, {"generation_input": da, "generation_target": da})
+    _add_source_arrays(numpy_sample, {"generation_input": da, "generation_target": da})
 
     generation_mw = da.sel(gen_param="generation_mw").values
     capacity = da.sel(gen_param="capacity_mwp").values
@@ -108,14 +108,14 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
 
 def test_convert_nwp_to_numpy_sample(ds_nwp_ukv_time_sliced):
     numpy_sample = {}
-    add_source_arrays(numpy_sample, {"nwp": {"ukv": ds_nwp_ukv_time_sliced}})
+    _add_source_arrays(numpy_sample, {"nwp": {"ukv": ds_nwp_ukv_time_sliced}})
 
     assert (numpy_sample["nwp"]["ukv"] == ds_nwp_ukv_time_sliced.values).all()
 
 
 def test_convert_satellite_to_numpy_sample(da_sat_like):
     numpy_sample = {}
-    add_source_arrays(numpy_sample, {"sat": da_sat_like})
+    _add_source_arrays(numpy_sample, {"sat": da_sat_like})
 
     assert (numpy_sample["satellite"] == da_sat_like.values).all()
 
@@ -125,7 +125,7 @@ def test_add_source_metadata(ds_nwp_ukv_time_sliced, da_sat_like):
         init_time_utc=np.datetime64("2024-01-02"),
     )
     metadata = {}
-    add_source_metadata(metadata, {"sat": da_sat_like, "nwp": {"ukv": da_nwp}})
+    _add_source_metadata(metadata, {"sat": da_sat_like, "nwp": {"ukv": da_nwp}})
 
     # Both sources start at 2024-01-02 00:00 UTC.
     start_posix_seconds = 1704153600.0

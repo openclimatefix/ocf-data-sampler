@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 from ocf_data_sampler.common.indexing import assert_values_unique_increasing
 from ocf_data_sampler.common.time_utils import datetime_ceil
 
-ZERO_TDELTA = np.timedelta64(0, "ns")
+_ZERO_TDELTA = np.timedelta64(0, "ns")
 
 
 def find_contiguous_time_periods(
@@ -91,7 +91,7 @@ def find_contiguous_t0_periods_nwp(
     first_forecast_step: np.timedelta64,
     last_forecast_step: np.timedelta64,
     time_resolution: np.timedelta64,
-    max_delay: np.timedelta64 = ZERO_TDELTA,
+    max_delay: np.timedelta64 = _ZERO_TDELTA,
     staleness_limit: np.timedelta64 | None = None,
 ) -> pd.DataFrame:
     """Get all time periods from the NWP init-times which are valid as t0 datetimes.
@@ -118,11 +118,11 @@ def find_contiguous_t0_periods_nwp(
     if len(init_times) == 0:
         raise ValueError("No init-times to use")
 
-    if max_delay < ZERO_TDELTA:
+    if max_delay < _ZERO_TDELTA:
         raise ValueError("The max dropout must be non-negative (zero or positive)")
 
     if staleness_limit is not None:
-        if not staleness_limit > ZERO_TDELTA:
+        if not staleness_limit > _ZERO_TDELTA:
             raise ValueError("The staleness limit must be positive")
 
         if not max_delay < staleness_limit:
