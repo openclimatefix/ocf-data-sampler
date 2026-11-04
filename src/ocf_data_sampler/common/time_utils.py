@@ -184,19 +184,21 @@ def datetime_floor(
 
 
 @overload
-def get_posix_timestamp(datetimes: np.datetime64) -> np.float64: ...
+def get_posix_timestamp(datetimes: np.datetime64) -> np.int64: ...
 
 
 @overload
-def get_posix_timestamp(datetimes: NDArray[np.datetime64]) -> NDArray[np.float64]: ...
+def get_posix_timestamp(datetimes: NDArray[np.datetime64]) -> NDArray[np.int64]: ...
 
 
 def get_posix_timestamp(
     datetimes: np.datetime64 | NDArray[np.datetime64],
-) -> np.float64 | NDArray[np.float64]:
-    """Get the POSIX timestamp (seconds since 1970-01-01) for the given datetimes.
+) -> np.int64 | NDArray[np.int64]:
+    """Get the integer POSIX timestamp (seconds since 1970-01-01) for the given datetimes.
+
+    Sub-second parts are floored to the whole second.
 
     Args:
         datetimes: the datetimes to get POSIX timestamps for
     """
-    return datetimes.astype("datetime64[ns]").astype(np.float64) * 1e-9
+    return datetimes.astype("datetime64[s]").astype(np.int64)

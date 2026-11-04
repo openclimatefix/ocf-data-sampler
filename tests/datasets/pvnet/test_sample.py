@@ -10,9 +10,9 @@ from ocf_data_sampler.config.model import (
 )
 from ocf_data_sampler.datasets.pvnet.sample import (
     _add_solar_features,
+    _add_source_arrays,
+    _add_source_metadata,
     _build_feature_datetimes,
-    add_source_arrays,
-    add_source_metadata,
     build_numpy_sample,
 )
 from ocf_data_sampler.datasets.pvnet.types import Location
@@ -33,7 +33,8 @@ def test_build_numpy_sample_metadata(include_extra_metadata):
         include_extra_metadata=include_extra_metadata,
     )
     assert sample["location_id"] == "loc_7"
-    assert sample["t0"] == 1704067200.0
+    assert sample["t0"] == np.int64(1704067200)
+    assert isinstance(sample["t0"], np.int64)
     assert ("metadata" in sample) == include_extra_metadata
 
     if include_extra_metadata:
@@ -65,13 +66,13 @@ def test_build_feature_datetimes():
 
 def test_add_solar_features():
     datetimes = pd.date_range("2024-06-20 12:00", "2024-06-20 16:00", freq="30min").values
-    sample = {"location_id": "loc_1", "t0": np.float64(1718884800.0)}
+    sample = {"location_id": "loc_1", "t0": np.int64(1718884800)}
     _add_solar_features(sample, datetimes, lon=0, lat=51.5)
 
     # Assertion accounting for solar coord normalisation
     assert set(sample) == {"location_id", "t0", "solar_elevation", "solar_azimuth"}
     assert sample["location_id"] == "loc_1"
-    assert sample["t0"] == np.float64(1718884800.0)
+    assert sample["t0"] == np.int64(1718884800)
     assert sample["solar_elevation"].dtype == np.float32
     assert sample["solar_azimuth"].dtype == np.float32
     assert np.all((sample["solar_elevation"] >= 0) & (sample["solar_elevation"] <= 1))
@@ -79,12 +80,12 @@ def test_add_solar_features():
 
 
 def test_convert_generation_to_numpy_sample(generation_zarr_path):
-    """add_source_arrays just extracts generation_mw/capacity_mwp as-is - normalising
+    """_add_source_arrays just extracts generation_mw/capacity_mwp as-is - normalising
     generation_mw to a capacity factor is normalise_source_data's job (see test_preprocess.py).
     """
     da = open_generation(generation_zarr_path).isel(time_utc=slice(0, 10)).sel(location_id="loc_1")
-    numpy_sample = {"location_id": "loc_1", "t0": np.float64(1672531200.0)}
-    add_source_arrays(numpy_sample, {"generation_input": da, "generation_target": da})
+    numpy_sample = {"location_id": "loc_1", "t0": np.int64(1672531200)}
+    _add_source_arrays(numpy_sample, {"generation_input": da, "generation_target": da})
 
     generation_mw = da.sel(gen_param="generation_mw").values
     capacity = da.sel(gen_param="capacity_mwp").values
@@ -100,22 +101,22 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
         assert np.array_equal(numpy_sample[key], generation_mw)
         assert np.array_equal(numpy_sample[f"{key}_capacity_mwp"], capacity)
         assert isinstance(numpy_sample[f"{key}_time_utc"], np.ndarray)
-        assert numpy_sample[f"{key}_time_utc"].dtype == np.float64
+        assert numpy_sample[f"{key}_time_utc"].dtype == np.int64
         np.testing.assert_array_equal(
-            numpy_sample[f"{key}_time_utc"], 1672531200.0 + np.arange(10) * 1800
+            numpy_sample[f"{key}_time_utc"], 1672531200 + np.arange(10) * 1800
         )
 
 
 def test_convert_nwp_to_numpy_sample(ds_nwp_ukv_time_sliced):
     numpy_sample = {}
-    add_source_arrays(numpy_sample, {"nwp": {"ukv": ds_nwp_ukv_time_sliced}})
+    _add_source_arrays(numpy_sample, {"nwp": {"ukv": ds_nwp_ukv_time_sliced}})
 
     assert (numpy_sample["nwp"]["ukv"] == ds_nwp_ukv_time_sliced.values).all()
 
 
 def test_convert_satellite_to_numpy_sample(da_sat_like):
     numpy_sample = {}
-    add_source_arrays(numpy_sample, {"sat": da_sat_like})
+    _add_source_arrays(numpy_sample, {"sat": da_sat_like})
 
     assert (numpy_sample["satellite"] == da_sat_like.values).all()
 
@@ -125,10 +126,10 @@ def test_add_source_metadata(ds_nwp_ukv_time_sliced, da_sat_like):
         init_time_utc=np.datetime64("2024-01-02"),
     )
     metadata = {}
-    add_source_metadata(metadata, {"sat": da_sat_like, "nwp": {"ukv": da_nwp}})
+    _add_source_metadata(metadata, {"sat": da_sat_like, "nwp": {"ukv": da_nwp}})
 
     # Both sources start at 2024-01-02 00:00 UTC.
-    start_posix_seconds = 1704153600.0
+    start_posix_seconds = 1704153600
     assert metadata["satellite_time_utc"][0] == start_posix_seconds
     assert metadata["nwp"]["ukv"]["init_time_utc"] == start_posix_seconds
     np.testing.assert_array_equal(metadata["nwp"]["ukv"]["step_hours"], np.arange(9))

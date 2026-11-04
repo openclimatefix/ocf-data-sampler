@@ -52,7 +52,7 @@ def normalise_source_data[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     normalisation_arrays: SourceDict[NormalisationArrays],
 ) -> None:
-    """Normalise NWP, satellite, and generation data in-place."""
+    """Normalise NWP, satellite, and generation arrays, replacing their `.data`."""
     if "nwp" in source_data:
         for nwp_name, da in source_data["nwp"].items():
             params = normalisation_arrays["nwp"][nwp_name]
@@ -104,7 +104,7 @@ def apply_source_dropout[TArray: DataArrayLike](
     t0: np.datetime64,
     config: PVNetDataConfig,
 ) -> None:
-    """Apply dropout to input DataArrays in-place around a given t0 time.
+    """Apply dropout around a given t0 time to input arrays, replacing their `.data`.
 
     Args:
         source_data: Input source arrays

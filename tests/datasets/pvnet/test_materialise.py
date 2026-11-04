@@ -29,8 +29,10 @@ def test_block_until_loaded(source_key):
 
 
 @pytest.mark.parametrize("use_lightarray", [False, True])
-def test_materialise_data_skips_loaded_arrays(monkeypatch, use_lightarray):
-    da = xr.DataArray(np.array([1.0, 2.0], dtype=np.float64))
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_materialise_data_skips_loaded_arrays(monkeypatch, use_lightarray, dtype):
+    source_values = np.array([1.0, 2.0], dtype=dtype)
+    da = xr.DataArray(source_values)
     if use_lightarray:
         da = LightDataArray.from_xarray(da)
 
@@ -46,6 +48,8 @@ def test_materialise_data_skips_loaded_arrays(monkeypatch, use_lightarray):
     assert source_dict["sat"] is da
     assert da.data.dtype == np.float32
     np.testing.assert_array_equal(da.values, [1.0, 2.0])
+    # Loaded arrays may be views of the dataset's source arrays, so must not share memory with them
+    assert not np.shares_memory(da.data, source_values)
 
 
 @pytest.mark.parametrize("use_lightarray", [False, True])
