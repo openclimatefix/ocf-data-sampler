@@ -78,9 +78,13 @@ def test_isel(xr_gen, xr_ukv, xr_sat):
         {"a": 1, "b": slice(1, None), "c": [0, 2], "d": 3},
         {"a": [True, False], "b": np.array([False, True, True])},
         {"a": np.array([False, True]), "c": 2, "d": [True, False, True, False, True]},
+        # Negative and out-of-range positions, which TensorStore rejects unless resolved first
+        {"a": -1, "b": slice(-2, None), "c": [-1, 0]},
+        {"b": slice(1, 10), "d": np.array([-5, 4])},
     ],
 )
-def test_isel_conforms_to_xarray(indexers):
+@pytest.mark.parametrize("to_backend", [np.asarray, ts.array])
+def test_isel_conforms_to_xarray(indexers, to_backend):
     """Test that multiple indexers preserve xarray's dimension order and values."""
     dims = ("a", "b", "c", "d")
     shape = (2, 3, 4, 5)
@@ -89,7 +93,11 @@ def test_isel_conforms_to_xarray(indexers):
         dims=dims,
         coords={dim: np.arange(size) for dim, size in zip(dims, shape, strict=True)},
     )
-    fda = LightDataArray.from_xarray(xda)
+    fda = LightDataArray(
+        data=to_backend(xda.values),
+        dims=dims,
+        coords={dim: ((dim,), xda[dim].values) for dim in dims},
+    )
 
     sliced_fda = fda.isel(**indexers)
     sliced_xda = xda.isel(**indexers)

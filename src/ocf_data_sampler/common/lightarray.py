@@ -79,37 +79,32 @@ def _validate_coords(
             )
 
 
-def _sanitise_indexer(dim: str, dim_size: int, indexer: Indexer) -> Indexer:
-    """Normalise an indexer so dimension-collapse logic and indexing agree on its semantics."""
-    if isinstance(indexer, bool | np.bool_):
+def _sanitise_scalar_indexer(dim: str, dim_size: int, indexer: NDArray[Any]) -> int:
+    """Validate a 0-d integer indexer and resolve a negative position."""
+    if not np.issubdtype(indexer.dtype, np.integer):
         raise TypeError(
-            f"Found scalar boolean indexer on dimension '{dim}'. Scalar boolean indexers are not "
-            "supported."
+            f"Scalar indexer for dimension '{dim}' must be of integer type. "
+            f"Got dtype {indexer.dtype}.",
         )
 
-    # Pass the expected types through unchanged
-    if isinstance(indexer, int | np.integer | slice):
-        return indexer
+    index = int(indexer)
+    if not -dim_size <= index < dim_size:
+        raise IndexError(f"Index {index} is out of range for dimension '{dim}' of size {dim_size}.")
+    return index % dim_size
 
-    # Convert array-likes (e.g. list, tuple) to numpy arrays
-    indexer = np.asarray(indexer)
 
-    # Convert 0-d integer arrays to plain ints
-    if indexer.ndim == 0:
-        if not np.issubdtype(indexer.dtype, np.integer):
-            raise TypeError(
-                f"0-d indexer for dimension '{dim}' must be of integer type. "
-                f"Got dtype {indexer.dtype}.",
-            )
-        return int(indexer)
-
-    # Check that the indexer is at most 1-dimensional
-    if indexer.ndim > 1:
-        raise ValueError(
-            f"Indexer for dimension '{dim}' must be at most 1-dimensional. "
-            f"Got {indexer.ndim} dimensions.",
+def _sanitise_slice_indexer(dim: str, dim_size: int, indexer: slice) -> slice:
+    """Resolve a slice to explicit non-negative bounds."""
+    if indexer.step is not None and indexer.step < 0:
+        raise NotImplementedError(
+            f"Found slice with negative step on dimension '{dim}'. Negative slice steps are "
+            "not supported."
         )
+    return slice(*indexer.indices(dim_size))
 
+
+def _sanitise_array_indexer(dim: str, dim_size: int, indexer: NDArray[Any]) -> NDArray[Any]:
+    """Validate a 1-d boolean or integer indexer and resolve negative positions."""
     if np.issubdtype(indexer.dtype, np.bool_):
         if len(indexer) != dim_size:
             raise IndexError(
@@ -124,7 +119,37 @@ def _sanitise_indexer(dim: str, dim_size: int, indexer: Indexer) -> Indexer:
             f"Got dtype {indexer.dtype}.",
         )
 
-    return indexer
+    # `min` and `max` are undefined for an empty array, which selects nothing anyway
+    if len(indexer) == 0:
+        return indexer
+
+    # Check the extremes rather than every element, and only allocate when wrapping is needed,
+    # since per-element comparisons dominate the cost for the short arrays used in sampling
+    low, high = indexer.min(), indexer.max()
+    if low < -dim_size or high >= dim_size:
+        raise IndexError(f"Indexer is out of range for dimension '{dim}' of size {dim_size}.")
+    return indexer % dim_size if low < 0 else indexer
+
+
+def _sanitise_indexer(dim: str, dim_size: int, indexer: Indexer) -> Indexer:
+    """Normalise an indexer so dimension-collapse logic and indexing agree on its semantics.
+
+    TensorStore rejects negative and out-of-range positions where NumPy wraps or clips, and the
+    coordinates are always indexed with NumPy, so all positions are resolved here.
+    """
+    if isinstance(indexer, slice):
+        return _sanitise_slice_indexer(dim, dim_size, indexer)
+
+    # Convert scalars and array-likes (e.g. list, tuple) to numpy arrays
+    indexer = np.asarray(indexer)
+    if indexer.ndim == 0:
+        return _sanitise_scalar_indexer(dim, dim_size, indexer)
+    if indexer.ndim == 1:
+        return _sanitise_array_indexer(dim, dim_size, indexer)
+    raise ValueError(
+        f"Indexer for dimension '{dim}' must be at most 1-dimensional. "
+        f"Got {indexer.ndim} dimensions.",
+    )
 
 
 def _normalise_index_origin(data: NDArray[Any] | ts.TensorStore) -> NDArray[Any] | ts.TensorStore:
@@ -161,14 +186,13 @@ def _apply_axis_indexers(
 
     # If all indexers are integers or slices, we can apply them directly to the data in one step.
     # This is the fastest path and is the most common case, so we check for it first.
-    if all(isinstance(indexer, int | np.integer | slice) for indexer in axis_indexers):
+    if all(isinstance(indexer, int | slice) for indexer in axis_indexers):
         return _normalise_index_origin(data[axis_indexers])
 
     # Apply basic indexers together, then array indexers one axis at a time to preserve xarray's
     # orthogonal indexing semantics without slowing down the common int-and-slice path.
     basic_indexers = tuple(
-        indexer if isinstance(indexer, int | np.integer | slice) else slice(None)
-        for indexer in axis_indexers
+        indexer if isinstance(indexer, int | slice) else slice(None) for indexer in axis_indexers
     )
     sliced_data = _normalise_index_origin(data[basic_indexers])
 
@@ -182,20 +206,16 @@ def _apply_axis_indexers(
 
         # Dimensions that have been reduced to points do not have an axis in the sliced data, so
         # we don't increment current_axis for these dimensions
-        elif isinstance(indexer, int | np.integer):
+        elif isinstance(indexer, int):
             continue
 
-        elif isinstance(indexer, np.ndarray | list | tuple):
+        # The remaining indexers are 1-d NumPy arrays
+        else:
             axis_indexer = tuple(
                 indexer if i == current_axis else slice(None) for i in range(current_axis + 1)
             )
             sliced_data = _normalise_index_origin(sliced_data[axis_indexer])
             current_axis += 1
-
-        else:
-            raise TypeError(
-                f"Unsupported indexer type: {type(indexer)}. Must be int, slice, or array-like.",
-            )
 
     return sliced_data
 
@@ -300,14 +320,16 @@ class LightDataArray:
             A new LightDataArray. Attributes are copied, while coordinate arrays may be views of
             the original coordinate arrays rather than independent copies.
         """
-        if indexers is not None:
-            indexers_kwargs.update(indexers)
+        if indexers:
+            if indexers_kwargs:
+                raise ValueError("cannot specify both keyword and positional arguments to .isel")
+            indexers_kwargs = indexers
 
         # Validate that all indexers correspond to valid dimensions
         for dim in indexers_kwargs:
             if dim not in self.dims:
                 raise KeyError(
-                    f"'{dim}' is not a valid dimension or coordinate for data with dimensions"
+                    f"'{dim}' is not a valid dimension or coordinate for data with dimensions "
                     f"{self.dims}",
                 )
 
@@ -322,9 +344,7 @@ class LightDataArray:
         sliced_data = _apply_axis_indexers(self.data, axis_indexers)
 
         # Remove dimensions that have been reduced to single points (i.e., indexed by an integer)
-        new_dims = tuple(
-            dim for dim in self.dims if not isinstance(indexers_kwargs.get(dim), int | np.integer)
-        )
+        new_dims = tuple(dim for dim in self.dims if not isinstance(indexers_kwargs.get(dim), int))
 
         # Slice the coordinate values
         indexed_dims = indexers_kwargs.keys()
