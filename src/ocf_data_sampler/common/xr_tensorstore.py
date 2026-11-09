@@ -7,10 +7,13 @@ pyproject.toml; upgrades need checking against this.
 
 from collections.abc import Callable, Sequence
 from glob import glob, has_magic
+from typing import Any
 
+import numpy as np
 import tensorstore as ts
 import xarray as xr
 import xarray_tensorstore as xrt
+from numpy.typing import NDArray
 
 from ocf_data_sampler.common.types import ZarrSource
 
@@ -31,6 +34,17 @@ def _extract_tensorstore(da: xr.DataArray) -> ts.TensorStore:
     if not isinstance(data, xrt._TensorStoreAdapter):
         raise TypeError(f"{da.name!r} is backed by {type(data).__name__}, expected TensorStore.")
     return data.array
+
+
+def get_backing_array(da: xr.DataArray) -> NDArray[Any] | ts.TensorStore:
+    """Return the backing NumPy array or TensorStore without triggering a read."""
+    data = da.variable._data
+    if isinstance(data, xrt._TensorStoreAdapter):
+        return data.array
+    elif isinstance(data, np.ndarray):
+        return data
+    else:
+        raise TypeError(f"Data backend of type {type(data)} not supported.")
 
 
 def _validate_concat_compatibility(datasets: Sequence[xr.Dataset], concat_dim: str) -> None:

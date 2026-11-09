@@ -25,13 +25,3 @@ def da_nwp_like():
             "y_osgb": (["y_osgb"], y),
         },
     )
-
-
-@pytest.fixture(scope="module")
-def da_sample():
-    """Create dummy time-series sample data"""
-    datetimes = pd.date_range("2024-01-01 12:00", "2024-01-01 13:00", freq="5min")
-    return xr.DataArray(
-        np.random.normal(size=(len(datetimes),)),
-        coords={"time_utc": (["time_utc"], datetimes)},
-    )

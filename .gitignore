@@ -130,3 +130,9 @@ dmypy.json
 
 # OS
 .DS_Store
+
+
+notebooks/
+notes/
+*.html
+AGENTS.md

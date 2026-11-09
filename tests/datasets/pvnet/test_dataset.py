@@ -352,6 +352,32 @@ def test_pvnet_dataset_without_generation(tmp_path, pvnet_config_filename):
     _assert_sample_features_float32(sample)
 
 
+def test_pvnet_concurrent_dataset_minimal_dropout(tmp_path, pvnet_config_filename):
+    """Minimal mode samples a t0 where the most recent satellite data is missing"""
+    config = load_yaml_configuration(pvnet_config_filename)
+    # Without a target, generation is available for t0s up to 2023-01-02 00:00
+    fill_value = -1.0
+    config.generation.target = None
+    config.satellite.fill_value = fill_value
+    config.satellite.dropout_minute_probabilities = {30: 0.3, 15: 0.3}
+    config_path = tmp_path / "config_minimal_dropout.yaml"
+    save_yaml_configuration(config, config_path)
+
+    dataset = PVNetConcurrentDataset(config_path, dropout_mode="minimal")
+
+    # Satellite data ends at 23:55, but the 30-minute cutoff only needs data up to 23:30
+    t0 = np.datetime64("2023-01-02T00:00")
+    assert dataset.sample_index.t0[-1] == t0
+
+    satellite = dataset.get_sample(t0)["satellite"].numpy()
+    # The satellite data at the first 4 requested timestamps (23:30-23:45) is available
+    assert (satellite[:, 0:4] != fill_value).all()
+    # Satellite data IS available at the requested times 23:50 - 23:55. However, the minimal
+    # configured dropout compatible with the available data is 15 minutes so everything after 23:45
+    # is dropped and filled with the fill value.
+    assert (satellite[:, 4:] == fill_value).all()
+
+
 def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
     """Tests iterating raw samples (dict of tensors) from PVNetDataset"""
     dataset = PVNetDataset(pvnet_config_filename)
