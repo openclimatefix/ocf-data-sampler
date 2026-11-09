@@ -57,12 +57,12 @@ def _required_interval_end_minutes(
     """End of a window, relative to t0, up to which data must be available.
 
     In minimal mode, data after the largest dropout cutoff can always be dropped out, so is not
-    required. The first time in the window is always required.
+    required.
     """
     if dropout_mode == "random" or window.dropout_minute_probabilities is None:
         return window.interval_end_minutes
-    # Config validation already places every cutoff before the interval end
-    return max(window.interval_start_minutes, -max(window.dropout_minute_probabilities))
+    # Config validation places t0 minus every delay within the window
+    return -max(window.dropout_minute_probabilities)
 
 
 def _find_non_generation_t0_periods(

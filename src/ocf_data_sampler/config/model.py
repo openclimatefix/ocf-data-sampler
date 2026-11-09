@@ -22,15 +22,17 @@ def _validate_grid_resolution_minutes(resolution: int) -> int:
     return resolution
 
 
-def _validate_dropout_interval_end(
+def _validate_dropout_within_interval(
     dropout_minute_probabilities: dict[int, float] | None,
+    interval_start_minutes: int,
     interval_end_minutes: int,
 ) -> None:
-    """Require each dropout cutoff to precede the window's configured end relative to t0.
+    """Require t0 minus each dropout delay to lie in the window, before its configured end.
 
     When t0 lies on the source's time grid, every cutoff therefore masks at least one value.
     Otherwise the last selected timestamp can fall before t0 + interval_end_minutes, so a
-    cutoff may mask nothing.
+    cutoff may mask nothing. Not reaching before the window start means the first time is never
+    dropped out.
     """
     if dropout_minute_probabilities is None:
         return
@@ -39,6 +41,11 @@ def _validate_dropout_interval_end(
             raise ValueError(
                 f"Dropout minutes ({delay_minutes}) must place the cutoff before the "
                 f"interval end ({interval_end_minutes} minutes relative to t0)",
+            )
+        if delay_minutes > -interval_start_minutes:
+            raise ValueError(
+                f"Dropout minutes ({delay_minutes}) must not extend before the interval start "
+                f"({interval_start_minutes} minutes relative to t0)",
             )
 
 
@@ -149,7 +156,8 @@ class DropoutMixin(NaNPolicyMixin):
         default=None,
         description="Minutes before t0 mapped to dropout probabilities. Values after the chosen "
         "cutoff are masked and filled using fill_value. Each cutoff must precede the "
-        "interval end. Remaining probability means no dropout; None disables dropout.",
+        "interval end and not precede the interval start. Remaining probability means no "
+        "dropout; None disables dropout.",
     )
 
     @model_validator(mode="after")
@@ -241,9 +249,13 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
     )
 
     @model_validator(mode="after")
-    def validate_dropout_interval_end(self) -> "Satellite":
+    def validate_dropout_within_interval(self) -> "Satellite":
         """Require each dropout choice to mask observations in the satellite window."""
-        _validate_dropout_interval_end(self.dropout_minute_probabilities, self.interval_end_minutes)
+        _validate_dropout_within_interval(
+            self.dropout_minute_probabilities,
+            self.interval_start_minutes,
+            self.interval_end_minutes,
+        )
         return self
 
     @field_validator("channels")
@@ -351,9 +363,13 @@ class GenerationInputWindow(GenerationWindow, DropoutMixin):
     """
 
     @model_validator(mode="after")
-    def validate_dropout_interval_end(self) -> "GenerationInputWindow":
+    def validate_dropout_within_interval(self) -> "GenerationInputWindow":
         """Require each dropout choice to mask observations in the generation input window."""
-        _validate_dropout_interval_end(self.dropout_minute_probabilities, self.interval_end_minutes)
+        _validate_dropout_within_interval(
+            self.dropout_minute_probabilities,
+            self.interval_start_minutes,
+            self.interval_end_minutes,
+        )
         return self
 
 

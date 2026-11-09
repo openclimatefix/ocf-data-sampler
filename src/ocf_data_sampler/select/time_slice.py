@@ -86,7 +86,6 @@ def _append_nan_times[TArray: DataArrayLike](
         A new array of the same type with the extended 'time_utc' coordinate. Other coordinates
         are shared with the input.
     """
-    # The casts narrow the protocol-bound type, which ty cannot do from isinstance alone
     if isinstance(da, LightDataArray):
         return cast("TArray", _append_lightarray_nan_times(da, times))
     return cast("TArray", _append_xarray_nan_times(cast("xr.DataArray", da), times))
