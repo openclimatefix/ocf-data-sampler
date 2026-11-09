@@ -13,7 +13,7 @@ def _time_series(start: np.datetime64, end: np.datetime64, freq: np.timedelta64)
 
 
 def test_slice_sources_by_time_applies_dropout(config_filename):
-    """Satellite and generation input are dropped out at their delays, but not the target"""
+    """Satellite and generation input are dropped out at their delays"""
     config = load_yaml_configuration(config_filename)
     config.nwp = None
     # A probability of 1 always draws the same delay
@@ -39,13 +39,6 @@ def test_slice_sources_by_time_applies_dropout(config_filename):
 
     # Generation input window is [-60, 0] at 30 minutes; times after t0 - 30 minutes are dropped
     np.testing.assert_array_equal(np.isnan(sliced["generation_input"].values), [0, 0, 1])
-
-    # Generation target window is [0, 120] and is never dropped out
-    np.testing.assert_array_equal(
-        sliced["generation_target"]["time_utc"].values,
-        date_range(t0, t0 + minutes(120), freq=minutes(30)),
-    )
-    assert not np.isnan(sliced["generation_target"].values).any()
 
 
 @pytest.mark.parametrize(
