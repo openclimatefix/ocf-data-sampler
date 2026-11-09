@@ -113,7 +113,7 @@ def test_dropout_requires_fill_value():
     [
         (30, "must place the cutoff before the interval end"),
         (60, "must place the cutoff before the interval end"),
-        (150, "must not reach before the interval start"),
+        (150, "must not extend before the interval start"),
     ],
 )
 def test_dropout_rejects_delays_outside_interval(
