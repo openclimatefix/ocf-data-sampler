@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from ocf_data_sampler.config import load_yaml_configuration
-from ocf_data_sampler.config.model import DropoutMixin, PVNetDataConfig
+from ocf_data_sampler.config.model import DropoutMixin, NaNPolicyMixin, PVNetDataConfig
 
 _MINIMAL_SAMPLING_GRID = {"locations_csv_path": "locations.csv", "t0_resolution_minutes": 30}
 
@@ -98,12 +98,18 @@ def test_dropout_probability_sum():
         DropoutMixin(dropout_minute_probabilities={60: 0.8, 120: 0.4})
 
 
+def test_fill_value_requires_reject_nan_false():
+    # NaNs are rejected by default, so filling must opt out explicitly.
+    with pytest.raises(ValidationError, match="fill_value requires reject_nan to be false"):
+        NaNPolicyMixin(fill_value=0.0)
+
+
 def test_dropout_requires_fill_value():
     with pytest.raises(ValidationError, match="fill_value must be set"):
-        DropoutMixin(dropout_minute_probabilities={60: 0.2})
+        DropoutMixin(dropout_minute_probabilities={60: 0.2}, reject_nan=False)
 
     # Zero is a valid replacement value, rather than an absent setting.
-    config = DropoutMixin(dropout_minute_probabilities={60: 0.2}, fill_value=0.0)
+    config = DropoutMixin(dropout_minute_probabilities={60: 0.2}, fill_value=0.0, reject_nan=False)
     assert config.fill_value == 0.0
 
 
@@ -118,6 +124,7 @@ def test_dropout_rejects_cutoffs_at_or_after_interval_end(
     window.interval_end_minutes = -60
     window.dropout_minute_probabilities = {delay_minutes: 0.5, 90: 0.5}
     window.fill_value = 0.0
+    window.reject_nan = False
 
     with pytest.raises(ValidationError, match="must place the cutoff before the interval end"):
         _validate_configuration(config)

@@ -120,12 +120,12 @@ class TimeWindowMixin(Base):
 
 
 class NaNPolicyMixin(Base):
-    """Optional rejection or replacement of missing data."""
+    """Rejection of missing data by default, or optional replacement."""
 
     reject_nan: bool = Field(
-        default=False,
-        description="Raise an error if a sample contains NaNs. Cannot be combined with "
-        "fill_value or dropout.",
+        default=True,
+        description="Raise an error if a sample contains NaNs. Must be set to false to use "
+        "fill_value or dropout, or to leave NaNs unfilled.",
     )
 
     fill_value: float | None = Field(
@@ -138,7 +138,7 @@ class NaNPolicyMixin(Base):
     def validate_nan_policy(self) -> "NaNPolicyMixin":
         """Reject filling when NaNs must raise an error."""
         if self.reject_nan and self.fill_value is not None:
-            raise ValueError("fill_value must be None when reject_nan is True")
+            raise ValueError("fill_value requires reject_nan to be false")
         return self
 
 
@@ -156,7 +156,7 @@ class DropoutMixin(NaNPolicyMixin):
     def validate_fill_value(self) -> "DropoutMixin":
         """Require a replacement value when observations can be dropped out."""
         if self.dropout_minute_probabilities is not None and self.reject_nan:
-            raise ValueError("dropout_minute_probabilities cannot be configured with reject_nan")
+            raise ValueError("dropout_minute_probabilities requires reject_nan to be false")
         if self.dropout_minute_probabilities is not None and self.fill_value is None:
             raise ValueError(
                 "fill_value must be set when dropout_minute_probabilities is configured",

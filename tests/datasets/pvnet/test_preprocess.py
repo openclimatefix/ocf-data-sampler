@@ -52,6 +52,9 @@ def test_validate_and_fill_source_nans(config_filename, fill_value, expected):
     configuration.generation.input.fill_value = fill_value
     configuration.nwp["ukv"].fill_value = fill_value
     configuration.satellite.fill_value = -1.0
+    configuration.generation.input.reject_nan = False
+    configuration.nwp["ukv"].reject_nan = False
+    configuration.satellite.reject_nan = False
 
     gen = np.array([1.0, np.nan, 3.0, np.nan])
     sat = np.array([1.0, np.nan, 3.0, np.nan])
@@ -75,8 +78,10 @@ def test_apply_source_dropout(config_filename):
 
     config.generation.input.dropout_minute_probabilities = {30: 1.0}
     config.generation.input.fill_value = -1.0
+    config.generation.input.reject_nan = False
     config.satellite.dropout_minute_probabilities = {60: 1.0}
     config.satellite.fill_value = -2.0
+    config.satellite.reject_nan = False
 
     generation_input = _generation_da(generation_mw=np.ones((4, 2)), capacity_mwp=np.ones((4, 2)))
     generation_target = generation_input.copy(deep=True)
@@ -143,9 +148,11 @@ def test_preprocess_source_data_preserves_original_arrays(config_filename):
     config = load_yaml_configuration(config_filename)
     config.generation.input.dropout_minute_probabilities = {30: 1.0}
     config.generation.input.fill_value = -4.0
+    config.generation.input.reject_nan = False
     config.satellite.channels = [Channel(name="a", mean=2, std=2, clip_min=0, clip_max=6)]
     config.satellite.dropout_minute_probabilities = {30: 1.0}
     config.satellite.fill_value = -3.0
+    config.satellite.reject_nan = False
     config.nwp["ukv"].channels = [
         NWPChannel(name="a", accumulated=True, mean=2, std=2, clip_min=0, clip_max=6),
     ]
