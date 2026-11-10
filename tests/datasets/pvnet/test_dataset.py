@@ -7,6 +7,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
+from ocf_data_sampler.common.lightarray import LightDataArray
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.datasets.pvnet.dataset import (
@@ -200,34 +201,35 @@ def test_pvnet_dataset_sites_unbounded_time_periods(pvnet_site_config_filename):
     assert len(dataset) == len(PVNetDataset(pvnet_site_config_filename))
 
 
-def test_pvnet_dataset_noxarray_mode(pvnet_config_filename):
-    dataset = PVNetDataset(
-        pvnet_config_filename,
-        array_backend="xarray",
-        include_extra_metadata=True,
+def _assert_samples_equal(sample0, sample1):
+    assert sample0.keys() == sample1.keys()
+    for k, v in sample0.items():
+        if isinstance(v, dict):
+            _assert_samples_equal(v, sample1[k])
+        elif isinstance(v, np.ndarray | torch.Tensor):
+            np.testing.assert_array_equal(np.asarray(v), np.asarray(sample1[k]))
+        else:
+            assert v == sample1[k]
+
+
+@pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
+def test_array_backends_produce_identical_samples(pvnet_config_filename, dataset_class):
+    config = load_yaml_configuration(pvnet_config_filename)
+    # Certain dropout exercises masking and filling on both backends without randomness
+    config.satellite.dropout_minute_probabilities = {5: 1.0}
+    config.satellite.fill_value = -1.0
+    config.satellite.reject_nan = False
+    config.generation.input.dropout_minute_probabilities = {30: 1.0}
+    config.generation.input.fill_value = -1.0
+    config.generation.input.reject_nan = False
+
+    xarray_dataset, lightarray_dataset = (
+        dataset_class(config, array_backend=backend, include_extra_metadata=True)
+        for backend in ("xarray", "lightarray")
     )
-    sample = dataset[0]
-
-    dataset_nox = PVNetDataset(
-        pvnet_config_filename,
-        array_backend="lightarray",
-        include_extra_metadata=True,
-    )
-    sample_nox = dataset_nox[0]
-    _assert_sample_features_float32(sample)
-    _assert_sample_features_float32(sample_nox)
-
-    def check_samples_equal(sample0, sample1):
-        assert set(sample0.keys()) == set(sample1.keys())
-        for k in sample0:
-            if isinstance(sample0[k], np.ndarray):
-                assert (sample0[k] == sample1[k]).all()
-            elif isinstance(sample0[k], dict):
-                check_samples_equal(sample0[k], sample1[k])
-            else:
-                assert sample0[k] == sample1[k]
-
-    check_samples_equal(sample, sample_nox)
+    # Evenly spaced indices, including both ends of the available data
+    for index in np.linspace(0, len(xarray_dataset) - 1, num=5, dtype=int):
+        _assert_samples_equal(xarray_dataset[index], lightarray_dataset[index])
 
 
 @pytest.mark.parametrize("array_backend", ["xarray", "lightarray"])
@@ -335,6 +337,30 @@ def test_pvnet_dataset_without_generation(pvnet_config_filename):
     assert "nwp" in sample
     assert "satellite" in sample
     _assert_sample_features_float32(sample)
+
+
+def _backing_data(da):
+    # Inspect the backing object without triggering a lazy read
+    return da.data if isinstance(da, LightDataArray) else da.variable._data
+
+
+@pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
+@pytest.mark.parametrize("array_backend", ["xarray", "lightarray"])
+def test_sampling_leaves_dataset_sources_unchanged(
+    pvnet_config_filename, dataset_class, array_backend
+):
+    """Sampling must not load the dataset's lazy sources or write to its generation data."""
+    dataset = dataset_class(pvnet_config_filename, array_backend=array_backend)
+    sources = [dataset.source_data["sat"], *dataset.source_data["nwp"].values()]
+    lazy_data = [_backing_data(da) for da in sources]
+    generation = dataset.source_data["generation"].values.copy()
+
+    dataset[0]
+
+    # Loading in place through shared arrays would replace the dataset's lazy stores
+    assert all(_backing_data(da) is data for da, data in zip(sources, lazy_data, strict=True))
+    # Generation is in memory, so in-place writes through views would change these values
+    np.testing.assert_array_equal(dataset.source_data["generation"].values, generation)
 
 
 def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):
