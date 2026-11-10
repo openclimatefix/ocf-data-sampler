@@ -297,8 +297,12 @@ class LightDataArray:
 
     def to_xarray(self) -> xr.DataArray:
         """Convert to an Xarray DataArray."""
+        data: Any = self.data
+        # xarray would otherwise read the whole TensorStore into a NumPy array
+        if isinstance(data, ts.TensorStore):
+            data = xr.Variable(self.dims, _TensorStoreAdapter(data))
         return xr.DataArray(
-            data=self.data,
+            data=data,
             dims=self.dims,
             coords=self.coords,
             attrs=dict(self.attrs),
