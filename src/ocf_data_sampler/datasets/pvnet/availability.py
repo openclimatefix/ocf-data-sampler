@@ -1,6 +1,7 @@
 """Calculate source availability and build valid PVNet sample indices."""
 
 from itertools import pairwise
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -8,7 +9,12 @@ import xarray as xr
 from numpy.typing import NDArray
 
 from ocf_data_sampler.common.time_utils import minutes
-from ocf_data_sampler.config.model import Generation, PVNetDataConfig
+from ocf_data_sampler.config.model import (
+    Generation,
+    GenerationInputWindow,
+    PVNetDataConfig,
+    Satellite,
+)
 from ocf_data_sampler.datasets.pvnet.sample_index import ConcurrentSampleIndex, SampleIndex
 from ocf_data_sampler.datasets.pvnet.types import SourceDict
 from ocf_data_sampler.select.time_periods import (
@@ -44,15 +50,32 @@ def validate_requested_periods(requested_periods: list[tuple[str | None, str | N
             raise ValueError("requested_periods must not overlap")
 
 
+def _required_interval_end_minutes(
+    window: Satellite | GenerationInputWindow,
+    dropout_mode: Literal["random", "minimal"],
+) -> int:
+    """End of a window, relative to t0, up to which data must be available.
+
+    In minimal mode, data after the largest dropout cutoff can always be dropped out, so is not
+    required.
+    """
+    if dropout_mode == "random" or window.dropout_minute_probabilities is None:
+        return window.interval_end_minutes
+    # Config validation places t0 minus every delay within the window
+    return -max(window.dropout_minute_probabilities)
+
+
 def _find_non_generation_t0_periods(
     source_data: SourceDict[xr.DataArray],
     config: PVNetDataConfig,
+    dropout_mode: Literal["random", "minimal"],
 ) -> pd.DataFrame:
     """Find overlapping valid t0 periods for NWP and satellite sources.
 
     Args:
         source_data: Input source arrays.
         config: PVNet data configuration
+        dropout_mode: How dropout and NWP delays are chosen when sampling.
 
     Returns:
         A DataFrame containing the valid t0 time periods.
@@ -65,7 +88,8 @@ def _find_non_generation_t0_periods(
             first_forecast_step = da["step"].values[0]
             last_forecast_step = da["step"].values[-1]
 
-            if nwp_config.delay_minute_probabilities is None:
+            # In minimal mode, NWP uses the most recent available init-time
+            if nwp_config.delay_minute_probabilities is None or dropout_mode == "minimal":
                 max_delay = minutes(0)
             else:
                 max_delay = minutes(max(nwp_config.delay_minute_probabilities))
@@ -106,7 +130,7 @@ def _find_non_generation_t0_periods(
             source_data["sat"]["time_utc"].values,
             time_resolution=minutes(config.satellite.time_resolution_minutes),
             interval_start=minutes(config.satellite.interval_start_minutes),
-            interval_end=minutes(config.satellite.interval_end_minutes),
+            interval_end=minutes(_required_interval_end_minutes(config.satellite, dropout_mode)),
         )
 
         if len(sat_periods) == 0:
@@ -126,27 +150,38 @@ def _find_non_generation_t0_periods(
 def _find_generation_t0_periods(
     datetimes: NDArray[np.datetime64],
     generation_config: Generation,
+    dropout_mode: Literal["random", "minimal"],
 ) -> pd.DataFrame:
     """Intersect valid t0 periods for the configured generation input and target windows.
 
     Args:
         datetimes: One-dimensional array of available generation timestamps, sorted and unique.
         generation_config: Generation configuration specifying the time resolution and windows.
+        dropout_mode: How dropout is chosen when sampling.
 
     Returns:
         A DataFrame of periods valid for every configured window, with inclusive start_dt and
         exclusive end_dt bounds. Empty if no periods are valid.
     """
-    window_periods = [
-        find_contiguous_t0_periods(
-            datetimes,
-            time_resolution=minutes(generation_config.time_resolution_minutes),
-            interval_start=minutes(window.interval_start_minutes),
-            interval_end=minutes(window.interval_end_minutes),
+    window_periods: list[pd.DataFrame] = []
+    for window in (generation_config.input, generation_config.target):
+        if window is None:
+            continue
+
+        # Only the input window has dropout, since the target is what we predict
+        if isinstance(window, GenerationInputWindow):
+            interval_end_minutes = _required_interval_end_minutes(window, dropout_mode)
+        else:
+            interval_end_minutes = window.interval_end_minutes
+
+        window_periods.append(
+            find_contiguous_t0_periods(
+                datetimes,
+                time_resolution=minutes(generation_config.time_resolution_minutes),
+                interval_start=minutes(window.interval_start_minutes),
+                interval_end=minutes(interval_end_minutes),
+            )
         )
-        for window in (generation_config.input, generation_config.target)
-        if window is not None
-    ]
 
     intersected_periods = intersect_time_periods(window_periods)
 
@@ -215,6 +250,7 @@ def build_sample_index(
     location_ids: list[str],
     config: PVNetDataConfig,
     requested_periods: list[tuple[str | None, str | None]] | None,
+    dropout_mode: Literal["random", "minimal"],
 ) -> SampleIndex:
     """Construct a SampleIndex containing all valid t0 and location_id pairs.
 
@@ -225,6 +261,8 @@ def build_sample_index(
         config: PVNet data configuration
         requested_periods: Validated periods with inclusive starts and exclusive ends.
             Bounds may be None only when data sources are available.
+        dropout_mode: How dropout and NWP delays are chosen when sampling. In minimal mode,
+            t0s only need data up to the largest dropout cutoff.
     """
     t0_frequency = minutes(config.sampling_grid.t0_resolution_minutes)
 
@@ -241,7 +279,7 @@ def build_sample_index(
 
     # Without generation, all locations share the same t0 times.
     if config.generation is None:
-        periods = _find_non_generation_t0_periods(source_data, config)
+        periods = _find_non_generation_t0_periods(source_data, config, dropout_mode)
         t0_times = _build_t0_times(periods, t0_frequency, requested_periods)
         if len(t0_times) == 0:
             raise ValueError("No t0 times found for locations")
@@ -252,7 +290,7 @@ def build_sample_index(
 
     # Shared source periods apply to every location, so calculate them once.
     non_generation_periods = (
-        _find_non_generation_t0_periods(source_data, config)
+        _find_non_generation_t0_periods(source_data, config, dropout_mode)
         if config.satellite is not None or config.nwp is not None
         else None
     )
@@ -265,7 +303,7 @@ def build_sample_index(
         da_gen_loc = source_data["generation"].sel(location_id=location_id).dropna(dim="time_utc")
 
         generation_periods = _find_generation_t0_periods(
-            da_gen_loc["time_utc"].values, config.generation
+            da_gen_loc["time_utc"].values, config.generation, dropout_mode
         )
         if non_generation_periods is not None:
             available_periods = intersect_time_periods([non_generation_periods, generation_periods])
@@ -292,6 +330,7 @@ def build_concurrent_sample_index(
     source_data: SourceDict[xr.DataArray],
     config: PVNetDataConfig,
     requested_periods: list[tuple[str | None, str | None]] | None,
+    dropout_mode: Literal["random", "minimal"],
 ) -> ConcurrentSampleIndex:
     """Construct an index of t0 times available at every selected location.
 
@@ -301,6 +340,8 @@ def build_concurrent_sample_index(
         config: PVNet data configuration
         requested_periods: Validated periods with inclusive starts and exclusive ends.
             Bounds may be None only when data sources are available.
+        dropout_mode: How dropout and NWP delays are chosen when sampling. In minimal mode,
+            t0s only need data up to the largest dropout cutoff.
     """
     t0_frequency = minutes(config.sampling_grid.t0_resolution_minutes)
 
@@ -313,7 +354,7 @@ def build_concurrent_sample_index(
 
     # Without generation, all locations share the same t0 times.
     if config.generation is None:
-        non_generation_periods = _find_non_generation_t0_periods(source_data, config)
+        non_generation_periods = _find_non_generation_t0_periods(source_data, config, dropout_mode)
         t0_times = _build_t0_times(non_generation_periods, t0_frequency, requested_periods)
         if len(t0_times) == 0:
             raise ValueError("No t0 times found")
@@ -321,7 +362,7 @@ def build_concurrent_sample_index(
 
     # Shared source periods apply to every location, so calculate them once.
     non_generation_periods = (
-        _find_non_generation_t0_periods(source_data, config)
+        _find_non_generation_t0_periods(source_data, config, dropout_mode)
         if config.satellite is not None or config.nwp is not None
         else None
     )
@@ -329,7 +370,9 @@ def build_concurrent_sample_index(
     # All locations must have non-NaN generation data for each t0
     da_gen = source_data["generation"].dropna(dim="time_utc", how="any")
 
-    generation_periods = _find_generation_t0_periods(da_gen["time_utc"].values, config.generation)
+    generation_periods = _find_generation_t0_periods(
+        da_gen["time_utc"].values, config.generation, dropout_mode
+    )
     if non_generation_periods is not None:
         available_periods = intersect_time_periods([non_generation_periods, generation_periods])
     else:

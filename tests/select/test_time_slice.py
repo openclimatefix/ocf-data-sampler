@@ -1,9 +1,16 @@
 import numpy as np
 import pytest
+import tensorstore as ts
 import xarray as xr
 
+from ocf_data_sampler.common.lightarray import LightDataArray
 from ocf_data_sampler.common.time_utils import date_range, datetime_floor, minutes
-from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
+from ocf_data_sampler.common.xr_tensorstore import get_backing_array, open_zarr_paths
+from ocf_data_sampler.select.time_slice import (
+    _append_nan_times,
+    select_time_slice,
+    select_time_slice_nwp,
+)
 
 
 def make_dataarray(times):
@@ -30,6 +37,7 @@ def test_select_time_slice(da_sat_like, t0_str):
         interval_start=interval_start,
         interval_end=interval_end,
         time_resolution=freq,
+        candidate_delays=[None],
     )
 
     # Check the returned times are as expected
@@ -45,7 +53,7 @@ def test_select_time_slice_rejects_out_of_bounds(da_sat_like, t0_str):
     interval_end = minutes(60)
     freq = minutes(5)
 
-    with pytest.raises(ValueError, match=r"Not all values in .* exist in array .*"):
+    with pytest.raises(ValueError, match="consistent with the available data"):
         # Make the partially out of bounds selection
         _ = select_time_slice(
             da_sat_like,
@@ -53,6 +61,7 @@ def test_select_time_slice_rejects_out_of_bounds(da_sat_like, t0_str):
             interval_start=interval_start,
             interval_end=interval_end,
             time_resolution=freq,
+            candidate_delays=[None],
         )
 
 
@@ -71,7 +80,7 @@ def test_select_time_slice_rejects_incorrect_timestamps(offsets):
 
     da = make_dataarray(t0 + minutes(offsets))
 
-    with pytest.raises(ValueError, match="do not match time steps"):
+    with pytest.raises(ValueError, match="consistent with the available data"):
         # Make the selection with incorrect timestamps
         _ = select_time_slice(
             da,
@@ -79,6 +88,7 @@ def test_select_time_slice_rejects_incorrect_timestamps(offsets):
             interval_start=interval_start,
             interval_end=interval_end,
             time_resolution=freq,
+            candidate_delays=[None],
         )
 
 
@@ -103,12 +113,112 @@ def test_select_time_slice_floors_off_grid_request():
         interval_start=interval_start,
         interval_end=interval_end,
         time_resolution=freq,
+        candidate_delays=[None],
     )
 
     expected_datetimes = date_range(
         np.datetime64("2024-01-01T10:00"), np.datetime64("2024-01-01T14:00"), freq=freq
     )
     np.testing.assert_array_equal(da_slice.time_utc.values, expected_datetimes)
+
+
+@pytest.mark.parametrize(
+    ("available_minutes", "delay_minutes", "expected_values"),
+    [
+        # Only 12:00 and 12:10 are available, so 20 minutes is the smallest delay that drops out
+        # the missing times
+        ([0, 10], [None, 10, 20, 30], [0, 1, np.nan, np.nan]),
+        # A larger delay drops out available times too
+        ([0, 10], [30], [0, np.nan, np.nan, np.nan]),
+        # A 40-minute delay covers all the available times, so everything is dropped out
+        ([0, 10], [40], [np.nan, np.nan, np.nan, np.nan]),
+        # All requested times are available, but 10 minutes is the only candidate delay
+        ([0, 10, 20, 30], [10], [0, 1, 2, np.nan]),
+        # All requested times are available, so no dropout is consistent and is preferred
+        ([0, 10, 20, 30], [None, 10], [0, 1, 2, 3]),
+    ],
+    ids=[
+        "missing-times",
+        "larger-delay",
+        "all-dropped",
+        "complete-data",
+        "no-dropout",
+    ],
+)
+def test_select_time_slice_with_delays(available_minutes, delay_minutes, expected_values):
+    """Test that the first consistent delay is applied and dropped-out times are NaN"""
+
+    t0 = np.datetime64("2024-01-01T12:30")
+
+    interval_start = minutes(-30)
+    interval_end = minutes(0)
+    time_resolution = minutes(10)
+
+    window_start = t0 + interval_start
+    requested_times = date_range(
+        window_start,
+        t0 + interval_end,
+        freq=time_resolution,
+    )
+
+    da = xr.DataArray(
+        # Values match their position in the window, i.e. 12:00 -> 0, 12:10 -> 1
+        np.arange(len(available_minutes), dtype=np.float32),
+        coords={"time_utc": window_start + minutes(available_minutes)},
+        dims="time_utc",
+    )
+
+    da_slice = select_time_slice(
+        da,
+        t0=t0,
+        interval_start=interval_start,
+        interval_end=interval_end,
+        time_resolution=time_resolution,
+        candidate_delays=[None if d is None else minutes(d) for d in delay_minutes],
+    )
+
+    np.testing.assert_array_equal(da_slice["time_utc"].values, requested_times)
+    np.testing.assert_array_equal(da_slice.values, expected_values)
+
+
+@pytest.mark.parametrize("array_factory", [xr.DataArray, LightDataArray.from_xarray])
+@pytest.mark.parametrize("lazy", [False, True], ids=["numpy", "tensorstore"])
+def test_append_nan_times(tmp_path, array_factory, lazy):
+    """Test that NaN steps are appended along time, keeping TensorStore data lazy"""
+
+    requested_times = np.datetime64("2024-01-01T00:00") + minutes([0, 30, 60, 90, 120])
+    values = np.arange(6, dtype=np.float32).reshape(3, 2)
+    da = xr.DataArray(
+        values,
+        coords={"time_utc": requested_times[:3], "x": [10, 20]},
+        dims=("time_utc", "x"),
+    )
+    if lazy:
+        da.to_dataset(name="data").to_zarr(tmp_path / "data.zarr", zarr_format=2)
+        da = open_zarr_paths(str(tmp_path / "data.zarr"))["data"]
+
+    da = array_factory(da)
+
+    da_padded = _append_nan_times(da, requested_times[3:])
+
+    # Check that the padded array has the same type as the input
+    assert type(da_padded) is type(da)
+
+    # Check the padded array is still lazy if the input was lazy
+    if lazy:
+        backing_array = (
+            da_padded.data
+            if isinstance(da_padded, LightDataArray)
+            else get_backing_array(da_padded)
+        )
+        assert isinstance(backing_array, ts.TensorStore)
+
+    np.testing.assert_array_equal(da_padded["time_utc"].values, requested_times)
+    np.testing.assert_array_equal(da_padded["x"].values, [10, 20])
+    np.testing.assert_array_equal(
+        da_padded.values,
+        [[0, 1], [2, 3], [4, 5], [np.nan, np.nan], [np.nan, np.nan]],
+    )
 
 
 @pytest.mark.parametrize("t0_str", ["10:00", "10:30", "11:00", "11:15", "12:00"])

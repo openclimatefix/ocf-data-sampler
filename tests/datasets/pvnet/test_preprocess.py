@@ -6,7 +6,6 @@ import xarray as xr
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import Channel, NWPChannel
 from ocf_data_sampler.datasets.pvnet.preprocess import (
-    apply_source_dropout,
     build_normalisation_arrays,
     normalise_source_data,
     preprocess_source_data,
@@ -26,12 +25,6 @@ def _generation_da(generation_mw: np.ndarray, capacity_mwp: np.ndarray) -> xr.Da
         },
         dims=("time_utc", "location_id", "gen_param"),
     )
-
-
-def _assert_dropout_applied(da: xr.DataArray, cutoff_time: np.datetime64):
-    """Check that the cutoff is retained and later observations are NaN."""
-    assert not np.any(np.isnan(da.sel(time_utc=slice(None, cutoff_time))))
-    assert np.all(np.isnan(da.sel(time_utc=slice(cutoff_time + np.timedelta64(1, "s"), None))))
 
 
 @pytest.mark.parametrize(
@@ -69,53 +62,6 @@ def test_validate_and_fill_source_nans(config_filename, fill_value, expected):
     assert np.array_equal(source_data["sat"].values, np.array([1.0, -1.0, 3.0, -1.0]))
 
 
-def test_apply_source_dropout(config_filename):
-    config = load_yaml_configuration(config_filename)
-    config.nwp = None
-
-    config.generation.input.dropout_minute_probabilities = {30: 1.0}
-    config.generation.input.fill_value = -1.0
-    config.satellite.dropout_minute_probabilities = {60: 1.0}
-    config.satellite.fill_value = -2.0
-
-    generation_input = _generation_da(generation_mw=np.ones((4, 2)), capacity_mwp=np.ones((4, 2)))
-    generation_target = generation_input.copy(deep=True)
-
-    t0 = np.datetime64("2023-01-01 00:00")
-
-    times = pd.date_range(end=t0, periods=4, freq="30min").values
-
-    sat = xr.DataArray(
-        np.arange(4, dtype=float),
-        coords={"time_utc": times},
-        dims=("time_utc",),
-    )
-
-    source_data = {
-        "generation_input": generation_input,
-        "generation_target": generation_target,
-        "sat": sat,
-    }
-
-    apply_source_dropout(source_data, t0, config)
-
-    # Generation dropout with a 30-minute delay should blank everything from t0
-    _assert_dropout_applied(source_data["generation_input"], t0 - np.timedelta64(30, "m"))
-
-    # No dropout is applied to generation.target, so it should have no NaNs
-    assert not np.any(np.isnan(source_data["generation_target"]))
-
-    # Satellite dropout with a 60-minute delay should blank everything from t0 - 60 minutes
-    _assert_dropout_applied(source_data["sat"], t0 - np.timedelta64(60, "m"))
-
-    validate_and_fill_source_nans(source_data, config)
-    assert (source_data["generation_input"].sel(time_utc=slice(t0, None)) == -1.0).all()
-    assert (
-        source_data["sat"].sel(time_utc=slice(t0 - np.timedelta64(30, "m"), None)) == -2.0
-    ).all()
-    xr.testing.assert_equal(source_data["generation_target"], generation_target)
-
-
 def test_normalise_channels(config_filename):
     config = load_yaml_configuration(config_filename)
     config.satellite.channels = [
@@ -141,10 +87,8 @@ def test_normalise_channels(config_filename):
 def test_preprocess_source_data_preserves_original_arrays(config_filename):
     """Preprocessing updates the supplied dictionary but preserves its original NumPy data."""
     config = load_yaml_configuration(config_filename)
-    config.generation.input.dropout_minute_probabilities = {30: 1.0}
     config.generation.input.fill_value = -4.0
     config.satellite.channels = [Channel(name="a", mean=2, std=2, clip_min=0, clip_max=6)]
-    config.satellite.dropout_minute_probabilities = {30: 1.0}
     config.satellite.fill_value = -3.0
     config.nwp["ukv"].channels = [
         NWPChannel(name="a", accumulated=True, mean=2, std=2, clip_min=0, clip_max=6),
@@ -181,7 +125,7 @@ def test_preprocess_source_data_preserves_original_arrays(config_filename):
     # Make copies so we can detect if the original arrays are modified
     original_array_copies = [array.copy() for array in original_array_references]
 
-    preprocess_source_data(source_data, times[-1], config, build_normalisation_arrays(config))
+    preprocess_source_data(source_data, config, build_normalisation_arrays(config))
 
     processed_arrays = [
         source_data["generation_input"].data,
