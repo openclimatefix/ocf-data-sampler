@@ -68,7 +68,7 @@ enabled = true
 # * See https://docs.astral.sh/ty/reference/configuration/
 [tool.ty.src]
 include = ["src"]
-exclude = ["tests/**", "scripts/**"]
+exclude = ["tests/**"]
 
 [tool.ty.environment]
 python-version = "3.12"
