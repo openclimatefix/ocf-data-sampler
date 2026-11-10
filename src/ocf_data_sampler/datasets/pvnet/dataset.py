@@ -42,7 +42,7 @@ from ocf_data_sampler.datasets.pvnet.types import (
 )
 
 
-def convert_sources_to_lightarray(
+def _convert_sources_to_lightarray(
     source_data: SourceDict[xr.DataArray],
 ) -> SourceDict[LightDataArray]:
     """Convert xarray source arrays to LightDataArrays."""
@@ -119,7 +119,7 @@ class AbstractPVNetDataset[
         if array_backend == "xarray":
             self.source_data = source_data
         else:
-            self.source_data = convert_sources_to_lightarray(source_data)
+            self.source_data = _convert_sources_to_lightarray(source_data)
 
     def __len__(self) -> int:
         """Return the number of samples in the dataset index."""
@@ -232,7 +232,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
         # Slice by time then load to avoid loading the data multiple times from disk
         time_sliced_data = slice_sources_by_time(self.source_data, t0, self.config)
         materialise_data(time_sliced_data)
-        # Preprocessing is location-independent, so do it once before slicing per-location below
+        # Preprocess once for all locations, so they share the same dropout draws
         preprocess_source_data(time_sliced_data, t0, self.config, self.normalisation_arrays)
 
         samples = []

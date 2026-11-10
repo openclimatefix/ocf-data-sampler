@@ -31,10 +31,10 @@ class BaseSample[TSampleArray](TypedDict, total=False):
 
     Optional metadata fields:
         - location_longitude, location_latitude: degrees east/north.
-        - satellite_time_utc: (time,), float64 POSIX seconds.
+        - satellite_time_utc: (time,), int64 POSIX seconds.
         - satellite_x_geostationary, satellite_y_geostationary: (x,) and (y,)
           coordinate vectors, retaining source units and dtypes.
-        - nwp[nwp_name]["init_time_utc"]: scalar, float64 POSIX seconds.
+        - nwp[nwp_name]["init_time_utc"]: scalar, int64 POSIX seconds.
         - nwp[nwp_name]["step_hours"]: (step,), float32 forecast lead times in hours.
     """
 
@@ -46,7 +46,7 @@ class BaseSample[TSampleArray](TypedDict, total=False):
     generation_input_capacity_mwp: TSampleArray
     generation_target_capacity_mwp: TSampleArray
 
-    # Timestamps: (time,), float64 POSIX seconds.
+    # Timestamps: (time,), int64 POSIX seconds.
     generation_input_time_utc: TSampleArray
     generation_target_time_utc: TSampleArray
 
@@ -76,8 +76,8 @@ class NumpySample(BaseSample[NDArray[Any]], total=False):
     """One forecast time and location, with NumPy arrays."""
 
     location_id: Required[str]
-    # Forecast reference time, float64 POSIX seconds.
-    t0: Required[np.float64]
+    # Forecast reference time, int64 POSIX seconds.
+    t0: Required[np.int64]
 
 
 class TensorBatch(BaseSample[torch.Tensor], total=False):
@@ -88,7 +88,7 @@ class TensorBatch(BaseSample[torch.Tensor], total=False):
 
     # (batch,), string location IDs.
     location_id: Required[list[str]]
-    # (batch,), float64 POSIX seconds.
+    # (batch,), int64 POSIX seconds.
     t0: Required[torch.Tensor]
 
 

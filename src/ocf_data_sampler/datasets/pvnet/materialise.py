@@ -39,9 +39,15 @@ def initiate_reads[TArray: xr.DataArray | LightDataArray](source_data: SourceDic
 def block_until_loaded[TArray: xr.DataArray | LightDataArray](
     source_data: SourceDict[TArray],
 ) -> None:
-    """Block until source arrays are loaded into memory in-place."""
+    """Block until source arrays are loaded, replacing `.data` with NumPy arrays they own.
+
+    Lazy arrays are loaded into new arrays. NumPy-backed arrays, such as eagerly loaded
+    generation, may be views of the input data, so are copied to avoid sharing memory with it.
+    """
     for v in _iter_source_arrays(source_data):
-        if not _is_numpy_backed(v):
+        if _is_numpy_backed(v):
+            v.data = v.values.copy()
+        else:
             # .load() is in-place in both xarray.DataArray and LightDataArray
             v.load()
 
@@ -55,7 +61,10 @@ def convert_to_float32[TArray: DataArrayLike](source_data: SourceDict[TArray]) -
 def materialise_data[TArray: xr.DataArray | LightDataArray](
     source_data: SourceDict[TArray],
 ) -> None:
-    """Read and load source arrays into memory, then convert their payloads to float32 in-place."""
+    """Read and load source arrays, then replace their `.data` with float32 NumPy arrays.
+
+    Afterwards, `.data` no longer shares memory with the source arrays; coordinates still may.
+    """
     initiate_reads(source_data)
     block_until_loaded(source_data)
     convert_to_float32(source_data)

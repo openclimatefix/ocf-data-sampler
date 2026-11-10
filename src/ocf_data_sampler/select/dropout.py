@@ -37,8 +37,9 @@ def apply_dropout(
     t0: np.datetime64,
     dropout_delay: np.timedelta64 | None,
 ) -> None:
-    """Replace observations strictly after t0 minus the selected delay with NaNs in-place.
+    """Mask observations strictly after t0 minus the selected delay with NaNs.
 
+    Replaces `.data` on the input DataArray without modifying shared source values.
     Requires materialised NumPy data. A None delay leaves observations unchanged;
     a zero delay masks only observations after t0. Filling happens later in preprocessing.
 

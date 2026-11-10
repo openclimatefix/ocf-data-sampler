@@ -114,7 +114,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "ANN", "S101"]
-"__init__.py" = ["F401", "D104"]
+"__init__.py" = ["D104"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
