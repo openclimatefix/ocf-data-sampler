@@ -425,7 +425,3 @@ class LightDataArray:
     def shape(self) -> tuple[int, ...]:
         """Return the shape of the underlying data array."""
         return self.data.shape
-
-    def __len__(self) -> int:
-        """Return the length of the underlying data array."""
-        return self.shape[0]
