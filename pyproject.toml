@@ -1,7 +1,7 @@
 # --- PROJECT CONFIGURATION --- #
 
 [build-system]
-requires = ["setuptools>=67", "wheel", "setuptools-git-versioning>=2.0,<3"]
+requires = ["setuptools>=77", "wheel", "setuptools-git-versioning>=2.0,<3"]
 build-backend = "setuptools.build_meta"
 
 # Metadata (see https://peps.python.org/pep-0621/)
@@ -10,7 +10,8 @@ name = "ocf-data-sampler"
 dynamic = ["version"] # Set automtically using git: https://setuptools-git-versioning.readthedocs.io/en/stable/
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.12,<3.14"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Open Climate Fix team", email = "info@openclimatefix.org" },
     { name = "James Fulton" },
@@ -18,7 +19,6 @@ authors = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
     "torch",
@@ -48,9 +48,6 @@ dev = [
 
 [project.urls]
 repository = "https://github.com/openclimatefix/ocf-data-sampler"
-
-[tool.setuptools]
-license-files = []
 
 [tool.setuptools.packages.find]
 where = ["src"]
