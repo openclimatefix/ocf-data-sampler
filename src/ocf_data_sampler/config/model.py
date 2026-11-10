@@ -230,7 +230,7 @@ class Satellite(TimeWindowMixin, DropoutMixin, SpatialWindowMixin):
 
     zarr_path: ZarrSource = Field(
         ...,
-        description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
+        description="Absolute zarr filepath(s). Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
     )
 
@@ -258,7 +258,7 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
 
     zarr_path: ZarrSource = Field(
         ...,
-        description="Absolute or relative zarr filepath(s). Prefix with a protocol like s3:// "
+        description="Absolute zarr filepath(s). Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
     )
 
@@ -366,7 +366,7 @@ class Generation(Base):
 
     zarr_path: str = Field(
         ...,
-        description="Absolute or relative zarr filepath. Prefix with a protocol like s3:// "
+        description="Absolute zarr filepath. Prefix with a protocol like s3:// "
         "to read from alternative filesystems.",
     )
 

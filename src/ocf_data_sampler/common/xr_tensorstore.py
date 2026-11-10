@@ -116,6 +116,8 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
 def _resolve_zarr_paths(zarr_path: ZarrSource) -> list[str]:
     """Resolve a path, local glob, or sequence into a non-empty list of paths."""
     if isinstance(zarr_path, str):
+        if has_magic(zarr_path) and "://" in zarr_path:
+            raise ValueError(f"Glob patterns are only supported for local paths, got {zarr_path!r}")
         paths = sorted(glob(zarr_path)) if has_magic(zarr_path) else [zarr_path]
     else:
         paths = list(zarr_path)
