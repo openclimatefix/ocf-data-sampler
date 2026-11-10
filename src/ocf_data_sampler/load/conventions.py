@@ -18,8 +18,12 @@ def validate_matching_projections(datasets: Sequence[xr.Dataset]) -> None:
     """
 
     def _get_projection(ds: xr.Dataset) -> dict[str, object]:
-        (area,) = ds.attrs["area"].values()
-        return area["projection"]
+        try:
+            (area,) = ds.attrs["area"].values()
+            return area["projection"]
+        except (KeyError, ValueError) as error:
+            raise ValueError(f"Invalid 'area' attribute: {ds.attrs.get('area')!r}") from error
+
 
     projections = [_get_projection(ds) for ds in datasets]
     if any(projection != projections[0] for projection in projections[1:]):
