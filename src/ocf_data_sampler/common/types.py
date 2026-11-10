@@ -65,6 +65,3 @@ class DataArrayLike(Protocol):
 
     def load(self) -> Self:
         """Load the data into memory in place and return self."""
-
-    def __len__(self) -> int:
-        """Length of the leading dimension."""
