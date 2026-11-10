@@ -457,6 +457,7 @@ class T0Embedding(Base):
 
     embeddings: list[_Embedding] = Field(
         ...,
+        min_length=1,
         description="Period and representation pairs, e.g. ('6h', 'cyclic') or ('1y', 'linear'). "
         "Hour periods must divide 24; year periods must be positive integers. Each cyclic "
         "period adds two elements (sine and cosine) to the output vector; each linear period "
