@@ -7,7 +7,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from ocf_data_sampler.config import load_yaml_configuration, save_yaml_configuration
+from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import SolarPosition
 from ocf_data_sampler.datasets.pvnet.dataset import (
     PVNetConcurrentDataset,
@@ -148,18 +148,14 @@ def test_pvnet_dataset(pvnet_config_filename):
 
 @pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
 @pytest.mark.parametrize("source", ["satellite", "ukv"])
-def test_pvnet_dataset_rejects_oversized_crops(
-    tmp_path, pvnet_config_filename, dataset_class, source
-):
+def test_pvnet_dataset_rejects_oversized_crops(pvnet_config_filename, dataset_class, source):
     config = load_yaml_configuration(pvnet_config_filename)
     source_config = {"satellite": config.satellite, "ukv": config.nwp["ukv"]}[source]
     # Both fixture grids are narrower than 201 pixels.
     source_config.image_width_pixels = 201
-    config_path = tmp_path / "oversized_crop.yaml"
-    save_yaml_configuration(config, config_path)
 
     with pytest.raises(ValueError, match="Cannot slice all locations"):
-        dataset_class(config_path)
+        dataset_class(config)
 
 
 def test_load_locations_exclude_ids(locations_csv_path):
@@ -241,7 +237,6 @@ def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend
     # Reverse the CSV rows so their order differs from the generation source. This is so we can
     # check that the location ordering comes from the locations CSV as the source of truth.
     locations_path = tmp_path / "reordered_locations.csv"
-    config_path = tmp_path / "reordered_configuration.yaml"
 
     df_locations = pd.read_csv(
         config.sampling_grid.locations_csv_path, dtype={"location_id": str}
@@ -249,7 +244,6 @@ def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend
     df_locations.to_csv(locations_path, index=False)
 
     config.sampling_grid.locations_csv_path = str(locations_path)
-    save_yaml_configuration(config, config_path)
 
     expected_ids = [
         location_id
@@ -258,7 +252,7 @@ def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend
     ]
 
     dataset = PVNetConcurrentDataset(
-        config_path,
+        config,
         array_backend=array_backend,
         include_extra_metadata=True,
     )
@@ -279,7 +273,7 @@ def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend
         [loc.longitude for loc in dataset.locations],
     )
     # Check that PVNetConcurrentDataset agrees with PVNetDataset for all locations.
-    single_sample_dataset = PVNetDataset(config_path, array_backend="xarray")
+    single_sample_dataset = PVNetDataset(config, array_backend="xarray")
     # Complete generation gives each location the same valid times as the concurrent dataset.
     np.testing.assert_array_equal(
         single_sample_dataset.sample_index.location_id,
@@ -292,7 +286,7 @@ def test_pvnet_concurrent_dataset(tmp_path, pvnet_config_filename, array_backend
             np.testing.assert_array_equal(sample[key][i].numpy(), location_sample[key])
 
 
-def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
+def test_solar_position_decoupling(pvnet_config_filename):
     """Test that solar position calculations are properly decoupled from data sources."""
     config = load_yaml_configuration(pvnet_config_filename)
     config_without_solar = config.model_copy(deep=True)
@@ -306,15 +300,9 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
         interval_end_minutes=180,
     )
 
-    # Save both testing configs
-    config_without_solar_path = tmp_path / "config_without_solar.yaml"
-    config_with_solar_path = tmp_path / "config_with_solar.yaml"
-    save_yaml_configuration(config_without_solar, config_without_solar_path)
-    save_yaml_configuration(config_with_solar, config_with_solar_path)
-
     # Create datasets with both configs
-    dataset_without_solar = PVNetDataset(config_without_solar_path)
-    dataset_with_solar = PVNetDataset(config_with_solar_path)
+    dataset_without_solar = PVNetDataset(config_without_solar)
+    dataset_with_solar = PVNetDataset(config_with_solar)
 
     # Generate samples
     sample_without_solar = dataset_without_solar[0]
@@ -329,15 +317,12 @@ def test_solar_position_decoupling(tmp_path, pvnet_config_filename):
         assert key in sample_with_solar, f"Solar key {key} should be in sample"
 
 
-def test_pvnet_dataset_without_generation(tmp_path, pvnet_config_filename):
+def test_pvnet_dataset_without_generation(pvnet_config_filename):
     """Test that a dataset can be built with locations/NWP/satellite but no generation at all."""
     config = load_yaml_configuration(pvnet_config_filename)
     config.generation = None
 
-    config_path = tmp_path / "config_without_generation.yaml"
-    save_yaml_configuration(config, config_path)
-
-    dataset = PVNetDataset(config_path)
+    dataset = PVNetDataset(config)
 
     # With no generation data, there's nothing to be incomplete about
 
