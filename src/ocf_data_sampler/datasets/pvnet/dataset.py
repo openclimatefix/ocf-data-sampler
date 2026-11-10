@@ -69,7 +69,7 @@ class AbstractPVNetDataset[
         config: str | PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
-        array_backend: Literal["xarray", "lightarray"] = "xarray",
+        array_backend: Literal["xarray", "lightarray"] = "lightarray",
     ) -> None:
         """A generic torch Dataset for creating PVNet samples.
 
@@ -157,7 +157,7 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
         config: str | PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
-        array_backend: Literal["xarray", "lightarray"] = "xarray",
+        array_backend: Literal["xarray", "lightarray"] = "lightarray",
     ) -> None:
         super().__init__(config, time_periods, include_extra_metadata, array_backend)
         # Construct a lookup for locations - useful for users to construct sample by location ID
