@@ -285,7 +285,7 @@ class LightDataArray:
             data=data,
             dims=dims,
             coords=coords,
-            attrs=da.attrs,
+            attrs=dict(da.attrs),
             skip_validation=True,
         )
 
