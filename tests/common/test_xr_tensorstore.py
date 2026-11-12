@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
 
+import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
@@ -15,28 +16,31 @@ ZARR_FORMATS = [2, 3]
 
 
 @pytest.fixture(scope="module")
-def concatable_nwp_like_data(ds_nwp_ecmwf) -> tuple[xr.Dataset, xr.Dataset]:
-    """Create two NWP datasets with consecutive init times for concatenation"""
-    ds_2 = ds_nwp_ecmwf.copy(deep=True)
-    ds_2["init_time_utc"] = pd.date_range(
-        start=ds_nwp_ecmwf.init_time_utc.values.max() + pd.Timedelta("6h"),
-        freq="6h",
-        periods=len(ds_nwp_ecmwf.init_time_utc),
-    )
-    return ds_nwp_ecmwf, ds_2
+def zarr_paths(tmp_path_factory) -> dict[int, list[str]]:
+    """Two consecutive partitions of a small dataset, saved in each zarr format"""
+    init_times = pd.date_range("2023-01-01", periods=6, freq="6h")
+    x = np.array([0.0, 1.0])
+    shape = (len(init_times), len(x))
+    ds = xr.DataArray(
+        np.arange(np.prod(shape), dtype=np.float32).reshape(shape),
+        coords={"init_time_utc": init_times, "x": x},
+        dims=("init_time_utc", "x"),
+    ).to_dataset(name="data")
 
+    # Split along init_time_utc so the partitions can be concatenated back together
+    partitions = [
+        ds.isel(init_time_utc=slice(None, 3)),
+        ds.isel(init_time_utc=slice(3, None)),
+    ]
 
-@pytest.fixture(scope="module")
-def zarr_paths(session_tmp_path, concatable_nwp_like_data) -> dict[int, list[str]]:
-    """Save the NWP datasets to zarr, keyed by zarr format"""
-    paths: dict[int, list[str]] = {}
-    for zarr_format in (2, 3):
-        paths[zarr_format] = [
-            f"{session_tmp_path}/nwp_like_data_{n}.zarr{zarr_format}"
-            for n in range(len(concatable_nwp_like_data))
-        ]
-        for ds, path in zip(concatable_nwp_like_data, paths[zarr_format], strict=True):
-            ds.to_zarr(path, zarr_format=zarr_format)
+    tmp_path = tmp_path_factory.mktemp("xr_tensorstore")
+    paths = {}
+    for zarr_format in ZARR_FORMATS:
+        paths[zarr_format] = []
+        for i, ds_part in enumerate(partitions):
+            path = str(tmp_path / f"partition_{i}.zarr{zarr_format}")
+            ds_part.to_zarr(path, zarr_format=zarr_format)
+            paths[zarr_format].append(path)
     return paths
 
 
@@ -115,8 +119,8 @@ def test_concat_stays_tensorstore_backed(tensorstore_datasets):
     ds_ts = concat_tensorstore(tensorstore_datasets, concat_dim="init_time_utc")
 
     # Raises TypeError if the variable has been materialised
-    store = _extract_tensorstore(ds_ts["ECMWF_UK"])
-    assert store.shape == ds_ts["ECMWF_UK"].shape
+    store = _extract_tensorstore(ds_ts["data"])
+    assert store.shape == ds_ts["data"].shape
 
 
 def test_concat_requires_multiple_datasets(tensorstore_datasets):
@@ -133,7 +137,7 @@ def test_concat_rejects_mismatched_datasets(tensorstore_datasets):
     ds_1, ds_2 = tensorstore_datasets
     with pytest.raises(ValueError, match="data_vars"):
         concat_tensorstore(
-            [ds_1, ds_2.rename({"ECMWF_UK": "other"})],
+            [ds_1, ds_2.rename({"data": "other"})],
             concat_dim="init_time_utc",
         )
 
