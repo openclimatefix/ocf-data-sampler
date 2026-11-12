@@ -291,14 +291,18 @@ class LightDataArray:
             data=data,
             dims=dims,
             coords=coords,
-            attrs=da.attrs,
+            attrs=dict(da.attrs),
             skip_validation=True,
         )
 
     def to_xarray(self) -> xr.DataArray:
         """Convert to an Xarray DataArray."""
+        data: Any = self.data
+        # xarray would otherwise read the whole TensorStore into a NumPy array
+        if isinstance(data, ts.TensorStore):
+            data = xr.Variable(self.dims, _TensorStoreAdapter(data))
         return xr.DataArray(
-            data=self.data,
+            data=data,
             dims=self.dims,
             coords=self.coords,
             attrs=dict(self.attrs),
@@ -427,7 +431,3 @@ class LightDataArray:
     def shape(self) -> tuple[int, ...]:
         """Return the shape of the underlying data array."""
         return self.data.shape
-
-    def __len__(self) -> int:
-        """Return the length of the underlying data array."""
-        return self.shape[0]

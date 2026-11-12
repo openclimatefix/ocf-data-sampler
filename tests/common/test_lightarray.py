@@ -30,6 +30,8 @@ def test_conversion(xr_gen, xr_ukv, xr_sat):
         fda = LightDataArray.from_xarray(xda)
         new_xda = fda.to_xarray()
         assert new_xda.equals(xda)
+        # Lazy TensorStore data must stay lazy rather than being read into memory
+        assert type(new_xda.variable._data) is type(xda.variable._data)
 
 
 def test_isel(xr_gen, xr_ukv, xr_sat):

@@ -38,7 +38,7 @@ class BaseSample[TSampleArray](TypedDict, total=False):
         - nwp[nwp_name]["step_hours"]: (step,), float32 forecast lead times in hours.
     """
 
-    # Generation: (time,), normalised by capacity.
+    # Generation: (time,), normalised by capacity; zero where capacity is zero.
     generation_input: TSampleArray
     generation_target: TSampleArray
 

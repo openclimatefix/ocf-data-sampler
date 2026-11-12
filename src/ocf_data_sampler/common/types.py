@@ -1,12 +1,4 @@
-"""Shared source types and the array contract used by the sampling pipeline.
-
-``DataArrayLike`` defines the duck-typed surface the sampling pipeline is
-allowed to use on array objects. It is deliberately minimal: every member is
-an obligation on ``LightDataArray`` and a promise that ``xarray.DataArray``
-also satisfies. Do not add members without checking that both implementations
-conform (see the protocol conformance test) — this is the array-compatibility
-contract, not a convenience grab-bag.
-"""
+"""Shared source types and the array protocol used by the sampling pipeline."""
 
 from collections.abc import Hashable, Sequence
 from typing import Any, Protocol, Self
@@ -30,12 +22,9 @@ type Indexer = (
 
 
 class DataArrayLike(Protocol):
-    """Structural type for objects that behave like ``xarray.DataArray``.
+    """Array interface used by the backend-generic sampling pipeline.
 
-    Satisfied by ``xarray.DataArray`` and ``LightDataArray``. Pipeline code
-    that is generic over the array backend should be typed against this
-    protocol, using a local bounded type parameter when the concrete return
-    type must be preserved, rather than against either concrete class.
+    ``xarray.DataArray`` and ``LightDataArray`` provide these members with the same behaviour.
     """
 
     @property
@@ -76,6 +65,3 @@ class DataArrayLike(Protocol):
 
     def load(self) -> Self:
         """Load the data into memory in place and return self."""
-
-    def __len__(self) -> int:
-        """Length of the leading dimension."""
