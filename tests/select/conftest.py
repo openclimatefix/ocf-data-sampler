@@ -3,15 +3,13 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from tests.conftest import NWP_FREQ
-
 
 @pytest.fixture(scope="module")
 def da_nwp_like():
     """Create dummy NWP-like data"""
     x = np.arange(-100, 100)
     y = np.arange(-100, 100)
-    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq=NWP_FREQ)
+    datetimes = pd.date_range("2024-01-02 00:00", "2024-01-03 00:00", freq="3h")
     steps = pd.timedelta_range("0h", "16h", freq="1h")
     channels = ["t", "dswrf"]
 

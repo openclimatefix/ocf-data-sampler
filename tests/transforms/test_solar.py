@@ -6,6 +6,7 @@ import pytest
 from ocf_data_sampler.transforms.solar import (
     calculate_azimuth_and_elevation,
 )
+from tests.conftest import RANDOM_SEED
 
 
 @pytest.mark.parametrize("lat", [0, 5, 10, 23.5])
@@ -22,15 +23,16 @@ def test_calculate_azimuth_and_elevation(lat):
 
 
 def test_calculate_azimuth_and_elevation_against_pvlib():
+    rng = np.random.default_rng(RANDOM_SEED)
 
     # Randomly sample datetimes between 1900 and 2100
     t_min = np.datetime64("1900-01-01 00:00", "ns")
     t_max = np.datetime64("2100-01-01 00:00", "ns")
-    random_datetimes = t_min + (np.random.uniform(size=1000) * (t_max - t_min))
+    random_datetimes = t_min + (rng.uniform(size=1000) * (t_max - t_min))
 
     # Randomly sample some places on the globe
-    random_longitudes = np.random.uniform(low=-180, high=180, size=20)
-    random_latitudes = np.random.uniform(low=-90, high=90, size=20)
+    random_longitudes = rng.uniform(low=-180, high=180, size=20)
+    random_latitudes = rng.uniform(low=-90, high=90, size=20)
 
     # For each location, test the solar coords for all sampled datetimes
     for lon, lat in zip(random_longitudes, random_latitudes, strict=True):

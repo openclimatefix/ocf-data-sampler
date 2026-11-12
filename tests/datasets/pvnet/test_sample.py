@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 from torch.utils.data import default_collate
 
 from ocf_data_sampler.config.model import (
@@ -18,6 +19,39 @@ from ocf_data_sampler.datasets.pvnet.sample import (
 from ocf_data_sampler.datasets.pvnet.types import Location
 from ocf_data_sampler.load.generation import open_generation
 from tests.conftest import to_datetime64
+
+
+@pytest.fixture()
+def da_sat():
+    times = to_datetime64(["2024-01-02 00:00", "2024-01-02 00:05"])
+    x = np.array([0.0, 1.0])
+    y = np.array([0.0, 1.0])
+    shape = (len(times), len(x), len(y))
+    return xr.DataArray(
+        np.arange(np.prod(shape), dtype=np.float32).reshape(shape),
+        coords={"time_utc": times, "x_geostationary": x, "y_geostationary": y},
+        dims=("time_utc", "x_geostationary", "y_geostationary"),
+    )
+
+
+@pytest.fixture()
+def da_nwp():
+    steps = np.arange(9) * np.timedelta64(1, "h")
+    channels = ["t", "dswrf"]
+    x = np.array([0.0, 1.0])
+    y = np.array([0.0, 1.0])
+    shape = (len(steps), len(channels), len(x), len(y))
+    return xr.DataArray(
+        np.arange(np.prod(shape), dtype=np.float32).reshape(shape),
+        coords={
+            "init_time_utc": to_datetime64("2024-01-02 00:00"),
+            "step": steps.astype("timedelta64[ns]"),
+            "channel": channels,
+            "x_osgb": x,
+            "y_osgb": y,
+        },
+        dims=("step", "channel", "x_osgb", "y_osgb"),
+    )
 
 
 @pytest.mark.parametrize("include_extra_metadata", [False, True])
@@ -107,26 +141,23 @@ def test_convert_generation_to_numpy_sample(generation_zarr_path):
         )
 
 
-def test_convert_nwp_to_numpy_sample(ds_nwp_ukv_time_sliced):
+def test_convert_nwp_to_numpy_sample(da_nwp):
     numpy_sample = {}
-    _add_source_arrays(numpy_sample, {"nwp": {"ukv": ds_nwp_ukv_time_sliced}})
+    _add_source_arrays(numpy_sample, {"nwp": {"ukv": da_nwp}})
 
-    assert (numpy_sample["nwp"]["ukv"] == ds_nwp_ukv_time_sliced.values).all()
+    assert (numpy_sample["nwp"]["ukv"] == da_nwp.values).all()
 
 
-def test_convert_satellite_to_numpy_sample(da_sat_like):
+def test_convert_satellite_to_numpy_sample(da_sat):
     numpy_sample = {}
-    _add_source_arrays(numpy_sample, {"sat": da_sat_like})
+    _add_source_arrays(numpy_sample, {"sat": da_sat})
 
-    assert (numpy_sample["satellite"] == da_sat_like.values).all()
+    assert (numpy_sample["satellite"] == da_sat.values).all()
 
 
-def test_add_source_metadata(ds_nwp_ukv_time_sliced, da_sat_like):
-    da_nwp = ds_nwp_ukv_time_sliced.assign_coords(
-        init_time_utc=np.datetime64("2024-01-02"),
-    )
+def test_add_source_metadata(da_nwp, da_sat):
     metadata = {}
-    _add_source_metadata(metadata, {"sat": da_sat_like, "nwp": {"ukv": da_nwp}})
+    _add_source_metadata(metadata, {"sat": da_sat, "nwp": {"ukv": da_nwp}})
 
     # Both sources start at 2024-01-02 00:00 UTC.
     start_posix_seconds = 1704153600

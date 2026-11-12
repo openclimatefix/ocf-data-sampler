@@ -6,12 +6,17 @@ from ocf_data_sampler.common.time_utils import date_range, datetime_floor, minut
 from ocf_data_sampler.select.time_slice import select_time_slice, select_time_slice_nwp
 
 
+# 5-minute timestamps covering 2024-01-02, including midnight at both ends
+TIMES = date_range(
+    np.datetime64("2024-01-02 00:00"), np.datetime64("2024-01-03 00:00"), freq=minutes(5)
+)
+
 def make_dataarray(times):
     return xr.DataArray(np.zeros(len(times)), coords={"time_utc": times}, dims="time_utc")
 
 
 @pytest.mark.parametrize("t0_str", ["12:30", "12:40", "12:00"])
-def test_select_time_slice(da_sat_like, t0_str):
+def test_select_time_slice(t0_str):
     """Test the basic functionality of select_time_slice"""
 
     # Slice parameters
@@ -23,9 +28,8 @@ def test_select_time_slice(da_sat_like, t0_str):
     # Expect to return these timestamps from the selection
     expected_datetimes = date_range(t0 + interval_start, t0 + interval_end, freq=freq)
 
-    # Make the selection
-    sat_sample = select_time_slice(
-        da_sat_like,
+    da_sliced = select_time_slice(
+        make_dataarray(TIMES),
         t0=t0,
         interval_start=interval_start,
         interval_end=interval_end,
@@ -33,11 +37,11 @@ def test_select_time_slice(da_sat_like, t0_str):
     )
 
     # Check the returned times are as expected
-    assert (sat_sample.time_utc == expected_datetimes).all()
+    assert (da_sliced.time_utc == expected_datetimes).all()
 
 
 @pytest.mark.parametrize("t0_str", ["00:00", "00:25", "23:05", "23:55"])
-def test_select_time_slice_rejects_out_of_bounds(da_sat_like, t0_str):
+def test_select_time_slice_rejects_out_of_bounds(t0_str):
     """Test the behaviour of select_time_slice when the selection is out of bounds"""
 
     t0 = np.datetime64(f"2024-01-02 {t0_str}")
@@ -48,7 +52,7 @@ def test_select_time_slice_rejects_out_of_bounds(da_sat_like, t0_str):
     with pytest.raises(ValueError, match=r"Not all values in .* exist in array .*"):
         # Make the partially out of bounds selection
         _ = select_time_slice(
-            da_sat_like,
+            make_dataarray(TIMES),
             t0=t0,
             interval_start=interval_start,
             interval_end=interval_end,
