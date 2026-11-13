@@ -164,7 +164,6 @@ def test_pvnet_dataset_without_generation(pvnet_config):
 
     dataset = PVNetDataset(config)
 
-    # Without generation, no location can be dropped for missing data
     assert len(dataset.locations) == _expected_num_locations(dataset, LOCATION_IDS)
 
     sample = dataset[0]
@@ -177,7 +176,7 @@ def test_pvnet_dataset_without_generation(pvnet_config):
 @pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
 def test_array_backends_produce_identical_samples(pvnet_config, dataset_class):
     config = pvnet_config
-    # Certain dropout exercises masking and filling on both backends without randomness
+    # Set dropout so there is only one possible dropout choice
     config.satellite.dropout_minute_probabilities = {5: 1.0}
     config.satellite.fill_value = -1.0
     config.satellite.reject_nan = False
@@ -189,7 +188,7 @@ def test_array_backends_produce_identical_samples(pvnet_config, dataset_class):
     xarray_dataset = dataset_class(**kwargs, array_backend="xarray")
     lightarray_dataset = dataset_class(**kwargs, array_backend="lightarray")
 
-    # Evenly spaced indices, including both ends of the available data
+    # Check equal for the the start index, end index, and a few indices in the middle
     for index in np.linspace(0, len(xarray_dataset) - 1, num=5, dtype=int):
         _assert_samples_equal(xarray_dataset[index], lightarray_dataset[index])
 
