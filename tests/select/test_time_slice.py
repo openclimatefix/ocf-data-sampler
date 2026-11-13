@@ -12,11 +12,11 @@ from ocf_data_sampler.select.time_slice import (
     select_time_slice_nwp,
 )
 
-
 # 5-minute timestamps covering 2024-01-02, including midnight at both ends
 TIMES = date_range(
     np.datetime64("2024-01-02 00:00"), np.datetime64("2024-01-03 00:00"), freq=minutes(5)
 )
+
 
 def make_dataarray(times):
     return xr.DataArray(np.zeros(len(times)), coords={"time_utc": times}, dims="time_utc")
