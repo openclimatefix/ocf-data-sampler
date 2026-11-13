@@ -3,7 +3,6 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import Channel, NWPChannel
 from ocf_data_sampler.datasets.pvnet.preprocess import (
     apply_source_dropout,
@@ -42,10 +41,10 @@ def _assert_dropout_applied(da: xr.DataArray, cutoff_time: np.datetime64):
         (-2.0, [1.0, -2.0, 3.0, -2.0]),
     ],
 )
-def test_validate_and_fill_source_nans(config_filename, fill_value, expected):
+def test_validate_and_fill_source_nans(base_config, fill_value, expected):
     """Fill generation and NWP inputs only when configured, including an explicit zero."""
 
-    configuration = load_yaml_configuration(config_filename)
+    configuration = base_config
     configuration.generation.target = None
 
     # Zero is a valid fill value; None preserves missing observations.
@@ -72,8 +71,8 @@ def test_validate_and_fill_source_nans(config_filename, fill_value, expected):
     assert np.array_equal(source_data["sat"].values, np.array([1.0, -1.0, 3.0, -1.0]))
 
 
-def test_apply_source_dropout(config_filename):
-    config = load_yaml_configuration(config_filename)
+def test_apply_source_dropout(base_config):
+    config = base_config
     config.nwp = None
 
     config.generation.input.dropout_minute_probabilities = {30: 1.0}
@@ -121,8 +120,8 @@ def test_apply_source_dropout(config_filename):
     xr.testing.assert_equal(source_data["generation_target"], generation_target)
 
 
-def test_normalise_channels(config_filename):
-    config = load_yaml_configuration(config_filename)
+def test_normalise_channels(base_config):
+    config = base_config
     config.satellite.channels = [
         Channel(name="b", mean=2, std=2, clip_min=0, clip_max=4),
         Channel(name="a", mean=10, std=2),
@@ -143,9 +142,9 @@ def test_normalise_channels(config_filename):
         np.testing.assert_allclose(da.values, expected)
 
 
-def test_preprocess_source_data_preserves_original_arrays(config_filename):
+def test_preprocess_source_data_preserves_original_arrays(base_config):
     """Preprocessing updates the supplied dictionary but preserves its original NumPy data."""
-    config = load_yaml_configuration(config_filename)
+    config = base_config
     config.generation.input.dropout_minute_probabilities = {30: 1.0}
     config.generation.input.fill_value = -4.0
     config.generation.input.reject_nan = False

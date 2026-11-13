@@ -3,16 +3,13 @@ from operator import attrgetter
 import pytest
 from pydantic import ValidationError
 
-from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import DropoutMixin, NaNPolicyMixin, PVNetDataConfig
 
 _MINIMAL_SAMPLING_GRID = {"locations_csv_path": "locations.csv", "t0_resolution_minutes": 30}
 
 
-def _load_config_and_provider(config_path):
-    config = load_yaml_configuration(config_path)
-    provider = next(iter(config.nwp.keys()))
-    return config, provider
+def _first_nwp_provider(config):
+    return next(iter(config.nwp.keys()))
 
 
 def _validate_configuration(config):
@@ -26,15 +23,15 @@ def test_default_configuration():
 
 
 @pytest.mark.parametrize("resolution", [30, 60])
-def test_sampling_grid_accepts_observation_resolution_multiples(config_filename, resolution):
-    configuration = load_yaml_configuration(config_filename)
+def test_sampling_grid_accepts_observation_resolution_multiples(base_config, resolution):
+    configuration = base_config
 
     configuration.sampling_grid.t0_resolution_minutes = resolution
     _validate_configuration(configuration)
 
 
-def test_sampling_grid_does_not_require_nwp_resolution_multiple(config_filename):
-    configuration = load_yaml_configuration(config_filename)
+def test_sampling_grid_does_not_require_nwp_resolution_multiple(base_config):
+    configuration = base_config
     configuration.satellite = None
     configuration.generation = None
     # A 30-minute sampling cadence need not be a multiple of the 60-minute NWP resolution.
@@ -54,11 +51,12 @@ def test_extra_field_error():
         PVNetDataConfig(**configuration_dict)
 
 
-def test_incorrect_interval_start_minutes(config_filename):
+def test_incorrect_interval_start_minutes(base_config):
     """
     Check a history length not divisible by time resolution causes error
     """
-    configuration, provider = _load_config_and_provider(config_filename)
+    configuration = base_config
+    provider = _first_nwp_provider(configuration)
     configuration.nwp[provider].interval_start_minutes = -1111
     with pytest.raises(
         ValueError,
@@ -68,11 +66,12 @@ def test_incorrect_interval_start_minutes(config_filename):
         _validate_configuration(configuration)
 
 
-def test_incorrect_interval_end_minutes(config_filename):
+def test_incorrect_interval_end_minutes(base_config):
     """
     Check a forecast length not divisible by time resolution causes error
     """
-    configuration, provider = _load_config_and_provider(config_filename)
+    configuration = base_config
+    provider = _first_nwp_provider(configuration)
     configuration.nwp[provider].interval_end_minutes = 1111
     with pytest.raises(
         ValueError,
@@ -82,11 +81,12 @@ def test_incorrect_interval_end_minutes(config_filename):
         _validate_configuration(configuration)
 
 
-def test_incorrect_nwp_provider(config_filename):
+def test_incorrect_nwp_provider(base_config):
     """
     Check an unexpected nwp provider causes error
     """
-    configuration, provider = _load_config_and_provider(config_filename)
+    configuration = base_config
+    provider = _first_nwp_provider(configuration)
     configuration.nwp[provider].provider = "unexpected_provider"
     with pytest.raises(ValidationError, match="Unknown NWP provider"):
         _validate_configuration(configuration)
@@ -115,10 +115,8 @@ def test_dropout_requires_fill_value():
 
 @pytest.mark.parametrize("window_path", ["satellite", "generation.input"])
 @pytest.mark.parametrize("delay_minutes", [30, 60])
-def test_dropout_rejects_cutoffs_at_or_after_interval_end(
-    config_filename, window_path, delay_minutes
-):
-    config = load_yaml_configuration(config_filename)
+def test_dropout_rejects_cutoffs_at_or_after_interval_end(base_config, window_path, delay_minutes):
+    config = base_config
     window = attrgetter(window_path)(config)
     window.interval_start_minutes = -120
     window.interval_end_minutes = -60
@@ -134,8 +132,8 @@ def test_dropout_rejects_cutoffs_at_or_after_interval_end(
 
 
 @pytest.mark.parametrize("source_name", ["satellite", "ukv"])
-def test_duplicate_channel_names(config_filename, source_name):
-    config = load_yaml_configuration(config_filename)
+def test_duplicate_channel_names(base_config, source_name):
+    config = base_config
     sources = {"satellite": config.satellite, "ukv": config.nwp["ukv"]}
     source = sources[source_name]
     source.channels.append(source.channels[0].model_copy())
@@ -144,9 +142,9 @@ def test_duplicate_channel_names(config_filename, source_name):
         _validate_configuration(config)
 
 
-def test_generation_interval_divisibility_raises(config_filename):
+def test_generation_interval_divisibility_raises(base_config):
     """generation.input/target must be divisible by generation.time_resolution_minutes."""
-    configuration = load_yaml_configuration(config_filename)
+    configuration = base_config
     configuration.generation.input.interval_start_minutes = -45
 
     with pytest.raises(
@@ -157,9 +155,9 @@ def test_generation_interval_divisibility_raises(config_filename):
         _validate_configuration(configuration)
 
 
-def test_generation_requires_input_or_target(config_filename):
+def test_generation_requires_input_or_target(base_config):
     """At least one of generation.input or generation.target must be configured."""
-    configuration = load_yaml_configuration(config_filename)
+    configuration = base_config
     configuration.generation.input = None
     configuration.generation.target = None
 

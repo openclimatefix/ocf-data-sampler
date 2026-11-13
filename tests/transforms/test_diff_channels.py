@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 import xarray as xr
 
@@ -5,13 +6,28 @@ from ocf_data_sampler.common.lightarray import LightDataArray
 from ocf_data_sampler.transforms.diff_channels import diff_channels_along_step
 
 
-@pytest.mark.parametrize("array_factory", [xr.DataArray, LightDataArray.from_xarray])
-def test_diff_channels_along_step(ds_nwp_ukv_time_sliced, array_factory):
-
-    # Use explicit channel names for clearer testing
+@pytest.fixture()
+def da_nwp():
+    steps = np.arange(3) * np.timedelta64(1, "h")
     channels = ["dswrf", "t"]
-    da_input = ds_nwp_ukv_time_sliced.assign_coords(channel=channels)
+    x = np.array([0.0, 1.0])
+    y = np.array([0.0, 1.0])
+    shape = (len(steps), len(channels), len(x), len(y))
+    return xr.DataArray(
+        np.arange(np.prod(shape), dtype=np.float32).reshape(shape),
+        coords={
+            "step": steps.astype("timedelta64[ns]"),
+            "channel": channels,
+            "x_osgb": x,
+            "y_osgb": y,
+        },
+        dims=("step", "channel", "x_osgb", "y_osgb"),
+    )
 
+
+@pytest.mark.parametrize("array_factory", [xr.DataArray, LightDataArray.from_xarray])
+def test_diff_channels_along_step(da_nwp, array_factory):
+    da_input = da_nwp
     da = array_factory(da_input.copy(deep=True))
 
     da_diffed = diff_channels_along_step(da, channels=["dswrf"])
@@ -38,12 +54,10 @@ def test_diff_channels_along_step(ds_nwp_ukv_time_sliced, array_factory):
     assert (da_diffed.sel(channel="diff_dswrf").values == expected_diffed.values).all()
 
 
-def test_diff_channels_along_step_missing_channel(ds_nwp_ukv_time_sliced):
-    da = ds_nwp_ukv_time_sliced.assign_coords(channel=["dswrf", "t"])
-
+def test_diff_channels_along_step_missing_channel(da_nwp):
     with pytest.raises(
         ValueError,
         match=r"channels=\['dswrf', 'missing'\] not all available in "
         r"all_channels=\['dswrf', 't'\]",
     ):
-        diff_channels_along_step(da, channels=["dswrf", "missing"])
+        diff_channels_along_step(da_nwp, channels=["dswrf", "missing"])
