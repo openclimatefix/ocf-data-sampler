@@ -52,8 +52,8 @@ graph TD
 
 ### Shared processing and availability
 
-Preprocessing includes NWP accumulation differencing, normalisation, input dropout and NaN
-filling. Sample construction adds the configured solar position and time features.
+Preprocessing includes NWP accumulation differencing, normalisation, and filling dropped and
+missing values. Sample construction adds the configured solar position and time features.
 
 Every requested location must have valid samples. Use `sampling_grid.exclude_location_ids` to
 exclude locations intentionally. For concurrent samples, times that are unavailable at any
@@ -97,6 +97,26 @@ before flooring.
 
 The dataset's `time_periods` argument restricts which **`t0` values** are sampled. These periods
 include their start and exclude their end, independently of the source-window conventions above.
+
+## Dropout modes
+
+`PVNetConcurrentDataset` takes a `dropout_mode` argument; `PVNetDataset` always uses `"random"`.
+
+- `"random"`, for training: dropout and NWP delays are drawn from the configured probabilities,
+  and a `t0` is valid only when every time step in each window is available in the source data.
+- `"minimal"`, for inference: each sample uses the smallest configured dropout consistent with
+  the available data, and no NWP delay. A `t0` is valid when satellite and generation input data
+  are available up to the largest configured dropout cutoff, so recent missing data does not need
+  to be filled before sampling.
+
+When the concurrent dataset is built, generation times with a NaN at any requested location are
+dropped. In "minimal" mode, a delay at one location therefore increases the dropout for every
+location in the batch.
+
+`PVNetDataset` has no "minimal" mode because time slicing infers availability from timestamps
+alone, so NaN values would count as available data. This has the potential to lead to some edge
+cases at inference time and is hard to generally solve for. Therefore "minimal" mode is not
+supported for this dataset class.
 
 ## DataLoader workers and randomness
 
