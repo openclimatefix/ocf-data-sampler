@@ -250,7 +250,6 @@ def build_sample_index(
     location_ids: list[str],
     config: PVNetDataConfig,
     requested_periods: list[tuple[str | None, str | None]] | None,
-    dropout_mode: Literal["random", "minimal"],
 ) -> SampleIndex:
     """Construct a SampleIndex containing all valid t0 and location_id pairs.
 
@@ -261,8 +260,6 @@ def build_sample_index(
         config: PVNet data configuration
         requested_periods: Validated periods with inclusive starts and exclusive ends.
             Bounds may be None only when data sources are available.
-        dropout_mode: How dropout and NWP delays are chosen when sampling. In minimal mode,
-            t0s only need data up to the largest dropout cutoff.
     """
     t0_frequency = minutes(config.sampling_grid.t0_resolution_minutes)
 
@@ -279,7 +276,7 @@ def build_sample_index(
 
     # Without generation, all locations share the same t0 times.
     if config.generation is None:
-        periods = _find_non_generation_t0_periods(source_data, config, dropout_mode)
+        periods = _find_non_generation_t0_periods(source_data, config, "random")
         t0_times = _build_t0_times(periods, t0_frequency, requested_periods)
         if len(t0_times) == 0:
             raise ValueError("No t0 times found for locations")
@@ -290,7 +287,7 @@ def build_sample_index(
 
     # Shared source periods apply to every location, so calculate them once.
     non_generation_periods = (
-        _find_non_generation_t0_periods(source_data, config, dropout_mode)
+        _find_non_generation_t0_periods(source_data, config, "random")
         if config.satellite is not None or config.nwp is not None
         else None
     )
@@ -303,7 +300,7 @@ def build_sample_index(
         da_gen_loc = source_data["generation"].sel(location_id=location_id).dropna(dim="time_utc")
 
         generation_periods = _find_generation_t0_periods(
-            da_gen_loc["time_utc"].values, config.generation, dropout_mode
+            da_gen_loc["time_utc"].values, config.generation, "random"
         )
         if non_generation_periods is not None:
             available_periods = intersect_time_periods([non_generation_periods, generation_periods])

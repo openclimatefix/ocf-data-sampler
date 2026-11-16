@@ -69,7 +69,6 @@ class AbstractPVNetDataset[
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         array_backend: Literal["xarray", "lightarray"] = "xarray",
-        dropout_mode: Literal["random", "minimal"] = "random",
     ) -> None:
         """A generic torch Dataset for creating PVNet samples.
 
@@ -84,9 +83,6 @@ class AbstractPVNetDataset[
             include_extra_metadata: Whether to include non-essential metadata for each sample in the
                 sample dict.
             array_backend: Array representation to use when sampling.
-            dropout_mode: "random" draws dropout and NWP delays from the configured probabilities,
-                for training. "minimal" uses the smallest configured dropout consistent with the
-                available data and no NWP delay, for inference.
 
         """
         super().__init__()
@@ -97,10 +93,6 @@ class AbstractPVNetDataset[
         if array_backend not in ("xarray", "lightarray"):
             raise ValueError(
                 f"Unsupported array_backend {array_backend!r}; expected 'xarray' or 'lightarray'"
-            )
-        if dropout_mode not in ("random", "minimal"):
-            raise ValueError(
-                f"Unsupported dropout_mode {dropout_mode!r}; expected 'random' or 'minimal'"
             )
 
         config = load_yaml_configuration(config_filename)
@@ -114,7 +106,7 @@ class AbstractPVNetDataset[
         source_data = open_sources(config, location_ids=location_ids)
 
         self.sample_index: TIndex = self._build_sample_index(
-            source_data, location_ids, config, time_periods, dropout_mode
+            source_data, location_ids, config, time_periods
         )
         add_source_coordinates(self.locations, source_data)
         source_data = crop_sources_to_locations(source_data, self.locations, config)
@@ -122,7 +114,6 @@ class AbstractPVNetDataset[
 
         self.config = config
         self.include_extra_metadata = include_extra_metadata
-        self.dropout_mode: Literal["random", "minimal"] = dropout_mode
 
         self.source_data: SourceDict[Any]
         if array_backend == "xarray":
@@ -134,14 +125,13 @@ class AbstractPVNetDataset[
         """Return the number of samples in the dataset index."""
         return len(self.sample_index)
 
-    @staticmethod
     @abstractmethod
     def _build_sample_index(
+        self,
         source_data: SourceDict[xr.DataArray],
         location_ids: list[str],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
-        dropout_mode: Literal["random", "minimal"],
     ) -> TIndex:
         """Build the sample index for this dataset subclass."""
 
@@ -156,25 +146,21 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         array_backend: Literal["xarray", "lightarray"] = "xarray",
-        dropout_mode: Literal["random", "minimal"] = "random",
     ) -> None:
-        super().__init__(
-            config_filename, time_periods, include_extra_metadata, array_backend, dropout_mode
-        )
+        super().__init__(config_filename, time_periods, include_extra_metadata, array_backend)
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
 
-    @staticmethod
     @override
     def _build_sample_index(
+        self,
         source_data: SourceDict[xr.DataArray],
         location_ids: list[str],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
-        dropout_mode: Literal["random", "minimal"],
     ) -> SampleIndex:
         """Build an index of available t0 and location pairs."""
-        return build_sample_index(source_data, location_ids, config, time_periods, dropout_mode)
+        return build_sample_index(source_data, location_ids, config, time_periods)
 
     def _get_sample(self, t0: np.datetime64, location: Location) -> NumpySample:
         """Generate the PVNet sample for given coordinates.
@@ -184,7 +170,7 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
             location: location for sample
         """
         sample_data = slice_sources_by_space(self.source_data, location, self.config)
-        sample_data = slice_sources_by_time(sample_data, t0, self.config, self.dropout_mode)
+        sample_data = slice_sources_by_time(sample_data, t0, self.config, "random")
         materialise_data(sample_data)
         preprocess_source_data(sample_data, self.config, self.normalisation_arrays)
         return build_numpy_sample(
@@ -226,17 +212,46 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
 class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorBatch]):
     """A torch Dataset for creating concurrent PVNet location samples."""
 
-    @staticmethod
+    @override
+    def __init__(
+        self,
+        config_filename: str,
+        time_periods: list[tuple[str | None, str | None]] | None = None,
+        include_extra_metadata: bool = False,
+        array_backend: Literal["xarray", "lightarray"] = "xarray",
+        dropout_mode: Literal["random", "minimal"] = "random",
+    ) -> None:
+        """A torch Dataset for creating concurrent PVNet location samples.
+
+        Args:
+            config_filename: Path to the configuration file
+            time_periods: Restrict sample t0 times to these (start, end) periods, with inclusive
+                starts and exclusive ends. None uses all available times.
+            include_extra_metadata: Whether to include non-essential metadata for each sample in the
+                sample dict.
+            array_backend: Array representation to use when sampling.
+            dropout_mode: "random" draws dropout and NWP delays from the configured probabilities,
+                for training. "minimal" uses the smallest configured dropout consistent with the
+                available data and no NWP delay, for inference.
+        """
+        if dropout_mode not in ("random", "minimal"):
+            raise ValueError(
+                f"Unsupported dropout_mode {dropout_mode!r}; expected 'random' or 'minimal'"
+            )
+        # Set before the base constructor, which builds the sample index using this mode
+        self.dropout_mode: Literal["random", "minimal"] = dropout_mode
+        super().__init__(config_filename, time_periods, include_extra_metadata, array_backend)
+
     @override
     def _build_sample_index(
+        self,
         source_data: SourceDict[xr.DataArray],
         location_ids: list[str],
         config: PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None,
-        dropout_mode: Literal["random", "minimal"],
     ) -> ConcurrentSampleIndex:
         """Build an index of t0 times available at every requested location."""
-        return build_concurrent_sample_index(source_data, config, time_periods, dropout_mode)
+        return build_concurrent_sample_index(source_data, config, time_periods, self.dropout_mode)
 
     def _get_sample(self, t0: np.datetime64) -> TensorBatch:
         """Generate a concurrent PVNet sample for given init-time.
