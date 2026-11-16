@@ -1,5 +1,6 @@
 """Calculate source availability and build valid PVNet sample indices."""
 
+import logging
 from itertools import pairwise
 from typing import Literal
 
@@ -23,6 +24,8 @@ from ocf_data_sampler.select.time_periods import (
     find_contiguous_t0_periods_nwp,
     intersect_time_periods,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def validate_requested_periods(requested_periods: list[tuple[str | None, str | None]]) -> None:
@@ -296,8 +299,12 @@ def build_sample_index(
     t0_arrays: list[NDArray[np.datetime64]] = []
     location_id_arrays: list[NDArray[np.str_]] = []
     unavailable_location_ids: list[str] = []
+    n_times = source_data["generation"].sizes["time_utc"]
+    n_nan_locations = 0
     for location_id in location_ids:
         da_gen_loc = source_data["generation"].sel(location_id=location_id).dropna(dim="time_utc")
+        if da_gen_loc.sizes["time_utc"] < n_times:
+            n_nan_locations += 1
 
         generation_periods = _find_generation_t0_periods(
             da_gen_loc["time_utc"].values, config.generation, "random"
@@ -314,6 +321,12 @@ def build_sample_index(
             t0_arrays.append(t0_times.astype("datetime64[ns]"))
             location_id_arrays.append(np.full(len(t0_times), location_id))
 
+    if n_nan_locations > 0:
+        logger.warning(
+            f"Generation data contains NaNs at {n_nan_locations} of {len(location_ids)} "
+            "locations; t0s whose windows overlap them are excluded",
+        )
+
     if len(unavailable_location_ids) > 0:
         raise ValueError(f"No valid t0 times found for locations: {unavailable_location_ids}")
 
@@ -321,6 +334,25 @@ def build_sample_index(
         t0=np.concatenate(t0_arrays),
         location_id=np.concatenate(location_id_arrays),
     )
+
+
+def drop_incomplete_generation_times(da_gen: xr.DataArray) -> xr.DataArray:
+    """Drop generation timestamps which contain any NaNs.
+
+    Args:
+        da_gen: Generation data.
+
+    Returns:
+        A new DataArray containing only the times without NaNs.
+    """
+    da_gen_complete = da_gen.dropna(dim="time_utc", how="any")
+    n_dropped = da_gen.sizes["time_utc"] - da_gen_complete.sizes["time_utc"]
+    if n_dropped > 0:
+        logger.warning(
+            f"Dropped {n_dropped} of {da_gen.sizes['time_utc']} generation times with NaNs at "
+            "one or more locations",
+        )
+    return da_gen_complete
 
 
 def build_concurrent_sample_index(
@@ -333,7 +365,8 @@ def build_concurrent_sample_index(
 
     Args:
         source_data: Validated source arrays matching the configured sources, with generation
-            restricted to a non-empty set of validated requested locations.
+            restricted to a non-empty set of validated requested locations and without NaNs
+            (see `drop_incomplete_generation_times`).
         config: PVNet data configuration
         requested_periods: Validated periods with inclusive starts and exclusive ends.
             Bounds may be None only when data sources are available.
@@ -364,8 +397,11 @@ def build_concurrent_sample_index(
         else None
     )
 
-    # All locations must have non-NaN generation data for each t0
-    da_gen = source_data["generation"].dropna(dim="time_utc", how="any")
+    # Time slicing infers availability from timestamps alone, so a NaN would be sampled as valid.
+    # Having NaNs in the generation data carries a risk of hitting edge-case risk.
+    da_gen = source_data["generation"]
+    if da_gen.isnull().any():
+        raise ValueError("Generation data contains NaNs")
 
     generation_periods = _find_generation_t0_periods(
         da_gen["time_utc"].values, config.generation, dropout_mode

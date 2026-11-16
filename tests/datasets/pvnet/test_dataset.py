@@ -14,7 +14,7 @@ from ocf_data_sampler.datasets.pvnet.dataset import (
     PVNetDataset,
     load_locations,
 )
-from tests.conftest import LOCATION_IDS, SITE_LOCATION_IDS
+from tests.conftest import LOCATION_IDS, SITE_LOCATION_IDS, save_zarr
 
 
 def _assert_sample_features_float32(sample):
@@ -376,6 +376,37 @@ def test_pvnet_concurrent_dataset_minimal_dropout(tmp_path, pvnet_config_filenam
     # configured dropout compatible with the available data is 15 minutes so everything after 23:45
     # is dropped and filled with the fill value.
     assert (satellite[:, 4:] == fill_value).all()
+
+
+def test_pvnet_concurrent_dataset_minimal_dropout_generation_nan(
+    tmp_path, pvnet_config_filename, ds_generation
+):
+    """Minimal mode treats a NaN generation value at any location as missing data"""
+    t0 = np.datetime64("2023-01-01T23:30", "ns")
+
+    # One included location is NaN 60 minutes before t0, while its timestamp remains in the data
+    ds_generation = ds_generation.copy(deep=True)
+    nan_coords = {"time_utc": t0 - np.timedelta64(60, "m"), "location_id": "loc_1"}
+    ds_generation["generation_mw"].loc[nan_coords] = np.nan
+    generation_zarr_path = save_zarr(ds_generation, tmp_path, "generation_with_nan.zarr")
+
+    config = load_yaml_configuration(pvnet_config_filename)
+    fill_value = -1.0
+    config.generation.zarr_path = generation_zarr_path
+    config.generation.target = None
+    config.generation.input.interval_start_minutes = -120
+    config.generation.input.fill_value = fill_value
+    config.generation.input.dropout_minute_probabilities = {30: 0.5, 90: 0.5}
+    config_path = tmp_path / "config_minimal_dropout_generation_nan.yaml"
+    save_yaml_configuration(config, config_path)
+
+    dataset = PVNetConcurrentDataset(config_path, dropout_mode="minimal")
+    generation_input = dataset.get_sample(t0)["generation_input"].numpy()
+
+    # Requested times are 21:30-23:30. The NaN at 22:30 rules out the 30-minute dropout, so the
+    # 90-minute dropout keeps only 21:30 and 22:00 at every location
+    assert (generation_input[:, :2] != fill_value).all()
+    assert (generation_input[:, 2:] == fill_value).all()
 
 
 def test_pvnet_dataset_raw_sample_iteration(pvnet_config_filename):

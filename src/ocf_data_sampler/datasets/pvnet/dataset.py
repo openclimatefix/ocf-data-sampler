@@ -14,6 +14,7 @@ from ocf_data_sampler.datasets.cache import PickleCacheMixin
 from ocf_data_sampler.datasets.pvnet.availability import (
     build_concurrent_sample_index,
     build_sample_index,
+    drop_incomplete_generation_times,
     validate_requested_periods,
 )
 from ocf_data_sampler.datasets.pvnet.loading import (
@@ -104,6 +105,7 @@ class AbstractPVNetDataset[
 
         location_ids = [loc.id for loc in self.locations]
         source_data = open_sources(config, location_ids=location_ids)
+        self._prepare_source_data(source_data)
 
         self.sample_index: TIndex = self._build_sample_index(
             source_data, location_ids, config, time_periods
@@ -124,6 +126,12 @@ class AbstractPVNetDataset[
     def __len__(self) -> int:
         """Return the number of samples in the dataset index."""
         return len(self.sample_index)
+
+    def _prepare_source_data(self, source_data: SourceDict[xr.DataArray]) -> None:
+        """Prepare the opened source data in place before the sample index is built.
+
+        Does nothing unless a subclass overrides this.
+        """
 
     @abstractmethod
     def _build_sample_index(
@@ -241,6 +249,17 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
         # Set before the base constructor, which builds the sample index using this mode
         self.dropout_mode: Literal["random", "minimal"] = dropout_mode
         super().__init__(config_filename, time_periods, include_extra_metadata, array_backend)
+
+    @override
+    def _prepare_source_data(self, source_data: SourceDict[xr.DataArray]) -> None:
+        """Drop generation timestamps which contain any NaNs.
+
+        Concurrent samples share one time slice across locations, and time slicing infers
+        availability from timestamps alone. Dropping these times keeps the dropout chosen in
+        "minimal" mode consistent with the data.
+        """
+        if "generation" in source_data:
+            source_data["generation"] = drop_incomplete_generation_times(source_data["generation"])
 
     @override
     def _build_sample_index(

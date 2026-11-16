@@ -8,6 +8,7 @@ from ocf_data_sampler.datasets.pvnet.availability import (
     _filter_times_to_requested_periods,
     build_concurrent_sample_index,
     build_sample_index,
+    drop_incomplete_generation_times,
     validate_requested_periods,
 )
 
@@ -134,12 +135,14 @@ def test_build_sample_index_unusable_location(pvnet_config, location_ids, dateti
     np.testing.assert_array_equal(concurrent_index.t0, expected_t0s)
 
     values[:, 1] = np.nan
-    sources = {"generation": make_generation(values, location_ids, datetimes)}
+    da_gen = make_generation(values, location_ids, datetimes)
+    sources = {"generation": da_gen}
     with pytest.raises(
         ValueError,
         match=r"No valid t0 times found for locations: \['site-2'\]",
     ):
         build_sample_index(sources, location_ids, pvnet_config, None)
+    sources = {"generation": drop_incomplete_generation_times(da_gen)}
     with pytest.raises(ValueError, match="every requested location"):
         build_concurrent_sample_index(sources, pvnet_config, None, "random")
 
@@ -172,7 +175,8 @@ def test_build_sample_index_generation_only(pvnet_config, location_ids, datetime
     values[-1, 1] = np.nan
     expected_datetimes_2 = datetimes[2:-5]
 
-    sources = {"generation": make_generation(values, location_ids, datetimes)}
+    da_gen = make_generation(values, location_ids, datetimes)
+    sources = {"generation": da_gen}
     index = build_sample_index(sources, location_ids, pvnet_config, None)
     _assert_sample_index(
         index,
@@ -180,7 +184,12 @@ def test_build_sample_index_generation_only(pvnet_config, location_ids, datetime
         ["site-1", "site-1", "site-2", "site-2"],
     )
 
+    # The concurrent index requires generation without NaNs
+    with pytest.raises(ValueError, match="contains NaNs"):
+        build_concurrent_sample_index(sources, pvnet_config, None, "random")
+
     # Concurrent samples require all locations to have generation data for each t0
+    sources = {"generation": drop_incomplete_generation_times(da_gen)}
     concurrent = build_concurrent_sample_index(sources, pvnet_config, None, "random")
     np.testing.assert_array_equal(concurrent.t0, datetimes[3:-5])
 
@@ -201,7 +210,8 @@ def test_build_sample_index_no_shared_t0s(pvnet_config, location_ids, datetimes)
     assert len(np.intersect1d(expected_datetimes_1, expected_datetimes_2)) == 0
 
     # No t0 overlap between location is fine for the regular PVNet sample index
-    sources = {"generation": make_generation(values, location_ids, datetimes)}
+    da_gen = make_generation(values, location_ids, datetimes)
+    sources = {"generation": da_gen}
     index = build_sample_index(sources, location_ids, pvnet_config, None)
     _assert_sample_index(
         index,
@@ -211,6 +221,7 @@ def test_build_sample_index_no_shared_t0s(pvnet_config, location_ids, datetimes)
 
     # The concurrent PVNet sample index finds no t0 times where all locations are available so it
     # raises
+    sources = {"generation": drop_incomplete_generation_times(da_gen)}
     with pytest.raises(ValueError, match="every requested location"):
         build_concurrent_sample_index(sources, pvnet_config, None, "random")
 
