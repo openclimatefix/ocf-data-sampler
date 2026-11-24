@@ -398,7 +398,7 @@ def build_concurrent_sample_index(
     )
 
     # Time slicing infers availability from timestamps alone, so a NaN would be sampled as valid.
-    # Having NaNs in the generation data carries a risk of hitting edge-case risk.
+    # Having NaNs in the generation data carries a risk of hitting an edge-case.
     da_gen = source_data["generation"]
     if da_gen.isnull().any():
         raise ValueError("Generation data contains NaNs")
