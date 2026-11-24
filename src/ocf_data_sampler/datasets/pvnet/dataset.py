@@ -227,16 +227,17 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
     @override
     def __init__(
         self,
-        config_filename: str,
+        config: str | PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
-        array_backend: Literal["xarray", "lightarray"] = "xarray",
+        array_backend: Literal["xarray", "lightarray"] = "lightarray",
         dropout_mode: Literal["random", "minimal"] = "random",
     ) -> None:
         """A torch Dataset for creating concurrent PVNet location samples.
 
         Args:
-            config_filename: Path to the configuration file
+            config: Path to a YAML configuration file, or a configuration object. An object is
+                deep-copied, so later changes to it do not affect the dataset.
             time_periods: Restrict sample t0 times to these (start, end) periods, with inclusive
                 starts and exclusive ends. None uses all available times.
             include_extra_metadata: Whether to include non-essential metadata for each sample in the
@@ -252,7 +253,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
             )
         # Set before the base constructor, which builds the sample index using this mode
         self.dropout_mode: Literal["random", "minimal"] = dropout_mode
-        super().__init__(config_filename, time_periods, include_extra_metadata, array_backend)
+        super().__init__(config, time_periods, include_extra_metadata, array_backend)
 
     @override
     def _prepare_source_data(self, source_data: SourceDict[xr.DataArray]) -> None:
