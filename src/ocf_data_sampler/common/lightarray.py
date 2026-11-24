@@ -6,6 +6,7 @@ import numpy as np
 import tensorstore as ts
 import xarray as xr
 from numpy.typing import NDArray
+from xarray_tensorstore import _TensorStoreAdapter
 
 from ocf_data_sampler.common.types import Indexer
 from ocf_data_sampler.common.xr_tensorstore import get_backing_array
