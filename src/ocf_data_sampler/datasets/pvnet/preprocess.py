@@ -11,7 +11,6 @@ from ocf_data_sampler.datasets.pvnet.types import (
     NormalisationArrays,
     SourceDict,
 )
-from ocf_data_sampler.select.dropout import apply_dropout, choose_delay
 from ocf_data_sampler.transforms.diff_channels import diff_channels_along_step
 from ocf_data_sampler.transforms.missing_values import validate_and_fill_nans
 from ocf_data_sampler.transforms.normalisation import (
@@ -99,43 +98,6 @@ def diff_accumulated_nwp_channels[TArray: DataArrayLike](
                 source_data["nwp"][nwp_name] = diff_channels_along_step(da_nwp, accum_channels)
 
 
-def apply_source_dropout[TArray: DataArrayLike](
-    source_data: SourceDict[TArray],
-    t0: np.datetime64,
-    config: PVNetDataConfig,
-) -> None:
-    """Apply dropout around a given t0 time to input arrays, replacing their `.data`.
-
-    Args:
-        source_data: Input source arrays
-        t0: The init-time
-        config: PVNetDataConfig object
-    """
-    sat_config = config.satellite
-    if sat_config is not None and sat_config.dropout_minute_probabilities is not None:
-        apply_dropout(
-            source_data["sat"],
-            t0,
-            dropout_delay=choose_delay(sat_config.dropout_minute_probabilities),
-        )
-
-    # generation_target is never dropped out since it's the prediction target
-    gen_config = config.generation
-    if (
-        gen_config is not None
-        and gen_config.input is not None
-        and gen_config.input.dropout_minute_probabilities is not None
-    ):
-        # Note: capacity_mwp is dropped out along with generation_mw
-        apply_dropout(
-            source_data["generation_input"],
-            t0,
-            dropout_delay=choose_delay(gen_config.input.dropout_minute_probabilities),
-        )
-
-    return
-
-
 def validate_and_fill_source_nans[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     config: PVNetDataConfig,
@@ -182,18 +144,17 @@ def validate_and_fill_source_nans[TArray: DataArrayLike](
 
 def preprocess_source_data[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
-    t0: np.datetime64,
     config: PVNetDataConfig,
     normalisation_arrays: SourceDict[NormalisationArrays],
 ) -> None:
-    """Diff, normalise, dropout, and fill NaNs in the dictionary of input data sources.
+    """Diff, normalise, and fill NaNs in the dictionary of input data sources.
 
     These steps are always applied in the order listed, since some steps depend on the output of
     previous steps. For example,
     - NWP channel differencing must be done before normalisation and clipping, since the diffed
       channels have different statistics
     - NaN filling must be done after normalisation, since the fill value is specified in
-      normalised units, and after dropout, since dropout introduces NaNs in the data
+      normalised units. This also fills the times dropped out during time slicing
 
     Updates the dictionary and its DataArray-like objects in-place, replacing entries or their
     `.data` as needed. The original NumPy arrays remain unchanged.
@@ -202,11 +163,9 @@ def preprocess_source_data[TArray: DataArrayLike](
 
     Args:
         source_data: Source arrays to preprocess
-        t0: The init-time
         config: PVNetDataConfig object
         normalisation_arrays: Precomputed arrays from `build_normalisation_arrays`
     """
     diff_accumulated_nwp_channels(source_data, config)
     normalise_source_data(source_data, normalisation_arrays)
-    apply_source_dropout(source_data, t0, config)
     validate_and_fill_source_nans(source_data, config=config)

@@ -108,9 +108,16 @@ def test_dropout_requires_fill_value():
 
 
 @pytest.mark.parametrize("window_path", ["satellite", "generation.input"])
-@pytest.mark.parametrize("delay_minutes", [30, 60])
-def test_dropout_rejects_cutoffs_at_or_after_interval_end(
-    config_filename, window_path, delay_minutes
+@pytest.mark.parametrize(
+    ("delay_minutes", "match"),
+    [
+        (30, "must place the cutoff before the interval end"),
+        (60, "must place the cutoff before the interval end"),
+        (150, "must not extend before the interval start"),
+    ],
+)
+def test_dropout_rejects_delays_outside_interval(
+    config_filename, window_path, delay_minutes, match
 ):
     config = load_yaml_configuration(config_filename)
     window = attrgetter(window_path)(config)
@@ -119,10 +126,11 @@ def test_dropout_rejects_cutoffs_at_or_after_interval_end(
     window.dropout_minute_probabilities = {delay_minutes: 0.5, 90: 0.5}
     window.fill_value = 0.0
 
-    with pytest.raises(ValidationError, match="must place the cutoff before the interval end"):
+    with pytest.raises(ValidationError, match=match):
         _validate_configuration(config)
 
-    window.dropout_minute_probabilities = {90: 1.0}
+    # Delays reaching the interval start are allowed
+    window.dropout_minute_probabilities = {90: 0.5, 120: 0.5}
     _validate_configuration(config)
 
 

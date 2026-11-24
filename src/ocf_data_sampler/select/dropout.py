@@ -1,11 +1,10 @@
-"""Functions for randomly delaying availability and masking sequential data."""
+"""Functions for randomly delaying data availability."""
 
 from collections.abc import Mapping
 
 import numpy as np
 
 from ocf_data_sampler.common.time_utils import minutes
-from ocf_data_sampler.common.types import DataArrayLike
 
 
 def choose_delay(delay_minute_probabilities: Mapping[int, float]) -> np.timedelta64 | None:
@@ -30,33 +29,3 @@ def choose_delay(delay_minute_probabilities: Mapping[int, float]) -> np.timedelt
         if draw < cumulative_probability:
             return minutes(delay_minutes)
     return None
-
-
-def apply_dropout(
-    da: DataArrayLike,
-    t0: np.datetime64,
-    dropout_delay: np.timedelta64 | None,
-) -> None:
-    """Mask observations strictly after t0 minus the selected delay with NaNs.
-
-    Replaces `.data` on the input DataArray without modifying shared source values.
-    Requires materialised NumPy data. A None delay leaves observations unchanged;
-    a zero delay masks only observations after t0. Filling happens later in preprocessing.
-
-    Args:
-        da: DataArray-like with a 'time_utc' coordinate.
-        t0: Forecast reference time.
-        dropout_delay: Non-negative availability delay, or None for no dropout.
-    """
-    if dropout_delay is None:
-        return
-    if not isinstance(da.data, np.ndarray):
-        raise ValueError(
-            f"Dropout can only be applied to DataArrays with numpy data. Got: {type(da.data)}"
-        )
-
-    times = da["time_utc"].values
-    keep = times <= t0 - dropout_delay
-    axis = da.dims.index("time_utc")
-    mask = np.expand_dims(keep, tuple(i for i in range(da.data.ndim) if i != axis))
-    da.data = np.where(mask, da.data, np.asarray(np.nan, dtype=da.data.dtype))

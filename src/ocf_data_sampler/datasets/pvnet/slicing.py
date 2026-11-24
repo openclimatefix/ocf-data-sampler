@@ -1,11 +1,14 @@
 """Functions for slicing data around a given location and time."""
 
+from collections.abc import Mapping
+from typing import Literal
+
 import numpy as np
 
 from ocf_data_sampler.common.indexing import get_string_index
 from ocf_data_sampler.common.time_utils import minutes
 from ocf_data_sampler.common.types import DataArrayLike
-from ocf_data_sampler.config.model import PVNetDataConfig
+from ocf_data_sampler.config.model import GenerationInputWindow, PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import Coordinate, Location, SourceDict
 from ocf_data_sampler.select.dropout import choose_delay
 from ocf_data_sampler.select.spatial_slice import (
@@ -148,10 +151,35 @@ def crop_sources_to_locations[TArray: DataArrayLike](
     return sliced_source_data
 
 
+def _get_candidate_delays(
+    delay_minute_probabilities: Mapping[int, float] | None,
+    dropout_mode: Literal["random", "minimal"],
+) -> list[np.timedelta64 | None]:
+    """Dropout delays to try for one source, in order of preference.
+
+    In minimal mode, no dropout is only a candidate if the model saw it in training, i.e. if the
+    configured probabilities sum to less than 1.
+    """
+    if delay_minute_probabilities is None:
+        return [None]
+    if dropout_mode == "random":
+        return [choose_delay(delay_minute_probabilities)]
+
+    # In minimal mode, try the configured delays from smallest to largest, so the least dropout
+    # consistent with the data is used
+    delays: list[np.timedelta64 | None] = [
+        minutes(delay_minutes) for delay_minutes in sorted(delay_minute_probabilities)
+    ]
+    if sum(delay_minute_probabilities.values()) < 1:
+        delays.insert(0, None)
+    return delays
+
+
 def slice_sources_by_time[TArray: DataArrayLike](
     source_data: SourceDict[TArray],
     t0: np.datetime64,
     config: PVNetDataConfig,
+    dropout_mode: Literal["random", "minimal"],
 ) -> SourceDict[TArray]:
     """Slice source arrays around a given t0 time.
 
@@ -159,6 +187,9 @@ def slice_sources_by_time[TArray: DataArrayLike](
         source_data: Input source arrays.
         t0: The init-time
         config: PVNetDataConfig object.
+        dropout_mode: "random" draws dropout and NWP delays from the configured probabilities.
+            "minimal" uses the smallest configured dropout consistent with the data and no NWP
+            delay.
 
     Returns:
         Sliced source arrays.
@@ -179,17 +210,19 @@ def slice_sources_by_time[TArray: DataArrayLike](
             else:
                 interval_end_mins = nwp_config.interval_end_minutes
 
+            # In minimal mode, use the most recent available init-time
+            if dropout_mode == "minimal" or nwp_config.delay_minute_probabilities is None:
+                delay = None
+            else:
+                delay = choose_delay(nwp_config.delay_minute_probabilities)
+
             sliced_source_data["nwp"][nwp_name] = select_time_slice_nwp(
                 da_nwp,
                 t0,
                 time_resolution=minutes(nwp_config.time_resolution_minutes),
                 interval_start=minutes(nwp_config.interval_start_minutes),
                 interval_end=minutes(interval_end_mins),
-                delay=(
-                    None
-                    if nwp_config.delay_minute_probabilities is None
-                    else choose_delay(nwp_config.delay_minute_probabilities)
-                ),
+                delay=delay,
             )
 
     if config.satellite is not None:
@@ -199,6 +232,9 @@ def slice_sources_by_time[TArray: DataArrayLike](
             time_resolution=minutes(config.satellite.time_resolution_minutes),
             interval_start=minutes(config.satellite.interval_start_minutes),
             interval_end=minutes(config.satellite.interval_end_minutes),
+            candidate_delays=_get_candidate_delays(
+                config.satellite.dropout_minute_probabilities, dropout_mode
+            ),
         )
 
     if config.generation is not None:
@@ -209,12 +245,19 @@ def slice_sources_by_time[TArray: DataArrayLike](
             if window_config is None:
                 continue
 
+            # Only the input window has dropout, since the target is what we predict
+            if isinstance(window_config, GenerationInputWindow):
+                delay_minute_probabilities = window_config.dropout_minute_probabilities
+            else:
+                delay_minute_probabilities = None
+
             sliced_source_data[key] = select_time_slice(
                 source_data["generation"],
                 t0,
                 time_resolution=minutes(config.generation.time_resolution_minutes),
                 interval_start=minutes(window_config.interval_start_minutes),
                 interval_end=minutes(window_config.interval_end_minutes),
+                candidate_delays=_get_candidate_delays(delay_minute_probabilities, dropout_mode),
             )
 
     return sliced_source_data

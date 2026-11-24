@@ -6,9 +6,9 @@ import numpy as np
 import tensorstore as ts
 import xarray as xr
 from numpy.typing import NDArray
-from xarray_tensorstore import _TensorStoreAdapter
 
 from ocf_data_sampler.common.types import Indexer
+from ocf_data_sampler.common.xr_tensorstore import get_backing_array
 
 
 class LightDataArrayState(TypedDict):
@@ -274,13 +274,7 @@ class LightDataArray:
     def from_xarray(cls, da: xr.DataArray) -> "LightDataArray":
         """Create a LightDataArray from an Xarray DataArray."""
         # Get raw data handle which can be a numpy array or TensorStore
-        data: ts.TensorStore | NDArray[Any]
-        if isinstance(da.variable._data, _TensorStoreAdapter):
-            data = da.variable._data.array
-        elif isinstance(da.variable._data, np.ndarray):
-            data = da.variable._data
-        else:
-            raise ValueError(f"Data backend of type {type(da.variable._data)} not supported.")
+        data = get_backing_array(da)
 
         dims = tuple(str(d) for d in da.dims)
         coords = {

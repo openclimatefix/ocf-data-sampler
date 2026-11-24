@@ -398,6 +398,7 @@ def test_find_contiguous_t0_periods_matches_slicing():
                 interval_start=interval_start,
                 interval_end=interval_end,
                 time_resolution=time_resolution,
+                candidate_delays=[None],
             )
         except ValueError:
             continue

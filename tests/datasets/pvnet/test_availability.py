@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
+from ocf_data_sampler.common.time_utils import date_range, minutes
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.datasets.pvnet.availability import (
     _filter_times_to_requested_periods,
@@ -120,7 +121,7 @@ def test_build_sample_index_unusable_location(pvnet_config, location_ids, dateti
     pvnet_config.satellite = None
     values = np.ones((len(datetimes), len(location_ids)))
     sources = {"generation": make_generation(values, location_ids, datetimes)}
-    sample_index = build_sample_index(sources, location_ids, pvnet_config, None)
+    sample_index = build_sample_index(sources, location_ids, pvnet_config, None, "random")
     # Samples use one hour (2 steps before t0) of history and two hours (4 steps after t0) of future
     expected_t0s = datetimes[2:-4]
     _assert_sample_index(
@@ -129,7 +130,7 @@ def test_build_sample_index_unusable_location(pvnet_config, location_ids, dateti
         ["site-1", "site-1", "site-1", "site-2", "site-2", "site-2"],
     )
 
-    concurrent_index = build_concurrent_sample_index(sources, pvnet_config, None)
+    concurrent_index = build_concurrent_sample_index(sources, pvnet_config, None, "random")
     np.testing.assert_array_equal(concurrent_index.t0, expected_t0s)
 
     values[:, 1] = np.nan
@@ -138,9 +139,9 @@ def test_build_sample_index_unusable_location(pvnet_config, location_ids, dateti
         ValueError,
         match=r"No valid t0 times found for locations: \['site-2'\]",
     ):
-        build_sample_index(sources, location_ids, pvnet_config, None)
+        build_sample_index(sources, location_ids, pvnet_config, None, "random")
     with pytest.raises(ValueError, match="every requested location"):
-        build_concurrent_sample_index(sources, pvnet_config, None)
+        build_concurrent_sample_index(sources, pvnet_config, None, "random")
 
 
 def test_build_sample_index_non_overlapping_sources(pvnet_config, location_ids, datetimes):
@@ -153,9 +154,9 @@ def test_build_sample_index_non_overlapping_sources(pvnet_config, location_ids, 
         ValueError,
         match=r"No valid t0 times found for locations: \['site-1', 'site-2'\]",
     ):
-        build_sample_index(sources, location_ids, pvnet_config, None)
+        build_sample_index(sources, location_ids, pvnet_config, None, "random")
     with pytest.raises(ValueError, match="every requested location"):
-        build_concurrent_sample_index(sources, pvnet_config, None)
+        build_concurrent_sample_index(sources, pvnet_config, None, "random")
 
 
 def test_build_sample_index_generation_only(pvnet_config, location_ids, datetimes):
@@ -172,7 +173,7 @@ def test_build_sample_index_generation_only(pvnet_config, location_ids, datetime
     expected_datetimes_2 = datetimes[2:-5]
 
     sources = {"generation": make_generation(values, location_ids, datetimes)}
-    index = build_sample_index(sources, location_ids, pvnet_config, None)
+    index = build_sample_index(sources, location_ids, pvnet_config, None, "random")
     _assert_sample_index(
         index,
         np.concatenate([expected_datetimes_1, expected_datetimes_2]),
@@ -180,7 +181,7 @@ def test_build_sample_index_generation_only(pvnet_config, location_ids, datetime
     )
 
     # Concurrent samples require all locations to have generation data for each t0
-    concurrent = build_concurrent_sample_index(sources, pvnet_config, None)
+    concurrent = build_concurrent_sample_index(sources, pvnet_config, None, "random")
     np.testing.assert_array_equal(concurrent.t0, datetimes[3:-5])
 
 
@@ -201,7 +202,7 @@ def test_build_sample_index_no_shared_t0s(pvnet_config, location_ids, datetimes)
 
     # No t0 overlap between location is fine for the regular PVNet sample index
     sources = {"generation": make_generation(values, location_ids, datetimes)}
-    index = build_sample_index(sources, location_ids, pvnet_config, None)
+    index = build_sample_index(sources, location_ids, pvnet_config, None, "random")
     _assert_sample_index(
         index,
         np.concatenate([expected_datetimes_1, expected_datetimes_2]),
@@ -211,14 +212,14 @@ def test_build_sample_index_no_shared_t0s(pvnet_config, location_ids, datetimes)
     # The concurrent PVNet sample index finds no t0 times where all locations are available so it
     # raises
     with pytest.raises(ValueError, match="every requested location"):
-        build_concurrent_sample_index(sources, pvnet_config, None)
+        build_concurrent_sample_index(sources, pvnet_config, None, "random")
 
 
 def test_build_sample_index_without_generation(pvnet_config, location_ids, datetimes):
     pvnet_config.generation = None
     sources = {"sat": make_satellite(datetimes)}
-    ordinary = build_sample_index(sources, location_ids, pvnet_config, None)
-    concurrent = build_concurrent_sample_index(sources, pvnet_config, None)
+    ordinary = build_sample_index(sources, location_ids, pvnet_config, None, "random")
+    concurrent = build_concurrent_sample_index(sources, pvnet_config, None, "random")
     # Sample is congigured to use satellite between -30 minutes and 0. So every t0 after the first
     # datetime is available
     expected_t0s = datetimes[1:]
@@ -230,6 +231,42 @@ def test_build_sample_index_without_generation(pvnet_config, location_ids, datet
     np.testing.assert_array_equal(concurrent.t0, expected_t0s)
 
 
+@pytest.mark.parametrize(
+    ("dropout_mode", "expected_last_t0"),
+    [("random", "2023-01-01T04:00"), ("minimal", "2023-01-01T04:30")],
+)
+def test_build_sample_index_dropout_mode(
+    pvnet_config, location_ids, datetimes, dropout_mode, expected_last_t0
+):
+    """In minimal mode, t0s only need data up to the largest dropout cutoff"""
+    pvnet_config.generation.target = None
+    # Both sources may drop the last 30 minutes, so neither needs data at t0 in minimal mode
+    pvnet_config.satellite.fill_value = -1.0
+    pvnet_config.satellite.dropout_minute_probabilities = {30: 1.0}
+    pvnet_config.generation.input.fill_value = -1.0
+    pvnet_config.generation.input.dropout_minute_probabilities = {30: 1.0}
+
+    values = np.ones((len(datetimes), len(location_ids)))
+    sources = {
+        "generation": make_generation(values, location_ids, datetimes),
+        "sat": make_satellite(datetimes),
+    }
+
+    # Data ends at 04:00. Generation input uses an hour of history, so t0s start at 01:00. Random
+    # mode needs data up to t0, so t0s end at 04:00. Minimal mode only needs data up to the
+    # 30-minute dropout cutoff, so t0s extend to 04:30
+    expected_t0s = date_range(datetimes[2], np.datetime64(expected_last_t0), freq=minutes(30))
+
+    index = build_sample_index(sources, location_ids, pvnet_config, None, dropout_mode)
+    _assert_sample_index(
+        index,
+        np.tile(expected_t0s, len(location_ids)),
+        np.repeat(location_ids, len(expected_t0s)),
+    )
+    concurrent = build_concurrent_sample_index(sources, pvnet_config, None, dropout_mode)
+    np.testing.assert_array_equal(concurrent.t0, expected_t0s)
+
+
 def test_build_sample_index_without_sources(pvnet_config, location_ids, datetimes):
     pvnet_config.generation = None
     pvnet_config.satellite = None
@@ -238,7 +275,7 @@ def test_build_sample_index_without_sources(pvnet_config, location_ids, datetime
         ("2023-01-01T00:10", "2023-01-01T01:00"),
         ("2023-01-01T01:00", "2023-01-01T01:30"),
     ]
-    index = build_sample_index({}, location_ids, pvnet_config, requested_periods)
+    index = build_sample_index({}, location_ids, pvnet_config, requested_periods, "random")
     _assert_sample_index(
         index,
         np.tile(datetimes[1:3], 2),
@@ -253,4 +290,6 @@ def test_build_sample_index_without_sources_requires_bounds(pvnet_config, locati
     pvnet_config.generation = None
     pvnet_config.satellite = None
     with pytest.raises(ValueError, match="finite start and end"):
-        build_sample_index({}, location_ids, pvnet_config, requested_periods=periods)
+        build_sample_index(
+            {}, location_ids, pvnet_config, requested_periods=periods, dropout_mode="random"
+        )
