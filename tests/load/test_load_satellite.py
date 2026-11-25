@@ -16,9 +16,9 @@ def test_open_satellite(sat_zarr_path):
     assert isinstance(da, xr.DataArray)
     assert da.dims == ("time_utc", "channel", "x_geostationary", "y_geostationary")
     # 288 is 1 days of data at 5 minutes intervals, 12 * 24
-    # There are 11 channels
+    # There are 3 channels
     # There are 100 x 100 pixels
-    assert da.shape == (288, 11, 100, 100)
+    assert da.shape == (288, 3, 100, 100)
     assert len(np.unique(da.coords["channel"])) == da.shape[1]
 
 

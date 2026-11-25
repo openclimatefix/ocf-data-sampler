@@ -14,6 +14,7 @@ from ocf_data_sampler.common.time_utils import (
     get_year,
     is_leap_year,
 )
+from tests.conftest import RANDOM_SEED
 
 
 @pytest.fixture()
@@ -26,7 +27,8 @@ def example_datetimes():
     boundary = np.datetime64("2000-01-01T12:00", "ns")
     one_ns = np.timedelta64(1, "ns")
     boundary_datetimes = [boundary - one_ns, boundary, boundary + one_ns]
-    return np.concatenate([t_min + (np.random.uniform(size=1000) * dt), boundary_datetimes])
+    random_offsets = np.random.default_rng(RANDOM_SEED).uniform(size=1000) * dt
+    return np.concatenate([t_min + random_offsets, boundary_datetimes])
 
 
 def test_get_year(example_datetimes):

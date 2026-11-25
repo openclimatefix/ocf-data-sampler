@@ -2,14 +2,18 @@ from copy import deepcopy
 
 import numpy as np
 import pyproj
+import pytest
 import xarray as xr
 
-from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import Channel, NWPChannel
-from ocf_data_sampler.datasets.pvnet.loading import add_source_coordinates, open_sources
+from ocf_data_sampler.datasets.pvnet.loading import (
+    add_source_coordinates,
+    load_locations,
+    open_sources,
+)
 from ocf_data_sampler.datasets.pvnet.types import Location
 from ocf_data_sampler.spatial import WGS84
-from tests.conftest import UK_SAT_AREA
+from tests.conftest import LOCATION_IDS, UK_SAT_AREA
 
 
 def test_add_source_coordinates_different_geostationary_sources():
@@ -57,8 +61,8 @@ def test_add_source_coordinates_different_geostationary_sources():
     assert sat_coord.x != cloud_coord.x
 
 
-def test_open_sources_preserves_channel_order(pvnet_config_filename):
-    config = load_yaml_configuration(pvnet_config_filename)
+def test_open_sources_preserves_channel_order(pvnet_config):
+    config = pvnet_config
     config.generation = None
     config.satellite.channels = [
         Channel(name="IR_039", mean=0, std=1),
@@ -74,3 +78,21 @@ def test_open_sources_preserves_channel_order(pvnet_config_filename):
     # Both configured orders differ from their source coordinate order.
     np.testing.assert_array_equal(datasets["sat"]["channel"].values, ["IR_039", "IR_016"])
     np.testing.assert_array_equal(datasets["nwp"]["ukv"]["channel"].values, ["t", "si10"])
+
+
+def test_load_locations_exclude_ids(locations_csv_path):
+    excluded_ids = [LOCATION_IDS[0], LOCATION_IDS[5], LOCATION_IDS[-1]]
+    locations = load_locations(locations_csv_path, exclude_ids=excluded_ids)
+
+    assert len(locations) == len(LOCATION_IDS) - len(excluded_ids)
+    assert not set(excluded_ids) & {loc.id for loc in locations}
+
+
+def test_load_locations_exclude_unknown_id(locations_csv_path):
+    with pytest.raises(ValueError, match="not in the locations data"):
+        load_locations(locations_csv_path, exclude_ids=["unknown_id"])
+
+
+def test_load_locations_exclude_all_ids(locations_csv_path):
+    with pytest.raises(ValueError, match=r"All location IDs .* have been excluded"):
+        load_locations(locations_csv_path, exclude_ids=list(LOCATION_IDS))
