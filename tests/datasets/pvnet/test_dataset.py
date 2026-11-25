@@ -181,7 +181,7 @@ def test_pvnet_concurrent_dataset_minimal_dropout(pvnet_config):
     config.generation.target = None
     config.satellite.fill_value = fill_value
     config.satellite.reject_nan = False
-    config.satellite.dropout_minute_probabilities = {30: 0.3, 15: 0.3}
+    config.satellite.dropout_minute_probabilities = {30: 0.3, 15: 0.3, 0: 0.4}
 
     dataset = PVNetConcurrentDataset(config, dropout_mode="minimal")
 

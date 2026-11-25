@@ -44,7 +44,7 @@ def test_slice_sources_by_time_applies_dropout(config_filename):
 @pytest.mark.parametrize(
     ("sat_end_minutes", "expected_sat_nan"),
     [
-        # With complete data, no dropout is used, since the probabilities sum to less than 1
+        # With complete data, no dropout is used, since a 0-minute delay is given as an option
         (60, [0, 0, 0, 0, 0, 0, 0]),
         # Data ends at t0 - 15 minutes, so 20 minutes is the smallest consistent delay
         (-15, [0, 0, 0, 1, 1, 1, 1]),
@@ -55,7 +55,7 @@ def test_slice_sources_by_time_minimal_dropout(config_filename, sat_end_minutes,
     config = load_yaml_configuration(config_filename)
     config.nwp = None
     config.satellite.fill_value = -1.0
-    config.satellite.dropout_minute_probabilities = {10: 0.2, 20: 0.2}
+    config.satellite.dropout_minute_probabilities = {0: 0.6, 10: 0.2, 20: 0.2}
     config.generation.input.fill_value = -1.0
     config.generation.input.dropout_minute_probabilities = {30: 1.0}
 
@@ -69,6 +69,6 @@ def test_slice_sources_by_time_minimal_dropout(config_filename, sat_end_minutes,
 
     np.testing.assert_array_equal(np.isnan(sliced["sat"].values), expected_sat_nan)
 
-    # Generation data is complete, but its probabilities sum to 1, so the model never saw it
-    # without dropout and the 30-minute delay is still applied
+    # Generation data is complete, but no 0-minute delay is configured, so the smallest
+    # configured delay of 30 minutes is applied
     np.testing.assert_array_equal(np.isnan(sliced["generation_input"].values), [0, 0, 1])

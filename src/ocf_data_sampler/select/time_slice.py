@@ -97,7 +97,7 @@ def select_time_slice[TArray: DataArrayLike](
     interval_start: np.timedelta64,
     interval_end: np.timedelta64,
     time_resolution: np.timedelta64,
-    candidate_delays: Sequence[np.timedelta64 | None],
+    candidate_delays: Sequence[np.timedelta64] | None,
 ) -> TArray:
     """Select a time slice, applying the first candidate delay consistent with the data.
 
@@ -111,11 +111,12 @@ def select_time_slice[TArray: DataArrayLike](
         interval_start: The start of the interval with respect to t0
         interval_end: The end of the interval with respect to t0
         time_resolution: Distance between neighbouring timestamps
-        candidate_delays: Non-negative availability delays in order of preference. None means no
-            delay.
+        candidate_delays: Non-empty availability delays in order of preference, or None for no
+            dropout.
 
     Raises:
-        ValueError: If no delay is consistent with the data.
+        ValueError: If no candidate delay is consistent with the data, or, with no dropout, if
+            any requested time is unavailable.
     """
     interval_bounds = datetime_floor(
         datetimes=np.array([t0 + interval_start, t0 + interval_end], dtype="datetime64[ns]"),
@@ -134,17 +135,19 @@ def select_time_slice[TArray: DataArrayLike](
     n_available = int(np.cumprod(requested_is_available).sum())
     n_requested = len(requested_times)
 
-    # Use the first delay in the input list that is consistent with the available data
-    for delay in candidate_delays:
-        if delay is None:
-            n_keep = n_requested
-        else:
-            n_keep = int(np.searchsorted(requested_times, t0 - delay, side="right"))
-        if n_keep <= n_available:
-            break
+    if candidate_delays is None:
+        n_keep = n_requested
     else:
+        # Use the first delay in the input list that is consistent with the available data
+        for delay in candidate_delays:
+            n_keep = int(np.searchsorted(requested_times, t0 - delay, side="right"))
+            if n_keep <= n_available:
+                break
+
+    # If no delay was consistent, n_keep is from the last candidate
+    if n_keep > n_available:
         raise ValueError(
-            f"No delay in {candidate_delays} is consistent with the available data. Requested "
+            f"Delays {candidate_delays} are not consistent with the available data. Requested "
             f"times {requested_times} have availability {requested_is_available}"
         )
 

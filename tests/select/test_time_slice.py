@@ -41,7 +41,7 @@ def test_select_time_slice(t0_str):
         interval_start=interval_start,
         interval_end=interval_end,
         time_resolution=freq,
-        candidate_delays=[None],
+        candidate_delays=None,
     )
 
     # Check the returned times are as expected
@@ -65,7 +65,7 @@ def test_select_time_slice_rejects_out_of_bounds(t0_str):
             interval_start=interval_start,
             interval_end=interval_end,
             time_resolution=freq,
-            candidate_delays=[None],
+            candidate_delays=None,
         )
 
 
@@ -92,7 +92,7 @@ def test_select_time_slice_rejects_incorrect_timestamps(offsets):
             interval_start=interval_start,
             interval_end=interval_end,
             time_resolution=freq,
-            candidate_delays=[None],
+            candidate_delays=None,
         )
 
 
@@ -117,7 +117,7 @@ def test_select_time_slice_floors_off_grid_request():
         interval_start=interval_start,
         interval_end=interval_end,
         time_resolution=freq,
-        candidate_delays=[None],
+        candidate_delays=None,
     )
 
     expected_datetimes = date_range(
@@ -131,15 +131,15 @@ def test_select_time_slice_floors_off_grid_request():
     [
         # Only 12:00 and 12:10 are available, so 20 minutes is the smallest delay that drops out
         # the missing times
-        ([0, 10], [None, 10, 20, 30], [0, 1, np.nan, np.nan]),
+        ([0, 10], [0, 10, 20, 30], [0, 1, np.nan, np.nan]),
         # A larger delay drops out available times too
         ([0, 10], [30], [0, np.nan, np.nan, np.nan]),
         # A 40-minute delay covers all the available times, so everything is dropped out
         ([0, 10], [40], [np.nan, np.nan, np.nan, np.nan]),
         # All requested times are available, but 10 minutes is the only candidate delay
         ([0, 10, 20, 30], [10], [0, 1, 2, np.nan]),
-        # All requested times are available, so no dropout is consistent and is preferred
-        ([0, 10, 20, 30], [None, 10], [0, 1, 2, 3]),
+        # All requested times are available, so the 0-minute delay is consistent and is preferred
+        ([0, 10, 20, 30], [0, 10], [0, 1, 2, 3]),
     ],
     ids=[
         "missing-times",
@@ -178,7 +178,7 @@ def test_select_time_slice_with_delays(available_minutes, delay_minutes, expecte
         interval_start=interval_start,
         interval_end=interval_end,
         time_resolution=time_resolution,
-        candidate_delays=[None if d is None else minutes(d) for d in delay_minutes],
+        candidate_delays=[minutes(d) for d in delay_minutes],
     )
 
     np.testing.assert_array_equal(da_slice["time_utc"].values, requested_times)
