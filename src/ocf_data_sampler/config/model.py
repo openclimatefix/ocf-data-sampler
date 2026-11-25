@@ -1,5 +1,6 @@
 """Configuration model for the PVNet dataset."""
 
+import math
 from collections.abc import Sequence
 from typing import Annotated, Literal
 
@@ -27,32 +28,29 @@ def _validate_dropout_within_interval(
     interval_start_minutes: int,
     interval_end_minutes: int,
 ) -> None:
-    """Require t0 minus each dropout delay to lie in the window, before its configured end.
+    """Require t0 minus each dropout delay to lie within the window bounds (inclusive).
 
-    When t0 lies on the source's time grid, every cutoff therefore masks at least one value.
-    Otherwise the last selected timestamp can fall before t0 + interval_end_minutes, so a
-    cutoff may mask nothing. Not reaching before the window start means the first time is never
-    dropped out.
+    A delay of `-interval_end_minutes` places the cutoff at the interval end, masks nothing and
+    so means no dropout. When t0 lies on the source's time grid, every larger delay masks at
+    least one timestamp. If t0 is off-grid, masking is only guaranteed for delays of at least
+    `-interval_end_minutes` plus one time step.
     """
     if dropout_minute_probabilities is None:
         return
     for delay_minutes in dropout_minute_probabilities:
-        if delay_minutes <= -interval_end_minutes:
+        if not interval_start_minutes <= -delay_minutes <= interval_end_minutes:
             raise ValueError(
-                f"Dropout minutes ({delay_minutes}) must place the cutoff before the "
-                f"interval end ({interval_end_minutes} minutes relative to t0)",
-            )
-        if delay_minutes > -interval_start_minutes:
-            raise ValueError(
-                f"Dropout minutes ({delay_minutes}) must not extend before the interval start "
-                f"({interval_start_minutes} minutes relative to t0)",
+                f"Dropout minutes ({delay_minutes}) must place the cutoff within the interval "
+                f"[{interval_start_minutes}, {interval_end_minutes}] minutes relative to t0",
             )
 
 
 def _validate_probability_sum(probabilities: dict[int, float]) -> dict[int, float]:
-    """Require a valid total probability for dropout cutoffs or NWP delays."""
-    if sum(probabilities.values()) > 1:
-        raise ValueError("Probabilities must sum to at most 1")
+    """Require the dropout cutoff or NWP delay probabilities to form a complete distribution."""
+    # Tolerate floating-point rounding, e.g. 0.01 + 0.29 + 0.7 == 0.9999999999999999
+    total = sum(probabilities.values())
+    if not math.isclose(total, 1):
+        raise ValueError(f"Probabilities {probabilities} must sum to 1.")
     return probabilities
 
 
@@ -155,9 +153,9 @@ class DropoutMixin(NaNPolicyMixin):
     dropout_minute_probabilities: _MinuteProbabilities | None = Field(
         default=None,
         description="Minutes before t0 mapped to dropout probabilities. Values after the chosen "
-        "cutoff are masked and filled using fill_value. Each cutoff must precede the "
-        "interval end and not precede the interval start. Remaining probability means no "
-        "dropout; None disables dropout.",
+        "cutoff are masked and filled using fill_value. Each cutoff must lie within the interval, "
+        "inclusive; a cutoff at the interval end means no dropout. Probabilities must sum to 1. "
+        "None disables dropout.",
     )
 
     @model_validator(mode="after")
@@ -283,8 +281,8 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
     delay_minute_probabilities: _MinuteProbabilities | None = Field(
         default=None,
         description="Minutes before t0 mapped to probabilities. Selects a forecast initialised "
-        "at or before t0 minus the chosen delay. Remaining probability means no added delay; "
-        "None disables delays.",
+        "at or before t0 minus the chosen delay. Probabilities must sum to 1; 0 minutes means "
+        "no added delay. None disables delays.",
     )
 
     provider: str = Field(..., description="The provider of the NWP data")

@@ -93,9 +93,19 @@ def test_incorrect_nwp_provider(base_config):
 
 
 def test_dropout_probability_sum():
-    """Individually valid probabilities must also form a valid distribution."""
-    with pytest.raises(ValidationError, match="Probabilities must sum to at most 1"):
+    """Individually valid probabilities must also form a complete distribution."""
+    with pytest.raises(ValidationError, match="must sum to 1"):
         DropoutMixin(dropout_minute_probabilities={60: 0.8, 120: 0.4})
+
+    with pytest.raises(ValidationError, match="must sum to 1"):
+        DropoutMixin(dropout_minute_probabilities={60: 0.5})
+
+    # These sum to 0.9999999999999999 in floating point, which is close enough to 1
+    DropoutMixin(
+        dropout_minute_probabilities={0: 0.01, 30: 0.29, 60: 0.7},
+        fill_value=0.0,
+        reject_nan=False,
+    )
 
 
 def test_fill_value_requires_reject_nan_false():
@@ -106,36 +116,34 @@ def test_fill_value_requires_reject_nan_false():
 
 def test_dropout_requires_fill_value():
     with pytest.raises(ValidationError, match="fill_value must be set"):
-        DropoutMixin(dropout_minute_probabilities={60: 0.2}, reject_nan=False)
+        DropoutMixin(dropout_minute_probabilities={60: 1.0}, reject_nan=False)
 
     # Zero is a valid replacement value, rather than an absent setting.
-    config = DropoutMixin(dropout_minute_probabilities={60: 0.2}, fill_value=0.0, reject_nan=False)
+    config = DropoutMixin(dropout_minute_probabilities={60: 1.0}, fill_value=0.0, reject_nan=False)
     assert config.fill_value == 0.0
 
 
 @pytest.mark.parametrize("window_path", ["satellite", "generation.input"])
-@pytest.mark.parametrize(
-    ("delay_minutes", "match"),
-    [
-        (30, "must place the cutoff before the interval end"),
-        (60, "must place the cutoff before the interval end"),
-        (150, "must not extend before the interval start"),
-    ],
-)
-def test_dropout_rejects_delays_outside_interval(base_config, window_path, delay_minutes, match):
+def test_dropout_rejects_delays_outside_interval(base_config, window_path):
     config = base_config
     window = attrgetter(window_path)(config)
     window.interval_start_minutes = -120
     window.interval_end_minutes = -60
-    window.dropout_minute_probabilities = {delay_minutes: 0.5, 90: 0.5}
     window.fill_value = 0.0
     window.reject_nan = False
 
-    with pytest.raises(ValidationError, match=match):
+    # Cutoff after the interval end
+    window.dropout_minute_probabilities = {30: 0.5, 90: 0.5}
+    with pytest.raises(ValidationError, match="must place the cutoff within the interval"):
         _validate_configuration(config)
 
-    # Delays reaching the interval start are allowed
-    window.dropout_minute_probabilities = {90: 0.5, 120: 0.5}
+    # Cutoff before the interval start
+    window.dropout_minute_probabilities = {150: 0.5, 90: 0.5}
+    with pytest.raises(ValidationError, match="must place the cutoff within the interval"):
+        _validate_configuration(config)
+
+    # Cutoffs at the interval end (no dropout) and the interval start are allowed
+    window.dropout_minute_probabilities = {60: 0.5, 120: 0.5}
     _validate_configuration(config)
 
 

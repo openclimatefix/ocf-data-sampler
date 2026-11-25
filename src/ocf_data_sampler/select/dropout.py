@@ -7,19 +7,17 @@ import numpy as np
 from ocf_data_sampler.common.time_utils import minutes
 
 
-def choose_delay(delay_minute_probabilities: Mapping[int, float]) -> np.timedelta64 | None:
+def choose_delay(delay_minute_probabilities: Mapping[int, float]) -> np.timedelta64:
     """Draw a non-negative availability delay from validated minute/probability pairs.
 
-    Unassigned probability returns None, meaning no additional availability cutoff.
     Iterating the mapping avoids allocating choice and probability arrays for every sample.
 
     Args:
         delay_minute_probabilities: Non-empty mapping of non-negative integer delays in
-            minutes to positive probabilities summing to at most 1. Inputs must already
-            be validated.
+            minutes to positive probabilities summing to 1. Inputs must already be validated.
 
     Returns:
-        The chosen delay, or None for the remaining probability of no added delay.
+        The chosen delay.
 
     """
     draw = np.random.random()
@@ -28,4 +26,5 @@ def choose_delay(delay_minute_probabilities: Mapping[int, float]) -> np.timedelt
         cumulative_probability += probability
         if draw < cumulative_probability:
             return minutes(delay_minutes)
-    return None
+    # If rounding leaves the cumulative probability just below the draw, the last delay is used
+    return minutes(delay_minutes)

@@ -107,7 +107,8 @@ include their start and exclude their end, independently of the source-window co
 - `"minimal"`, for inference: each sample uses the smallest configured dropout consistent with
   the available data, and no NWP delay. A `t0` is valid when satellite and generation input data
   are available up to the largest configured dropout cutoff, so recent missing data does not need
-  to be filled before sampling.
+  to be filled before sampling. Where dropout is configured, no dropout is only used if one of the
+  configured cutoffs is at the interval end (e.g. `0` for a window ending at `t0`).
 
 When the concurrent dataset is built, generation times with a NaN at any requested location are
 dropped. In "minimal" mode, a delay at one location therefore increases the dropout for every
