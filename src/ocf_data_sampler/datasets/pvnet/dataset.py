@@ -66,10 +66,10 @@ class AbstractPVNetDataset[
 
     def __init__(
         self,
-        config_filename: str,
+        config: str | PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
-        array_backend: Literal["xarray", "lightarray"] = "xarray",
+        array_backend: Literal["xarray", "lightarray"] = "lightarray",
     ) -> None:
         """A generic torch Dataset for creating PVNet samples.
 
@@ -78,7 +78,8 @@ class AbstractPVNetDataset[
         common to both standard and concurrent PVNet datasets.
 
         Args:
-            config_filename: Path to the configuration file
+            config: Path to a YAML configuration file, or a configuration object. An object is
+                deep-copied, so later changes to it do not affect the dataset.
             time_periods: Restrict sample t0 times to these (start, end) periods, with inclusive
                 starts and exclusive ends. None uses all available times.
             include_extra_metadata: Whether to include non-essential metadata for each sample in the
@@ -96,7 +97,10 @@ class AbstractPVNetDataset[
                 f"Unsupported array_backend {array_backend!r}; expected 'xarray' or 'lightarray'"
             )
 
-        config = load_yaml_configuration(config_filename)
+        if isinstance(config, PVNetDataConfig):
+            config = config.model_copy(deep=True)
+        else:
+            config = load_yaml_configuration(config)
 
         self.locations = load_locations(
             config.sampling_grid.locations_csv_path,
@@ -150,12 +154,12 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
     @override
     def __init__(
         self,
-        config_filename: str,
+        config: str | PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
-        array_backend: Literal["xarray", "lightarray"] = "xarray",
+        array_backend: Literal["xarray", "lightarray"] = "lightarray",
     ) -> None:
-        super().__init__(config_filename, time_periods, include_extra_metadata, array_backend)
+        super().__init__(config, time_periods, include_extra_metadata, array_backend)
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
 
@@ -223,16 +227,17 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
     @override
     def __init__(
         self,
-        config_filename: str,
+        config: str | PVNetDataConfig,
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
-        array_backend: Literal["xarray", "lightarray"] = "xarray",
+        array_backend: Literal["xarray", "lightarray"] = "lightarray",
         dropout_mode: Literal["random", "minimal"] = "random",
     ) -> None:
         """A torch Dataset for creating concurrent PVNet location samples.
 
         Args:
-            config_filename: Path to the configuration file
+            config: Path to a YAML configuration file, or a configuration object. An object is
+                deep-copied, so later changes to it do not affect the dataset.
             time_periods: Restrict sample t0 times to these (start, end) periods, with inclusive
                 starts and exclusive ends. None uses all available times.
             include_extra_metadata: Whether to include non-essential metadata for each sample in the
@@ -248,7 +253,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
             )
         # Set before the base constructor, which builds the sample index using this mode
         self.dropout_mode: Literal["random", "minimal"] = dropout_mode
-        super().__init__(config_filename, time_periods, include_extra_metadata, array_backend)
+        super().__init__(config, time_periods, include_extra_metadata, array_backend)
 
     @override
     def _prepare_source_data(self, source_data: SourceDict[xr.DataArray]) -> None:

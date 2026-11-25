@@ -1,13 +1,10 @@
 # ocf-data-sampler
 
 [![tags badge](https://img.shields.io/github/v/tag/openclimatefix/ocf-data-sampler?include_prereleases&sort=semver&color=FFAC5F)](https://github.com/openclimatefix/ocf-data-sampler/tags)
-[![ease of contribution: easy](https://img.shields.io/badge/ease%20of%20contribution:%20easy-32bd50)](https://github.com/openclimatefix#how-easy-is-it-to-get-involved) 
+[![ease of contribution: medium](https://img.shields.io/badge/ease%20of%20contribution:%20medium-f4900c)](https://github.com/openclimatefix#how-easy-is-it-to-get-involved)
 
 **ocf-data-sampler** prepares samples to feed training and inference of OCF's renewable energy forecasting models such as [PVNet](https://github.com/openclimatefix/PVNet). It handles generation data, satellite imagery, and numerical weather predictions. For a given forecast init-time (t0) and geographical location the sampler selects the time periods and spatial crops needed for each sample, and applies normalisation and feature transformations. These datasets are often very large so loading data for these samples is done lazily and on-the-fly.
 
-
-> [!Note]
-> This repository is still in early development and large changes to the user facing functions may still occur.
 
 ## Licence 
 
