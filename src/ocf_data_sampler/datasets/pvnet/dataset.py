@@ -64,7 +64,7 @@ def _get_sample_rng(
 
     # The draws depend only on the seed and the sample's identity. Each component of the seed must
     # be a non-negative integer
-    t0_seed = get_posix_timestamp(t0)
+    t0_seed = int(get_posix_timestamp(t0))
     if location_id is None:
         return np.random.default_rng((seed, t0_seed))
     location_seed = zlib.crc32(location_id.encode())
@@ -98,6 +98,7 @@ class AbstractPVNetDataset[
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         array_backend: Literal["xarray", "lightarray"] = "lightarray",
+        *,
         seed: int | None = None,
     ) -> None:
         """A generic torch Dataset for creating PVNet samples.
@@ -192,9 +193,10 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         array_backend: Literal["xarray", "lightarray"] = "lightarray",
+        *,
         seed: int | None = None,
     ) -> None:
-        super().__init__(config, time_periods, include_extra_metadata, array_backend, seed)
+        super().__init__(config, time_periods, include_extra_metadata, array_backend, seed=seed)
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
 
@@ -268,6 +270,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
         include_extra_metadata: bool = False,
         array_backend: Literal["xarray", "lightarray"] = "lightarray",
         dropout_mode: Literal["random", "minimal"] = "random",
+        *,
         seed: int | None = None,
     ) -> None:
         """A torch Dataset for creating concurrent PVNet location samples.
@@ -292,7 +295,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
             )
         # Set before the base constructor, which builds the sample index using this mode
         self.dropout_mode: Literal["random", "minimal"] = dropout_mode
-        super().__init__(config, time_periods, include_extra_metadata, array_backend, seed)
+        super().__init__(config, time_periods, include_extra_metadata, array_backend, seed=seed)
 
     @override
     def _prepare_source_data(self, source_data: SourceDict[xr.DataArray]) -> None:

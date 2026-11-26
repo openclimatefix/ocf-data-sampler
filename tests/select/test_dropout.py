@@ -1,3 +1,6 @@
+from unittest.mock import Mock
+
+import numpy as np
 import pytest
 
 from ocf_data_sampler.common.time_utils import minutes
@@ -14,8 +17,7 @@ def test_choose_delay(random_value, expected_minutes):
     """Weights select their own delays, with rounding falling back to the last delay."""
     minute_probabilities = {0: 0.06, 30: 0.57, 60: 0.37}
 
-    class StubGenerator:
-        def random(self) -> float:
-            return random_value
+    rng = Mock(spec=np.random.Generator)
+    rng.random.return_value = random_value
 
-    assert choose_delay(minute_probabilities, StubGenerator()) == minutes(expected_minutes)
+    assert choose_delay(minute_probabilities, rng) == minutes(expected_minutes)
