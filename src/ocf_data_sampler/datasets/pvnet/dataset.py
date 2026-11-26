@@ -1,5 +1,6 @@
 """Torch dataset for PVNet."""
 
+import zlib
 from abc import ABC, abstractmethod
 from typing import Any, Literal, override
 
@@ -8,6 +9,7 @@ import xarray as xr
 from torch.utils.data import Dataset, default_collate
 
 from ocf_data_sampler.common.lightarray import LightDataArray
+from ocf_data_sampler.common.time_utils import get_posix_timestamp
 from ocf_data_sampler.config import load_yaml_configuration
 from ocf_data_sampler.config.model import PVNetDataConfig
 from ocf_data_sampler.datasets.cache import PickleCacheMixin
@@ -43,6 +45,32 @@ from ocf_data_sampler.datasets.pvnet.types import (
 )
 
 
+def _get_sample_rng(
+    seed: int | None,
+    t0: np.datetime64,
+    location_id: str | None = None,
+) -> np.random.Generator:
+    """Return the random number generator for one sample's dropout and NWP delay draws.
+
+    Args:
+        seed: None to draw from NumPy's global random state, or a non-negative integer to fix the
+            draws by the sample's identity.
+        t0: The sample's init-time.
+        location_id: The sample's location, or None for a concurrent sample.
+    """
+    if seed is None:
+        # If seed is None, draw from the global numpy state
+        return np.random.default_rng(np.random.randint(2**32))
+
+    # The draws depend only on the seed and the sample's identity. Each component of the seed must
+    # be a non-negative integer
+    t0_seed = get_posix_timestamp(t0)
+    if location_id is None:
+        return np.random.default_rng((seed, t0_seed))
+    location_seed = zlib.crc32(location_id.encode())
+    return np.random.default_rng((seed, t0_seed, location_seed))
+
+
 def _convert_sources_to_lightarray(
     source_data: SourceDict[xr.DataArray],
 ) -> SourceDict[LightDataArray]:
@@ -70,6 +98,7 @@ class AbstractPVNetDataset[
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         array_backend: Literal["xarray", "lightarray"] = "lightarray",
+        seed: int | None = None,
     ) -> None:
         """A generic torch Dataset for creating PVNet samples.
 
@@ -85,6 +114,8 @@ class AbstractPVNetDataset[
             include_extra_metadata: Whether to include non-essential metadata for each sample in the
                 sample dict.
             array_backend: Array representation to use when sampling.
+            seed: Non-negative seed for the random dropout and NWP delays. If set, each sample gets
+                the same dropout and delays every time it is drawn.
 
         """
         super().__init__()
@@ -96,6 +127,8 @@ class AbstractPVNetDataset[
             raise ValueError(
                 f"Unsupported array_backend {array_backend!r}; expected 'xarray' or 'lightarray'"
             )
+        if seed is not None and seed < 0:
+            raise ValueError(f"seed must be non-negative, got {seed}")
 
         if isinstance(config, PVNetDataConfig):
             config = config.model_copy(deep=True)
@@ -120,6 +153,7 @@ class AbstractPVNetDataset[
 
         self.config = config
         self.include_extra_metadata = include_extra_metadata
+        self.seed = seed
 
         self.source_data: SourceDict[Any]
         if array_backend == "xarray":
@@ -158,8 +192,9 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
         time_periods: list[tuple[str | None, str | None]] | None = None,
         include_extra_metadata: bool = False,
         array_backend: Literal["xarray", "lightarray"] = "lightarray",
+        seed: int | None = None,
     ) -> None:
-        super().__init__(config, time_periods, include_extra_metadata, array_backend)
+        super().__init__(config, time_periods, include_extra_metadata, array_backend, seed)
         # Construct a lookup for locations - useful for users to construct sample by location ID
         self.location_lookup = {loc.id: loc for loc in self.locations}
 
@@ -182,7 +217,8 @@ class PVNetDataset(AbstractPVNetDataset[SampleIndex, NumpySample]):
             location: location for sample
         """
         sample_data = slice_sources_by_space(self.source_data, location, self.config)
-        sample_data = slice_sources_by_time(sample_data, t0, self.config, "random")
+        rng = _get_sample_rng(self.seed, t0, location.id)
+        sample_data = slice_sources_by_time(sample_data, t0, self.config, "random", rng)
         materialise_data(sample_data)
         preprocess_source_data(sample_data, self.config, self.normalisation_arrays)
         return build_numpy_sample(
@@ -232,6 +268,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
         include_extra_metadata: bool = False,
         array_backend: Literal["xarray", "lightarray"] = "lightarray",
         dropout_mode: Literal["random", "minimal"] = "random",
+        seed: int | None = None,
     ) -> None:
         """A torch Dataset for creating concurrent PVNet location samples.
 
@@ -246,6 +283,8 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
             dropout_mode: "random" draws dropout and NWP delays from the configured probabilities,
                 for training. "minimal" uses the smallest configured dropout consistent with the
                 available data and no NWP delay, for inference.
+            seed: Non-negative seed for the random dropout and NWP delays. If set, each sample gets
+                the same dropout and delays every time it is drawn. Unused in "minimal" mode.
         """
         if dropout_mode not in ("random", "minimal"):
             raise ValueError(
@@ -253,7 +292,7 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
             )
         # Set before the base constructor, which builds the sample index using this mode
         self.dropout_mode: Literal["random", "minimal"] = dropout_mode
-        super().__init__(config, time_periods, include_extra_metadata, array_backend)
+        super().__init__(config, time_periods, include_extra_metadata, array_backend, seed)
 
     @override
     def _prepare_source_data(self, source_data: SourceDict[xr.DataArray]) -> None:
@@ -285,8 +324,9 @@ class PVNetConcurrentDataset(AbstractPVNetDataset[ConcurrentSampleIndex, TensorB
         """
         # Slice by time then load to avoid loading the data multiple times from disk. Slicing once
         # also means all locations share the same dropout draws
+        rng = _get_sample_rng(self.seed, t0)
         time_sliced_data = slice_sources_by_time(
-            self.source_data, t0, self.config, self.dropout_mode
+            self.source_data, t0, self.config, self.dropout_mode, rng
         )
         materialise_data(time_sliced_data)
         # Preprocess once for all locations

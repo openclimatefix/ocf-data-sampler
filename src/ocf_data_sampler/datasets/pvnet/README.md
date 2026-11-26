@@ -102,8 +102,9 @@ include their start and exclude their end, independently of the source-window co
 
 `PVNetConcurrentDataset` takes a `dropout_mode` argument; `PVNetDataset` always uses `"random"`.
 
-- `"random"`, for training: dropout and NWP delays are drawn from the configured probabilities,
-  and a `t0` is valid only when every time step in each window is available in the source data.
+- `"random"`, for training and validation: dropout and NWP delays are drawn from the configured
+  probabilities, and a `t0` is valid only when every time step in each window is available in the
+  source data. See [below](#dataloader-workers-and-randomness) for fixing the draws with `seed`.
 - `"minimal"`, for inference: each sample uses the smallest configured dropout consistent with
   the available data, and no NWP delay. A `t0` is valid when satellite and generation input data
   are available up to the largest configured dropout cutoff, so recent missing data does not need
@@ -124,12 +125,17 @@ supported for this dataset class.
 When using multiple `DataLoader` workers, set `multiprocessing_context="forkserver"`.
 The `fork` context is unsupported for TensorStore-backed datasets.
 
-Dropout and NWP delay choices use NumPy's global random state (`np.random`). Repeated access
-to the same sample index can therefore choose different dropout and delays; the choice depends
-on the random state at the time of sampling. `PVNetConcurrentDataset` draws these once per
-`t0`, so all locations in a batch share them.
+Both datasets take a `seed` argument, which controls how dropout and NWP delays are drawn.
+`PVNetConcurrentDataset` draws these once per `t0`, so all locations in a batch share them.
 
-PyTorch seeds NumPy in each `DataLoader` worker. Seed PyTorch before creating the loader's
-iterator, or supply a seeded `torch.Generator` to the loader, to control its worker seeds.
-When accessing the dataset directly or using `num_workers=0`, seed `np.random` yourself.
-Reproducing dropout choices also depends on keeping the worker setup and sampling order the same.
+With `seed=None`, the default for training, each sample's draws are seeded from NumPy's global
+random state (`np.random`), so repeated access to the same sample index chooses different dropout
+and delays. Each time iteration over a `DataLoader` starts, PyTorch seeds NumPy in every worker
+from PyTorch's own random state. To make the draws reproducible, seed PyTorch, e.g. with
+`torch.manual_seed` or Lightning's `seed_everything`, or pass the loader a seeded
+`torch.Generator`. When accessing the dataset directly or using `num_workers=0`, seed
+`np.random` yourself.
+
+With an integer `seed`, intended for validation, each sample's draws depend only on the seed and
+the sample's `t0` and location. Every epoch then sees the same dropout and delays, regardless of
+the worker setup, sampling order, or whether the sample is accessed by index or `get_sample`.
