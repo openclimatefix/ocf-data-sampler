@@ -154,6 +154,7 @@ def crop_sources_to_locations[TArray: DataArrayLike](
 def _get_candidate_delays(
     delay_minute_probabilities: Mapping[int, float],
     dropout_mode: Literal["random", "minimal"],
+    rng: np.random.Generator,
 ) -> list[np.timedelta64]:
     """Dropout delays to try for one source, in order of preference.
 
@@ -161,7 +162,7 @@ def _get_candidate_delays(
     configured delay, smallest first.
     """
     if dropout_mode == "random":
-        return [choose_delay(delay_minute_probabilities)]
+        return [choose_delay(delay_minute_probabilities, rng)]
 
     # In minimal mode, try the configured delays from smallest to largest, so the least dropout
     # consistent with the data is used
@@ -173,6 +174,7 @@ def slice_sources_by_time[TArray: DataArrayLike](
     t0: np.datetime64,
     config: PVNetDataConfig,
     dropout_mode: Literal["random", "minimal"],
+    rng: np.random.Generator,
 ) -> SourceDict[TArray]:
     """Slice source arrays around a given t0 time.
 
@@ -183,6 +185,7 @@ def slice_sources_by_time[TArray: DataArrayLike](
         dropout_mode: "random" draws dropout and NWP delays from the configured probabilities.
             "minimal" uses the smallest configured dropout consistent with the data and no NWP
             delay.
+        rng: Random number generator for dropout and NWP delay draws. Unused in "minimal" mode.
 
     Returns:
         Sliced source arrays.
@@ -207,7 +210,7 @@ def slice_sources_by_time[TArray: DataArrayLike](
             if dropout_mode == "minimal" or nwp_config.delay_minute_probabilities is None:
                 delay = None
             else:
-                delay = choose_delay(nwp_config.delay_minute_probabilities)
+                delay = choose_delay(nwp_config.delay_minute_probabilities, rng)
 
             sliced_source_data["nwp"][nwp_name] = select_time_slice_nwp(
                 da_nwp,
@@ -223,7 +226,7 @@ def slice_sources_by_time[TArray: DataArrayLike](
             candidate_delays = None
         else:
             candidate_delays = _get_candidate_delays(
-                config.satellite.dropout_minute_probabilities, dropout_mode
+                config.satellite.dropout_minute_probabilities, dropout_mode, rng
             )
 
         sliced_source_data["sat"] = select_time_slice(
@@ -251,7 +254,7 @@ def slice_sources_by_time[TArray: DataArrayLike](
                 candidate_delays = None
             else:
                 candidate_delays = _get_candidate_delays(
-                    window_config.dropout_minute_probabilities, dropout_mode
+                    window_config.dropout_minute_probabilities, dropout_mode, rng
                 )
 
             sliced_source_data[key] = select_time_slice(

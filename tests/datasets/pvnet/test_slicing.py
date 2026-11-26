@@ -28,7 +28,7 @@ def test_slice_sources_by_time_applies_dropout(config_filename):
         "generation": _time_series(t0 - minutes(120), t0 + minutes(180), minutes(30)),
     }
 
-    sliced = slice_sources_by_time(source_data, t0, config, "random")
+    sliced = slice_sources_by_time(source_data, t0, config, "random", np.random.default_rng(0))
 
     # Satellite window is [-30, 0] at 5 minutes; times after t0 - 10 minutes are dropped
     np.testing.assert_array_equal(
@@ -65,7 +65,7 @@ def test_slice_sources_by_time_minimal_dropout(config_filename, sat_end_minutes,
         "generation": _time_series(t0 - minutes(120), t0 + minutes(180), minutes(30)),
     }
 
-    sliced = slice_sources_by_time(source_data, t0, config, "minimal")
+    sliced = slice_sources_by_time(source_data, t0, config, "minimal", np.random.default_rng(0))
 
     np.testing.assert_array_equal(np.isnan(sliced["sat"].values), expected_sat_nan)
 

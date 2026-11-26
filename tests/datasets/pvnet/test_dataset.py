@@ -249,6 +249,24 @@ def test_array_backends_produce_identical_samples(pvnet_config, dataset_class):
 
 
 @pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
+def test_seeded_dataset_repeats_dropout(pvnet_config, dataset_class):
+    """With a seed, repeated access to a sample gives the same dropout"""
+    config = pvnet_config
+    # Two equally likely dropout choices per source, so unseeded draws would often differ
+    config.satellite.dropout_minute_probabilities = {0: 0.5, 5: 0.5}
+    config.satellite.fill_value = -1.0
+    config.satellite.reject_nan = False
+    config.generation.input.dropout_minute_probabilities = {0: 0.5, 30: 0.5}
+    config.generation.input.fill_value = -1.0
+    config.generation.input.reject_nan = False
+
+    dataset = dataset_class(config, seed=0)
+
+    for index in np.linspace(0, len(dataset) - 1, num=10, dtype=int):
+        _assert_samples_equal(dataset[index], dataset[index])
+
+
+@pytest.mark.parametrize("dataset_class", [PVNetDataset, PVNetConcurrentDataset])
 @pytest.mark.parametrize("array_backend", ["xarray", "lightarray"])
 def test_sampling_leaves_dataset_sources_unchanged(pvnet_config, dataset_class, array_backend):
     """Sampling must not load the dataset's lazy sources or write to its generation data."""
