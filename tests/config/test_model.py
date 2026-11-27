@@ -88,7 +88,7 @@ def test_incorrect_nwp_provider(base_config):
     configuration = base_config
     provider = _first_nwp_provider(configuration)
     configuration.nwp[provider].provider = "unexpected_provider"
-    with pytest.raises(ValidationError, match="Unknown NWP provider"):
+    with pytest.raises(ValidationError, match=r"provider\s+Input should be"):
         _validate_configuration(configuration)
 
 

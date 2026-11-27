@@ -33,6 +33,28 @@ def test_validate_coords_rejects_multidimensional_coord():
 
 
 @pytest.mark.parametrize(
+    "expected_dtypes,error,message",
+    [
+        (
+            {"step": np.timedelta64},
+            ValueError,
+            "Expected coordinate 'step' missing from test data",
+        ),
+        (
+            {"step_minutes": np.timedelta64},
+            TypeError,
+            "Coordinate 'step_minutes' in test data should be timedelta64, not float64",
+        ),
+    ],
+)
+def test_validate_coords_rejects(expected_dtypes, error, message):
+    ds = xr.Dataset(coords={"step_minutes": [0.0, 60.0]})
+
+    with pytest.raises(error, match=message):
+        validate_coords(ds, expected_dtypes, source="test data")
+
+
+@pytest.mark.parametrize(
     "timestamps,resolution_minutes",
     [
         (["2024-01-01T00:00", "2024-01-01T00:05", "2024-01-01T00:15"], 5),

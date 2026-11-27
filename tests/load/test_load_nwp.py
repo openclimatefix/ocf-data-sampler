@@ -5,8 +5,8 @@ from xarray import DataArray
 from ocf_data_sampler.load.nwp import open_nwp
 
 
-def test_load_ukv(nwp_ukv_zarr_path):
-    da = open_nwp(zarr_path=nwp_ukv_zarr_path, provider="ukv")
+def test_open_nwp_osgb(nwp_ukv_zarr_path):
+    da = open_nwp(zarr_path=nwp_ukv_zarr_path)
     assert isinstance(da, DataArray)
     # The underlying data should be lazy-loaded, not in memory
     assert not da.variable._in_memory
@@ -15,8 +15,8 @@ def test_load_ukv(nwp_ukv_zarr_path):
     assert len(np.unique(da.coords["channel"])) == da.shape[2]
 
 
-def test_load_ecmwf(nwp_ecmwf_zarr_path):
-    da = open_nwp(zarr_path=nwp_ecmwf_zarr_path, provider="ecmwf")
+def test_open_nwp_lonlat(nwp_ecmwf_zarr_path):
+    da = open_nwp(zarr_path=nwp_ecmwf_zarr_path)
     assert isinstance(da, DataArray)
     # The underlying data should be lazy-loaded, not in memory
     assert not da.variable._in_memory
@@ -25,8 +25,8 @@ def test_load_ecmwf(nwp_ecmwf_zarr_path):
     assert len(np.unique(da.coords["channel"])) == da.shape[2]
 
 
-def test_load_cloudcasting(nwp_cloudcasting_zarr_path):
-    da = open_nwp(zarr_path=nwp_cloudcasting_zarr_path, provider="cloudcasting")
+def test_open_nwp_geostationary(nwp_cloudcasting_zarr_path):
+    da = open_nwp(zarr_path=nwp_cloudcasting_zarr_path)
     assert isinstance(da, DataArray)
     # The underlying data should be lazy-loaded, not in memory
     assert not da.variable._in_memory
@@ -36,34 +36,7 @@ def test_load_cloudcasting(nwp_cloudcasting_zarr_path):
     assert len(np.unique(da.coords["channel"])) == da.shape[2]
 
 
-def test_load_ukv_new_coords(tmp_path):
-    """Test UKV loader handles data that already has new coordinate names."""
-    zarr_path = tmp_path / "new_ukv_coords.zarr"
-
-    # Create a mock dataset that already uses the new naming convention
-    new_coords_array = DataArray(
-        np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time_utc", "step", "channel", "x_osgb", "y_osgb"),
-        coords={
-            "init_time_utc": [np.datetime64("2023-01-01")],
-            "step": [np.timedelta64(1, "h")],
-            "channel": ["t"],
-            "x_osgb": np.array([0], dtype=np.float32),
-            "y_osgb": np.array([50], dtype=np.float32),
-        },
-    )
-    new_coords_array.to_zarr(zarr_path)
-
-    # This should succeed without KeyError
-    da = open_nwp(zarr_path=str(zarr_path), provider="ukv")
-
-    assert isinstance(da, DataArray)
-    assert "x_osgb" in da.coords
-    assert "y_osgb" in da.coords
-
-
-def test_load_ukv_rejects_x_y_coords(tmp_path):
-    """Test UKV data must use canonical OSGB coordinate names."""
+def test_open_nwp_rejects_unknown_coords(tmp_path):
     zarr_path = tmp_path / "ukv_x_y_coords.zarr"
     array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
@@ -78,11 +51,11 @@ def test_load_ukv_rejects_x_y_coords(tmp_path):
     )
     array.to_zarr(zarr_path)
 
-    with pytest.raises(ValueError, match="Expected coordinate 'x_osgb' missing"):
-        open_nwp(zarr_path=str(zarr_path), provider="ukv")
+    with pytest.raises(ValueError, match="Did not find any coordinate pairs"):
+        open_nwp(zarr_path=str(zarr_path))
 
 
-def test_load_ecmwf_integer_latitude(tmp_path):
+def test_open_nwp_integer_latitude(tmp_path):
     """Test integer spatial coordinates are accepted."""
     zarr_path = tmp_path / "integer_ecmwf_latitude.zarr"
     array = DataArray(
@@ -97,75 +70,12 @@ def test_load_ecmwf_integer_latitude(tmp_path):
         },
     )
     array.to_zarr(zarr_path)
-    da = open_nwp(zarr_path=str(zarr_path), provider="ecmwf")
+    da = open_nwp(zarr_path=str(zarr_path))
 
     assert np.issubdtype(da.latitude.dtype, np.integer)
 
 
-def test_load_ecmwf_bad_dtype_init_time(tmp_path):
-    """Test validation fails for ECMWF with bad init_time_utc dtype."""
-    zarr_path = tmp_path / "bad_ecmwf_init_time.zarr"
-    bad_array = DataArray(
-        np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time_utc", "step", "variable", "longitude", "latitude"),
-        coords={
-            "init_time_utc": [1.23],
-            "step": [np.timedelta64(1, "h")],
-            "variable": ["t"],
-            "longitude": np.array([0], dtype=np.float32),
-            "latitude": np.array([50.0], dtype=np.float32),
-        },
-    )
-    bad_array.to_zarr(zarr_path)
-    with pytest.raises((TypeError, AttributeError), match=r"init_time_utc|datetime64"):
-        open_nwp(zarr_path=str(zarr_path), provider="ecmwf")
-
-
-def test_load_ecmwf_bad_dtype_step(tmp_path):
-    """Test validation fails for ECMWF with bad step dtype."""
-    zarr_path = tmp_path / "bad_ecmwf_step.zarr"
-    bad_array = DataArray(
-        np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time_utc", "step", "variable", "longitude", "latitude"),
-        coords={
-            "init_time_utc": [np.datetime64("2023-01-01")],
-            "step": [1.0],
-            "variable": ["t"],
-            "longitude": np.array([0], dtype=np.float32),
-            "latitude": np.array([50.0], dtype=np.float32),
-        },
-    )
-    bad_array.to_zarr(zarr_path)
-    with pytest.raises(
-        TypeError,
-        match="Coordinate 'step' in NWP provider 'ecmwf' should be timedelta64",
-    ):
-        open_nwp(zarr_path=str(zarr_path), provider="ecmwf")
-
-
-def test_load_ukv_bad_dtype_step(tmp_path):
-    """Test validation fails for UKV with bad step dtype."""
-    zarr_path = tmp_path / "bad_ukv_step.zarr"
-    bad_array = DataArray(
-        np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
-        dims=("init_time_utc", "step", "channel", "x_osgb", "y_osgb"),
-        coords={
-            "init_time_utc": [np.datetime64("2023-01-01")],
-            "step": [1.0],
-            "channel": ["t"],
-            "x_osgb": np.array([0], dtype=np.float32),
-            "y_osgb": np.array([50], dtype=np.float32),
-        },
-    )
-    bad_array.to_zarr(zarr_path)
-    with pytest.raises(
-        TypeError,
-        match="Coordinate 'step' in NWP provider 'ukv' should be timedelta64",
-    ):
-        open_nwp(zarr_path=str(zarr_path), provider="ukv")
-
-
-def test_load_ukv_rejects_uneven_steps(tmp_path):
+def test_open_nwp_rejects_uneven_steps(tmp_path):
     """Test steps must be evenly spaced - the valid-t0 calculation assumes it."""
     zarr_path = tmp_path / "uneven_ukv_steps.zarr"
     array = DataArray(
@@ -183,11 +93,11 @@ def test_load_ukv_rejects_uneven_steps(tmp_path):
     array.to_zarr(zarr_path)
 
     with pytest.raises(ValueError, match="must be evenly spaced"):
-        open_nwp(zarr_path=str(zarr_path), provider="ukv")
+        open_nwp(zarr_path=str(zarr_path))
 
 
-def test_load_ecmwf_bad_dtype_longitude(tmp_path):
-    """Test validation fails for ECMWF with a non-numeric longitude dtype."""
+def test_open_nwp_rejects_non_numeric_spatial_coord(tmp_path):
+    """Test the detected spatial coordinates are validated as numeric."""
     zarr_path = tmp_path / "bad_ecmwf_longitude.zarr"
     bad_array = DataArray(
         np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
@@ -203,6 +113,32 @@ def test_load_ecmwf_bad_dtype_longitude(tmp_path):
     bad_array.to_zarr(zarr_path)
     with pytest.raises(
         TypeError,
-        match="Coordinate 'longitude' in NWP provider 'ecmwf' should be number",
+        match="Coordinate 'longitude' in NWP data should be number",
     ):
-        open_nwp(zarr_path=str(zarr_path), provider="ecmwf")
+        open_nwp(zarr_path=str(zarr_path))
+
+
+def test_open_nwp_rejects_mismatched_geostationary_projections(tmp_path):
+    """Test geostationary stores must share a projection before they are concatenated."""
+    zarr_paths = []
+    for i, lon_0 in enumerate([9.5, 0.0]):
+        array = DataArray(
+            np.random.rand(1, 1, 1, 1, 1).astype(np.float32),
+            dims=("init_time_utc", "step", "channel", "x_geostationary", "y_geostationary"),
+            coords={
+                "init_time_utc": [np.datetime64("2023-01-01") + np.timedelta64(i, "h")],
+                "step": [np.timedelta64(1, "h")],
+                "channel": ["IR_097"],
+                "x_geostationary": [0.0],
+                "y_geostationary": [0.0],
+            },
+        )
+        # The projection is dataset-level metadata, as in the cloudcasting stores
+        ds = array.to_dataset(name="sat_pred")
+        ds.attrs["area"] = {"satellite": {"projection": {"lon_0": lon_0}}}
+        zarr_path = tmp_path / f"cloudcasting_{i}.zarr"
+        ds.to_zarr(zarr_path)
+        zarr_paths.append(str(zarr_path))
+
+    with pytest.raises(ValueError, match="Multiple geostationary projections found"):
+        open_nwp(zarr_path=zarr_paths)

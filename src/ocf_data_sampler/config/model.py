@@ -6,7 +6,11 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, Field, field_validator, model_validator
 
 from ocf_data_sampler.common.types import ZarrSource
-from ocf_data_sampler.load.nwp import PROVIDER_REGISTRY
+
+# Recognised NWP provider names
+type NWPProvider = Literal[
+    "ocf_cloudcasting", "ecmwf_ifs", "gdm_weathernext", "mo_global", "mo_ukv"
+]
 
 
 def _validate_grid_resolution_minutes(resolution: int) -> int:
@@ -287,7 +291,10 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
         "None disables delays.",
     )
 
-    provider: str = Field(..., description="The provider of the NWP data")
+    provider: NWPProvider = Field(
+        ...,
+        description="The provider of the NWP data. This is metadata and does not affect loading.",
+    )
 
     staleness_limit_minutes: int | None = Field(
         None,
@@ -297,14 +304,6 @@ class NWP(TimeWindowMixin, NaNPolicyMixin, SpatialWindowMixin):
         "staler at t0 are not used. If set to None, then no additional limit is applied "
         "except that the forecast must cover the requested time interval.",
     )
-
-    @field_validator("provider")
-    def validate_provider(cls, provider: str) -> str:
-        """Require a registered provider name."""
-        if provider not in PROVIDER_REGISTRY:
-            supported = ", ".join(sorted(PROVIDER_REGISTRY))
-            raise ValueError(f"Unknown NWP provider {provider!r}. Supported: {supported}")
-        return provider
 
     @model_validator(mode="after")
     def validate_delay_staleness(self) -> "NWP":
