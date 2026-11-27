@@ -1,0 +1,25 @@
+# Run the CI checks without modifying files, using the latest tool releases as CI does
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uvx ruff@latest check --no-fix .
+        language: system
+        pass_filenames: false
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uvx ruff@latest format --check .
+        language: system
+        pass_filenames: false
+        types_or: [python, pyi]
+      - id: ty
+        name: ty check
+        entry: uvx ty@latest check .
+        language: system
+        pass_filenames: false
+        types: [python]
+        stages: [pre-push]
