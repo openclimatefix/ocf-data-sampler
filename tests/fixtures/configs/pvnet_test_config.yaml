@@ -16,7 +16,7 @@ generation:
 
 nwp:
   ukv:
-    provider: ukv
+    provider: mo_ukv
     zarr_path: placeholder.zarr
     interval_start_minutes: -60
     interval_end_minutes: 120

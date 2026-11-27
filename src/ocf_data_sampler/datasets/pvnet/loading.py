@@ -11,7 +11,11 @@ from ocf_data_sampler.config import PVNetDataConfig
 from ocf_data_sampler.datasets.pvnet.types import Coordinate, Location, SourceDict
 from ocf_data_sampler.load import open_generation, open_locations, open_nwp, open_satellite
 from ocf_data_sampler.load.conventions import validate_step_grid, validate_time_grid
-from ocf_data_sampler.spatial import lon_lat_to_geostationary, lon_lat_to_osgb
+from ocf_data_sampler.spatial import (
+    detect_coordinate_system,
+    lon_lat_to_geostationary,
+    lon_lat_to_osgb,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +61,7 @@ def open_sources(
     if config.nwp:
         source_data["nwp"] = {}
         for nwp_name, nwp_config in config.nwp.items():
-            da_nwp = open_nwp(zarr_path=nwp_config.zarr_path, provider=nwp_config.provider)
+            da_nwp = open_nwp(zarr_path=nwp_config.zarr_path)
             _warn_if_not_float32(f"nwp/{nwp_name}", da_nwp)
 
             # The NWP init times and steps must be multiples of the configured resolution so that
@@ -128,53 +132,13 @@ def load_locations(csv_path: str, exclude_ids: list[str] | None = None) -> list[
     ]
 
 
-def _detect_coordinate_system(da: xr.DataArray) -> tuple[str, str, str]:
-    """Searches the DataArray-like object to determine the spatial coordinate system.
-
-    Args:
-        da: Dataset with spatial coords
-
-    Returns:
-        A tuple containing the coordinate system name, x-coordinate name,
-        and y-coordinate name.
-    """
-    # We only look at the dimensional coords. It is possible that other coordinate systems are
-    # included as non-dimensional coords
-    dimension_names = set(da.dims)
-
-    coord_systems: dict[str, tuple[str, str]] = {
-        "lon_lat": ("longitude", "latitude"),
-        "geostationary": ("x_geostationary", "y_geostationary"),
-        "osgb": ("x_osgb", "y_osgb"),
-    }
-
-    matching_coordinate_systems = []
-
-    for coord_name, coord_set in coord_systems.items():
-        if set(coord_set) <= dimension_names:
-            matching_coordinate_systems.append(coord_name)
-
-    if len(matching_coordinate_systems) == 0:
-        raise ValueError(
-            f"Did not find any coordinate pairs in the dimensional coords: {dimension_names}",
-        )
-    elif len(matching_coordinate_systems) > 1:
-        raise ValueError(
-            f"Found >1 ({matching_coordinate_systems}) coordinate pairs in the dimensional coords: "
-            f"{dimension_names}",
-        )
-    else:
-        coord_system_name = matching_coordinate_systems[0]
-        return coord_system_name, *coord_systems[coord_system_name]
-
-
 def _calculate_source_coordinates(
     longitudes: NDArray[np.float64],
     latitudes: NDArray[np.float64],
     da: xr.DataArray,
 ) -> list[Coordinate]:
     # Find the coordinate system required by this dataset
-    coord_system, x_dim, y_dim = _detect_coordinate_system(da)
+    coord_system, x_dim, y_dim = detect_coordinate_system(da)
 
     if coord_system == "lon_lat":
         xs, ys = longitudes, latitudes

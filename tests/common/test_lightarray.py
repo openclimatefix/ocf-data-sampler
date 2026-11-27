@@ -16,7 +16,7 @@ def xr_gen(generation_zarr_path) -> xr.DataArray:
 
 @pytest.fixture()
 def xr_ukv(nwp_ukv_zarr_path) -> xr.DataArray:
-    return open_nwp(zarr_path=nwp_ukv_zarr_path, provider="ukv")
+    return open_nwp(zarr_path=nwp_ukv_zarr_path)
 
 
 @pytest.fixture()
