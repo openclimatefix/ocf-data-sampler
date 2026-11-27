@@ -16,6 +16,10 @@ It includes and adapts the `ephemeris()` function from the [pvlib-python](https:
 
 See the [PVNet dataset guide](src/ocf_data_sampler/datasets/pvnet/README.md) for sample construction, time conventions, and DataLoader configuration.
 
+Public names are those listed in `__all__`. Import them from the module that lists them, such as
+`ocf_data_sampler.config` or `ocf_data_sampler.spatial`. Everything else is internal and may
+change without notice.
+
 ## FAQ
 
 If you have any questions about this or any other of our repos, don't hesitate to hop to our [Discussions Page](https://github.com/orgs/openclimatefix/discussions)!

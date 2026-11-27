@@ -7,6 +7,8 @@ import numpy as np
 import pyproj
 from numpy.typing import NDArray
 
+__all__ = ["lon_lat_to_geostationary", "lon_lat_to_osgb"]
+
 WGS84 = 4326
 OSGB36 = 27700
 
