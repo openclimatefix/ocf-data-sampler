@@ -1,4 +1,4 @@
-"""Functions to convert xarray datasets to numpy samples."""
+"""Functions to build a NumpySample from one sample's preprocessed SourceDict."""
 
 from typing import Any
 

@@ -106,7 +106,7 @@ def concat_tensorstore(datasets: Sequence[xr.Dataset], concat_dim: str) -> xr.Da
     # data_vars separately so we can lazily concatenate them with tensorstore.
     # - combine_attrs="override" keeps the attrs of the first dataset, which is the behaviour we
     #   copy for the data_vars below.
-    # - join="exact" ensures that the coords are identical across datasets, which is a bakstop for
+    # - join="exact" ensures that the coords are identical across datasets, which is a backstop for
     #   the _validate() check above.
     ds_out = xr.concat(
         [ds.drop_vars(first.data_vars) for ds in datasets],

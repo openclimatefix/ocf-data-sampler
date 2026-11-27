@@ -132,7 +132,7 @@ def _detect_coordinate_system(da: xr.DataArray) -> tuple[str, str, str]:
     """Searches the DataArray-like object to determine the spatial coordinate system.
 
     Args:
-        da: Dataset with spatial coords
+        da: DataArray with spatial coordinates
 
     Returns:
         A tuple containing the coordinate system name, x-coordinate name,

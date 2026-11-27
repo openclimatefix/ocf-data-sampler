@@ -121,7 +121,7 @@ def validate_time_grid(
     """Check that timestamps lie on the configured sampling grid.
 
     This allows us to catch any misalignment between the timestamps in the data and the expected
-    resolution early in the pipleline before any errors show up in slicing.
+    resolution early in the pipeline before any errors show up in slicing.
     """
     aligned = times == datetime_ceil(times, resolution)
 
