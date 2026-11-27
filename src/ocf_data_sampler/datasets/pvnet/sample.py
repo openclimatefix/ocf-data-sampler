@@ -123,8 +123,8 @@ def _add_source_arrays[TArray: DataArrayLike](
             },
         )
 
-    if "sat" in source_data:
-        sample["satellite"] = source_data["sat"].values
+    if "satellite" in source_data:
+        sample["satellite"] = source_data["satellite"].values
 
     if "nwp" in source_data:
         sample["nwp"] = {nwp_name: da_nwp.values for nwp_name, da_nwp in source_data["nwp"].items()}
@@ -143,8 +143,8 @@ def _add_source_metadata[TArray: DataArrayLike](
         metadata: Metadata dictionary to populate, retaining unrelated entries.
         source_data: Source arrays for one sample.
     """
-    if "sat" in source_data:
-        da_sat = source_data["sat"]
+    if "satellite" in source_data:
+        da_sat = source_data["satellite"]
         metadata.update(
             {
                 "satellite_time_utc": get_posix_timestamp(da_sat["time_utc"].values),

@@ -92,7 +92,7 @@ def open_sources(
 
         da_sat = da_sat.sel(channel=[channel.name for channel in config.satellite.channels])
 
-        source_data["sat"] = da_sat
+        source_data["satellite"] = da_sat
 
     return source_data
 
@@ -199,10 +199,10 @@ def add_source_coordinates(
     longitudes = np.array([loc.longitude for loc in locations], dtype=np.float64)
     latitudes = np.array([loc.latitude for loc in locations], dtype=np.float64)
 
-    if (da_sat := source_data.get("sat")) is not None:
+    if (da_sat := source_data.get("satellite")) is not None:
         sat_coordinates = _calculate_source_coordinates(longitudes, latitudes, da_sat)
         for loc, sat_coordinate in zip(locations, sat_coordinates, strict=True):
-            loc.source_coordinates["sat"] = sat_coordinate
+            loc.source_coordinates["satellite"] = sat_coordinate
 
     if "nwp" in source_data:
         for loc in locations:

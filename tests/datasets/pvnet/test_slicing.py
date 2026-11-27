@@ -24,7 +24,7 @@ def test_slice_sources_by_time_applies_dropout(config_filename):
 
     t0 = np.datetime64("2024-01-01T12:00")
     source_data = {
-        "sat": _time_series(t0 - minutes(60), t0 + minutes(60), minutes(5)),
+        "satellite": _time_series(t0 - minutes(60), t0 + minutes(60), minutes(5)),
         "generation": _time_series(t0 - minutes(120), t0 + minutes(180), minutes(30)),
     }
 
@@ -32,10 +32,10 @@ def test_slice_sources_by_time_applies_dropout(config_filename):
 
     # Satellite window is [-30, 0] at 5 minutes; times after t0 - 10 minutes are dropped
     np.testing.assert_array_equal(
-        sliced["sat"]["time_utc"].values,
+        sliced["satellite"]["time_utc"].values,
         date_range(t0 - minutes(30), t0, freq=minutes(5)),
     )
-    np.testing.assert_array_equal(np.isnan(sliced["sat"].values), [0, 0, 0, 0, 0, 1, 1])
+    np.testing.assert_array_equal(np.isnan(sliced["satellite"].values), [0, 0, 0, 0, 0, 1, 1])
 
     # Generation input window is [-60, 0] at 30 minutes; times after t0 - 30 minutes are dropped
     np.testing.assert_array_equal(np.isnan(sliced["generation_input"].values), [0, 0, 1])
@@ -61,13 +61,13 @@ def test_slice_sources_by_time_minimal_dropout(config_filename, sat_end_minutes,
 
     t0 = np.datetime64("2024-01-01T12:00")
     source_data = {
-        "sat": _time_series(t0 - minutes(60), t0 + minutes(sat_end_minutes), minutes(5)),
+        "satellite": _time_series(t0 - minutes(60), t0 + minutes(sat_end_minutes), minutes(5)),
         "generation": _time_series(t0 - minutes(120), t0 + minutes(180), minutes(30)),
     }
 
     sliced = slice_sources_by_time(source_data, t0, config, "minimal", np.random.default_rng(0))
 
-    np.testing.assert_array_equal(np.isnan(sliced["sat"].values), expected_sat_nan)
+    np.testing.assert_array_equal(np.isnan(sliced["satellite"].values), expected_sat_nan)
 
     # Generation data is complete, but no 0-minute delay is configured, so the smallest
     # configured delay of 30 minutes is applied

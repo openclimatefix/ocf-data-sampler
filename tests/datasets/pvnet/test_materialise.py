@@ -16,7 +16,7 @@ def _save_zarr(path, values):
     da.to_dataset(name="dummy_array").to_zarr(path)
 
 
-@pytest.mark.parametrize("source_key", ["sat", "generation"])
+@pytest.mark.parametrize("source_key", ["satellite", "generation"])
 def test_block_until_loaded(tmp_path, source_key):
     _save_zarr(tmp_path, np.arange(25, dtype=np.float32).reshape(5, 5))
 
@@ -47,10 +47,10 @@ def test_materialise_data_skips_loaded_arrays(monkeypatch, use_lightarray, dtype
     monkeypatch.setattr(LightDataArray, "read", read)
     monkeypatch.setattr(type(da), "load", load)
 
-    source_dict = {"sat": da}
+    source_dict = {"satellite": da}
     materialise_data(source_dict)
 
-    assert source_dict["sat"] is da
+    assert source_dict["satellite"] is da
     assert da.data.dtype == np.float32
     np.testing.assert_array_equal(da.values, [1.0, 2.0])
     # Loaded arrays may be views of the dataset's source arrays, so must not share memory with them
@@ -72,17 +72,17 @@ def test_materialise_data(tmp_path, use_lightarray, dtype):
 
     # Create a nested dictionary with tensorstore arrays
     source_dict = {
-        "sat": da_ts,
+        "satellite": da_ts,
         "nwp": {"ukv": nested_da_ts},
     }
 
     materialise_data(source_dict)
 
     # Assert that the result is no longer lazy
-    assert isinstance(source_dict["sat"].data, np.ndarray)
+    assert isinstance(source_dict["satellite"].data, np.ndarray)
     assert isinstance(source_dict["nwp"]["ukv"].data, np.ndarray)
 
-    for da in (source_dict["sat"], source_dict["nwp"]["ukv"]):
+    for da in (source_dict["satellite"], source_dict["nwp"]["ukv"]):
         assert da.data.dtype == np.float32
         np.testing.assert_array_equal(da.values, values.astype(np.float32))
         assert da["x"].values.dtype == np.float64

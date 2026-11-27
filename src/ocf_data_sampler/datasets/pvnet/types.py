@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-NON_NWP_SOURCE_KEYS: Final = ("sat", "generation", "generation_input", "generation_target")
+NON_NWP_SOURCE_KEYS: Final = ("satellite", "generation", "generation_input", "generation_target")
 
 
 class SourceDict[TSource](TypedDict, total=False):
@@ -16,7 +16,7 @@ class SourceDict[TSource](TypedDict, total=False):
     NWP values are nested by source name.
     """
 
-    sat: TSource
+    satellite: TSource
     generation: TSource
     generation_input: TSource
     generation_target: TSource

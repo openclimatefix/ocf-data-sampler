@@ -149,7 +149,7 @@ def test_build_sample_index_non_overlapping_sources(availability_config, locatio
     values = np.ones((len(datetimes), len(location_ids)))
     sources = {
         "generation": make_generation(values, location_ids, datetimes),
-        "sat": make_satellite(datetimes + np.timedelta64(1, "D")),
+        "satellite": make_satellite(datetimes + np.timedelta64(1, "D")),
     }
     with pytest.raises(
         ValueError,
@@ -226,7 +226,7 @@ def test_build_sample_index_no_shared_t0s(availability_config, location_ids, dat
 
 def test_build_sample_index_without_generation(availability_config, location_ids, datetimes):
     availability_config.generation = None
-    sources = {"sat": make_satellite(datetimes)}
+    sources = {"satellite": make_satellite(datetimes)}
     ordinary = build_sample_index(sources, location_ids, availability_config, None)
     concurrent = build_concurrent_sample_index(sources, availability_config, None, "random")
     # Sample is congigured to use satellite between -30 minutes and 0. So every t0 after the first
@@ -252,7 +252,7 @@ def test_build_sample_index_dropout_mode(availability_config, location_ids, date
     values = np.ones((len(datetimes), len(location_ids)))
     sources = {
         "generation": make_generation(values, location_ids, datetimes),
-        "sat": make_satellite(datetimes),
+        "satellite": make_satellite(datetimes),
     }
 
     # Data ends at 04:00. Generation input uses an hour of history, so t0s start at 01:00. Random

@@ -43,7 +43,9 @@ def build_normalisation_arrays(config: PVNetDataConfig) -> SourceDict[Normalisat
                 nwp_config.channels,
             )
     if config.satellite is not None:
-        normalisation_arrays["sat"] = _build_source_normalisation_arrays(config.satellite.channels)
+        normalisation_arrays["satellite"] = _build_source_normalisation_arrays(
+            config.satellite.channels,
+        )
     return normalisation_arrays
 
 
@@ -63,9 +65,9 @@ def normalise_source_data[TArray: DataArrayLike](
                 std=params.std,
             )
 
-    if "sat" in source_data:
-        da = source_data["sat"]
-        params = normalisation_arrays["sat"]
+    if "satellite" in source_data:
+        da = source_data["satellite"]
+        params = normalisation_arrays["satellite"]
         clip_and_standardise(
             da,
             clip_min=params.clip_min,
@@ -126,10 +128,10 @@ def validate_and_fill_source_nans[TArray: DataArrayLike](
 
     if config.satellite is not None:
         validate_and_fill_nans(
-            source_data["sat"],
+            source_data["satellite"],
             config.satellite.fill_value,
             reject_nan=config.satellite.reject_nan,
-            source="sat",
+            source="satellite",
         )
 
     if config.nwp is not None:
