@@ -16,6 +16,10 @@ It includes and adapts the `ephemeris()` function from the [pvlib-python](https:
 
 See the [PVNet dataset guide](src/ocf_data_sampler/datasets/pvnet/README.md) for sample construction, time conventions, and DataLoader configuration.
 
+Public names are those listed in `__all__`. Import them from the module that lists them, such as
+`ocf_data_sampler.config` or `ocf_data_sampler.spatial`. Everything else is internal and may
+change without notice.
+
 ## FAQ
 
 If you have any questions about this or any other of our repos, don't hesitate to hop to our [Discussions Page](https://github.com/orgs/openclimatefix/discussions)!
@@ -43,8 +47,30 @@ The development dependencies include `pytest`, `pvlib`, and `dask`, which the te
 require. After completing the setup above, run the suite from the repository directory:
 
 ```bash
-uv run python -m pytest
+uv run python -m pytest  # or: make test
 ```
+
+### Linting, formatting, and type checking
+
+CI checks the code with the latest releases of [ruff](https://docs.astral.sh/ruff/) and
+[ty](https://docs.astral.sh/ty/). The Makefile runs the same tools:
+
+```bash
+make lint       # ruff check, applying safe fixes
+make format     # ruff format
+make typecheck  # ty check
+make check      # all CI checks, without modifying files
+```
+
+To run these checks automatically, install the pre-commit hooks. Ruff runs on each commit and
+ty on each push; the hooks report problems without modifying files:
+
+```bash
+uvx pre-commit install
+```
+
+If a hook later reports that `pre-commit` cannot be found, for example after clearing the uv
+cache, run the install command again.
 
 ## Contributing and community
 

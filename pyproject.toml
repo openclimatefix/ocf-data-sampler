@@ -43,7 +43,6 @@ dev = [
     "pvlib",
     "dask",
     "ruff >= 0.9.2",
-    "ty",
     # LSP Support
     "python-lsp-server",
     "python-lsp-ruff",
@@ -131,3 +130,7 @@ docstring-code-line-length = 100
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    # Test fixtures write string coordinates with zarr v3's unstable fixed-length string dtype
+    "ignore:The data type \\(FixedLengthUTF32:zarr.errors.UnstableSpecificationWarning",
+]

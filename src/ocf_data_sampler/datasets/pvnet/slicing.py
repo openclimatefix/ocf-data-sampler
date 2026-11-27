@@ -52,9 +52,9 @@ def slice_sources_by_space[TArray: DataArrayLike](
                 )
 
         if config.satellite is not None:
-            coordinate = location.source_coordinates["sat"]
-            sliced_source_data["sat"] = select_spatial_slice(
-                source_data["sat"],
+            coordinate = location.source_coordinates["satellite"]
+            sliced_source_data["satellite"] = select_spatial_slice(
+                source_data["satellite"],
                 x=coordinate.x,
                 y=coordinate.y,
                 x_dim=coordinate.x_dim,
@@ -131,10 +131,10 @@ def crop_sources_to_locations[TArray: DataArrayLike](
                 )
 
         if config.satellite is not None:
-            source_coordinates = [loc.source_coordinates["sat"] for loc in locations]
+            source_coordinates = [loc.source_coordinates["satellite"] for loc in locations]
             centres, x_dim, y_dim = _unpack_spatial_coordinates(source_coordinates)
-            sliced_source_data["sat"] = select_envelope_of_spatial_windows(
-                source_data["sat"],
+            sliced_source_data["satellite"] = select_envelope_of_spatial_windows(
+                source_data["satellite"],
                 centres=centres,
                 x_dim=x_dim,
                 y_dim=y_dim,
@@ -229,8 +229,8 @@ def slice_sources_by_time[TArray: DataArrayLike](
                 config.satellite.dropout_minute_probabilities, dropout_mode, rng
             )
 
-        sliced_source_data["sat"] = select_time_slice(
-            source_data["sat"],
+        sliced_source_data["satellite"] = select_time_slice(
+            source_data["satellite"],
             t0,
             time_resolution=minutes(config.satellite.time_resolution_minutes),
             interval_start=minutes(config.satellite.interval_start_minutes),

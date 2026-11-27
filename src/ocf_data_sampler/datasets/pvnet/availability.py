@@ -130,7 +130,7 @@ def _find_non_generation_t0_periods(
 
     if config.satellite is not None:
         sat_periods = find_contiguous_t0_periods(
-            source_data["sat"]["time_utc"].values,
+            source_data["satellite"]["time_utc"].values,
             time_resolution=minutes(config.satellite.time_resolution_minutes),
             interval_start=minutes(config.satellite.interval_start_minutes),
             interval_end=minutes(_required_interval_end_minutes(config.satellite, dropout_mode)),

@@ -33,8 +33,8 @@ def find_contiguous_time_periods(
     gap_mask = np.diff(datetimes) > time_resolution
     gap_indices = np.argwhere(gap_mask)[:, 0]
 
-    # gap_indicies are the indices into `datetimes` for the timestep immediately before the gap.
-    # e.g. if the datetimes at 12:00, 12:05, 18:00, 18:05 then gap_indicies will be [1].
+    # gap_indices are the indices into `datetimes` for the timestep immediately before the gap.
+    # e.g. if the datetimes at 12:00, 12:05, 18:00, 18:05 then gap_indices will be [1].
     # So we add 1 to gap_indices to get segment_boundaries, an index into `datetimes`
     # which identifies the _start_ of each segment.
     segment_boundaries = gap_indices + 1

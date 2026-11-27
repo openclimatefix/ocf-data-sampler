@@ -150,14 +150,14 @@ def test_convert_nwp_to_numpy_sample(da_nwp):
 
 def test_convert_satellite_to_numpy_sample(da_sat):
     numpy_sample = {}
-    _add_source_arrays(numpy_sample, {"sat": da_sat})
+    _add_source_arrays(numpy_sample, {"satellite": da_sat})
 
     assert (numpy_sample["satellite"] == da_sat.values).all()
 
 
 def test_add_source_metadata(da_nwp, da_sat):
     metadata = {}
-    _add_source_metadata(metadata, {"sat": da_sat, "nwp": {"ukv": da_nwp}})
+    _add_source_metadata(metadata, {"satellite": da_sat, "nwp": {"ukv": da_nwp}})
 
     # Both sources start at 2024-01-02 00:00 UTC.
     start_posix_seconds = 1704153600

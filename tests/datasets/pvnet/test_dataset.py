@@ -271,7 +271,7 @@ def test_seeded_dataset_repeats_dropout(pvnet_config, dataset_class):
 def test_sampling_leaves_dataset_sources_unchanged(pvnet_config, dataset_class, array_backend):
     """Sampling must not load the dataset's lazy sources or write to its generation data."""
     dataset = dataset_class(pvnet_config, array_backend=array_backend)
-    sources = [dataset.source_data["sat"], *dataset.source_data["nwp"].values()]
+    sources = [dataset.source_data["satellite"], *dataset.source_data["nwp"].values()]
     lazy_data = [_extract_backing_data(da) for da in sources]
     generation = dataset.source_data["generation"].values.copy()
 

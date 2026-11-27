@@ -39,11 +39,11 @@ def test_add_source_coordinates_different_geostationary_sources():
     location = Location(id="loc_1", longitude=lon, latitude=lat)
     add_source_coordinates(
         locations=[location],
-        source_data={"sat": da_sat, "nwp": {"cloudcasting": da_cloud}},
+        source_data={"satellite": da_sat, "nwp": {"cloudcasting": da_cloud}},
     )
 
     # Each of the geostationary projections should be calculated independently
-    sat_coord = location.source_coordinates["sat"]
+    sat_coord = location.source_coordinates["satellite"]
     cloud_coord = location.source_coordinates["nwp"]["cloudcasting"]
     for coordinate, area in ((sat_coord, UK_SAT_AREA), (cloud_coord, zero_degree_area)):
         transformer = pyproj.Transformer.from_crs(
@@ -76,7 +76,7 @@ def test_open_sources_preserves_channel_order(pvnet_config):
     datasets = open_sources(config, location_ids=[])
 
     # Both configured orders differ from their source coordinate order.
-    np.testing.assert_array_equal(datasets["sat"]["channel"].values, ["IR_039", "IR_016"])
+    np.testing.assert_array_equal(datasets["satellite"]["channel"].values, ["IR_039", "IR_016"])
     np.testing.assert_array_equal(datasets["nwp"]["ukv"]["channel"].values, ["t", "si10"])
 
 

@@ -53,7 +53,7 @@ def test_validate_and_fill_source_nans(base_config, fill_value, expected):
 
     source_data = {
         "generation_input": xr.DataArray(gen),
-        "sat": xr.DataArray(sat),
+        "satellite": xr.DataArray(sat),
         "nwp": {"ukv": xr.DataArray(gen.copy())},
     }
 
@@ -61,7 +61,7 @@ def test_validate_and_fill_source_nans(base_config, fill_value, expected):
 
     np.testing.assert_array_equal(source_data["generation_input"].values, expected)
     np.testing.assert_array_equal(source_data["nwp"]["ukv"].values, expected)
-    assert np.array_equal(source_data["sat"].values, np.array([1.0, -1.0, 3.0, -1.0]))
+    assert np.array_equal(source_data["satellite"].values, np.array([1.0, -1.0, 3.0, -1.0]))
 
 
 def test_normalise_channels(base_config):
@@ -76,7 +76,7 @@ def test_normalise_channels(base_config):
     ]
     sat = xr.DataArray(np.array([[-2, 2, 8], [6, 10, np.nan]], dtype=np.float32)[None, :, None, :])
     nwp = sat.copy(deep=True)
-    datasets = {"sat": sat, "nwp": {"ukv": nwp}}
+    datasets = {"satellite": sat, "nwp": {"ukv": nwp}}
 
     normalise_source_data(datasets, build_normalisation_arrays(config))
 
@@ -116,14 +116,14 @@ def test_preprocess_source_data_preserves_original_arrays(base_config):
     source_data = {
         "generation_input": generation,
         "generation_target": generation.copy(deep=True),
-        "sat": sat,
+        "satellite": sat,
         "nwp": {"ukv": nwp},
     }
     # Keep references to the actual input arrays, since preprocessing replaces .data.
     original_array_references = [
         source_data["generation_input"].data,
         source_data["generation_target"].data,
-        source_data["sat"].data,
+        source_data["satellite"].data,
         source_data["nwp"]["ukv"].data,
     ]
     # Make copies so we can detect if the original arrays are modified
@@ -134,7 +134,7 @@ def test_preprocess_source_data_preserves_original_arrays(base_config):
     processed_arrays = [
         source_data["generation_input"].data,
         source_data["generation_target"].data,
-        source_data["sat"].data,
+        source_data["satellite"].data,
         source_data["nwp"]["ukv"].data,
     ]
     for original_reference, original_copy, processed in zip(
